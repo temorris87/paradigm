@@ -16,14 +16,10 @@ const sheetsByRoot = new WeakMap(); // Document | ShadowRoot -> Map(diagram id -
 
 /** Replace `container`'s children with the diagram in `svgText`. Returns the <svg> or null. */
 export function insertSvg(container, svgText) {
-  const parsed = new DOMParser().parseFromString(svgText, "text/html");
-  const svg = parsed.querySelector("svg");
+  const svg = cleanSvg(svgText);
   if (!svg) return null;
   const css = takeStyles(svg);
-  for (const node of svg.querySelectorAll("script")) node.remove();
   const styles = takeStyleAttributes(svg);
-  stripHandlers(svg);
-  fixLinks(svg);
   const node = container.ownerDocument.importNode(svg, true);
   restoreStyles(node, styles);
   keepNaturalWidth(node);
@@ -32,6 +28,21 @@ export function insertSvg(container, svgText) {
   if (css && node.id) cssBySvg.set(node, css);
   if (container.isConnected) syncDiagramSheets(container.getRootNode());
   return node;
+}
+
+/**
+ * Mermaid's SVG text parsed in an inert document, with scripts, handlers and unsafe links
+ * gone; its <style> and style="" are left alone. Returns the <svg> element or null.
+ * :export serialises this as it is: the exported file's own CSP allows inline styles.
+ */
+export function cleanSvg(svgText) {
+  const parsed = new DOMParser().parseFromString(svgText, "text/html");
+  const svg = parsed.querySelector("svg");
+  if (!svg) return null;
+  for (const node of svg.querySelectorAll("script")) node.remove();
+  stripHandlers(svg);
+  fixLinks(svg);
+  return svg;
 }
 
 /**

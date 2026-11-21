@@ -25,15 +25,27 @@ export function typesetMath(root) {
 }
 
 function typesetOne(element) {
+  element.dataset.tex = element.textContent; // marks it drawn, and keeps the source for copying or errors
+  draw(element, OPTIONS.output);
+}
+
+function draw(element, output) {
   const tex = element.textContent;
-  element.dataset.tex = tex; // marks it drawn, and keeps the source for copying or errors
   try {
-    katex.render(tex, element, { ...OPTIONS, displayMode: element.classList.contains("md-math-display") });
+    katex.render(tex, element, { ...OPTIONS, output, displayMode: element.classList.contains("md-math-display") });
   } catch (error) {
     element.textContent = tex;
     element.classList.add("md-math-error");
     element.title = String(error?.message ?? error);
   }
+}
+
+/**
+ * Draw one formula as MathML only, for :export (audit condition 5): no styles, no fonts to
+ * carry; the reader's browser draws it with its maths font. Errors leave the source, marked.
+ */
+export function typesetMathML(element) {
+  draw(element, "mathml");
 }
 
 /**

@@ -59,6 +59,7 @@ function nordColour(name) {
 export function createDiagramRenderer({ load = () => import(MERMAID_URL).then((module) => module.default) } = {}) {
   const cache = new Map(); // source -> { svg } | { error }, oldest first
   const waiting = new Map(); // source -> Set of placeholder elements
+  const pending = new Map(); // source -> Promise of its result, while queued or rendering
   const listeners = new Set();
   let api = null;
   let tail = Promise.resolve();
@@ -103,16 +104,18 @@ export function createDiagramRenderer({ load = () => import(MERMAID_URL).then((m
     const elements = waiting.get(source) ?? new Set();
     waiting.delete(source);
     for (const element of elements) if (element.isConnected) fill(element, source, result);
+    pending.delete(source);
     for (const listener of listeners) listener(source);
+    return result;
   }
 
-  function schedule(source, element) {
-    if (waiting.has(source)) {
-      waiting.get(source).add(element);
-      return;
+  function schedule(source) {
+    if (!pending.has(source)) {
+      const done = tail.then(() => renderOne(source));
+      pending.set(source, done);
+      tail = done.catch((error) => console.error(error));
     }
-    waiting.set(source, new Set([element]));
-    tail = tail.then(() => renderOne(source)).catch((error) => console.error(error));
+    return pending.get(source);
   }
 
   return {
@@ -125,9 +128,15 @@ export function createDiagramRenderer({ load = () => import(MERMAID_URL).then((m
         if (result) fill(element, source, result);
         else {
           showPending(element);
-          schedule(source, element);
+          if (!waiting.has(source)) waiting.set(source, new Set());
+          waiting.get(source).add(element);
+          schedule(source);
         }
       }
+    },
+    /** Resolves to { svg } (Mermaid's text, not yet cleaned) or { error }, through the queue. */
+    async svgFor(source) {
+      return cached(source) ?? schedule(source);
     },
     /** fn(source) after each render finishes. Returns a function that stops it. */
     onDrawn(fn) {
@@ -177,6 +186,11 @@ export function drawDiagrams(root) {
 /** fn(source) whenever the shared renderer finishes a diagram. Returns an unsubscribe. */
 export function onDiagramDrawn(fn) {
   return shared.onDrawn(fn);
+}
+
+/** { svg } or { error } for one diagram's source, from the shared renderer (used by :export). */
+export function diagramSvg(source) {
+  return shared.svgFor(source);
 }
 
 /** Resolves when the shared renderer has finished every diagram asked for so far. */

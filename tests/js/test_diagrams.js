@@ -1,7 +1,7 @@
 // Mermaid diagrams: the renderer's placeholder, the CSP-safe insert helper, the render queue
 // (with a fake Mermaid), and one real render. (This runner has no CSP; the CSP check is
 // markdown-sample.html and the app itself, see CLAUDE.md "Testing".)
-import { adoptedDiagramIds, insertSvg, syncDiagramSheets } from "../../static/js/diagrams/insert-svg.js";
+import { adoptedDiagramIds, cleanSvg, insertSvg, syncDiagramSheets } from "../../static/js/diagrams/insert-svg.js";
 import { createDiagramRenderer, mermaidConfig } from "../../static/js/diagrams/mermaid.js";
 import { renderMarkdown } from "../../static/js/markdown/index.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
@@ -160,6 +160,28 @@ test("diagrams: a placeholder that left the page is not filled", async () => {
   root.remove();
   await renderer.idle();
   assertTrue(root.querySelector(".md-mermaid-pending") !== null);
+});
+
+test("diagrams: svgFor shares the queue and the cache with placeholders", async () => {
+  const { calls, load } = fakeMermaid();
+  const renderer = createDiagramRenderer({ load });
+  const root = placeholders("one");
+  renderer.draw(root);
+  const [first, bad] = await Promise.all([renderer.svgFor("one\n"), renderer.svgFor("bad x")]);
+  assertTrue(first.svg.includes("<text>one</text>"), "svg text");
+  assertEqual(bad.error, "Parse error on line 1");
+  assertTrue(root.querySelector(".md-mermaid svg") !== null, "placeholder filled too");
+  await renderer.svgFor("one\n");
+  assertEqual(calls.render.length, 2, "one render per source");
+  root.remove();
+});
+
+test("diagrams: cleanSvg drops scripts, handlers and unsafe links but keeps styles", () => {
+  const svg = cleanSvg(SVG);
+  assertTrue(svg.querySelector("style") !== null && svg.querySelector("rect").getAttribute("style") !== null, "styles kept");
+  assertTrue(svg.querySelector("script") === null && !svg.querySelector("rect").hasAttribute("onclick"), "script, handler");
+  assertEqual([...svg.querySelectorAll("a")].filter((a) => a.hasAttribute("href")).length, 1, "one safe link");
+  assertTrue(cleanSvg("<p>no svg</p>") === null, "no svg");
 });
 
 test("diagrams: config keeps the audited settings", () => {

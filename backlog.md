@@ -24,8 +24,8 @@ Features in build order. "build feature" takes the first unchecked item.
 - [x] Escape in insert mode is not putting me in normal mode. (done 2026-11-21)
 - [x] Images: paste from the clipboard and drag-and-drop, stored in SQLite, downscaled above
   ~1600 px wide (needs notes in SQLite) (done 2026-11-21)
-- [ ] Export a note as one self-contained .html file (:export): images inlined, diagrams as SVG,
+- [x] Export a note as one self-contained .html file (:export): images inlined, diagrams as SVG,
   maths as MathML, no scripts; wiki-linked notes at the same level or deeper are bundled in,
-  links higher up become plain text (needs notes in SQLite)
+  links higher up become plain text (needs notes in SQLite) (done 2026-11-21)
 - [ ] Design heading colors to be uniform, size and underlines should give the
   heading away, not the color.

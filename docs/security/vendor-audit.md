@@ -121,6 +121,8 @@ As built (2026-11-21, `static/js/math/typeset.js`): conditions 1–4 hold, with 
 `throwOnError` is `true` and every error is caught by our code, which shows the source with
 the `md-math-error` class. KaTeX's own error markup would set a style attribute, which the CSP
 blocks with a console message each time.
+`:export` (`static/js/export/assets.js`) follows condition 5: `katex.render` into an element of an
+inert document with the same options and `output: "mathml"`, through the same try/catch.
 
 ---
 
@@ -248,6 +250,10 @@ As built (2026-11-21, `static/js/diagrams/`): all seven conditions hold.
   code, which shows the source and the message.
 - Mermaid renders into an off-screen element of ours (`work-area.js`), emptied after every
   render, so no temporary elements are left behind.
+- `:export` takes diagrams through the same queue and cache (`svgFor`) and the same cleaning
+  (`cleanSvg`: scripts, `on*` handlers and unsafe links removed). It keeps the `<style>` and
+  `style=""` in the file, whose own CSP (`default-src 'none'; img-src data:; style-src
+  'unsafe-inline'`) allows inline styles but no scripts and no outside loads.
 - That element has a constructed stylesheet with the rules that change label sizes. Mermaid's
   own `<style>` is blocked there, and without these rules every label was measured 2 em too
   tall.

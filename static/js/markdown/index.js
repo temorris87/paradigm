@@ -9,8 +9,8 @@
 //
 // Options: idPrefix ("md-") goes before every id, so two notes on one page never clash;
 // breaks (true) renders single newlines as <br>, like Obsidian; resolveWikiLink(link) returns
-// { href, exists } or null for [[wiki links]] ({ target, heading, alias }); href may be null
-// for a missing note.
+// { href, exists }, { plain: true } (text only) or null for [[wiki links]] ({ target, heading,
+// alias }); href may be null for a missing note.
 import { parseBlocks } from "./blocks.js";
 import { parseInline } from "./inline.js";
 import { renderBlock, renderFootnotes, renderListItem, plainText } from "./render.js";

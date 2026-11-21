@@ -61,6 +61,7 @@ static/
                          docs/security/katex-0.19.1.sha256 by tests/python/test_vendor.py)
   vendor/mermaid-12.3.0/ Mermaid exactly as audited (same check, mermaid-12.3.0.sha256)
   css/                   nord.css (palette variables), base.css, one file per component
+                         (export.css styles only the exported file, never the app)
                          (editor.css is loaded inside <pd-editor>'s shadow root;
                          markdown.css styles rendered notes under .md-doc)
   js/main.js             wires the page together
@@ -68,7 +69,7 @@ static/
                          note-session.js (autosave, versions, conflicts), resolve.js (wiki
                          links, nearest note wins), tree-model.js, tree-view.js, tree-keys.js
                          (THE tree key table), breadcrumb.js, commands.js (THE note ex
-                         commands: :e :new :child :rename :parent :trash), headings.js,
+                         commands: :e :new :child :rename :parent :export :trash), headings.js,
                          images.js (editor "files" event -> shrink, upload, insert links)
   js/images/             downscale.js: shrinks images wider than 1600 px on a canvas (GIFs
                          never); viewer.js: <pd-image-viewer>, a click on an image opens it
@@ -83,6 +84,11 @@ static/
                          off-screen element Mermaid lays out in; insert-svg.js: puts SVG in
                          under the CSP (constructed sheets + CSSOM styles, links allowlisted),
                          syncDiagramSheets keeps a root's sheets in step with its diagrams
+  js/export/             :export, one self-contained .html file: scope.js (which linked notes
+                         come along: beside, under, or under a note beside; pure),
+                         render-notes.js (sections, links inside the file; pure), page.js (the
+                         file + its own no-script CSP; pure), assets.js (MathML, cleaned SVG,
+                         images as data: URLs, in an inert document), download.js, export.js
   js/connection/         connection.js (event stream + beacon), banner.js, tab-id.js
   js/editor/             the <pd-editor> component:
     pd-editor.js         the custom element (hidden textarea takes keys; events out)

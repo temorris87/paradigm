@@ -4,6 +4,7 @@
 //   const app = new NotesApp({ editor, tree: ulElement, crumbs: navElement, api: notesApi,
 //                              imagesApi });
 //   await app.start();
+import { exportNote } from "../export/export.js";
 import { showBreadcrumb } from "./breadcrumb.js";
 import { registerNoteCommands, runNoteCommand } from "./commands.js";
 import { headingLine } from "./headings.js";
@@ -209,6 +210,15 @@ export class NotesApp {
     this.session.updateMeta(note);
     await this.refreshTree();
     this.editor.showMessage(`Now at ${this.tree.pathText(note.id)}`);
+  }
+
+  async exportCommand() {
+    const id = this.currentId;
+    if (id === null) throw new Error("E: no note is open");
+    this.editor.showMessage("Exporting…");
+    const { file, count } = await exportNote({ tree: this.tree, rootId: id, rootBody: this.editor.value, notesApi: this.api });
+    const others = count === 0 ? "" : ` with ${count} linked note${count === 1 ? "" : "s"}`;
+    this.editor.showMessage(`"${this.session.note.title}" exported${others} as ${file}`);
   }
 
   async trashCommand(recursive) {
