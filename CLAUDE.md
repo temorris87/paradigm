@@ -166,7 +166,9 @@ Update this section when the structure changes.
 ## Look
 - Nord palette, defined as CSS variables in `static/css/nord.css`. Components use the variables,
   never raw hex values.
-- Links are nord8 (frost cyan). Each heading level gets its own colour, never nord8.
+- Links are nord8 (frost cyan). Headings are all nord13 (one colour, set apart from the
+  nord4 text), never nord8: size, weight and a rule under H1 and H2 tell the levels apart
+  (raw lines, one row high: an underline on H1 and H2).
 
 ## Web security (paradigm/web/security.py, applied in handler.py to every request)
 - Any page open in the browser can send requests to 127.0.0.1, so before routing:

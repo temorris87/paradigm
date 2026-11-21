@@ -21,7 +21,8 @@
   margin: 0 0 0.9em;
 }
 
-/* Headings: one colour per level, never nord8 (links). Same mapping as the editor. */
+/* Headings: all one colour, set apart from the nord4 text (never nord8, which is for links).
+   Size, weight and the rules under H1 and H2 tell the levels apart. */
 .md-doc h1,
 .md-doc h2,
 .md-doc h3,
@@ -31,13 +32,23 @@
   margin: 1.2em 0 0.5em;
   line-height: 1.25;
   font-weight: 600;
+  color: var(--nord13);
 }
-.md-doc h1 { color: var(--nord15); font-size: 1.8em; }
-.md-doc h2 { color: var(--nord12); font-size: 1.45em; }
-.md-doc h3 { color: var(--nord13); font-size: 1.2em; }
-.md-doc h4 { color: var(--nord14); font-size: 1.05em; }
-.md-doc h5 { color: var(--nord7); font-size: 1em; }
-.md-doc h6 { color: var(--nord9); font-size: 0.95em; }
+.md-doc h1 {
+  font-size: 1.8em;
+  font-weight: 700;
+  padding-bottom: 0.2em;
+  border-bottom: 2px solid var(--nord3);
+}
+.md-doc h2 {
+  font-size: 1.45em;
+  padding-bottom: 0.15em;
+  border-bottom: 1px solid var(--nord3);
+}
+.md-doc h3 { font-size: 1.2em; }
+.md-doc h4 { font-size: 1.05em; }
+.md-doc h5 { font-size: 1em; }
+.md-doc h6 { font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.06em; }
 
 .md-doc a {
   color: var(--nord8);

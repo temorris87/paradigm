@@ -73,14 +73,17 @@
   color: var(--nord3);
 }
 
-/* Raw Markdown: each heading level its own colour; links are nord8 and nothing else is.
+/* Raw Markdown: headings are all one colour (as rendered) and bold; rows have one fixed height, so instead
+   of size, H1 and H2 get an underline (thick, thin). Links are nord8 and nothing else is.
    Scoped to raw rows, so rendered units (markdown.css, same class names) are untouched. */
-.pd-row .md-h1 { color: var(--nord15); font-weight: bold; }
-.pd-row .md-h2 { color: var(--nord12); font-weight: bold; }
-.pd-row .md-h3 { color: var(--nord13); font-weight: bold; }
-.pd-row .md-h4 { color: var(--nord14); }
-.pd-row .md-h5 { color: var(--nord7); }
-.pd-row .md-h6 { color: var(--nord9); }
+.pd-row :is(.md-h1, .md-h2, .md-h3, .md-h4, .md-h5, .md-h6) { color: var(--nord13); font-weight: bold; }
+.pd-row :is(.md-h1, .md-h2) {
+  text-decoration: underline;
+  text-decoration-color: var(--nord3);
+  text-underline-offset: 0.2em;
+}
+.pd-row .md-h1 { text-decoration-thickness: 2px; }
+.pd-row .md-h2 { text-decoration-thickness: 1px; }
 .pd-row .md-link { color: var(--nord8); text-decoration: underline; text-decoration-color: var(--nord3); }
 .pd-row .md-code, .pd-row .md-code-block { color: var(--nord7); background: var(--nord1); }
 .pd-row .md-fence { color: var(--nord3); background: var(--nord1); }
