@@ -21,6 +21,7 @@ export function insertKey(vim, key) {
   } else if (typeof key === "object" && key.paste !== undefined) {
     typeText(vim, key.paste);
   } else if (isTextKey(key)) {
+    if (key === " ") session.typedSpace = true;
     typeText(vim, key);
   }
 }
@@ -83,13 +84,44 @@ function backspace(vim, session) {
     return;
   }
   if (col > 0) {
-    vim.edit(pos(line, col - 1), pos(line, col), "");
-    vim.setCursor(pos(line, col - 1));
+    const from = softTabStart(vim, line, col);
+    vim.edit(pos(line, from), pos(line, col), "");
+    vim.setCursor(pos(line, from));
   } else if (line > 0) {
     const length = vim.buf.lineLength(line - 1);
     vim.edit(pos(line - 1, length), pos(line, 0), "");
     vim.setCursor(pos(line - 1, length));
   }
+}
+
+// Like Vim with softtabstop = shiftwidth: <BS> after spaces goes back to the previous stop,
+// unless a space was typed by hand in this insert (then spaces go one at a time, as in Vim).
+function softTabStart(vim, line, col) {
+  const text = vim.buf.line(line);
+  if (!vim.options.expandtab || vim.insert.typedSpace || text[col - 1] !== " ") return col - 1;
+  const stop = col - 1 - ((col - 1) % vim.options.shiftwidth);
+  let from = col - 1;
+  while (from > stop && text[from - 1] === " ") from -= 1;
+  return from;
+}
+
+// <Tab>: spaces up to the next multiple of shiftwidth (a real tab without expandtab).
+function tab(vim) {
+  const width = vim.options.shiftwidth;
+  typeText(vim, vim.options.expandtab ? " ".repeat(width - (vim.cursor.col % width)) : "\t");
+}
+
+// <S-Tab>: the line's indent goes back one step; the cursor stays on the same text.
+function unindent(vim) {
+  const { line, col } = vim.cursor;
+  const indent = leadingWhitespace(vim.buf.line(line));
+  if (!indent) return;
+  const width = vim.options.shiftwidth;
+  const columns = indent.replace(/\t/g, " ".repeat(width)).length;
+  const target = Math.max(0, Math.ceil(columns / width) * width - width);
+  const replacement = vim.options.expandtab ? " ".repeat(target) : "\t".repeat(Math.floor(target / width)) + " ".repeat(target % width);
+  vim.edit(pos(line, 0), pos(line, indent.length), replacement);
+  vim.setCursor(pos(line, Math.max(replacement.length, col - (indent.length - replacement.length))));
 }
 
 function deleteChar(vim) {
@@ -200,6 +232,8 @@ function finishBlock(vim, session) {
 const HANDLERS = {
   leave: leaveInsert,
   newline,
+  tab,
+  unindent,
   backspace,
   deleteChar,
   deleteToStart,

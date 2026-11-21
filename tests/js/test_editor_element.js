@@ -1,4 +1,4 @@
-// The <pd-editor> element in a real page: keys in, events out, Tab left alone.
+// The <pd-editor> element in a real page: keys in, events out, Tab only taken in insert mode.
 import "../../static/js/editor/pd-editor.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
@@ -40,12 +40,27 @@ test("element: keys edit the text and fire change", () => withEditor("foo bar", 
   assertEqual(changes.join("|"), "bar");
 }));
 
-test("element: Tab and Shift-Tab are left to the browser", () => withEditor("foo", (editor) => {
+test("element: Tab moves focus on outside insert mode", () => withEditor("foo", (editor) => {
   assertTrue(!press(editor, "Tab").defaultPrevented);
   assertTrue(!press(editor, "Tab", { shiftKey: true }).defaultPrevented);
-  press(editor, "i");
-  assertTrue(!press(editor, "Tab").defaultPrevented, "not in insert mode either");
+  press(editor, "v");
+  assertTrue(!press(editor, "Tab").defaultPrevented, "visual mode");
+  press(editor, "Escape");
+  press(editor, ":");
+  assertTrue(!press(editor, "Tab").defaultPrevented, "command line");
+  press(editor, "Escape");
+  assertTrue(!press(editor, "Tab", { ctrlKey: true }).defaultPrevented, "Ctrl-Tab belongs to the browser");
   assertEqual(editor.value, "foo");
+}));
+
+test("element: Tab and Shift-Tab indent in insert mode", () => withEditor("foo", (editor) => {
+  press(editor, "i");
+  assertTrue(press(editor, "Tab").defaultPrevented);
+  assertEqual(editor.value, "  foo");
+  assertTrue(press(editor, "Tab", { shiftKey: true }).defaultPrevented);
+  assertEqual(editor.value, "foo");
+  press(editor, "Escape");
+  assertTrue(!press(editor, "Tab").defaultPrevented);
 }));
 
 test("element: bound keys are taken, browser-owned ones are not", () => withEditor("foo", (editor) => {

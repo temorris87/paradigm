@@ -94,8 +94,9 @@ Update this section when the structure changes.
 - The editor is a real modal Vim on raw Markdown: normal, insert, visual and command-line modes,
   counts, operators + motions, text objects, `.`, registers and undo. Vim itself is the reference
   for its keys.
-- **Tab / Shift-Tab leave the editor and move focus like on any web page.** They are never
-  editor keys.
+- **Tab / Shift-Tab: in insert mode they indent (spaces to the next shiftwidth stop) and
+  unindent. In every other mode they leave the editor and move focus like on any web page**,
+  so they are never bound there (Tyson's choice, 2026-11-21).
 - Keys the browser owns (Ctrl-W, Ctrl-T, Ctrl-N, Ctrl-Tab, ...) are given up. Don't fight the browser.
 - App-level keys are designed fresh with Tyson, one feature at a time. Each scope has one central
   key table, and it is the only source for both the mappings and any help listing.

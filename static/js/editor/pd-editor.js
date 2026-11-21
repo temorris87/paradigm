@@ -10,9 +10,10 @@
 // ZZ, ZQ; detail.force for :q!) and "mode" (detail.mode). Each carries detail.value.
 //
 // A hidden textarea holds the focus and takes the keys, so IME input, dead keys and paste
-// work as usual. Tab and Shift-Tab are never taken: they move the focus on, like on any page.
+// work as usual. Tab and Shift-Tab indent in insert mode; in every other mode they are not
+// taken, so they move the focus on, like on any page.
 import { isTextKey, keyName } from "./key-names.js";
-import { BOUND_KEYS } from "./keys.js";
+import { BOUND_KEYS, INSERT_ONLY_KEYS } from "./keys.js";
 import { EditorView } from "./render.js";
 import { Vim } from "./vim.js";
 
@@ -126,9 +127,9 @@ export class PdEditor extends HTMLElement {
 
   onKeyDown(event) {
     if (event.isComposing || this.composing || event.key === "Process" || event.key === "Dead") return;
-    if (event.key === "Tab") return;
     const name = keyName(event);
     if (!name) return;
+    if (INSERT_ONLY_KEYS.has(name) && !this.vim.isInsertLike()) return;
     // In insert and command-line mode the browser pastes, and the paste event brings the text.
     if (PASTE_KEYS.has(name) && this.acceptsText()) return;
     if (!isTextKey(name) && !BOUND_KEYS.has(name)) return;

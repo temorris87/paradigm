@@ -111,6 +111,29 @@ test("insert: Enter keeps the indent, and an unused indent is dropped", () => {
   assertEqual(run("  |foo", "A<CR>bar<Esc>"), "  foo\n  ba|r");
 });
 
+test("insert: Tab goes to the next indent stop, Shift-Tab takes one off", () => {
+  assertEqual(run("|- item", "i<Tab><Esc>"), " | - item");
+  assertEqual(run("|- item", "i<Tab><Tab><Esc>"), "   | - item");
+  assertEqual(run("|abc", "a<Tab>x<Esc>"), "a |xbc");
+  assertEqual(run("    - |item", "i<S-Tab><Esc>"), "  -| item"); // as Vim's i_CTRL-D
+  assertEqual(run("   x|", "a<S-Tab><Esc>"), "  |x");
+  assertEqual(run("|x", "i<S-Tab><Esc>"), "|x");
+  assertEqual(run("|a", ":set sw=4<CR>i<Tab><Esc>"), "   | a");
+});
+
+test("insert: Backspace after Tab removes the whole indent step", () => {
+  // Checked against Vim with softtabstop=2.
+  assertEqual(run("|x", "i<Tab><Tab><BS><Esc>"), " | x");
+  assertEqual(run("    |x", "i<BS><Esc>"), " | x");
+  assertEqual(run("a|b", "a  <BS><Esc>"), "ab| ");
+  assertEqual(run("ab|c", "a <BS><Esc>"), "ab|c");
+});
+
+test("insert: Tab is repeated by . and counted in undo", () => {
+  assertEqual(run("|a\nb", "I<Tab><Esc>j0."), "  a\n | b");
+  assertEqual(run("|a", "I<Tab><Esc>u"), "|a");
+});
+
 test("insert: pasted text goes in as it is, without autoindent", () => {
   const vim = vimAt("  |x");
   type(vim, "i");

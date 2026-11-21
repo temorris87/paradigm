@@ -1,5 +1,7 @@
 import { isTextKey, keyName, parseKeys } from "../../static/js/editor/key-names.js";
-import { BOUND_KEYS, NORMAL_KEYS, VISUAL_KEYS, MOTION_KEYS, OPERATOR_KEYS, TEXT_OBJECT_KEYS } from "../../static/js/editor/keys.js";
+import {
+  BOUND_KEYS, CMDLINE_KEYS, INSERT_KEYS, INSERT_ONLY_KEYS, MOTION_KEYS, NORMAL_KEYS, OPERATOR_KEYS, TEXT_OBJECT_KEYS, VISUAL_KEYS,
+} from "../../static/js/editor/keys.js";
 import { parse } from "../../static/js/editor/parser.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
@@ -42,9 +44,14 @@ test("parseKeys splits special names and characters", () => {
   assertTrue(isTextKey("é") && isTextKey(" ") && !isTextKey("<Esc>"));
 });
 
-test("Tab is never an editor key", () => {
-  assertTrue(!BOUND_KEYS.has("<Tab>"));
-  assertTrue(!BOUND_KEYS.has("<S-Tab>"));
+test("Tab and Shift-Tab are bound in insert mode only", () => {
+  const outsideInsert = [...NORMAL_KEYS, ...VISUAL_KEYS, ...MOTION_KEYS, ...OPERATOR_KEYS, ...CMDLINE_KEYS];
+  for (const name of ["<Tab>", "<S-Tab>"]) {
+    assertTrue(INSERT_KEYS.some((entry) => entry.keys === name), name);
+    assertTrue(!outsideInsert.some((entry) => entry.keys === name), name);
+    assertTrue(INSERT_ONLY_KEYS.has(name), name);
+  }
+  assertEqual(keyName(event("Tab", { shiftKey: true })), "<S-Tab>");
 });
 
 test("browser-owned keys are not bound", () => {

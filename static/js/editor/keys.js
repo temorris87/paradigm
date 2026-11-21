@@ -229,6 +229,8 @@ export const INSERT_KEYS = [
   key("<Esc>", "leave", "back to normal mode"),
   key("<C-c>", "leave", "back to normal mode"),
   key("<CR>", "newline", "new line (keeps the indent)"),
+  key("<Tab>", "tab", "spaces to the next indent stop (shiftwidth)"),
+  key("<S-Tab>", "unindent", "take one indent step off the line"),
   key("<BS>", "backspace", "delete the character before the cursor"),
   key("<C-h>", "backspace", "delete the character before the cursor"),
   key("<Del>", "deleteChar", "delete the character under the cursor"),
@@ -267,6 +269,12 @@ export const OPERATOR_TARGETS = [...MOTION_KEYS, ...TEXT_OBJECT_KEYS];
 export function findKey(table, name) {
   return table.find((entry) => entry.keys === name) ?? null;
 }
+
+/**
+ * Tab and Shift-Tab are editor keys only in insert and replace mode; anywhere else they
+ * move the focus on, like on any web page.
+ */
+export const INSERT_ONLY_KEYS = new Set(["<Tab>", "<S-Tab>"]);
 
 /**
  * Every non-character key the editor binds anywhere. The editor element calls

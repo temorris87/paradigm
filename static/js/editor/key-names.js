@@ -19,8 +19,9 @@ const SPECIAL_KEYS = {
   Tab: "Tab",
 };
 
-// Shift is part of the name only where it changes the meaning (Shift-Insert pastes).
-const SHIFT_MATTERS = new Set(["Insert"]);
+// Shift is part of the name only where it changes the meaning (Shift-Insert pastes,
+// Shift-Tab unindents).
+const SHIFT_MATTERS = new Set(["Insert", "Tab"]);
 
 /** The Vim name of a keydown event, or null for keys the editor never sees as input. */
 export function keyName(event) {

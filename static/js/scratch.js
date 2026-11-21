@@ -10,7 +10,7 @@ This editor is Vim on raw Markdown. Nothing here is saved yet: notes come next.
 - Move with h j k l, w b e, gg G, f{char}, % and /search
 - Change with d c y and a motion: dw, ci(, yap, then p or .
 - [ ] i or a to type, <Esc> to stop; u undoes, Ctrl-R redoes
-- [x] Tab leaves the editor, like on any web page
+- [x] Tab indents in insert mode; in any other mode it leaves the editor
 
 ### Links and code
 
