@@ -111,4 +111,6 @@ test("markdown extras: wiki links use the resolver when given", () => {
   );
   const evil = () => ({ href: "javascript:alert(1)", exists: true });
   assertEqual(md("[[X]]", { resolveWikiLink: evil }), '<p><a class="md-wikilink" data-target="X">X</a></p>');
+  const noAddress = () => ({ href: null, exists: false });
+  assertEqual(md("[[New]]", { resolveWikiLink: noAddress }), '<p><a class="md-wikilink md-wikilink-missing" data-target="New">New</a></p>');
 });

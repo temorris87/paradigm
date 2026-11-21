@@ -21,28 +21,47 @@ a {
   color: var(--nord8);
 }
 
+/* The sidebar comes after the note in the page (for Tab order) but shows on the left. */
 .app {
+  display: grid;
+  grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr);
+  grid-template-areas: "sidebar note";
+  height: 100%;
+}
+
+.app__sidebar {
+  grid-area: sidebar;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  min-height: 0;
+  padding: 1.25rem 0.75rem;
+  background: var(--nord1);
+  border-right: 1px solid var(--nord2);
+  overflow: auto;
+}
+
+.app__title {
+  margin: 0 0.5rem;
+  font-size: 1.1rem;
+  color: var(--nord6);
+  font-weight: 600;
+}
+
+.app__note {
+  grid-area: note;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
   max-width: 60rem;
-  height: 100%;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 1.25rem 1.5rem;
 }
 
 .app__editor {
   flex: 1;
   min-height: 12rem;
-}
-
-.app__title {
-  margin: 0;
-  color: var(--nord6);
-  font-weight: 600;
-}
-
-.app__status {
-  margin: 0;
-  color: var(--nord4);
 }

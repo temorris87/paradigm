@@ -30,6 +30,8 @@ export class Vim {
     this.search = { pattern: null, forward: true, highlight: false };
     this.readOnly = false;
     this.events = [];
+    // Ex commands the host adds (name -> shortest abbreviation); running one emits "ex".
+    this.exCommands = new Map();
     this.bellCount = 0;
     this.lastFind = null;
     this.lastChange = null;

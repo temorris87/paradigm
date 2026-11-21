@@ -8,13 +8,21 @@
   <link rel="stylesheet" href="/css/nord.css">
   <link rel="stylesheet" href="/css/base.css">
   <link rel="stylesheet" href="/css/connection-banner.css">
+  <link rel="stylesheet" href="/css/tree.css">
+  <link rel="stylesheet" href="/css/breadcrumb.css">
   <script type="module" src="/js/main.js"></script>
 </head>
 <body>
-  <main class="app">
-    <h1 class="app__title">Paradigm</h1>
-    <pd-editor class="app__editor" aria-label="Scratch editor"></pd-editor>
-    <p class="app__status">A scratch editor: nothing is stored yet. Close this tab to stop the server.</p>
-  </main>
+  <div class="app">
+    <!-- The note comes first in the page, so Tab from the editor reaches the tree. -->
+    <main class="app__note">
+      <nav class="crumbs" aria-label="Where this note is"></nav>
+      <pd-editor class="app__editor" aria-label="Note"></pd-editor>
+    </main>
+    <nav class="app__sidebar" aria-label="Notes">
+      <h1 class="app__title">Paradigm</h1>
+      <ul class="tree" aria-label="Notes"></ul>
+    </nav>
+  </div>
 </body>
 </html>

@@ -5,10 +5,15 @@ import time
 import webbrowser
 from typing import Callable, List, Optional
 
+from paradigm.api.notes import NotesApi
 from paradigm.api.session import SessionApi
 from paradigm.config import Config, parse_args
+from paradigm.db.connection import Database
+from paradigm.db.migrate import SchemaTooNew, migrate
+from paradigm.db.notes_repo import NoteRepository
 from paradigm.instance import PortState, probe
 from paradigm.logging_setup import setup_logging
+from paradigm.notes.seed import seed_if_empty
 from paradigm.notify import pause_console, show_error_box
 from paradigm.presence import Presence
 from paradigm.web.router import Router
@@ -59,7 +64,7 @@ def run(config: Config, open_url: OpenUrl = webbrowser.open,
     # empty port first is slow on Windows: a refused local connection takes about 2 s.
     presence = Presence(config.grace_seconds)
     try:
-        server = build_server(config, presence)
+        server = bind_server(config)
     except OSError as error:
         log.debug("could not bind %s:%s: %r", config.host, config.port, error)
         if probe_port(config.host, config.port) is PortState.PARADIGM:
@@ -68,6 +73,7 @@ def run(config: Config, open_url: OpenUrl = webbrowser.open,
                 open_url(config.url)
             return 0
         raise LaunchError(port_error_message(config.port, error))
+    install_apis(server, config, presence)
     server.start_in_thread()
     log.info("Paradigm running at %s - close the last tab to stop", config.url)
     if config.open_browser:
@@ -83,9 +89,43 @@ def run(config: Config, open_url: OpenUrl = webbrowser.open,
 
 
 def build_server(config: Config, presence: Presence) -> ParadigmServer:
-    router = Router()
-    SessionApi(presence, config.keepalive_seconds, config.max_streams).register(router)
-    return ParadigmServer((config.host, config.port), router, config.static_dir)
+    server = bind_server(config)
+    install_apis(server, config, presence)
+    return server
+
+
+def bind_server(config: Config) -> ParadigmServer:
+    return ParadigmServer((config.host, config.port), Router(), config.static_dir)
+
+
+def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> None:
+    """The database opens only once the port is ours, so a second launch never touches it."""
+    try:
+        db = open_database(config)
+        server.on_close.append(db.close)
+        notes = NoteRepository(db)
+        seed_if_empty(notes)
+    except BaseException:
+        # Not server.stop(): it would wait for a serve loop that never started.
+        server.server_close()
+        for close in server.on_close:
+            close()
+        raise
+    SessionApi(presence, config.keepalive_seconds, config.max_streams).register(server.router)
+    NotesApi(notes).register(server.router)
+
+
+def open_database(config: Config) -> Database:
+    db = Database.in_folder(config.data_dir)
+    try:
+        migrate(db)
+    except SchemaTooNew as error:
+        db.close()
+        raise LaunchError(str(error))
+    except BaseException:
+        db.close()
+        raise
+    return db
 
 
 def wait_for_stop(presence: Presence, poll_seconds: float = STOP_POLL_SECONDS) -> None:

@@ -3,7 +3,7 @@ import os
 import threading
 from http.server import ThreadingHTTPServer
 from pathlib import Path
-from typing import Tuple
+from typing import Callable, List, Tuple
 
 from paradigm.web.handler import RequestHandler
 from paradigm.web.router import Router
@@ -22,6 +22,8 @@ class ParadigmServer(ThreadingHTTPServer):
         self.static_dir = static_dir
         # Set on shutdown: long-lived responses (event streams) end when it is set.
         self.stop_event = threading.Event()
+        # Run after the last request is answered (the database closes here).
+        self.on_close: List[Callable[[], None]] = []
 
     @property
     def port(self) -> int:
@@ -36,3 +38,5 @@ class ParadigmServer(ThreadingHTTPServer):
         self.stop_event.set()
         self.shutdown()
         self.server_close()
+        for close in self.on_close:
+            close()

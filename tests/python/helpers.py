@@ -30,11 +30,11 @@ class RunningServer:
     def connection(self) -> http.client.HTTPConnection:
         return http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
 
-    def request(self, method: str, path: str,
-                headers: Optional[Dict[str, str]] = None) -> Tuple[int, dict, bytes]:
+    def request(self, method: str, path: str, headers: Optional[Dict[str, str]] = None,
+                body: Optional[bytes] = None) -> Tuple[int, dict, bytes]:
         conn = self.connection()
         try:
-            conn.request(method, path, headers=headers or {})
+            conn.request(method, path, body=body, headers=headers or {})
             response = conn.getresponse()
             return response.status, dict(response.getheaders()), response.read()
         finally:
@@ -43,6 +43,12 @@ class RunningServer:
     def get_json(self, path: str):
         status, _, body = self.request("GET", path)
         return status, json.loads(body.decode("utf-8"))
+
+    def post_json(self, path: str, payload, headers: Optional[Dict[str, str]] = None):
+        all_headers = {"Content-Type": "application/json"}
+        all_headers.update(headers or {})
+        status, _, body = self.request("POST", path, all_headers, json.dumps(payload).encode("utf-8"))
+        return status, json.loads(body.decode("utf-8")) if body else None
 
 
 def wait_until(condition: Callable[[], bool], timeout: float = 3.0) -> bool:

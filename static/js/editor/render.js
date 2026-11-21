@@ -46,10 +46,10 @@ export class EditorView {
     };
   }
 
-  render(vim, { syntax = true } = {}) {
+  render(vim, { syntax = true, modified = false } = {}) {
     this.text.classList.toggle("pd-text--nowrap", !vim.options.wrap);
     this.text.replaceChildren(...this.lineNodes(vim, syntax));
-    this.renderStatus(vim);
+    this.renderStatus(vim, modified);
   }
 
   lineNodes(vim, syntax) {
@@ -142,7 +142,7 @@ export class EditorView {
     return this.patternCache.regex;
   }
 
-  renderStatus(vim) {
+  renderStatus(vim, modified = false) {
     const left = document.createElement("span");
     left.className = "pd-status__left";
     if (vim.mode === "cmdline") {
@@ -169,6 +169,12 @@ export class EditorView {
     const where = document.createElement("span");
     where.textContent = scrollPosition(vim);
     right.append(pending, ruler, where);
+    if (modified) {
+      const flag = document.createElement("span");
+      flag.className = "pd-status__modified";
+      flag.textContent = "[+]";
+      right.append(flag);
+    }
     if (vim.readOnly) {
       const flag = document.createElement("span");
       flag.textContent = "[read-only]";

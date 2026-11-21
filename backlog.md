@@ -17,12 +17,15 @@ Features in build order. "build feature" takes the first unchecked item.
   no eval or network, CVEs, sanitising, pinned files with hashes) (done 2026-11-21)
 - [x] LaTeX math ($…$ and $$…$$) with vendored KaTeX, if the audit passes (done 2026-11-21)
 - [x] Mermaid diagrams with vendored Mermaid, if the audit passes (done 2026-11-21)
-- [ ] Notes in SQLite with a hierarchy: the database layer (connection, numbered migrations,
+- [x] Notes in SQLite with a hierarchy: the database layer (connection, numbered migrations,
   repositories), notes that nest under other notes (hierarchy designed with Tyson), and
   [[wiki links]] that resolve to notes in that hierarchy; the editor opens and saves real notes
-  in place of the scratch buffer
+  in place of the scratch buffer (done 2026-11-21)
+- [ ] Escape in insert mode is not putting me in normal mode.
 - [ ] Images: paste from the clipboard and drag-and-drop, stored in SQLite, downscaled above
   ~1600 px wide (needs notes in SQLite)
 - [ ] Export a note as one self-contained .html file (:export): images inlined, diagrams as SVG,
   maths as MathML, no scripts; wiki-linked notes at the same level or deeper are bundled in,
   links higher up become plain text (needs notes in SQLite)
+- [ ] Design heading colors to be uniform, size and underlines should give the
+  heading away, not the color.

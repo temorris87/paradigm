@@ -170,6 +170,10 @@
   color: var(--nord13);
 }
 
+.pd-status__modified {
+  color: var(--nord12);
+}
+
 .pd-cmdline-cursor {
   background: var(--nord4);
 }
@@ -199,4 +203,9 @@
 
 @keyframes pd-bell {
   from { border-color: var(--nord11); }
+}
+
+/* Wiki links go to the page, not the browser: even one to a note not made yet is clickable. */
+.pd-unit .md-wikilink {
+  cursor: pointer;
 }

@@ -13,6 +13,13 @@ export class PreviewLayout {
     this.buf = null;
     this.version = -1;
     this.model = null;
+    this.options = {};
+  }
+
+  /** Renderer options (resolveWikiLink). New options: every unit renders again. */
+  setOptions(options) {
+    this.options = { ...options };
+    this.version = -1;
   }
 
   /** The units of the current text, parsed once per change. */
@@ -20,7 +27,7 @@ export class PreviewLayout {
     if (this.buf !== vim.buf || this.version !== vim.buf.version) {
       this.buf = vim.buf;
       this.version = vim.buf.version;
-      this.model = buildUnits(vim.buf.getText(), vim.buf.lineCount);
+      this.model = buildUnits(vim.buf.getText(), vim.buf.lineCount, this.options);
     }
     return this.model;
   }

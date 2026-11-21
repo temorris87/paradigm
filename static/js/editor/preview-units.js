@@ -7,15 +7,18 @@ import { parseMarkdown, renderBlockHtml, renderListItemHtml } from "../markdown/
 
 export const ID_PREFIX = "md-";
 
-/** { units: [{ start, end, html() }], byLine: unit index per line or -1, anchors: id -> line } */
-export function buildUnits(text, lineCount) {
+/**
+ * { units: [{ start, end, html() }], byLine: unit index per line or -1, anchors: id -> line }.
+ * options go to the renderer (resolveWikiLink); idPrefix must stay ID_PREFIX.
+ */
+export function buildUnits(text, lineCount, options = {}) {
   const doc = parseMarkdown(text);
   const units = [];
   for (const block of doc.blocks) {
     if (block.type === "list") {
-      block.children.forEach((item, index) => units.push(makeUnit(item, () => renderListItemHtml(block, index))));
+      block.children.forEach((item, index) => units.push(makeUnit(item, () => renderListItemHtml(block, index, options))));
     } else {
-      units.push(makeUnit(block, () => renderBlockHtml(block)));
+      units.push(makeUnit(block, () => renderBlockHtml(block, options)));
     }
   }
   const byLine = new Int32Array(lineCount).fill(-1);

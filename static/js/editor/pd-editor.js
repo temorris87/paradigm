@@ -5,12 +5,19 @@
 //   editor.readOnly = true;           // or the readonly attribute
 //   editor.showMessage("Saved");      // a message in the status line
 //   <pd-editor syntax="plain">        // no Markdown colouring and no live preview
+//   editor.markdownOptions = { resolveWikiLink };  // passed to the Markdown renderer
+//   editor.addExCommand("edit", 1);   // :e and :edit now send an "ex" event
+//   editor.modified = true;           // [+] in the status line
+//   editor.goToLine(12);              // cursor to a line (0-based)
 //
 // Live preview (on by default, :set nopreview turns it off): Markdown blocks away from the
 // cursor are drawn rendered; the block holding the cursor shows its raw text.
 //
-// Events: "change" (the text changed, on every edit), "save" (:w, :x, ZZ), "quit" (:q, :x,
-// ZZ, ZQ; detail.force for :q!) and "mode" (detail.mode). Each carries detail.value.
+// Events: "change" (the text changed, on every edit), "save" (:w, :x, ZZ; detail.force for
+// :w!), "quit" (:q, :x, ZZ, ZQ; detail.force for :q!), "mode" (detail.mode), "ex" (a command
+// added with addExCommand: detail.name, .arg, .bang) and "link" (a rendered [[wiki link]] was
+// clicked: detail.target, the text inside the brackets before any "|"). Each carries
+// detail.value. A wiki link clicked with Ctrl, Shift or Cmd is left to the browser.
 //
 // A hidden textarea holds the focus and takes the keys, so IME input, dead keys and paste
 // work as usual. Tab and Shift-Tab indent in insert mode; in every other mode they are not
@@ -91,9 +98,11 @@ export class PdEditor extends HTMLElement {
     input.addEventListener("focus", () => this.render());
     input.addEventListener("blur", () => this.render());
     this.textArea.addEventListener("mousedown", (event) => this.onMouseDown(event));
-    // A "#" link moved the cursor on mousedown; the page itself must not jump.
+    // A "#" link moved the cursor on mousedown; the page itself must not jump. A wiki link
+    // was handed to the host on mousedown, unless a modifier asks the browser for a new tab.
     this.textArea.addEventListener("click", (event) => {
       if (event.target.closest?.('.pd-unit a[href^="#"]')) event.preventDefault();
+      else if (event.target.closest?.(".pd-unit a.md-wikilink") && !hasModifier(event)) event.preventDefault();
     });
     this.textArea.addEventListener("wheel", (event) => this.onWheel(event), { passive: false });
     this.frame.addEventListener("animationend", () => this.frame.classList.remove("pd-editor--bell"));
@@ -150,6 +159,37 @@ export class PdEditor extends HTMLElement {
     return this.vim.mode;
   }
 
+  get markdownOptions() {
+    return this.previewLayout.options;
+  }
+
+  set markdownOptions(options) {
+    this.previewLayout.setOptions(options ?? {});
+    this.sizes.forgetAll();
+    this.vim.relayout();
+    this.render();
+  }
+
+  /** Puts the cursor at the start of a line (0-based), scrolling it into view. */
+  goToLine(line) {
+    this.vim.click({ line: Math.max(0, Math.min(line, this.vim.buf.lastLine)), col: 0 });
+    this.render();
+  }
+
+  addExCommand(name, minLength = name.length) {
+    this.vim.exCommands.set(name, minLength);
+  }
+
+  get modified() {
+    return Boolean(this._modified);
+  }
+
+  set modified(flag) {
+    if (this._modified === Boolean(flag)) return;
+    this._modified = Boolean(flag);
+    this.render();
+  }
+
   get readOnly() {
     return this.hasAttribute("readonly");
   }
@@ -202,7 +242,7 @@ export class PdEditor extends HTMLElement {
     if (event.button !== 0) return;
     event.preventDefault();
     this.input.focus();
-    if (this.onPreviewMouseDown(event.target)) return;
+    if (this.onPreviewMouseDown(event.target, event)) return;
     const at = this.view.positionAt(event.clientX, event.clientY);
     if (!at) return;
     this.vim.click(at);
@@ -211,12 +251,16 @@ export class PdEditor extends HTMLElement {
 
   // Links and fold toggles in rendered Markdown. Returns true if the press was theirs: the
   // browser's own click then opens the link (in a new tab) or folds the callout.
-  onPreviewMouseDown(target) {
+  onPreviewMouseDown(target, event) {
     if (!target.closest?.(".pd-unit")) return false;
     if (target.closest("summary")) return true;
     const link = target.closest("a");
     if (!link) return false;
     const href = link.getAttribute("href") ?? "";
+    if (link.classList.contains("md-wikilink") && !href.startsWith("#")) {
+      if (!hasModifier(event)) this.emitEvent("link", { target: link.dataset.target ?? "" });
+      return true;
+    }
     if (href.startsWith("#")) {
       const line = this.vim.layout.anchorLine(this.vim, decodeURIComponent(href.slice(1)));
       if (line !== null) {
@@ -273,9 +317,7 @@ export class PdEditor extends HTMLElement {
   afterFeed() {
     const vim = this.vim;
     const value = vim.text;
-    for (const { type, ...detail } of vim.takeEvents()) {
-      this.dispatchEvent(new CustomEvent(type, { detail: { ...detail, value } }));
-    }
+    for (const { type, ...detail } of vim.takeEvents()) this.emitEvent(type, detail);
     if (vim.buf.version !== this.seen.version) {
       this.seen.version = vim.buf.version;
       this.dispatchEvent(new CustomEvent("change", { detail: { value } }));
@@ -293,6 +335,10 @@ export class PdEditor extends HTMLElement {
     this.render();
   }
 
+  emitEvent(type, detail = {}) {
+    this.dispatchEvent(new CustomEvent(type, { detail: { ...detail, value: this.vim.text } }));
+  }
+
   // ---- drawing -------------------------------------------------------------------------
 
   measure() {
@@ -305,7 +351,7 @@ export class PdEditor extends HTMLElement {
 
   render() {
     this.frame.classList.toggle("pd-editor--focused", this.shadowRoot.activeElement === this.input);
-    this.view.render(this.vim, { syntax: this.getAttribute("syntax") !== "plain" });
+    this.view.render(this.vim, { syntax: this.getAttribute("syntax") !== "plain", modified: this.modified });
     syncDiagramSheets(this.shadowRoot); // styles for diagrams just shown; none for those gone
     this.placeInput();
   }
@@ -318,6 +364,10 @@ export class PdEditor extends HTMLElement {
     this.input.style.left = `${box.left - frame.left}px`;
     this.input.style.top = `${box.top - frame.top}px`;
   }
+}
+
+function hasModifier(event) {
+  return Boolean(event?.ctrlKey || event?.metaKey || event?.shiftKey);
 }
 
 function element(tag, className) {

@@ -1,7 +1,7 @@
 """Turns each HTTP request into a call to a route, or a static file."""
 import logging
 from http.server import BaseHTTPRequestHandler
-from typing import Dict
+from typing import Dict, Optional
 from urllib.parse import parse_qs, urlsplit
 
 from paradigm import __version__
@@ -11,7 +11,8 @@ from paradigm.web.static import serve_static
 
 log = logging.getLogger(__name__)
 
-MAX_BODY_BYTES = 1_000_000
+# A note is text: 8 MB is far beyond any real one.
+MAX_BODY_BYTES = 8_000_000
 _DISCONNECTS = (BrokenPipeError, ConnectionResetError, ConnectionAbortedError)
 
 
@@ -38,7 +39,13 @@ class RequestHandler(BaseHTTPRequestHandler):
                 log.warning("Refused %s %s: %s", method, parts.path, reason)
                 send_error_json(self, 403, "forbidden")
                 return
-            self.body = self._read_body()
+            length = self._content_length()
+            if length is None or length > MAX_BODY_BYTES:
+                # Never a cut-off body: a truncated note saved as if whole would lose text.
+                send_error_json(self, 413 if length else 400, "body too large or bad Content-Length")
+                self.close_connection = True
+                return
+            self.body = self.rfile.read(length) if length else b""
             route = self.server.router.resolve(method, parts.path)
             if route is not None:
                 route(self)
@@ -62,11 +69,9 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_header(name, value)
         super().end_headers()
 
-    def _read_body(self) -> bytes:
-        length = int(self.headers.get("Content-Length") or 0)
-        if length <= 0:
-            return b""
-        return self.rfile.read(min(length, MAX_BODY_BYTES))
+    def _content_length(self) -> Optional[int]:
+        raw = (self.headers.get("Content-Length") or "0").strip()
+        return int(raw) if raw.isdigit() else None
 
     def log_message(self, format: str, *args: object) -> None:  # noqa: A002 (stdlib name)
         log.debug("%s - %s", self.address_string(), format % args)

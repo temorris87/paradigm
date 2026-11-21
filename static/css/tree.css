@@ -1,0 +1,55 @@
+/* The notes tree in the sidebar (static/js/notes/tree-view.js). */
+.tree,
+.tree__group {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tree__group {
+  padding-left: 0.9rem;
+}
+
+.tree__item {
+  outline: none;
+}
+
+.tree__row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  color: var(--nord4);
+  cursor: pointer;
+  user-select: none;
+}
+
+.tree__row:hover {
+  background: var(--nord2);
+}
+
+.tree__twisty {
+  flex: none;
+  width: 1em;
+  color: var(--nord3);
+  text-align: center;
+}
+
+.tree__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree__item[aria-selected="true"] > .tree__row {
+  background: var(--nord2);
+  color: var(--nord6);
+  font-weight: 600;
+}
+
+/* The keyboard cursor in the tree: only shown while the tree has the focus. */
+.tree__item:focus-visible > .tree__row,
+.tree__item:focus > .tree__row {
+  box-shadow: inset 0 0 0 1px var(--nord9);
+}

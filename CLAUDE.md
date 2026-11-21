@@ -47,7 +47,9 @@ paradigm/                Python package
   web/                   server.py (ThreadingHTTPServer), handler.py, router.py,
                          static.py (serves static/), responses.py, security.py
   api/                   JSON endpoints; session.py = /api/ping, /api/events, /api/closing
-  db/                    (to come) connection.py, migrations/, repositories
+  db/                    connection.py (one locked connection, transactions), migrate.py
+                         (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py
+  notes/                 titles.py (title rules), seed.py + welcome.md (first-run note)
 static/
   index.html
   vendor/katex-0.19.1/   KaTeX exactly as audited (package paths kept; checked against
@@ -57,7 +59,11 @@ static/
                          (editor.css is loaded inside <pd-editor>'s shadow root;
                          markdown.css styles rendered notes under .md-doc)
   js/main.js             wires the page together
-  js/scratch.js          the in-memory scratch editor shown until notes exist
+  js/notes/              app.js (tree + breadcrumb + editor on the open note), api.js,
+                         note-session.js (autosave, versions, conflicts), resolve.js (wiki
+                         links, nearest note wins), tree-model.js, tree-view.js, tree-keys.js
+                         (THE tree key table), breadcrumb.js, commands.js (THE note ex
+                         commands: :e :new :child :rename :parent :trash), headings.js
   js/math/typeset.js     draws the renderer's .md-math placeholders with KaTeX (audited
                          options, errors caught); ensureMathFonts() puts KaTeX's @font-face
                          in the page, since Chrome ignores it inside a shadow root

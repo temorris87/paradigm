@@ -1,5 +1,6 @@
 // Ex commands typed after ":". The editor knows nothing about files: :w and :q only send
-// "save" and "quit" events, and whoever hosts the editor decides what they mean.
+// "save" and "quit" events, and whoever hosts the editor decides what they mean. The host
+// can add its own commands too (vim.exCommands): they send an "ex" event.
 import { EditorError } from "./errors.js";
 import { OPERATORS } from "./operators.js";
 import { clamp, firstNonBlankCol, pos } from "./position.js";
@@ -8,7 +9,7 @@ import { setOptions } from "./options.js";
 
 // name, the shortest abbreviation Vim accepts, and the handler.
 const COMMANDS = [
-  ["write", 1, (vim) => vim.emit("save")],
+  ["write", 1, (vim, cmd) => vim.emit("save", { force: cmd.bang })],
   ["wq", 2, (vim) => { vim.emit("save"); vim.emit("quit"); }],
   ["xit", 1, (vim) => { vim.emit("save"); vim.emit("quit"); }],
   ["quit", 1, (vim, cmd) => vim.emit("quit", { force: cmd.bang })],
@@ -35,8 +36,22 @@ export function runEx(vim, text) {
   }
   const [, name, bang, arg] = match;
   const command = COMMANDS.find(([full, min]) => matches(name, full, min));
-  if (!command) throw new EditorError(`E492: Not an editor command: ${source}`);
+  if (!command) {
+    if (!range && runHostCommand(vim, name, bang === "!", arg.trim())) return;
+    throw new EditorError(`E492: Not an editor command: ${source}`);
+  }
   command[2](vim, { range, bang: bang === "!", arg: arg.trim() === "" ? "" : arg, name: command[0] });
+}
+
+// Built-in commands win, so a host can never change what a Vim command does.
+function runHostCommand(vim, name, bang, arg) {
+  for (const [full, min] of vim.exCommands) {
+    if (matches(name, full, min)) {
+      vim.emit("ex", { name: full, bang, arg });
+      return true;
+    }
+  }
+  return false;
 }
 
 function matches(name, full, min) {

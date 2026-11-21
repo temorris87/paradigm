@@ -1,0 +1,32 @@
+/* The open note's path above the editor (static/js/notes/breadcrumb.js). */
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-height: 1.5em;
+  color: var(--nord4);
+}
+
+.crumbs__link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--nord9);
+  font: inherit;
+  cursor: pointer;
+}
+
+.crumbs__link:hover,
+.crumbs__link:focus-visible {
+  text-decoration: underline;
+}
+
+.crumbs__separator {
+  color: var(--nord3);
+}
+
+.crumbs__here {
+  color: var(--nord6);
+  font-weight: 600;
+}

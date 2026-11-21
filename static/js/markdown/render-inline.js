@@ -79,10 +79,11 @@ function renderWikiLink(node, options) {
     return `<a class="md-wikilink" href="${escapeHtml(href)}"${data}>${text}</a>`;
   }
   const resolved = options.resolveWikiLink ? options.resolveWikiLink(node) : null;
-  const href = resolved ? safeLinkUrl(resolved.href) : null;
-  if (href === null) return `<a class="md-wikilink"${data}>${text}</a>`;
-  const missing = resolved.exists === false ? " md-wikilink-missing" : "";
-  return `<a class="md-wikilink${missing}" href="${escapeHtml(href)}"${data}>${text}</a>`;
+  const href = resolved?.href ? safeLinkUrl(resolved.href) : null;
+  // A note that doesn't exist yet may have no address at all: { href: null, exists: false }.
+  const missing = resolved?.exists === false ? " md-wikilink-missing" : "";
+  const hrefAttr = href === null ? "" : ` href="${escapeHtml(href)}"`;
+  return `<a class="md-wikilink${missing}"${hrefAttr}${data}>${text}</a>`;
 }
 
 function renderFootnoteRef(node, options) {

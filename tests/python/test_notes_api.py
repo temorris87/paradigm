@@ -1,0 +1,100 @@
+import json
+import unittest
+
+from helpers import RunningServer
+
+
+class NotesApiTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.running = RunningServer()
+
+    def tearDown(self) -> None:
+        self.running.close()
+
+    def create(self, title, parent_id=None, body=""):
+        status, note = self.running.post_json("/api/note/create",
+                                              {"parent_id": parent_id, "title": title, "body": body})
+        self.assertEqual(status, 200, note)
+        return note
+
+    def test_a_new_database_has_the_welcome_note(self) -> None:
+        status, payload = self.running.get_json("/api/notes")
+        self.assertEqual(status, 200)
+        self.assertEqual([note["title"] for note in payload["notes"]], ["Welcome"])
+
+    def test_create_get_save(self) -> None:
+        note = self.create("Acme", body="one")
+        status, fetched = self.running.get_json("/api/note?id={}".format(note["id"]))
+        self.assertEqual((status, fetched["body"]), (200, "one"))
+        status, saved = self.running.post_json("/api/note/save",
+                                               {"id": note["id"], "body": "two", "version": 1})
+        self.assertEqual((status, saved["version"]), (200, 2))
+
+    def test_stale_save_is_a_409_with_the_current_version(self) -> None:
+        note = self.create("Acme")
+        self.running.post_json("/api/note/save", {"id": note["id"], "body": "a", "version": 1})
+        status, payload = self.running.post_json("/api/note/save", {"id": note["id"], "body": "b", "version": 1})
+        self.assertEqual(status, 409)
+        self.assertEqual(payload["version"], 2)
+
+    def test_rename_move_delete(self) -> None:
+        parent = self.create("Projects")
+        child = self.create("Northwind")
+        status, moved = self.running.post_json("/api/note/move", {"id": child["id"], "parent_id": parent["id"]})
+        self.assertEqual((status, moved["parent_id"]), (200, parent["id"]))
+        status, renamed = self.running.post_json("/api/note/rename", {"id": child["id"], "title": "Contoso"})
+        self.assertEqual((status, renamed["title"]), (200, "Contoso"))
+        status, payload = self.running.post_json("/api/note/delete", {"id": parent["id"]})
+        self.assertEqual(status, 409)
+        status, payload = self.running.post_json("/api/note/delete", {"id": parent["id"], "recursive": True})
+        self.assertEqual(sorted(payload["deleted"]), sorted([parent["id"], child["id"]]))
+
+    def test_errors_are_json_with_a_status(self) -> None:
+        cases = [
+            ("/api/note/create", {"title": "a/b"}, 400),
+            ("/api/note/save", {"id": "1", "body": "", "version": 1}, 400),
+            ("/api/note/save", {"id": True, "body": "", "version": 1}, 400),
+            ("/api/note/save", {"id": 999, "body": "", "version": 1}, 404),
+            ("/api/note/create", ["not", "an", "object"], 400),
+        ]
+        for path, payload, expected in cases:
+            with self.subTest(path=path, payload=payload):
+                status, body = self.running.post_json(path, payload)
+                self.assertEqual(status, expected)
+                self.assertIn("error", body)
+        status, _, body = self.running.request("POST", "/api/note/create", {}, b"{not json")
+        self.assertEqual(status, 400)
+        status, body = self.running.get_json("/api/note?id=abc")
+        self.assertEqual(status, 400)
+
+    def test_changes_need_post(self) -> None:
+        status, _, _ = self.running.request("GET", "/api/note/save")
+        self.assertEqual(status, 405)
+
+    def test_a_cross_site_post_is_refused(self) -> None:
+        status, _ = self.running.post_json("/api/note/create", {"title": "Evil"},
+                                           {"Origin": "http://evil.example"})
+        self.assertEqual(status, 403)
+        status, payload = self.running.get_json("/api/notes")
+        self.assertNotIn("Evil", [note["title"] for note in payload["notes"]])
+
+    def test_an_oversized_body_is_refused_not_cut(self) -> None:
+        conn = self.running.connection()
+        try:
+            conn.putrequest("POST", "/api/note/create")
+            conn.putheader("Content-Length", "999999999")
+            conn.endheaders()
+            response = conn.getresponse()
+            self.assertEqual(response.status, 413)
+            json.loads(response.read())
+        finally:
+            conn.close()
+
+    def test_unicode_survives(self) -> None:
+        note = self.create("Café ünïcode", body="naïve — ✓ 日本")
+        status, fetched = self.running.get_json("/api/note?id={}".format(note["id"]))
+        self.assertEqual(fetched["body"], "naïve — ✓ 日本")
+
+
+if __name__ == "__main__":
+    unittest.main()
