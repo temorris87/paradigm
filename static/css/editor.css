@@ -1,0 +1,180 @@
+/* <pd-editor>. Loaded inside its shadow root; the Nord variables come from the page. */
+:host {
+  display: block;
+  position: relative;
+  min-height: 6rem;
+  height: 20rem;
+}
+
+.pd-editor {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--nord0);
+  color: var(--nord4);
+  border: 1px solid var(--nord1);
+  border-radius: 4px;
+  font-family: Consolas, "Cascadia Mono", Menlo, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  cursor: text;
+}
+
+.pd-editor--focused {
+  border-color: var(--nord3);
+}
+
+.pd-text {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  margin: 0.35rem 0.6rem;
+  overflow: hidden;
+  white-space: pre;
+}
+
+.pd-row {
+  height: 1.45em;
+}
+
+.pd-probe {
+  position: absolute;
+  visibility: hidden;
+}
+
+.pd-line--end {
+  color: var(--nord3);
+}
+
+/* Cursor: a block in normal and visual mode, a bar in insert mode, an underline in replace. */
+.pd-cursor {
+  outline: 1px solid var(--nord4);
+  outline-offset: -1px;
+}
+
+.pd-editor--focused .pd-cursor {
+  background: var(--nord4);
+  color: var(--nord0);
+  outline: none;
+}
+
+.pd-cursor-bar {
+  box-shadow: inset 2px 0 0 var(--nord4);
+}
+
+.pd-cursor-under {
+  box-shadow: inset 0 -2px 0 var(--nord4);
+}
+
+.pd-selection {
+  background: var(--nord2);
+}
+
+.pd-match {
+  background: var(--nord3);
+  color: var(--nord6);
+}
+
+.pd-match-current {
+  background: var(--nord13);
+  color: var(--nord0);
+}
+
+.pd-tab {
+  color: var(--nord3);
+}
+
+/* Markdown: each heading level its own colour; links are nord8 and nothing else is. */
+.md-h1 { color: var(--nord15); font-weight: bold; }
+.md-h2 { color: var(--nord12); font-weight: bold; }
+.md-h3 { color: var(--nord13); font-weight: bold; }
+.md-h4 { color: var(--nord14); }
+.md-h5 { color: var(--nord7); }
+.md-h6 { color: var(--nord9); }
+.md-link { color: var(--nord8); text-decoration: underline; text-decoration-color: var(--nord3); }
+.md-code, .md-code-block { color: var(--nord7); background: var(--nord1); }
+.md-fence { color: var(--nord3); background: var(--nord1); }
+.md-bold { color: var(--nord6); font-weight: bold; }
+.md-italic { font-style: italic; }
+.md-strike { text-decoration: line-through; color: var(--nord3); }
+.md-list { color: var(--nord9); }
+.md-task { color: var(--nord13); }
+.md-task-done { color: var(--nord14); }
+.md-quote { color: var(--nord4); font-style: italic; }
+.md-quote-mark { color: var(--nord3); font-style: normal; }
+.md-hr { color: var(--nord3); }
+
+/* The cursor and selection win over Markdown colours. */
+.pd-editor--focused .pd-cursor.md-code,
+.pd-editor--focused .pd-cursor.md-code-block,
+.pd-editor--focused .pd-cursor.md-fence {
+  background: var(--nord4);
+}
+
+.pd-status {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 1.6em;
+  padding: 0.1rem 0.6rem;
+  background: var(--nord1);
+  color: var(--nord4);
+  white-space: pre;
+  overflow: hidden;
+}
+
+.pd-status__left {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pd-status__mode {
+  color: var(--nord14);
+  font-weight: bold;
+}
+
+.pd-status__error {
+  color: var(--nord11);
+}
+
+.pd-status__right {
+  display: flex;
+  gap: 1.2rem;
+  color: var(--nord4);
+}
+
+.pd-status__pending {
+  color: var(--nord13);
+}
+
+.pd-cmdline-cursor {
+  background: var(--nord4);
+}
+
+/* Holds the focus and takes the keys; invisible, but kept at the cursor for IME windows. */
+.pd-input {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1.2em;
+  padding: 0;
+  border: 0;
+  margin: 0;
+  opacity: 0;
+  resize: none;
+  overflow: hidden;
+  white-space: pre;
+  pointer-events: none;
+  font: inherit;
+}
+
+/* The bell: a brief flash of the border instead of a beep. */
+.pd-editor--bell {
+  animation: pd-bell 0.25s ease-out;
+}
+
+@keyframes pd-bell {
+  from { border-color: var(--nord11); }
+}

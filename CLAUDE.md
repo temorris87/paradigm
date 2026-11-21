@@ -51,11 +51,24 @@ paradigm/                Python package
 static/
   index.html
   css/                   nord.css (palette variables), base.css, one file per component
+                         (editor.css is loaded inside <pd-editor>'s shadow root)
   js/main.js             wires the page together
+  js/scratch.js          the in-memory scratch editor shown until notes exist
   js/connection/         connection.js (event stream + beacon), banner.js, tab-id.js
-  js/editor/             (to come) the <pd-editor> component
+  js/editor/             the <pd-editor> component:
+    pd-editor.js         the custom element (hidden textarea takes keys; events out)
+    render.js            draws visible lines, cursor, selection, matches, status line
+    vim.js               the engine: state + feed(key); no DOM
+    keys.js              THE editor key table (normal, visual, insert, cmdline)
+    parser.js            keys -> command (register, counts, operator, motion)
+    command.js           runs normal/visual commands, records "." changes
+    motions.js text-objects.js operators.js actions.js visual.js insert.js
+    cmdline.js ex.js options.js put.js lines.js scroll.js view.js
+    buffer.js position.js words.js sentences.js brackets.js search.js
+    registers.js undo.js marks.js key-names.js markdown-tokens.js errors.js
 tests/python/            unittest; helpers.py runs a real server on a free port
-tests/js/                index.html runner, harness.js, fakes.js, test_*.js
+tests/js/                index.html runner, harness.js, fakes.js, editor-helpers.js, test_*.js
+                         (test_editor_vim_cases.js: key sequences checked against real Vim)
 ```
 Update this section when the structure changes.
 
@@ -147,5 +160,8 @@ how the app is launched.
   closing that window stops the server.
 - A refused connection to an empty local port takes about 2 s on Windows. Never probe a port
   before binding it: bind first, and probe only when the bind fails.
+- Double-clicking `paradigm.pyw` works with no window. In Chrome, closing the last tab stops
+  the server, with the security checks on (2026-11-21). The windowless process shows in Task
+  Manager as `pythonw.exe`; `http://127.0.0.1:8765/api/ping` answers when it is running.
 - Python 3.11.1. Browser: Chrome. Add `127.0.0.1` under Settings, Performance, "Always keep
   these sites active" so Memory Saver never unloads the app's tab.
