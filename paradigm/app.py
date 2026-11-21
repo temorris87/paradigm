@@ -1,8 +1,6 @@
 """Startup and shutdown: reuse a running Paradigm or start one, open the browser, stop when told."""
 import errno
 import logging
-import os
-import sys
 import time
 import webbrowser
 from typing import Callable, List, Optional
@@ -11,6 +9,7 @@ from paradigm.api.session import SessionApi
 from paradigm.config import Config, parse_args
 from paradigm.instance import PortState, probe
 from paradigm.logging_setup import setup_logging
+from paradigm.notify import pause_console, show_error_box
 from paradigm.presence import Presence
 from paradigm.web.router import Router
 from paradigm.web.server import ParadigmServer
@@ -25,21 +24,32 @@ class LaunchError(Exception):
     """A problem to explain to the user in plain words, without a traceback."""
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: Optional[List[str]] = None, console: bool = True) -> int:
+    """Start Paradigm. console=False: no console window (paradigm.pyw), errors in a message box."""
     config = parse_args(argv)
     try:
-        log_path = setup_logging(config.data_dir)
+        log_path = setup_logging(config.data_dir, console=console)
     except OSError as error:
-        print("Paradigm could not use its data folder {}: {}".format(config.data_dir, error))
-        _pause_if_double_clicked()
-        return 1
+        message = "Paradigm could not use its data folder {}: {}".format(config.data_dir, error)
+        return _fail(message, console, printed=False)
     try:
         return run(config)
     except LaunchError as error:
         log.error("%s", error)
+        message = str(error)
     except Exception:
-        log.exception("Paradigm stopped with an error (details in %s)", log_path)
-    _pause_if_double_clicked()
+        log.exception("Paradigm stopped with an error")
+        message = "Paradigm stopped with an error. The details are in {}".format(log_path)
+    return _fail(message, console, printed=True)
+
+
+def _fail(message: str, console: bool, printed: bool) -> int:
+    if not console:
+        show_error_box(message)
+        return 1
+    if not printed:
+        print(message)
+    pause_console()
     return 1
 
 
@@ -101,13 +111,3 @@ def port_error_message(port: int, error: OSError) -> str:
             "netsh interface ipv4 show excludedportrange protocol=tcp".format(port, retry)
         )
     return "Paradigm could not use port {} ({}). {}".format(port, error, retry)
-
-
-def _pause_if_double_clicked() -> None:
-    """Keep a double-clicked console window open long enough to read the error."""
-    if os.name != "nt" or not sys.stdin or not sys.stdin.isatty():
-        return
-    try:
-        input("Press Enter to close...")
-    except (EOFError, KeyboardInterrupt):
-        pass

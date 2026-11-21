@@ -6,14 +6,16 @@ User: Tyson. It is a fresh project, independent of `../worknotes` (no shared cod
 keybindings).
 
 ## Hard rules
-- **Python 3 standard library only.** Target 3.9+ until the work PC's version is known:
-  no `match`, no `X | Y` type hints. Check with `ast.parse(src, feature_version=(3, 9))`.
+- **Python 3 standard library only.** Target **3.11**, the work PC's version (3.11.1): nothing
+  newer, such as `type` aliases (3.12) or 3.12+ stdlib additions. Check syntax with
+  `ast.parse(src, feature_version=(3, 11))`.
   No pip packages.
 - **Vanilla HTML/CSS/JS only:** ES modules loaded straight from `static/`. No npm, no CDN, no
   frameworks, no build step, no calls to outside networks.
 - **Runs on Windows, Mac and Linux.** The main machine is a Windows work PC. Use `pathlib` for
   paths, pass `encoding="utf-8"` explicitly, write `\n` line endings, and never assume a shell.
-  Launch with `python paradigm.py` (`py paradigm.py` on Windows). `.bat` files are not allowed.
+  Launch with `python paradigm.py` (`py paradigm.py` on Windows), or double-click
+  `paradigm.pyw` for no console window. `.bat` files are not allowed.
 - The server binds `127.0.0.1` only.
 - **Data:** SQLite (`sqlite3`) at `~/paradigm-notes/paradigm.db`, which `--data DIR` can override.
   The data folder is never inside the repo. Design the schema per feature and version it with
@@ -33,13 +35,15 @@ keybindings).
 
 ## Layout
 ```
-paradigm.py              entry: python paradigm.py [--port N] [--data DIR] [--no-browser]
+paradigm.py              entry with a console: python paradigm.py [--port N] [--data DIR] [--no-browser]
+paradigm.pyw             entry with no console window (Windows double-click): main(console=False)
 paradigm/                Python package
   app.py                 startup / shutdown wiring (main, run, build_server)
   config.py              Config + argparse (port 8765, data ~/paradigm-notes)
   instance.py            probe the port: free / a running Paradigm / another program
   presence.py            open tabs and the shutdown rule (pure logic, injected clock)
-  logging_setup.py       console + <data>/paradigm.log
+  logging_setup.py       console (if any) + <data>/paradigm.log
+  notify.py              startup errors: console pause, or a message box with no console
   web/                   server.py (ThreadingHTTPServer), handler.py, router.py,
                          static.py (serves static/), responses.py
   api/                   JSON endpoints; session.py = /api/ping, /api/events, /api/closing
@@ -63,6 +67,9 @@ Update this section when the structure changes.
   (`POST /api/closing`) on `pagehide`. The server stops only when no tab is connected, the
   last tab to leave sent a beacon, and nothing reconnects within 10 s. A drop without a beacon
   (sleep, a sleeping tab) never stops it.
+- `paradigm.pyw` runs under `pythonw.exe`, which opens no window. `sys.stdout`, `sys.stderr`
+  and `sys.stdin` are `None` there, so never `print` or `input` without checking. Startup errors
+  go to a message box (`notify.show_error_box`, using ctypes `MessageBoxW`) and to the log.
 - If the stream is down for over 3 s, the page shows "Paradigm has stopped" and keeps retrying.
   When the server is back it reconnects by itself.
 - Static files use an explicit content-type table, not `mimetypes`: on Windows the registry can
@@ -120,4 +127,9 @@ Update this section when the structure changes.
 ## Windows findings
 Fill this in as we learn: Python version and source, browser, whether localhost is allowed, and
 how the app is launched.
-- (unknown yet)
+- Double-clicking `paradigm.py` works (2026-11-21). It opens a PowerShell console window, and
+  closing that window stops the server.
+- A refused connection to an empty local port takes about 2 s on Windows. Never probe a port
+  before binding it: bind first, and probe only when the bind fails.
+- Python 3.11.1. Browser: Chrome. Add `127.0.0.1` under Settings, Performance, "Always keep
+  these sites active" so Memory Saver never unloads the app's tab.
