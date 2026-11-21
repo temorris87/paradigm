@@ -26,6 +26,8 @@ class Config:
     grace_seconds: float = 10.0
     # How often an open event stream is sent a keep-alive comment.
     keepalive_seconds: float = 15.0
+    # Most event streams open at once (one per tab).
+    max_streams: int = 50
 
     @property
     def url(self) -> str:

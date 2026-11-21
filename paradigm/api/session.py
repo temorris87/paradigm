@@ -7,6 +7,7 @@ POST /api/closing?tab=ID    beacon a tab sends when it is really being closed
 import re
 import select
 import socket
+import threading
 import time
 from http.server import BaseHTTPRequestHandler
 from typing import Optional
@@ -24,9 +25,13 @@ POLL_SECONDS = 0.5
 
 
 class SessionApi:
-    def __init__(self, presence: Presence, keepalive_seconds: float):
+    def __init__(self, presence: Presence, keepalive_seconds: float, max_streams: int):
         self._presence = presence
         self._keepalive = keepalive_seconds
+        # Each open stream holds a thread; cap them so nothing can pile up thousands.
+        self._max_streams = max_streams
+        self._open_streams = 0
+        self._lock = threading.Lock()
 
     def register(self, router: Router) -> None:
         router.add("GET", "/api/ping", self.ping)
@@ -49,6 +54,23 @@ class SessionApi:
         if tab_id is None:
             send_error_json(req, 400, "missing or bad tab id")
             return
+        if not self._take_stream_slot():
+            send_error_json(req, 503, "too many open streams")
+            return
+        try:
+            self._stream(req, tab_id)
+        finally:
+            with self._lock:
+                self._open_streams -= 1
+
+    def _take_stream_slot(self) -> bool:
+        with self._lock:
+            if self._open_streams >= self._max_streams:
+                return False
+            self._open_streams += 1
+            return True
+
+    def _stream(self, req: BaseHTTPRequestHandler, tab_id: str) -> None:
         req.send_response(200)
         req.send_header("Content-Type", "text/event-stream; charset=utf-8")
         req.send_header("Cache-Control", "no-cache")

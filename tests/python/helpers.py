@@ -4,7 +4,7 @@ import json
 import tempfile
 import time
 from pathlib import Path
-from typing import Callable, Tuple
+from typing import Callable, Dict, Optional, Tuple
 
 from paradigm.app import build_server
 from paradigm.config import Config
@@ -12,10 +12,12 @@ from paradigm.presence import Presence
 
 
 class RunningServer:
-    def __init__(self, grace_seconds: float = 0.2, keepalive_seconds: float = 15.0):
+    def __init__(self, grace_seconds: float = 0.2, keepalive_seconds: float = 15.0,
+                 max_streams: int = 50):
         self.tmp = tempfile.TemporaryDirectory()
         self.config = Config(data_dir=Path(self.tmp.name), port=0, open_browser=False,
-                             grace_seconds=grace_seconds, keepalive_seconds=keepalive_seconds)
+                             grace_seconds=grace_seconds, keepalive_seconds=keepalive_seconds,
+                             max_streams=max_streams)
         self.presence = Presence(grace_seconds)
         self.server = build_server(self.config, self.presence)
         self.port = self.server.port
@@ -28,10 +30,11 @@ class RunningServer:
     def connection(self) -> http.client.HTTPConnection:
         return http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
 
-    def request(self, method: str, path: str) -> Tuple[int, dict, bytes]:
+    def request(self, method: str, path: str,
+                headers: Optional[Dict[str, str]] = None) -> Tuple[int, dict, bytes]:
         conn = self.connection()
         try:
-            conn.request(method, path)
+            conn.request(method, path, headers=headers or {})
             response = conn.getresponse()
             return response.status, dict(response.getheaders()), response.read()
         finally:

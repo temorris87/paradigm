@@ -6,6 +6,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from paradigm import __version__
 from paradigm.web.responses import send_error_json
+from paradigm.web.security import SECURITY_HEADERS, refusal_reason
 from paradigm.web.static import serve_static
 
 log = logging.getLogger(__name__)
@@ -32,6 +33,11 @@ class RequestHandler(BaseHTTPRequestHandler):
         parts = urlsplit(self.path)
         self.query = {key: values[0] for key, values in parse_qs(parts.query).items()}
         try:
+            reason = refusal_reason(parts.path, self.headers, self.server.port)
+            if reason is not None:
+                log.warning("Refused %s %s: %s", method, parts.path, reason)
+                send_error_json(self, 403, "forbidden")
+                return
             self.body = self._read_body()
             route = self.server.router.resolve(method, parts.path)
             if route is not None:
@@ -50,6 +56,11 @@ class RequestHandler(BaseHTTPRequestHandler):
                 send_error_json(self, 500, "internal error")
             except OSError:
                 pass
+
+    def end_headers(self) -> None:
+        for name, value in SECURITY_HEADERS:
+            self.send_header(name, value)
+        super().end_headers()
 
     def _read_body(self) -> bytes:
         length = int(self.headers.get("Content-Length") or 0)

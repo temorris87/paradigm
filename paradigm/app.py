@@ -84,7 +84,7 @@ def run(config: Config, open_url: OpenUrl = webbrowser.open,
 
 def build_server(config: Config, presence: Presence) -> ParadigmServer:
     router = Router()
-    SessionApi(presence, config.keepalive_seconds).register(router)
+    SessionApi(presence, config.keepalive_seconds, config.max_streams).register(router)
     return ParadigmServer((config.host, config.port), router, config.static_dir)
 
 
