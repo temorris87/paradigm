@@ -79,6 +79,8 @@ static/
     inline.js            inline parser; delimiters.js (emphasis), autolinks.js (bare URLs)
     link-syntax.js urls.js (scheme allowlist) escape.js slug.js
     render.js render-inline.js   tree -> HTML; every value escaped, no style="" attributes
+docs/security/           vendor-audit.md (KaTeX + Mermaid go/no-go, conditions for use) and
+                         one .sha256 manifest per audited vendor version
 tests/python/            unittest; helpers.py runs a real server on a free port
 tests/js/                index.html runner, harness.js, fakes.js, editor-helpers.js, test_*.js
                          (test_editor_vim_cases.js: key sequences checked against real Vim)
