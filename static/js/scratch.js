@@ -3,7 +3,8 @@ import "./editor/pd-editor.js";
 
 const SAMPLE = `# Scratch
 
-This editor is Vim on raw Markdown. Nothing here is saved yet: notes come next.
+This editor is Vim on Markdown. Blocks render as you write; the block under the cursor
+shows its raw text. \`:set nopreview\` shows it all raw. Nothing here is saved yet.
 
 ## Try
 
@@ -15,6 +16,14 @@ This editor is Vim on raw Markdown. Nothing here is saved yet: notes come next.
 ### Links and code
 
 See [the Nord palette](https://www.nordtheme.com) and \`inline code\`.
+
+| Key | Does |
+|-----|------|
+| \`zz\` | centre the cursor line |
+| \`Ctrl-E\` | scroll one row |
+
+> [!tip] Links open in a new tab
+> Click a rendered block to edit it.
 `;
 
 export function mountScratchEditor(editor) {

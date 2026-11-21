@@ -11,8 +11,8 @@ Features in build order. "build feature" takes the first unchecked item.
 - [x] Markdown renderer: a pure module (static/js/markdown/) turning Markdown into HTML for the
   full syntax list (GFM, task lists, images, tables, footnotes, ==highlights==, Obsidian callouts
   with folding, [[wiki links]]); raw HTML and emoji shortcodes stay text (done 2026-11-21)
-- [ ] Live preview in the editor: notes render in place as you type; the block holding the cursor
-  shows raw Markdown; variable-height scrolling; links open in a new tab
+- [x] Live preview in the editor: notes render in place as you type; the block holding the cursor
+  shows raw Markdown; variable-height scrolling; links open in a new tab (done 2026-11-21)
 - [ ] Security audit of vendored KaTeX and Mermaid: written report, go/no-go per library (CSP fit,
   no eval or network, CVEs, sanitising, pinned files with hashes)
 - [ ] LaTeX math ($…$ and $$…$$) with vendored KaTeX, if the audit passes

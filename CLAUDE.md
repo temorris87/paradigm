@@ -59,12 +59,17 @@ static/
   js/editor/             the <pd-editor> component:
     pd-editor.js         the custom element (hidden textarea takes keys; events out)
     render.js            draws visible lines, cursor, selection, matches, status line
+    view.js              viewport math in steps: top line + skip rows, scrolloff, H/M/L
+    text-layout.js       the layout interface (units of lines and their rows); plain text
+    preview-layout.js    live preview layout: rendered units away from the cursor (pure)
+    preview-units.js     text -> units (top-level blocks, lists split into items), raw ranges
+    preview-measure.js preview-view.js   DOM: unit heights (cached), unit nodes (reused)
     vim.js               the engine: state + feed(key); no DOM
     keys.js              THE editor key table (normal, visual, insert, cmdline)
     parser.js            keys -> command (register, counts, operator, motion)
     command.js           runs normal/visual commands, records "." changes
     motions.js text-objects.js operators.js actions.js visual.js insert.js
-    cmdline.js ex.js options.js put.js lines.js scroll.js view.js
+    cmdline.js ex.js options.js put.js lines.js scroll.js
     buffer.js position.js words.js sentences.js brackets.js search.js
     registers.js undo.js marks.js key-names.js markdown-tokens.js errors.js
   js/markdown/           the Markdown renderer: pure, Markdown in, HTML string out, no DOM
@@ -78,6 +83,7 @@ tests/python/            unittest; helpers.py runs a real server on a free port
 tests/js/                index.html runner, harness.js, fakes.js, editor-helpers.js, test_*.js
                          (test_editor_vim_cases.js: key sequences checked against real Vim)
                          markdown-sample.html: dev-only page rendering every Markdown construct
+                         preview-sample.html: dev-only live preview; ?keys=... feeds Vim keys
 ```
 Update this section when the structure changes.
 
@@ -103,6 +109,9 @@ Update this section when the structure changes.
 - The editor is a real modal Vim on raw Markdown: normal, insert, visual and command-line modes,
   counts, operators + motions, text objects, `.`, registers and undo. Vim itself is the reference
   for its keys.
+- Live preview (`:set preview`, on by default): blocks away from the cursor render; the block
+  under the cursor, a visual selection and the incsearch match show raw. Lists split per item.
+  A rendered block scrolls one step per row; a plain line is one step.
 - **Tab / Shift-Tab: in insert mode they indent (spaces to the next shiftwidth stop) and
   unindent. In every other mode they leave the editor and move focus like on any web page**,
   so they are never bound there (Tyson's choice, 2026-11-21).

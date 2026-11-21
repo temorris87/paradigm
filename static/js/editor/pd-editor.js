@@ -4,7 +4,10 @@
 //   editor.value                      // read it
 //   editor.readOnly = true;           // or the readonly attribute
 //   editor.showMessage("Saved");      // a message in the status line
-//   <pd-editor syntax="plain">        // no Markdown colouring
+//   <pd-editor syntax="plain">        // no Markdown colouring and no live preview
+//
+// Live preview (on by default, :set nopreview turns it off): Markdown blocks away from the
+// cursor are drawn rendered; the block holding the cursor shows its raw text.
 //
 // Events: "change" (the text changed, on every edit), "save" (:w, :x, ZZ), "quit" (:q, :x,
 // ZZ, ZQ; detail.force for :q!) and "mode" (detail.mode). Each carries detail.value.
@@ -14,10 +17,14 @@
 // taken, so they move the focus on, like on any page.
 import { isTextKey, keyName } from "./key-names.js";
 import { BOUND_KEYS, INSERT_ONLY_KEYS } from "./keys.js";
+import { PreviewLayout } from "./preview-layout.js";
+import { PreviewMeasure } from "./preview-measure.js";
+import { PreviewView } from "./preview-view.js";
 import { EditorView } from "./render.js";
+import { TEXT_LAYOUT } from "./text-layout.js";
 import { Vim } from "./vim.js";
 
-const STYLESHEET = new URL("../../css/editor.css", import.meta.url).href;
+const STYLESHEETS = ["../../css/markdown.css", "../../css/editor.css"].map((path) => new URL(path, import.meta.url).href);
 const PASTE_KEYS = new Set(["<C-v>", "<C-S-v>", "<S-Insert>"]);
 const WHEEL_LINES = 3;
 
@@ -31,9 +38,7 @@ export class PdEditor extends HTMLElement {
   constructor() {
     super();
     const root = this.attachShadow({ mode: "open", delegatesFocus: true });
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = STYLESHEET;
+    const links = STYLESHEETS.map((href) => Object.assign(document.createElement("link"), { rel: "stylesheet", href }));
     this.frame = element("div", "pd-editor");
     this.textArea = element("div", "pd-text");
     this.statusLine = element("div", "pd-status");
@@ -43,11 +48,21 @@ export class PdEditor extends HTMLElement {
     this.input.setAttribute("spellcheck", "false");
     this.input.setAttribute("aria-label", this.getAttribute("aria-label") || "Text editor");
     this.frame.append(this.textArea, this.statusLine, this.input);
-    root.append(link, this.frame);
-    link.addEventListener("load", () => this.measure());
+    root.append(...links, this.frame);
+    // Each stylesheet that arrives can change how tall rendered blocks are.
+    for (const link of links) {
+      link.addEventListener("load", () => {
+        this.sizes.forgetAll();
+        this.measure();
+      });
+    }
 
     this.vim = new Vim({ clipboard });
-    this.view = new EditorView({ text: this.textArea, status: this.statusLine });
+    this.sizes = new PreviewMeasure(this.frame);
+    this.previewLayout = new PreviewLayout({ measure: this.sizes });
+    const preview = new PreviewView({ onResize: (html, node) => this.unitResized(html, node) });
+    this.view = new EditorView({ text: this.textArea, status: this.statusLine, preview });
+    this.chooseLayout();
     this.queue = [];
     this.busy = false;
     this.composing = false;
@@ -72,6 +87,10 @@ export class PdEditor extends HTMLElement {
     input.addEventListener("focus", () => this.render());
     input.addEventListener("blur", () => this.render());
     this.textArea.addEventListener("mousedown", (event) => this.onMouseDown(event));
+    // A "#" link moved the cursor on mousedown; the page itself must not jump.
+    this.textArea.addEventListener("click", (event) => {
+      if (event.target.closest?.('.pd-unit a[href^="#"]')) event.preventDefault();
+    });
     this.textArea.addEventListener("wheel", (event) => this.onWheel(event), { passive: false });
     this.frame.addEventListener("animationend", () => this.frame.classList.remove("pd-editor--bell"));
     this.resizeObserver = new ResizeObserver(() => this.measure());
@@ -88,7 +107,14 @@ export class PdEditor extends HTMLElement {
 
   attributeChangedCallback(name) {
     if (name === "readonly") this.vim.readOnly = this.hasAttribute("readonly");
+    if (name === "syntax") this.chooseLayout();
     this.render();
+  }
+
+  chooseLayout() {
+    if (!this.previewLayout) return; // attributes are seen before the constructor ends
+    this.vim.layout = this.getAttribute("syntax") === "plain" ? TEXT_LAYOUT : this.previewLayout;
+    this.vim.relayout();
   }
 
   get value() {
@@ -158,9 +184,34 @@ export class PdEditor extends HTMLElement {
     if (event.button !== 0) return;
     event.preventDefault();
     this.input.focus();
+    if (this.onPreviewMouseDown(event.target)) return;
     const at = this.view.positionAt(event.clientX, event.clientY);
     if (!at) return;
     this.vim.click(at);
+    this.render();
+  }
+
+  // Links and fold toggles in rendered Markdown. Returns true if the press was theirs: the
+  // browser's own click then opens the link (in a new tab) or folds the callout.
+  onPreviewMouseDown(target) {
+    if (!target.closest?.(".pd-unit")) return false;
+    if (target.closest("summary")) return true;
+    const link = target.closest("a");
+    if (!link) return false;
+    const href = link.getAttribute("href") ?? "";
+    if (href.startsWith("#")) {
+      const line = this.vim.layout.anchorLine(this.vim, decodeURIComponent(href.slice(1)));
+      if (line !== null) {
+        this.vim.click({ line, col: 0 });
+        this.render();
+      }
+    }
+    return true;
+  }
+
+  unitResized(html, node) {
+    this.sizes.remeasure(html, node);
+    this.vim.relayout();
     this.render();
   }
 
@@ -229,6 +280,7 @@ export class PdEditor extends HTMLElement {
   measure() {
     if (!this.isConnected) return;
     const { height, width } = this.view.measure();
+    this.sizes.reset(this.textArea.clientWidth, this.view.rowHeight);
     this.vim.resize(height, width);
     this.render();
   }

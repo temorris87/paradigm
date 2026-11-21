@@ -1,7 +1,7 @@
 // Scrolling commands (Ctrl-D, Ctrl-F, zz ...), shared by normal and visual mode.
 import { EditorError } from "./errors.js";
 import { clamp, firstNonBlankCol, pos } from "./position.js";
-import { keepCursorOnScreen, lowestTopShowing, placeCursorLine, scrollLines } from "./view.js";
+import { keepCursorOnScreen, placeCursorLine, scrollLines } from "./view.js";
 
 // Ctrl-D / Ctrl-U scroll and move the cursor by the same amount; a count sets the amount
 // for later uses too (Vim's 'scroll' option). Scrolling stops once the last line shows.
@@ -11,9 +11,9 @@ function halfPage(direction) {
     const amount = vim.scrollAmount || Math.max(1, Math.floor(vim.view.height / 2));
     const last = vim.buf.lastLine;
     if (direction > 0 ? vim.cursor.line >= last : vim.cursor.line === 0) throw new EditorError("");
-    const top = vim.view.top + direction * amount;
-    vim.view.top = clamp(top, 0, Math.max(vim.view.top, lowestTopShowing(vim, last)));
-    vim.moveToLine(clamp(vim.cursor.line + direction * amount, 0, last), { keepWant: true });
+    const from = vim.cursor.line;
+    scrollLines(vim, direction * amount, { stopAtEnd: true });
+    vim.moveToLine(clamp(from + direction * amount, 0, last), { keepWant: true });
     keepCursorOnScreen(vim);
     toFirstNonBlank(vim);
   };

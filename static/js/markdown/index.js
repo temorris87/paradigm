@@ -3,14 +3,16 @@
 //   parseMarkdown(source)       -> doc: { blocks, footnotes, references }
 //   renderMarkdown(source, opt) -> HTML for the whole note, footnotes at the end
 //   renderBlocks(doc, opt)      -> { blocks: [{ startLine, endLine, html }], footnotes: html }
-//                                  one entry per top-level block, for live preview
+//                                  one entry per top-level block
+//   renderBlockHtml(block, opt)       -> HTML for one top-level block (live preview)
+//   renderListItemHtml(list, i, opt)  -> HTML for item i of a list, as a one-item list
 //
 // Options: idPrefix ("md-") goes before every id, so two notes on one page never clash;
 // breaks (true) renders single newlines as <br>, like Obsidian; resolveWikiLink(link) returns
 // { href, exists } or null for [[wiki links]] ({ target, heading, alias }).
 import { parseBlocks } from "./blocks.js";
 import { parseInline } from "./inline.js";
-import { renderBlock, renderFootnotes, plainText } from "./render.js";
+import { renderBlock, renderFootnotes, renderListItem, plainText } from "./render.js";
 import { makeSlugger } from "./slug.js";
 
 const DEFAULTS = { idPrefix: "md-", breaks: true, resolveWikiLink: null };
@@ -39,6 +41,14 @@ export function renderBlocks(doc, options = {}) {
     })),
     footnotes: renderFootnotes(doc.footnotes, settings),
   };
+}
+
+export function renderBlockHtml(block, options = {}) {
+  return renderBlock(block, { ...DEFAULTS, ...options });
+}
+
+export function renderListItemHtml(list, index, options = {}) {
+  return renderListItem(list, index, { ...DEFAULTS, ...options });
 }
 
 // Inline parsing and heading ids, in document order (footnote numbers depend on it), and

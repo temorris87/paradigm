@@ -43,17 +43,65 @@
   visibility: hidden;
 }
 
+/* Live preview: a rendered Markdown unit between raw lines. Blank lines in the source give
+   the spacing, so a unit has no outer margins. flow-root keeps its children's margins
+   inside, so the height measured (in .pd-measure) is the height drawn. */
+.pd-unit {
+  display: flow-root;
+  white-space: normal;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.pd-unit > :first-child {
+  margin-top: 0;
+}
+
+.pd-unit > :last-child,
+.pd-unit :is(li, blockquote, .md-callout-content) > :last-child {
+  margin-bottom: 0;
+}
+
+.pd-measure {
+  position: absolute;
+  left: 0;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .pd-line--end {
   color: var(--nord3);
 }
 
-/* Cursor: a block in normal and visual mode, a bar in insert mode, an underline in replace. */
+/* Raw Markdown: each heading level its own colour; links are nord8 and nothing else is.
+   Scoped to raw rows, so rendered units (markdown.css, same class names) are untouched. */
+.pd-row .md-h1 { color: var(--nord15); font-weight: bold; }
+.pd-row .md-h2 { color: var(--nord12); font-weight: bold; }
+.pd-row .md-h3 { color: var(--nord13); font-weight: bold; }
+.pd-row .md-h4 { color: var(--nord14); }
+.pd-row .md-h5 { color: var(--nord7); }
+.pd-row .md-h6 { color: var(--nord9); }
+.pd-row .md-link { color: var(--nord8); text-decoration: underline; text-decoration-color: var(--nord3); }
+.pd-row .md-code, .pd-row .md-code-block { color: var(--nord7); background: var(--nord1); }
+.pd-row .md-fence { color: var(--nord3); background: var(--nord1); }
+.pd-row .md-bold { color: var(--nord6); font-weight: bold; }
+.pd-row .md-italic { font-style: italic; }
+.pd-row .md-strike { text-decoration: line-through; color: var(--nord3); }
+.pd-row .md-list { color: var(--nord9); }
+.pd-row .md-task { color: var(--nord13); }
+.pd-row .md-task-done { color: var(--nord14); }
+.pd-row .md-quote { color: var(--nord4); font-style: italic; }
+.pd-row .md-quote-mark { color: var(--nord3); font-style: normal; }
+.pd-row .md-hr { color: var(--nord3); }
+
+/* Cursor, selection and search matches come after the Markdown colours, so they win.
+   Cursor: a block in normal and visual mode, a bar in insert mode, an underline in replace. */
 .pd-cursor {
   outline: 1px solid var(--nord4);
   outline-offset: -1px;
 }
 
-.pd-editor--focused .pd-cursor {
+.pd-editor--focused .pd-row .pd-cursor {
   background: var(--nord4);
   color: var(--nord0);
   outline: none;
@@ -67,49 +115,22 @@
   box-shadow: inset 0 -2px 0 var(--nord4);
 }
 
-.pd-selection {
+.pd-row .pd-selection {
   background: var(--nord2);
 }
 
-.pd-match {
+.pd-row .pd-match {
   background: var(--nord3);
   color: var(--nord6);
 }
 
-.pd-match-current {
+.pd-row .pd-match-current {
   background: var(--nord13);
   color: var(--nord0);
 }
 
-.pd-tab {
+.pd-row .pd-tab {
   color: var(--nord3);
-}
-
-/* Markdown: each heading level its own colour; links are nord8 and nothing else is. */
-.md-h1 { color: var(--nord15); font-weight: bold; }
-.md-h2 { color: var(--nord12); font-weight: bold; }
-.md-h3 { color: var(--nord13); font-weight: bold; }
-.md-h4 { color: var(--nord14); }
-.md-h5 { color: var(--nord7); }
-.md-h6 { color: var(--nord9); }
-.md-link { color: var(--nord8); text-decoration: underline; text-decoration-color: var(--nord3); }
-.md-code, .md-code-block { color: var(--nord7); background: var(--nord1); }
-.md-fence { color: var(--nord3); background: var(--nord1); }
-.md-bold { color: var(--nord6); font-weight: bold; }
-.md-italic { font-style: italic; }
-.md-strike { text-decoration: line-through; color: var(--nord3); }
-.md-list { color: var(--nord9); }
-.md-task { color: var(--nord13); }
-.md-task-done { color: var(--nord14); }
-.md-quote { color: var(--nord4); font-style: italic; }
-.md-quote-mark { color: var(--nord3); font-style: normal; }
-.md-hr { color: var(--nord3); }
-
-/* The cursor and selection win over Markdown colours. */
-.pd-editor--focused .pd-cursor.md-code,
-.pd-editor--focused .pd-cursor.md-code-block,
-.pd-editor--focused .pd-cursor.md-fence {
-  background: var(--nord4);
 }
 
 .pd-status {

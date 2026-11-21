@@ -81,6 +81,14 @@ function renderList(list, options) {
   return `<${tag}${start}>\n${items}\n</${tag}>`;
 }
 
+/** One item of a list on its own, as a one-item list that keeps its number (live preview). */
+export function renderListItem(list, index, options) {
+  const tag = list.ordered ? "ol" : "ul";
+  const number = list.ordered ? list.start + index : 1;
+  const start = number !== 1 ? ` start="${number}"` : "";
+  return `<${tag}${start}>\n${renderItem(list.children[index], options, list.tight)}\n</${tag}>`;
+}
+
 function renderItem(item, options, tight) {
   const cls = item.task ? ` class="md-task${item.task.checked ? " md-task-done" : ""}"` : "";
   let inner = item.children

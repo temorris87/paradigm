@@ -1,10 +1,11 @@
 // Draws the engine's state: the lines on screen, the cursor, the selection, search matches
 // and the status line. Only the visible lines are built, so long notes stay fast.
-// Long lines are cut into rows of exactly view.width characters, the same rule view.js
-// uses, so what the engine thinks is on screen is what is on screen.
+// Long lines are cut into rows of exactly view.width characters, the same rule the layout
+// uses, so what the engine thinks is on screen is what is on screen. In live preview a
+// rendered unit is drawn by preview-view.js, as tall as the layout measured it.
 import { fenceStateAt, tokenizeLine } from "./markdown-tokens.js";
 import { compilePattern, lineMatches } from "./search.js";
-import { bottomLine, rowsFor } from "./view.js";
+import { bottomLine, unitAt } from "./view.js";
 import { visualRegion } from "./visual.js";
 
 const MODE_LABELS = {
@@ -18,9 +19,11 @@ const MODE_LABELS = {
 const CURSOR_CLASSES = { insert: "pd-cursor-bar", replace: "pd-cursor-under" };
 
 export class EditorView {
-  constructor({ text, status }) {
+  constructor({ text, status, preview = null }) {
     this.text = text;
     this.status = status;
+    this.preview = preview;
+    this.rowHeight = 16;
     this.patternCache = { key: null, regex: null };
   }
 
@@ -36,6 +39,7 @@ export class EditorView {
     const rowHeight = probe.getBoundingClientRect().height || 16;
     probe.remove();
     this.charWidth = charWidth;
+    this.rowHeight = rowHeight;
     return {
       width: Math.max(1, Math.floor(this.text.clientWidth / charWidth)),
       height: Math.max(1, Math.floor(this.text.clientHeight / rowHeight)),
@@ -53,9 +57,18 @@ export class EditorView {
     const selection = vim.mode === "visual" && vim.visual ? visualRegion(vim) : null;
     const regex = this.searchRegex(vim);
     let inFence = syntax ? fenceStateAt(vim.buf.lines, vim.view.top) : false;
-    let rows = 0;
+    this.preview?.begin();
+    let rows = -vim.view.skip;
     let line = vim.view.top;
     for (; line <= vim.buf.lastLine && rows < vim.view.height; line += 1) {
+      const unit = unitAt(vim, line);
+      if (unit.rendered) {
+        nodes.push(this.preview.node(unit, line === vim.view.top ? vim.view.skip * this.rowHeight : 0));
+        if (syntax) for (let at = unit.start; at <= unit.end; at += 1) inFence = tokenizeLine(vim.buf.line(at), inFence).inFence;
+        rows += unit.rows;
+        line = unit.end;
+        continue;
+      }
       const text = vim.buf.line(line);
       const decorations = [];
       if (syntax) {
@@ -82,7 +95,7 @@ export class EditorView {
       }
       if (selected && selected.to > text.length) extraCell = true;
       nodes.push(this.lineNode(vim, line, text, decorations, extraCell));
-      rows += rowsFor(vim, line);
+      rows += unit.rows;
     }
     for (; rows < vim.view.height; rows += 1) {
       const filler = document.createElement("div");
@@ -166,9 +179,11 @@ export class EditorView {
 
   /** The text position under a mouse point, or null. */
   positionAt(clientX, clientY) {
-    for (const row of this.text.querySelectorAll(".pd-row")) {
+    for (const row of this.text.querySelectorAll(".pd-row, .pd-unit")) {
       const box = row.getBoundingClientRect();
       if (clientY < box.top || clientY >= box.bottom) continue;
+      // A rendered unit: its first line (where in the source a click lands isn't tracked).
+      if (row.classList.contains("pd-unit")) return { line: Number(row.dataset.line), col: 0 };
       const col = Number(row.dataset.start) + Math.max(0, Math.floor((clientX - box.left) / (this.charWidth || 8)));
       return { line: Number(row.dataset.line), col };
     }
