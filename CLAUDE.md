@@ -6,7 +6,8 @@ User: Tyson. It is a fresh project, independent of `../worknotes` (no shared cod
 keybindings).
 
 ## Hard rules
-- **Python 3 standard library only.** Target 3.9+ until the work PC's version is known.
+- **Python 3 standard library only.** Target 3.9+ until the work PC's version is known:
+  no `match`, no `X | Y` type hints. Check with `ast.parse(src, feature_version=(3, 9))`.
   No pip packages.
 - **Vanilla HTML/CSS/JS only:** ES modules loaded straight from `static/`. No npm, no CDN, no
   frameworks, no build step, no calls to outside networks.
@@ -32,23 +33,42 @@ keybindings).
 
 ## Layout
 ```
-paradigm.py              entry: starts the server, opens the browser (--port, --data, --no-browser)
+paradigm.py              entry: python paradigm.py [--port N] [--data DIR] [--no-browser]
 paradigm/                Python package
-  config.py              settings and paths
-  server.py              ThreadingHTTPServer + router
-  api/                   JSON handlers
-  db/                    connection.py, migrations/, repositories
+  app.py                 startup / shutdown wiring (main, run, build_server)
+  config.py              Config + argparse (port 8765, data ~/paradigm-notes)
+  instance.py            probe the port: free / a running Paradigm / another program
+  presence.py            open tabs and the shutdown rule (pure logic, injected clock)
+  logging_setup.py       console + <data>/paradigm.log
+  web/                   server.py (ThreadingHTTPServer), handler.py, router.py,
+                         static.py (serves static/), responses.py
+  api/                   JSON endpoints; session.py = /api/ping, /api/events, /api/closing
+  db/                    (to come) connection.py, migrations/, repositories
 static/
   index.html
-  css/                   nord.css (palette variables), one file per component
-  js/main.js
-  js/editor/             pd-editor.js (Web Component), buffer.js, modes.js, keymap.js,
-                         motions.js, operators.js, textobjects.js, registers.js, undo.js,
-                         commandline.js, render.js
-tests/python/            unittest: python -m unittest discover tests/python
-tests/js/                index.html runner + small assert harness; open it in any browser
+  css/                   nord.css (palette variables), base.css, one file per component
+  js/main.js             wires the page together
+  js/connection/         connection.js (event stream + beacon), banner.js, tab-id.js
+  js/editor/             (to come) the <pd-editor> component
+tests/python/            unittest; helpers.py runs a real server on a free port
+tests/js/                index.html runner, harness.js, fakes.js, test_*.js
 ```
 Update this section when the structure changes.
+
+## How it launches and stops
+- `paradigm.py` asks the port (`GET /api/ping`). If a Paradigm is there it opens a tab on it
+  and exits. If another program is there it explains and exits. Otherwise it starts the server
+  and opens the browser.
+- Each tab holds one Server-Sent Events stream (`/api/events?tab=ID`) and sends a beacon
+  (`POST /api/closing`) on `pagehide`. The server stops only when no tab is connected, the
+  last tab to leave sent a beacon, and nothing reconnects within 10 s. A drop without a beacon
+  (sleep, a sleeping tab) never stops it.
+- If the stream is down for over 3 s, the page shows "Paradigm has stopped" and keeps retrying.
+  When the server is back it reconnects by itself.
+- Static files use an explicit content-type table, not `mimetypes`: on Windows the registry can
+  turn `.js` into `text/plain`, and then browsers refuse to run the modules.
+- `ParadigmServer` turns off `SO_REUSEADDR` on Windows, where it would let two servers share
+  a port.
 
 ## Keys
 - The editor is a real modal Vim on raw Markdown: normal, insert, visual and command-line modes,
@@ -74,8 +94,13 @@ Update this section when the structure changes.
   ("the company", "work") and made-up names (Acme, Northwind) instead. The repo is public.
 
 ## Testing (every feature, before reporting it done)
-1. Python: `python -m unittest discover tests/python` passes.
-2. JS: `tests/js/index.html` passes in a browser.
+1. Python: `python -m unittest discover tests/python` passes (add `-W error::ResourceWarning`
+   to catch unclosed sockets).
+2. JS: browsers won't load ES modules from `file://`, so serve the repo root:
+   `python -m http.server 8766 --bind 127.0.0.1`, then open `http://127.0.0.1:8766/tests/js/`.
+   The page title becomes `PASS n` or `FAIL n/m`. Headless on Linux:
+   `firefox --headless -no-remote -profile <fresh dir> --screenshot out.png <url>`. Use a fresh
+   profile every time, because a reused one serves cached JS.
 3. Check the behaviour in a real browser on sample data, including the keys.
 4. Report what was tested and what wasn't, such as Windows-specific behaviour Tyson must check
    at work.

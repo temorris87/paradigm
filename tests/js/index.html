@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Paradigm JS tests</title>
+  <link rel="icon" href="data:,">
+  <style>
+    body { font-family: monospace; background: #2e3440; color: #d8dee9; padding: 1rem; }
+    .pass { color: #a3be8c; }
+    .fail { color: #bf616a; }
+    ul { list-style: none; padding: 0; }
+  </style>
+</head>
+<body>
+  <h1>Paradigm JS tests</h1>
+  <ul id="results"></ul>
+  <script type="module">
+    import { run } from "./harness.js";
+    import "./test_connection.js";
+    run(document.getElementById("results"));
+  </script>
+</body>
+</html>
