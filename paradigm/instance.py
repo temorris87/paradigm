@@ -1,4 +1,8 @@
-"""Find out what is listening on Paradigm's port: a running Paradigm, something else, or nothing."""
+"""Find out what is listening on Paradigm's port: a running Paradigm, something else, or nothing.
+
+Only called once the port is known to be taken: on Windows, asking an empty local port
+takes about 2 s to be refused.
+"""
 import json
 import urllib.error
 import urllib.request
@@ -15,7 +19,7 @@ class PortState(Enum):
 _opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
-def probe(host: str, port: int, timeout: float = 1.0) -> PortState:
+def probe(host: str, port: int, timeout: float = 3.0) -> PortState:
     url = "http://{}:{}/api/ping".format(host, port)
     try:
         with _opener.open(url, timeout=timeout) as response:

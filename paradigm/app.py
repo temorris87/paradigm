@@ -1,4 +1,5 @@
 """Startup and shutdown: reuse a running Paradigm or start one, open the browser, stop when told."""
+import errno
 import logging
 import os
 import sys
@@ -42,20 +43,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     return 1
 
 
-def run(config: Config, open_url: OpenUrl = webbrowser.open) -> int:
-    if _open_existing(config, open_url):
-        return 0
+def run(config: Config, open_url: OpenUrl = webbrowser.open,
+        probe_port: Callable[[str, int], PortState] = probe) -> int:
+    # Take the port first and only ask "is that a Paradigm?" if it is taken. Asking an
+    # empty port first is slow on Windows: a refused local connection takes about 2 s.
     presence = Presence(config.grace_seconds)
     try:
         server = build_server(config, presence)
-    except OSError:
-        # Another launch may have won the race for the port.
-        if _open_existing(config, open_url):
+    except OSError as error:
+        log.debug("could not bind %s:%s: %r", config.host, config.port, error)
+        if probe_port(config.host, config.port) is PortState.PARADIGM:
+            log.info("Paradigm is already running at %s", config.url)
+            if config.open_browser:
+                open_url(config.url)
             return 0
-        raise LaunchError(
-            "Port {} is in use by another program. Start Paradigm on another port: "
-            "python paradigm.py --port 8766".format(config.port)
-        )
+        raise LaunchError(port_error_message(config.port, error))
     server.start_in_thread()
     log.info("Paradigm running at %s - close the last tab to stop", config.url)
     if config.open_browser:
@@ -82,19 +84,23 @@ def wait_for_stop(presence: Presence, poll_seconds: float = STOP_POLL_SECONDS) -
         time.sleep(poll_seconds)
 
 
-def _open_existing(config: Config, open_url: OpenUrl) -> bool:
-    state = probe(config.host, config.port)
-    if state is PortState.PARADIGM:
-        log.info("Paradigm is already running at %s", config.url)
-        if config.open_browser:
-            open_url(config.url)
-        return True
-    if state is PortState.OTHER:
-        raise LaunchError(
-            "Port {} is in use by another program. Start Paradigm on another port: "
-            "python paradigm.py --port 8766".format(config.port)
+# "Address in use" on Windows / Linux / Mac, and "access denied" on Windows / POSIX.
+_IN_USE = {10048, errno.EADDRINUSE}
+_DENIED = {10013, errno.EACCES}
+
+
+def port_error_message(port: int, error: OSError) -> str:
+    code = getattr(error, "winerror", None) or error.errno
+    retry = "Try another port: python paradigm.py --port 9876"
+    if code in _IN_USE:
+        return "Port {} is in use by another program. {}".format(port, retry)
+    if code in _DENIED:
+        return (
+            "The system would not let Paradigm use port {} (it may be reserved or blocked). "
+            "{}. On Windows, reserved ports are listed by: "
+            "netsh interface ipv4 show excludedportrange protocol=tcp".format(port, retry)
         )
-    return False
+    return "Paradigm could not use port {} ({}). {}".format(port, error, retry)
 
 
 def _pause_if_double_clicked() -> None:
