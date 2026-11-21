@@ -51,7 +51,8 @@ paradigm/                Python package
 static/
   index.html
   css/                   nord.css (palette variables), base.css, one file per component
-                         (editor.css is loaded inside <pd-editor>'s shadow root)
+                         (editor.css is loaded inside <pd-editor>'s shadow root;
+                         markdown.css styles rendered notes under .md-doc)
   js/main.js             wires the page together
   js/scratch.js          the in-memory scratch editor shown until notes exist
   js/connection/         connection.js (event stream + beacon), banner.js, tab-id.js
@@ -66,9 +67,17 @@ static/
     cmdline.js ex.js options.js put.js lines.js scroll.js view.js
     buffer.js position.js words.js sentences.js brackets.js search.js
     registers.js undo.js marks.js key-names.js markdown-tokens.js errors.js
+  js/markdown/           the Markdown renderer: pure, Markdown in, HTML string out, no DOM
+    index.js             parseMarkdown, renderMarkdown, renderBlocks (blocks with source lines)
+    blocks.js            block parser (CommonMark algorithm); block-types.js, block-starts.js
+    lines.js lists.js tables.js callouts.js footnotes.js references.js
+    inline.js            inline parser; delimiters.js (emphasis), autolinks.js (bare URLs)
+    link-syntax.js urls.js (scheme allowlist) escape.js slug.js
+    render.js render-inline.js   tree -> HTML; every value escaped, no style="" attributes
 tests/python/            unittest; helpers.py runs a real server on a free port
 tests/js/                index.html runner, harness.js, fakes.js, editor-helpers.js, test_*.js
                          (test_editor_vim_cases.js: key sequences checked against real Vim)
+                         markdown-sample.html: dev-only page rendering every Markdown construct
 ```
 Update this section when the structure changes.
 

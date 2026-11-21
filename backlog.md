@@ -8,3 +8,21 @@ Features in build order. "build feature" takes the first unchecked item.
   console window); errors show in a message box (done 2026-11-21)
 - [x] Security groundwork: Host/Origin checks, security headers, stream limit (done 2026-11-21)
 - [x] Reusable Vim text editor component (`<pd-editor>`) (done 2026-11-21)
+- [x] Markdown renderer: a pure module (static/js/markdown/) turning Markdown into HTML for the
+  full syntax list (GFM, task lists, images, tables, footnotes, ==highlights==, Obsidian callouts
+  with folding, [[wiki links]]); raw HTML and emoji shortcodes stay text (done 2026-11-21)
+- [ ] Live preview in the editor: notes render in place as you type; the block holding the cursor
+  shows raw Markdown; variable-height scrolling; links open in a new tab
+- [ ] Security audit of vendored KaTeX and Mermaid: written report, go/no-go per library (CSP fit,
+  no eval or network, CVEs, sanitising, pinned files with hashes)
+- [ ] LaTeX math ($…$ and $$…$$) with vendored KaTeX, if the audit passes
+- [ ] Mermaid diagrams with vendored Mermaid, if the audit passes
+- [ ] Notes in SQLite with a hierarchy: the database layer (connection, numbered migrations,
+  repositories), notes that nest under other notes (hierarchy designed with Tyson), and
+  [[wiki links]] that resolve to notes in that hierarchy; the editor opens and saves real notes
+  in place of the scratch buffer
+- [ ] Images: paste from the clipboard and drag-and-drop, stored in SQLite, downscaled above
+  ~1600 px wide (needs notes in SQLite)
+- [ ] Export a note as one self-contained .html file (:export): images inlined, diagrams as SVG,
+  maths as MathML, no scripts; wiki-linked notes at the same level or deeper are bundled in,
+  links higher up become plain text (needs notes in SQLite)

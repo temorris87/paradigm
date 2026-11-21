@@ -1,0 +1,200 @@
+/* Rendered Markdown (static/js/markdown/). Everything sits under .md-doc. Nord variables only. */
+.md-doc {
+  color: var(--nord4);
+  line-height: 1.6;
+  overflow-wrap: break-word;
+}
+
+.md-doc > :first-child {
+  margin-top: 0;
+}
+
+.md-doc p,
+.md-doc ul,
+.md-doc ol,
+.md-doc blockquote,
+.md-doc pre,
+.md-doc table,
+.md-doc .md-callout {
+  margin: 0 0 0.9em;
+}
+
+/* Headings: one colour per level, never nord8 (links). Same mapping as the editor. */
+.md-doc h1,
+.md-doc h2,
+.md-doc h3,
+.md-doc h4,
+.md-doc h5,
+.md-doc h6 {
+  margin: 1.2em 0 0.5em;
+  line-height: 1.25;
+  font-weight: 600;
+}
+.md-doc h1 { color: var(--nord15); font-size: 1.8em; }
+.md-doc h2 { color: var(--nord12); font-size: 1.45em; }
+.md-doc h3 { color: var(--nord13); font-size: 1.2em; }
+.md-doc h4 { color: var(--nord14); font-size: 1.05em; }
+.md-doc h5 { color: var(--nord7); font-size: 1em; }
+.md-doc h6 { color: var(--nord9); font-size: 0.95em; }
+
+.md-doc a {
+  color: var(--nord8);
+  text-decoration: underline;
+  text-decoration-color: var(--nord3);
+  text-underline-offset: 0.15em;
+}
+.md-doc a:hover {
+  text-decoration-color: var(--nord8);
+}
+
+.md-doc .md-wikilink {
+  text-decoration-style: dotted;
+}
+.md-doc .md-wikilink:not([href]) {
+  cursor: default;
+}
+.md-doc .md-wikilink-missing {
+  color: var(--nord9);
+  opacity: 0.75;
+}
+
+.md-doc strong { color: var(--nord6); font-weight: 700; }
+.md-doc del { color: var(--nord3); }
+.md-doc mark {
+  color: var(--nord0);
+  background: var(--nord13);
+  border-radius: 2px;
+  padding: 0 0.15em;
+}
+
+.md-doc code,
+.md-doc pre {
+  font-family: Consolas, "Cascadia Mono", Menlo, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 0.9em;
+}
+.md-doc code {
+  color: var(--nord7);
+  background: var(--nord1);
+  border-radius: 3px;
+  padding: 0.1em 0.3em;
+}
+.md-doc pre {
+  background: var(--nord1);
+  border: 1px solid var(--nord2);
+  border-radius: 4px;
+  padding: 0.6em 0.8em;
+  overflow-x: auto;
+}
+.md-doc pre code {
+  background: none;
+  padding: 0;
+  font-size: 1em;
+}
+
+.md-doc hr {
+  border: 0;
+  border-top: 1px solid var(--nord3);
+  margin: 1.5em 0;
+}
+
+.md-doc blockquote {
+  padding: 0 0 0 1em;
+  border-left: 3px solid var(--nord3);
+  color: var(--nord4);
+  font-style: italic;
+}
+
+.md-doc ul,
+.md-doc ol {
+  padding-left: 1.6em;
+}
+.md-doc li > ul,
+.md-doc li > ol {
+  margin-bottom: 0;
+}
+.md-doc li::marker {
+  color: var(--nord9);
+}
+.md-doc li.md-task {
+  list-style: none;
+}
+.md-doc li.md-task > input,
+.md-doc li.md-task > p > input {
+  margin: 0 0.4em 0 -1.4em;
+  accent-color: var(--nord14);
+  vertical-align: middle;
+}
+.md-doc li.md-task-done {
+  color: var(--nord3);
+}
+
+.md-doc img {
+  max-width: 100%;
+}
+
+/* Tables: alignment comes as classes, because the CSP forbids style="" attributes. */
+.md-doc table {
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+}
+.md-doc th,
+.md-doc td {
+  border: 1px solid var(--nord3);
+  padding: 0.3em 0.7em;
+  text-align: left;
+}
+.md-doc th {
+  color: var(--nord6);
+  background: var(--nord1);
+}
+.md-doc .md-align-center { text-align: center; }
+.md-doc .md-align-right { text-align: right; }
+
+/* Footnotes */
+.md-doc .md-footnote-ref {
+  font-size: 0.75em;
+  line-height: 0;
+}
+.md-doc .md-footnote-ref a,
+.md-doc .md-footnote-back {
+  text-decoration: none;
+}
+.md-doc .md-footnotes {
+  font-size: 0.9em;
+  color: var(--nord4);
+}
+
+/* Callouts: a coloured bar and title, colour per type (--callout). */
+.md-doc .md-callout {
+  --callout: var(--nord10);
+  border-left: 3px solid var(--callout);
+  background: var(--nord1);
+  border-radius: 0 4px 4px 0;
+  padding: 0.5em 0.9em;
+}
+.md-doc .md-callout-title {
+  color: var(--callout);
+  font-weight: 600;
+}
+.md-doc summary.md-callout-title {
+  cursor: pointer;
+}
+.md-doc .md-callout-content > :last-child {
+  margin-bottom: 0;
+}
+.md-doc .md-callout-content {
+  margin-top: 0.4em;
+}
+.md-doc .md-callout-tip,
+.md-doc .md-callout-abstract,
+.md-doc .md-callout-todo { --callout: var(--nord7); }
+.md-doc .md-callout-success { --callout: var(--nord14); }
+.md-doc .md-callout-question,
+.md-doc .md-callout-warning { --callout: var(--nord13); }
+.md-doc .md-callout-failure,
+.md-doc .md-callout-danger,
+.md-doc .md-callout-bug { --callout: var(--nord11); }
+.md-doc .md-callout-example { --callout: var(--nord15); }
+.md-doc .md-callout-quote { --callout: var(--nord3); }
+.md-doc .md-callout-quote .md-callout-title { color: var(--nord4); }

@@ -1,0 +1,11 @@
+/* Layout for the dev-only Markdown sample page. */
+.sample {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.sample__status {
+  color: var(--nord3);
+  font-size: 0.85rem;
+}

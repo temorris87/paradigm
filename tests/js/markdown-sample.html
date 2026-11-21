@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- The app's CSP, so a style="" or inline script in the output would be blocked and reported. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'">
+  <title>Markdown sample</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../../static/css/nord.css">
+  <link rel="stylesheet" href="../../static/css/base.css">
+  <link rel="stylesheet" href="../../static/css/markdown.css">
+  <link rel="stylesheet" href="markdown-sample.css">
+  <script type="module" src="markdown-sample.js"></script>
+</head>
+<body>
+  <main class="sample">
+    <p class="sample__status" id="status">rendering...</p>
+    <article class="md-doc" id="doc"></article>
+  </main>
+</body>
+</html>
