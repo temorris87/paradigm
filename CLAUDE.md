@@ -52,6 +52,7 @@ static/
   index.html
   vendor/katex-0.19.1/   KaTeX exactly as audited (package paths kept; checked against
                          docs/security/katex-0.19.1.sha256 by tests/python/test_vendor.py)
+  vendor/mermaid-12.3.0/ Mermaid exactly as audited (same check, mermaid-12.3.0.sha256)
   css/                   nord.css (palette variables), base.css, one file per component
                          (editor.css is loaded inside <pd-editor>'s shadow root;
                          markdown.css styles rendered notes under .md-doc)
@@ -60,6 +61,12 @@ static/
   js/math/typeset.js     draws the renderer's .md-math placeholders with KaTeX (audited
                          options, errors caught); ensureMathFonts() puts KaTeX's @font-face
                          in the page, since Chrome ignores it inside a shadow root
+  js/diagrams/           mermaid.js: draws the renderer's .md-mermaid placeholders (Mermaid
+                         loaded on first use, strict, one render at a time, cached by source;
+                         onDiagramDrawn tells the editor to remeasure); work-area.js: the
+                         off-screen element Mermaid lays out in; insert-svg.js: puts SVG in
+                         under the CSP (constructed sheets + CSSOM styles, links allowlisted),
+                         syncDiagramSheets keeps a root's sheets in step with its diagrams
   js/connection/         connection.js (event stream + beacon), banner.js, tab-id.js
   js/editor/             the <pd-editor> component:
     pd-editor.js         the custom element (hidden textarea takes keys; events out)
@@ -81,6 +88,7 @@ static/
     index.js             parseMarkdown, renderMarkdown, renderBlocks (blocks with source lines)
     blocks.js            block parser (CommonMark algorithm); block-types.js, block-starts.js
     lines.js lists.js tables.js callouts.js footnotes.js references.js
+    render.js renderCode ```mermaid fences become .md-mermaid placeholders (source as text)
     math.js              the $ rules ($...$, $$...$$, $$ blocks); maths renders as a
                          placeholder holding the TeX, filled in by js/math/typeset.js
     inline.js            inline parser; delimiters.js (emphasis), autolinks.js (bare URLs)

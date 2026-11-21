@@ -32,6 +32,15 @@ Inline $e^{i\\pi} + 1 = 0$, while $5 and $10 stay prices.
 $$
 \\sum_{k=1}^{n} k = \\frac{n(n+1)}{2}
 $$
+
+### Diagrams
+
+\`\`\`mermaid
+flowchart LR
+  idea[Idea] --> draft[Draft] --> review{Review}
+  review -- changes --> draft
+  review -- approved --> done((Done))
+\`\`\`
 `;
 
 export function mountScratchEditor(editor) {

@@ -8,7 +8,7 @@ MANIFESTS = REPO / "docs" / "security"
 VENDOR = REPO / "static" / "vendor"
 
 # Each vendored folder and the manifest it was audited against.
-VENDORED = {"katex-0.19.1": "katex-0.19.1.sha256"}
+VENDORED = {"katex-0.19.1": "katex-0.19.1.sha256", "mermaid-12.3.0": "mermaid-12.3.0.sha256"}
 
 
 def read_manifest(path: Path) -> dict:

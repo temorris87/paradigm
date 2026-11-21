@@ -1,7 +1,9 @@
 // Live preview: how many editor rows a rendered unit takes. The HTML is laid out in a hidden
 // box at the text area's width and its height read back; results are cached by HTML, so
 // typing in one block never re-measures the others. Any change that makes old sizes wrong
-// (a resize, an image loading, a callout folding, fonts arriving) bumps `generation`.
+// (a resize, an image loading, a callout folding, fonts arriving, a diagram
+// finishing) bumps `generation`.
+import { drawDiagrams } from "../diagrams/mermaid.js";
 import { typesetMath } from "../math/typeset.js";
 
 export class PreviewMeasure {
@@ -35,6 +37,7 @@ export class PreviewMeasure {
     if (rows === undefined) {
       this.box.innerHTML = html;
       typesetMath(this.box); // as PreviewView draws it, or the height would be the source's
+      drawDiagrams(this.box); // a cached diagram goes in now; a new one is remeasured when drawn
       rows = this.box.getBoundingClientRect().height / this.rowHeight;
       this.box.replaceChildren();
       this.cache.set(html, rows);

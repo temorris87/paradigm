@@ -15,6 +15,8 @@
 // A hidden textarea holds the focus and takes the keys, so IME input, dead keys and paste
 // work as usual. Tab and Shift-Tab indent in insert mode; in every other mode they are not
 // taken, so they move the focus on, like on any page.
+import { onDiagramDrawn } from "../diagrams/mermaid.js";
+import { syncDiagramSheets } from "../diagrams/insert-svg.js";
 import { KATEX_CSS, ensureMathFonts } from "../math/typeset.js";
 import { isTextKey, keyName } from "./key-names.js";
 import { BOUND_KEYS, INSERT_ONLY_KEYS } from "./keys.js";
@@ -106,12 +108,19 @@ export class PdEditor extends HTMLElement {
   connectedCallback() {
     this.resizeObserver.observe(this.textArea);
     document.fonts?.addEventListener("loadingdone", this.onFontsLoaded);
+    // A diagram finished drawing: its block was measured with the "Drawing" line in it.
+    this.stopDiagrams = onDiagramDrawn(() => {
+      this.sizes.forgetAll();
+      this.vim.relayout();
+      this.render();
+    });
     this.measure();
   }
 
   disconnectedCallback() {
     this.resizeObserver.disconnect();
     document.fonts?.removeEventListener("loadingdone", this.onFontsLoaded);
+    this.stopDiagrams?.();
   }
 
   attributeChangedCallback(name) {
@@ -297,6 +306,7 @@ export class PdEditor extends HTMLElement {
   render() {
     this.frame.classList.toggle("pd-editor--focused", this.shadowRoot.activeElement === this.input);
     this.view.render(this.vim, { syntax: this.getAttribute("syntax") !== "plain" });
+    syncDiagramSheets(this.shadowRoot); // styles for diagrams just shown; none for those gone
     this.placeInput();
   }
 

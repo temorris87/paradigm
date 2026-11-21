@@ -16,7 +16,8 @@
 .md-doc pre,
 .md-doc table,
 .md-doc .md-callout,
-.md-doc div.md-math-display {
+.md-doc div.md-math-display,
+.md-doc .md-mermaid {
   margin: 0 0 0.9em;
 }
 
@@ -223,6 +224,33 @@
 .md-doc .katex-error {
   color: var(--nord11);
   font-family: Consolas, "Cascadia Mono", Menlo, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 0.9em;
+  white-space: pre-wrap;
+}
+
+/* Diagrams (Mermaid, drawn by static/js/diagrams/; their own CSS arrives as an adopted sheet).
+   A wide diagram shrinks to the text width rather than scrolling. */
+.md-doc .md-mermaid {
+  text-align: center;
+}
+.md-doc .md-mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+.md-doc .md-mermaid-pending {
+  color: var(--nord3);
+  font-style: italic;
+}
+/* A diagram Mermaid refused shows its source, then the reason. */
+.md-doc .md-mermaid-error {
+  text-align: left;
+}
+.md-doc .md-mermaid-error pre {
+  margin: 0 0 0.3em;
+  border-left: 3px solid var(--nord11);
+}
+.md-doc .md-mermaid-message {
+  color: var(--nord11);
   font-size: 0.9em;
   white-space: pre-wrap;
 }

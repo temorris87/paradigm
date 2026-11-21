@@ -51,8 +51,10 @@ function renderParagraph(block, options, tight, suffix = "") {
 
 function renderCode(block) {
   const language = block.fenced ? block.info.split(/\s+/)[0] : "";
-  const cls = language ? ` class="language-${escapeHtml(language)}"` : "";
   const text = block.lines.map((line) => `${line}\n`).join("");
+  // A diagram is a placeholder holding its source; static/js/diagrams/ draws it.
+  if (language.toLowerCase() === "mermaid") return `<div class="md-mermaid">${escapeHtml(text)}</div>`;
+  const cls = language ? ` class="language-${escapeHtml(language)}"` : "";
   return `<pre><code${cls}>${escapeHtml(text)}</code></pre>`;
 }
 

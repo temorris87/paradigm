@@ -3,7 +3,9 @@
 // as it was, and a link being clicked is still there when the click lands.
 //
 // The HTML comes from the Markdown renderer (static/js/markdown/), which escapes every value
-// and allows only safe URL schemes. Maths arrives as TeX placeholders and is drawn here.
+// and allows only safe URL schemes. Maths and diagrams arrive as placeholders holding
+// their source and are drawn here.
+import { drawDiagrams } from "../diagrams/mermaid.js";
 import { typesetMath } from "../math/typeset.js";
 
 export class PreviewView {
@@ -35,6 +37,7 @@ export class PreviewView {
     node.className = "pd-unit md-doc";
     node.innerHTML = html;
     typesetMath(node);
+    drawDiagrams(node); // a diagram not drawn yet fills in later, by itself
     for (const link of node.querySelectorAll("a[href]")) {
       // Tab leaves the editor, so it must not stop on links inside it.
       link.tabIndex = -1;

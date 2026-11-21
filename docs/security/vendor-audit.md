@@ -243,6 +243,18 @@ Mermaid itself tried to add.
 7. Two KaTeX copies will be in the repo (ours, and Mermaid's bundled one for maths in
    diagrams). Upgrade Mermaid when its bundled KaTeX or DOMPurify gets an advisory.
 
+As built (2026-11-21, `static/js/diagrams/`): all seven conditions hold.
+- `maxTextSize` is 20,000 and `maxEdges` 500, with `suppressErrorRendering` so errors reach our
+  code, which shows the source and the message.
+- Mermaid renders into an off-screen element of ours (`work-area.js`), emptied after every
+  render, so no temporary elements are left behind.
+- That element has a constructed stylesheet with the rules that change label sizes. Mermaid's
+  own `<style>` is blocked there, and without these rules every label was measured 2 em too
+  tall.
+- The CSP also blocks the `max-width` that Mermaid sets on the `<svg>` during render. The insert
+  helper restores it from the `viewBox`, so diagrams keep their natural width.
+- On top of DOMPurify, the helper drops `<script>` and `on*` attributes.
+
 ---
 
 ## Vendoring and upgrades

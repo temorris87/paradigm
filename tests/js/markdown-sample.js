@@ -1,6 +1,7 @@
 // Dev-only: render a sample note with every construct, to eyeball markdown.css. The status
 // line reports any CSP violation the output causes.
 import { renderMarkdown } from "../../static/js/markdown/index.js";
+import { diagramsIdle, drawDiagrams } from "../../static/js/diagrams/mermaid.js";
 import { ensureMathFonts, typesetMath } from "../../static/js/math/typeset.js";
 
 const SAMPLE = `# Project Northwind kickoff
@@ -67,6 +68,33 @@ $$
 
 A broken formula: $\\frac{a$.
 
+## Diagrams
+
+\`\`\`mermaid
+flowchart TD
+  start([Kickoff]) --> scope{Scope agreed?}
+  scope -- yes --> plan[Write the plan]
+  scope -- no --> talk[Talk to Pat] --> scope
+  plan --> ship((Ship))
+\`\`\`
+
+\`\`\`mermaid
+sequenceDiagram
+  participant Sam
+  participant Lee
+  link Lee: Profile @ https://northwind.example/lee
+  Sam->>Lee: Draft ready?
+  Lee-->>Sam: Friday
+  Note over Sam,Lee: Review on Monday
+\`\`\`
+
+A broken diagram:
+
+\`\`\`mermaid
+flowchart LR
+  a --> 
+\`\`\`
+
 ---
 
 <b>raw HTML stays text</b> &amp; :smile: stays too.
@@ -76,15 +104,33 @@ A broken formula: $\\frac{a$.
 
 const status = document.getElementById("status");
 const violations = [];
+let counting = false;
 document.addEventListener("securitypolicyviolation", (event) => {
+  if (!counting) return;
   violations.push(event.violatedDirective);
   status.textContent = `CSP violations: ${violations.join(", ")}`;
   document.title = `CSP FAIL ${violations.length}`;
 });
 
+const nextTask = () => new Promise((resolve) => setTimeout(resolve, 50));
+
+// Mermaid's own rendering trips the CSP (its temporary element; expected, see
+// docs/security/vendor-audit.md), so diagrams are rendered once off-page first. The sample is
+// then drawn from the cache, and only that drawing is counted.
+const warmUp = document.createElement("div");
+warmUp.innerHTML = renderMarkdown(SAMPLE);
+drawDiagrams(warmUp);
+await diagramsIdle();
+await nextTask();
+counting = true;
+
 const doc = document.getElementById("doc");
 ensureMathFonts();
 doc.innerHTML = renderMarkdown(SAMPLE);
 typesetMath(doc);
-status.textContent = "rendered, no CSP violations";
-document.title = "Markdown sample OK";
+drawDiagrams(doc);
+await nextTask();
+if (!violations.length) {
+  status.textContent = "rendered, no CSP violations";
+  document.title = "Markdown sample OK";
+}

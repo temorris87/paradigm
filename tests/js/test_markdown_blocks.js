@@ -29,7 +29,8 @@ test("markdown blocks: fenced and indented code", () => {
   assertEqual(md("~~~\n```\n~~~"), "<pre><code>```\n</code></pre>");
   assertEqual(md("```\nunclosed"), "<pre><code>unclosed\n</code></pre>");
   assertEqual(md("    code\n\n    more"), "<pre><code>code\n\nmore\n</code></pre>");
-  assertEqual(md("```mermaid\ngraph TD\n```"), '<pre><code class="language-mermaid">graph TD\n</code></pre>');
+  assertEqual(md("```dot\ngraph TD\n```"), '<pre><code class="language-dot">graph TD\n</code></pre>');
+  assertEqual(md("```Mermaid\ngraph TD\n```"), '<div class="md-mermaid">graph TD\n</div>');
 });
 
 test("markdown blocks: block quotes, nested and lazy", () => {
