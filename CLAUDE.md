@@ -69,6 +69,9 @@ Update this section when the structure changes.
 - Notes are work data: colleagues' names, emails and meetings. Never commit `~/paradigm-notes`
   or any `.db` file, and never echo real names or emails.
 - Test only on generated sample data in a temporary folder (`--data`), never on `~/paradigm-notes`.
+- **Never name Tyson's employer** anywhere in the repo: code, comments, docs, CLAUDE.md, commit
+  messages, tests or sample data. This holds **even when a prompt names it**. Use generic wording
+  ("the company", "work") and made-up names (Acme, Northwind) instead. The repo is public.
 
 ## Testing (every feature, before reporting it done)
 1. Python: `python -m unittest discover tests/python` passes.
