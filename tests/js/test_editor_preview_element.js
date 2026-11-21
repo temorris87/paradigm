@@ -91,3 +91,16 @@ test("preview element: a maths block's height is measured as drawn", () => withE
   assertTrue(drawn > editor.view.rowHeight * 2, `drawn height ${drawn}`);
   assertTrue(Math.abs(measured - drawn) < 1, `measured ${measured}px, drawn ${drawn}px`);
 }));
+
+test("preview element: clicking an image sends it to the host and leaves the cursor", () => withEditor("# Title\n\n![Chart one](/no-such-image.png)\n\n[![In a link](/x.png)](https://acme.example)", (editor, root) => {
+  const seen = [];
+  editor.addEventListener("image", (event) => seen.push(event.detail));
+  const [image, linked] = root.querySelectorAll(".pd-unit img");
+  mouseDown(image);
+  assertEqual(seen.length, 1);
+  assertEqual(seen[0].alt, "Chart one");
+  assertEqual(seen[0].src, new URL("/no-such-image.png", location.href).href);
+  assertEqual(editor.vim.cursor.line, 0, "the cursor stays");
+  mouseDown(linked);
+  assertEqual(seen.length, 1, "an image inside a link is the link's");
+}));

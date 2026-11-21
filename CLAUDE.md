@@ -46,9 +46,14 @@ paradigm/                Python package
   notify.py              startup errors: console pause, or a message box with no console
   web/                   server.py (ThreadingHTTPServer), handler.py, router.py,
                          static.py (serves static/), responses.py, security.py
-  api/                   JSON endpoints; session.py = /api/ping, /api/events, /api/closing
-  db/                    connection.py (one locked connection, transactions), migrate.py
-                         (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py
+  api/                   JSON endpoints; session.py = /api/ping, /api/events, /api/closing;
+                         notes.py; images.py (raw-bytes upload, GET /api/image?id=N cached)
+  db/                    connection.py (one locked connection, transactions, VACUUM at start
+                         when worth it), migrate.py
+                         (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py,
+                         images_repo.py (image bytes in SQLite, deduped per note by sha256;
+                         sweep_unused deletes images no note links to, at start and stop only)
+  images/                formats.py: PNG/JPEG/GIF/WebP from magic bytes + size (SVG refused)
   notes/                 titles.py (title rules), seed.py + welcome.md (first-run note)
 static/
   index.html
@@ -63,7 +68,12 @@ static/
                          note-session.js (autosave, versions, conflicts), resolve.js (wiki
                          links, nearest note wins), tree-model.js, tree-view.js, tree-keys.js
                          (THE tree key table), breadcrumb.js, commands.js (THE note ex
-                         commands: :e :new :child :rename :parent :trash), headings.js
+                         commands: :e :new :child :rename :parent :trash), headings.js,
+                         images.js (editor "files" event -> shrink, upload, insert links)
+  js/images/             downscale.js: shrinks images wider than 1600 px on a canvas (GIFs
+                         never); viewer.js: <pd-image-viewer>, a click on an image opens it
+                         with its own zoom and pan; viewer-math.js (pure), viewer-keys.js
+                         (THE viewer key table)
   js/math/typeset.js     draws the renderer's .md-math placeholders with KaTeX (audited
                          options, errors caught); ensureMathFonts() puts KaTeX's @font-face
                          in the page, since Chrome ignores it inside a shadow root
@@ -139,6 +149,11 @@ Update this section when the structure changes.
   unindent. In every other mode they leave the editor and move focus like on any web page**,
   so they are never bound there (Tyson's choice, 2026-11-21).
 - Keys the browser owns (Ctrl-W, Ctrl-T, Ctrl-N, Ctrl-Tab, ...) are given up. Don't fight the browser.
+- Clicking a rendered image opens `<pd-image-viewer>` (its keys live in
+  `static/js/images/viewer-keys.js`).
+- An image is deleted from the database once no note (trashed ones included) links to it any
+  more, but only when Paradigm starts or stops: while a tab is open, `u` or `p` can bring a
+  deleted link back.
 - App-level keys are designed fresh with Tyson, one feature at a time. Each scope has one central
   key table, and it is the only source for both the mappings and any help listing.
 

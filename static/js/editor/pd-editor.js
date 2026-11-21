@@ -9,6 +9,8 @@
 //   editor.addExCommand("edit", 1);   // :e and :edit now send an "ex" event
 //   editor.modified = true;           // [+] in the status line
 //   editor.goToLine(12);              // cursor to a line (0-based)
+//   editor.insertText("text");        // at the cursor, as if pasted (see "files" below)
+//   editor.insertText("a\nb", { asLines: true, line: 4 })  // whole lines below line 4
 //
 // Live preview (on by default, :set nopreview turns it off): Markdown blocks away from the
 // cursor are drawn rendered; the block holding the cursor shows its raw text.
@@ -18,6 +20,13 @@
 // added with addExCommand: detail.name, .arg, .bang) and "link" (a rendered [[wiki link]] was
 // clicked: detail.target, the text inside the brackets before any "|"). Each carries
 // detail.value. A wiki link clicked with Ctrl, Shift or Cmd is left to the browser.
+// "image": a rendered image was clicked (detail.src, the full URL, and detail.alt); the
+// cursor stays where it is. An image inside a link is the link's.
+//
+// "files": images pasted in insert mode (detail.how "paste"; they win over any text on the
+// clipboard too) or files dropped on the text in any mode (detail.how "drop", detail.line
+// the line they were dropped on). detail.files holds the File objects. The editor does
+// nothing more with them: the host stores them and calls insertText with what to add.
 //
 // A hidden textarea holds the focus and takes the keys, so IME input, dead keys and paste
 // work as usual. Tab and Shift-Tab indent in insert mode; in every other mode they are not
@@ -95,6 +104,8 @@ export class PdEditor extends HTMLElement {
       this.flushInput();
     });
     input.addEventListener("paste", (event) => this.onPaste(event));
+    this.textArea.addEventListener("dragover", (event) => this.onDragOver(event));
+    this.textArea.addEventListener("drop", (event) => this.onDrop(event));
     input.addEventListener("focus", () => this.render());
     input.addEventListener("blur", () => this.render());
     this.textArea.addEventListener("mousedown", (event) => this.onMouseDown(event));
@@ -234,8 +245,36 @@ export class PdEditor extends HTMLElement {
 
   onPaste(event) {
     event.preventDefault();
+    const images = imageFiles(event.clipboardData);
+    if (images.length > 0 && this.vim.isInsertLike()) {
+      this.emitEvent("files", { files: images, how: "paste" });
+      return;
+    }
     const text = event.clipboardData?.getData("text/plain");
     if (text && this.acceptsText()) this.enqueue({ paste: text.replace(/\r\n?/g, "\n") });
+  }
+
+  onDragOver(event) {
+    if (!carriesFiles(event.dataTransfer)) return;
+    event.preventDefault(); // without this the drop never comes
+    event.dataTransfer.dropEffect = "copy";
+  }
+
+  onDrop(event) {
+    if (!carriesFiles(event.dataTransfer)) return;
+    event.preventDefault(); // the browser would open the file in place of the app
+    const files = [...event.dataTransfer.files];
+    if (files.length === 0) return;
+    const line = this.view.positionAt(event.clientX, event.clientY)?.line ?? this.vim.cursor.line;
+    this.input.focus();
+    this.emitEvent("files", { files, how: "drop", line });
+  }
+
+  /** Text from the host. Typed in like a paste in insert mode; otherwise one undo step. */
+  insertText(text, { asLines = false, line = null } = {}) {
+    const clean = String(text).replace(/\r\n?/g, "\n");
+    if (!asLines && this.vim.isInsertLike()) this.enqueue({ paste: clean });
+    else this.enqueue(() => this.vim.putFromOutside(clean, { asLines, line }));
   }
 
   onMouseDown(event) {
@@ -249,12 +288,18 @@ export class PdEditor extends HTMLElement {
     this.render();
   }
 
-  // Links and fold toggles in rendered Markdown. Returns true if the press was theirs: the
-  // browser's own click then opens the link (in a new tab) or folds the callout.
+  // Links, images and fold toggles in rendered Markdown. Returns true if the press was theirs:
+  // the browser's own click then opens the link (in a new tab) or folds the callout, and an
+  // image goes to the host to show.
   onPreviewMouseDown(target, event) {
     if (!target.closest?.(".pd-unit")) return false;
     if (target.closest("summary")) return true;
     const link = target.closest("a");
+    if (!link && target.closest("img")) {
+      const image = target.closest("img");
+      if (!hasModifier(event)) this.emitEvent("image", { src: image.src, alt: image.alt });
+      return true;
+    }
     if (!link) return false;
     const href = link.getAttribute("href") ?? "";
     if (link.classList.contains("md-wikilink") && !href.startsWith("#")) {
@@ -298,7 +343,8 @@ export class PdEditor extends HTMLElement {
       while (this.queue.length) {
         const key = this.queue.shift();
         if ((key === "+" || key === "*") && this.vim.awaitingRegister()) await this.readClipboard();
-        this.vim.feed(key);
+        if (typeof key === "function") key();
+        else this.vim.feed(key);
         this.afterFeed();
       }
     } finally {
@@ -364,6 +410,16 @@ export class PdEditor extends HTMLElement {
     this.input.style.left = `${box.left - frame.left}px`;
     this.input.style.top = `${box.top - frame.top}px`;
   }
+}
+
+// Image files on the clipboard. A copied screenshot comes only as a file; a copy from a web
+// page or Word may bring text with it, and the image is what was meant.
+function imageFiles(data) {
+  return [...(data?.files ?? [])].filter((file) => file.type.startsWith("image/"));
+}
+
+function carriesFiles(data) {
+  return Boolean(data && [...data.types].includes("Files"));
 }
 
 function hasModifier(event) {

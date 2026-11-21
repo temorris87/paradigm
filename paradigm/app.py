@@ -5,10 +5,12 @@ import time
 import webbrowser
 from typing import Callable, List, Optional
 
+from paradigm.api.images import ImagesApi
 from paradigm.api.notes import NotesApi
 from paradigm.api.session import SessionApi
 from paradigm.config import Config, parse_args
 from paradigm.db.connection import Database
+from paradigm.db.images_repo import ImageRepository
 from paradigm.db.migrate import SchemaTooNew, migrate
 from paradigm.db.notes_repo import NoteRepository
 from paradigm.instance import PortState, probe
@@ -104,15 +106,37 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
         db = open_database(config)
         server.on_close.append(db.close)
         notes = NoteRepository(db)
+        images = ImageRepository(db)
         seed_if_empty(notes)
+        sweep_images(images, notes)
+        # Whichever sweep deleted the images, this one or the one at the last stop (which
+        # doesn't vacuum, so closing the last tab stays quick), the file shrinks here.
+        if db.vacuum_if_worth_it():
+            log.info("Database compacted")
     except BaseException:
         # Not server.stop(): it would wait for a serve loop that never started.
         server.server_close()
         for close in server.on_close:
             close()
         raise
+    # Before the database closes. Only with no tab open: an open tab's undo could bring a
+    # deleted link back (Ctrl-C stops the server with tabs still open).
+    server.on_close.insert(0, lambda: presence.tab_count == 0 and sweep_images(images, notes))
     SessionApi(presence, config.keepalive_seconds, config.max_streams).register(server.router)
     NotesApi(notes).register(server.router)
+    ImagesApi(images).register(server.router)
+
+
+def sweep_images(images: ImageRepository, notes: NoteRepository) -> int:
+    """Deletes images no note links to. A failure is logged, never fatal: it only costs space."""
+    try:
+        removed = images.sweep_unused(notes.all_bodies)
+    except Exception:
+        log.exception("could not remove unused images")
+        return 0
+    if removed:
+        log.info("Removed %d unused image%s", removed, "" if removed == 1 else "s")
+    return removed
 
 
 def open_database(config: Config) -> Database:

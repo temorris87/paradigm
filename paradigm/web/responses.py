@@ -1,14 +1,17 @@
 """Helpers that write a complete response on a request handler."""
 import json
 from http.server import BaseHTTPRequestHandler
-from typing import Any
+from typing import Any, Iterable, Tuple
 
 
-def send_bytes(req: BaseHTTPRequestHandler, status: int, body: bytes, content_type: str) -> None:
+def send_bytes(req: BaseHTTPRequestHandler, status: int, body: bytes, content_type: str,
+               cache: str = "no-cache", extra_headers: Iterable[Tuple[str, str]] = ()) -> None:
     req.send_response(status)
     req.send_header("Content-Type", content_type)
     req.send_header("Content-Length", str(len(body)))
-    req.send_header("Cache-Control", "no-cache")
+    req.send_header("Cache-Control", cache)
+    for name, value in extra_headers:
+        req.send_header(name, value)
     req.end_headers()
     if req.command != "HEAD":
         req.wfile.write(body)

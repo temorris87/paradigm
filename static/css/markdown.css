@@ -130,8 +130,11 @@
   color: var(--nord3);
 }
 
+/* Images get a row of their own, centred, even when written in the middle of text. */
 .md-doc img {
+  display: block;
   max-width: 100%;
+  margin: 0.5em auto;
 }
 
 /* Tables: alignment comes as classes, because the CSP forbids style="" attributes. */

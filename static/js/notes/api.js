@@ -1,5 +1,5 @@
-// The notes endpoints (paradigm/api/notes.py). Every call resolves to the JSON answer or
-// throws an ApiError carrying the server's message.
+// The notes and images endpoints (paradigm/api/notes.py, paradigm/api/images.py). Every
+// call resolves to the JSON answer or throws an ApiError carrying the server's message.
 
 export class ApiError extends Error {
   constructor(status, message, payload = {}) {
@@ -9,10 +9,13 @@ export class ApiError extends Error {
   }
 }
 
-async function call(path, { payload, keepalive = false } = {}) {
-  const init = payload === undefined
-    ? { method: "GET" }
-    : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), keepalive };
+// payload is sent as JSON; blob (an image) is sent as its raw bytes.
+async function call(path, { payload, blob, keepalive = false } = {}) {
+  const init = blob !== undefined
+    ? { method: "POST", headers: { "Content-Type": blob.type || "application/octet-stream" }, body: blob }
+    : payload === undefined
+      ? { method: "GET" }
+      : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), keepalive };
   let response;
   try {
     response = await fetch(path, init);
@@ -34,4 +37,9 @@ export const notesApi = {
   rename: (id, title) => call("/api/note/rename", { payload: { id, title } }),
   move: (id, parentId) => call("/api/note/move", { payload: { id, parent_id: parentId } }),
   remove: (id, recursive = false) => call("/api/note/delete", { payload: { id, recursive } }),
+};
+
+export const imagesApi = {
+  // -> { id, url, mime, width, height, size }
+  upload: (noteId, blob) => call(`/api/image/upload?note=${encodeURIComponent(noteId)}`, { blob }),
 };

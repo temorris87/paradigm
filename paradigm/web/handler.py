@@ -11,7 +11,7 @@ from paradigm.web.static import serve_static
 
 log = logging.getLogger(__name__)
 
-# A note is text: 8 MB is far beyond any real one.
+# Far beyond any note, and beyond any image downscaled to 1600 px wide.
 MAX_BODY_BYTES = 8_000_000
 _DISCONNECTS = (BrokenPipeError, ConnectionResetError, ConnectionAbortedError)
 

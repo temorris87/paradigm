@@ -22,6 +22,7 @@ class MigrateTest(unittest.TestCase):
         with self.db.reading() as conn:
             tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
         self.assertIn("notes", tables)
+        self.assertIn("images", tables)
 
     def test_running_again_changes_nothing(self) -> None:
         first = migrate(self.db)

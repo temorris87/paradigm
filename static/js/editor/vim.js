@@ -9,7 +9,7 @@ import { runEx } from "./ex.js";
 import { insertKey } from "./insert.js";
 import { Marks } from "./marks.js";
 import { defaultOptions } from "./options.js";
-import { clamp, lastCol, pos } from "./position.js";
+import { clamp, endAfter, lastCol, pos } from "./position.js";
 import { Registers } from "./registers.js";
 import { TEXT_LAYOUT } from "./text-layout.js";
 import { UndoHistory } from "./undo.js";
@@ -94,6 +94,38 @@ export class Vim {
     if (this.isInsertLike()) insertKey(this, key);
     else if (this.mode === "cmdline") cmdlineKey(this, key);
     else commandKey(this, key);
+  }
+
+  /**
+   * Text from outside the keyboard (the host adding an image link). It goes in as one undo
+   * step and leaves the editor in normal mode: before the cursor, or with asLines as whole
+   * lines below `line` (the cursor line by default), the cursor on the last of them.
+   * Text pasted into insert mode is { paste } through feed() instead, part of that insert.
+   */
+  putFromOutside(text, { asLines = false, line = null } = {}) {
+    if (this.mode !== "normal" || this.pending.length > 0) this.feed("<Esc>");
+    this.commandStart = { ...this.cursor };
+    try {
+      if (asLines) this.putLinesBelow(text, clamp(line ?? this.cursor.line, 0, this.buf.lastLine));
+      else this.putBeforeCursor(text);
+    } catch (error) {
+      if (!(error instanceof EditorError)) throw error;
+      this.fail(error.message);
+    }
+    this.afterKey();
+  }
+
+  putLinesBelow(text, line) {
+    const end = pos(line, this.buf.lineLength(line));
+    this.edit(end, end, `\n${text}`);
+    this.setCursor(pos(line + text.split("\n").length, 0));
+  }
+
+  putBeforeCursor(text) {
+    const at = { ...this.cursor };
+    this.edit(at, at, text);
+    const end = endAfter(at, text);
+    this.setCursor(pos(end.line, Math.max(0, end.col - 1)));
   }
 
   /** Run keys as part of the current command (used by :undo and :redo). */

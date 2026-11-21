@@ -1,11 +1,13 @@
 // The notes page: the tree, the breadcrumb and the editor on the open note, kept in step.
 // It owns what the editor's events mean here: saving, following [[links]], note commands.
 //
-//   const app = new NotesApp({ editor, tree: ulElement, crumbs: navElement, api: notesApi });
+//   const app = new NotesApp({ editor, tree: ulElement, crumbs: navElement, api: notesApi,
+//                              imagesApi });
 //   await app.start();
 import { showBreadcrumb } from "./breadcrumb.js";
 import { registerNoteCommands, runNoteCommand } from "./commands.js";
 import { headingLine } from "./headings.js";
+import { NoteImages } from "./images.js";
 import { NoteSession } from "./note-session.js";
 import { resolveLink, splitTarget } from "./resolve.js";
 import { NoteTree } from "./tree-model.js";
@@ -14,7 +16,7 @@ import { TreeView } from "./tree-view.js";
 const UNSAVED = "E37: No write since last change (:w to save, or ! to drop the changes)";
 
 export class NotesApp {
-  constructor({ editor, tree, crumbs, api, location = window.location, history = window.history }) {
+  constructor({ editor, tree, crumbs, api, imagesApi, location = window.location, history = window.history }) {
     this.editor = editor;
     this.crumbs = crumbs;
     this.api = api;
@@ -30,6 +32,7 @@ export class NotesApp {
       onOpen: (id) => this.open(id).then((opened) => opened && this.editor.focus()),
       onLeave: () => this.editor.focus(),
     });
+    this.images = new NoteImages({ editor, api: imagesApi, currentId: () => this.currentId });
     registerNoteCommands(editor);
     this.listen();
   }
@@ -45,6 +48,13 @@ export class NotesApp {
     editor.addEventListener("quit", () => editor.showMessage("Nothing to close here: closing the tab stops Paradigm"));
     editor.addEventListener("ex", (event) => this.guard(runNoteCommand(this, event.detail)));
     editor.addEventListener("link", (event) => this.guard(this.followLink(event.detail.target)));
+    editor.addEventListener("files", (event) => this.guard(this.images.add(event.detail)));
+    // A file dropped beside the editor would make the browser open it in place of the app.
+    for (const type of ["dragover", "drop"]) {
+      window.addEventListener(type, (event) => {
+        if ([...(event.dataTransfer?.types ?? [])].includes("Files")) event.preventDefault();
+      });
+    }
     window.addEventListener("popstate", () => this.guard(this.openFromUrl("none")));
     window.addEventListener("pagehide", () => this.session.saveBeforeLeaving());
     document.addEventListener("visibilitychange", () => {

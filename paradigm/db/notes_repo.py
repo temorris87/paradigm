@@ -65,6 +65,11 @@ class NoteRepository:
             ).fetchall()
         return [_summary(row) for row in rows]
 
+    def all_bodies(self) -> List[str]:
+        """The text of every note, trashed ones too (a note back from the trash keeps its links)."""
+        with self._db.reading() as conn:
+            return [row[0] for row in conn.execute("SELECT body FROM notes").fetchall()]
+
     def count(self) -> int:
         with self._db.reading() as conn:
             return conn.execute("SELECT count(*) FROM notes WHERE " + _LIVE).fetchone()[0]

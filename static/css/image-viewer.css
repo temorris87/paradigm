@@ -1,0 +1,67 @@
+/* The image viewer (static/js/images/viewer.js): the whole window, the image on a dark stage. */
+.pd-viewer {
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--nord4);
+  outline: none;
+}
+
+.pd-viewer[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.pd-viewer::backdrop {
+  background: color-mix(in srgb, var(--nord0) 92%, transparent);
+}
+
+.pd-viewer__stage {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  cursor: zoom-out;
+  touch-action: none;
+}
+
+.pd-viewer__image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  transform-origin: 0 0;
+  cursor: grab;
+  user-select: none;
+  box-shadow: 0 0 0 1px var(--nord3);
+}
+
+.pd-viewer__stage--dragging,
+.pd-viewer__stage--dragging .pd-viewer__image {
+  cursor: grabbing;
+}
+
+.pd-viewer__bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 1rem;
+  background: var(--nord1);
+  font-size: 0.9rem;
+}
+
+.pd-viewer__caption {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pd-viewer__info {
+  color: var(--nord9);
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
+}

@@ -206,6 +206,11 @@
 }
 
 /* Wiki links go to the page, not the browser: even one to a note not made yet is clickable. */
+/* A click on a rendered image opens it in the viewer. */
+.pd-unit img {
+  cursor: zoom-in;
+}
+
 .pd-unit .md-wikilink {
   cursor: pointer;
 }
