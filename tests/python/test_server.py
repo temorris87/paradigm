@@ -37,6 +37,16 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(headers["Content-Type"], "text/javascript; charset=utf-8")
 
+    def test_vendored_katex_content_types(self) -> None:
+        base = "/vendor/katex-0.19.1/dist"
+        for path, expected in ((f"{base}/katex.mjs", "text/javascript; charset=utf-8"),
+                               (f"{base}/katex.min.css", "text/css; charset=utf-8"),
+                               (f"{base}/fonts/KaTeX_Main-Regular.woff2", "font/woff2")):
+            with self.subTest(path=path):
+                status, headers, _ = self.running.request("GET", path)
+                self.assertEqual(status, 200)
+                self.assertEqual(headers["Content-Type"], expected)
+
     def test_files_outside_static_are_refused(self) -> None:
         for path in ("/../CLAUDE.md", "/%2e%2e/CLAUDE.md", "/../paradigm/app.py"):
             with self.subTest(path=path):

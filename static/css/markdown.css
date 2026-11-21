@@ -15,7 +15,8 @@
 .md-doc blockquote,
 .md-doc pre,
 .md-doc table,
-.md-doc .md-callout {
+.md-doc .md-callout,
+.md-doc div.md-math-display {
   margin: 0 0 0.9em;
 }
 
@@ -198,3 +199,30 @@
 .md-doc .md-callout-example { --callout: var(--nord15); }
 .md-doc .md-callout-quote { --callout: var(--nord3); }
 .md-doc .md-callout-quote .md-callout-title { color: var(--nord4); }
+
+/* Maths (KaTeX, drawn by static/js/math/typeset.js; katex.min.css holds the layout).
+   Display maths is centred on its own line and scrolls sideways rather than overflowing. */
+.md-doc .md-math-display {
+  display: block;
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.md-doc span.md-math-display {
+  margin: 0.4em 0;
+}
+.md-doc .katex {
+  font-size: 1.1em;
+}
+.md-doc .katex-display {
+  margin: 0;
+}
+/* A formula KaTeX refused shows its source. Colour from here: KaTeX's errorColor is a style
+   attribute, which the CSP blocks. */
+.md-doc .md-math-error,
+.md-doc .katex-error {
+  color: var(--nord11);
+  font-family: Consolas, "Cascadia Mono", Menlo, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 0.9em;
+  white-space: pre-wrap;
+}

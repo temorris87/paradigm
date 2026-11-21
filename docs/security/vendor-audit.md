@@ -117,6 +117,11 @@ is not part of the vendored files.
 5. For `:export`, `output: "mathml"` gives style-free MathML. It needs a maths font on the
    reader's machine (Windows has Cambria Math; this Linux test box had none and showed boxes).
 
+As built (2026-11-21, `static/js/math/typeset.js`): conditions 1–4 hold, with one tightening.
+`throwOnError` is `true` and every error is caught by our code, which shows the source with
+the `md-math-error` class. KaTeX's own error markup would set a style attribute, which the CSP
+blocks with a console message each time.
+
 ---
 
 ## Mermaid 12.3.0

@@ -15,6 +15,7 @@
 // A hidden textarea holds the focus and takes the keys, so IME input, dead keys and paste
 // work as usual. Tab and Shift-Tab indent in insert mode; in every other mode they are not
 // taken, so they move the focus on, like on any page.
+import { KATEX_CSS, ensureMathFonts } from "../math/typeset.js";
 import { isTextKey, keyName } from "./key-names.js";
 import { BOUND_KEYS, INSERT_ONLY_KEYS } from "./keys.js";
 import { PreviewLayout } from "./preview-layout.js";
@@ -24,7 +25,7 @@ import { EditorView } from "./render.js";
 import { TEXT_LAYOUT } from "./text-layout.js";
 import { Vim } from "./vim.js";
 
-const STYLESHEETS = ["../../css/markdown.css", "../../css/editor.css"].map((path) => new URL(path, import.meta.url).href);
+const STYLESHEETS = [KATEX_CSS, ...["../../css/markdown.css", "../../css/editor.css"].map((path) => new URL(path, import.meta.url).href)];
 const PASTE_KEYS = new Set(["<C-v>", "<C-S-v>", "<S-Insert>"]);
 const WHEEL_LINES = 3;
 
@@ -56,6 +57,7 @@ export class PdEditor extends HTMLElement {
         this.measure();
       });
     }
+    ensureMathFonts();
 
     this.vim = new Vim({ clipboard });
     this.sizes = new PreviewMeasure(this.frame);
@@ -94,15 +96,22 @@ export class PdEditor extends HTMLElement {
     this.textArea.addEventListener("wheel", (event) => this.onWheel(event), { passive: false });
     this.frame.addEventListener("animationend", () => this.frame.classList.remove("pd-editor--bell"));
     this.resizeObserver = new ResizeObserver(() => this.measure());
+    // Maths measured before its fonts arrived was measured in a fallback font.
+    this.onFontsLoaded = () => {
+      this.sizes.forgetAll();
+      this.measure();
+    };
   }
 
   connectedCallback() {
     this.resizeObserver.observe(this.textArea);
+    document.fonts?.addEventListener("loadingdone", this.onFontsLoaded);
     this.measure();
   }
 
   disconnectedCallback() {
     this.resizeObserver.disconnect();
+    document.fonts?.removeEventListener("loadingdone", this.onFontsLoaded);
   }
 
   attributeChangedCallback(name) {

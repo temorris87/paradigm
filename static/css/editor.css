@@ -84,6 +84,7 @@
 .pd-row .md-link { color: var(--nord8); text-decoration: underline; text-decoration-color: var(--nord3); }
 .pd-row .md-code, .pd-row .md-code-block { color: var(--nord7); background: var(--nord1); }
 .pd-row .md-fence { color: var(--nord3); background: var(--nord1); }
+.pd-row .md-math { color: var(--nord10); }
 .pd-row .md-bold { color: var(--nord6); font-weight: bold; }
 .pd-row .md-italic { font-style: italic; }
 .pd-row .md-strike { text-decoration: line-through; color: var(--nord3); }

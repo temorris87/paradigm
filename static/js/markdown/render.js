@@ -1,7 +1,7 @@
 // Block tree -> HTML. Footnote definitions render nothing where they stand; their text goes
 // in the footnote section at the end (renderFootnotes).
 import { escapeHtml } from "./escape.js";
-import { plainText, renderInlines } from "./render-inline.js";
+import { plainText, renderInlines, renderMathPlaceholder } from "./render-inline.js";
 
 /** options: { idPrefix, breaks, resolveWikiLink } */
 export function renderBlock(block, options, tight = false) {
@@ -16,6 +16,8 @@ export function renderBlock(block, options, tight = false) {
       return "<hr>";
     case "code":
       return renderCode(block);
+    case "math":
+      return renderMathPlaceholder(block.tex, true, "div");
     case "quote":
       return `<blockquote>\n${renderChildren(block, options)}</blockquote>`;
     case "callout":

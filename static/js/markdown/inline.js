@@ -1,8 +1,9 @@
 // The inline parser: text of a paragraph, heading or table cell in, a list of inline nodes
-// out. Nodes: text, code, em, strong, del, mark, link, image, break, softbreak, wikilink,
-// footnoteRef. Brackets and emphasis are resolved with the CommonMark stacks; bare URLs are
+// out. Nodes: text, code, math, em, strong, del, mark, link, image, break, softbreak,
+// wikilink, footnoteRef. Brackets and emphasis are resolved with the CommonMark stacks; bare URLs are
 // linked afterwards (autolinks.js).
 import { linkBareUrls } from "./autolinks.js";
+import { readInlineMath } from "./math.js";
 import { MAX_INLINE_NESTING, nestingDepth, processEmphasis, scanDelimiterRun } from "./delimiters.js";
 import {
   normalizeLabel,
@@ -12,7 +13,7 @@ import {
   skipSpacesAndNewline,
 } from "./link-syntax.js";
 
-const PLAIN_RUN = /^[^\n\\`*_~=[\]!<]+/;
+const PLAIN_RUN = /^[^\n\\`$*_~=[\]!<]+/;
 const ASCII_PUNCT = /[!-/:-@[-`{-~]/;
 const WIKI_LINK = /^\[\[([^[\]|\n]+)(?:\|([^[\]\n]*))?\]\]/;
 const FOOTNOTE_REF = /^\[\^([^\]\s]+)\]/;
@@ -47,6 +48,7 @@ class InlineParser {
       (char === "\n" && this.newline()) ||
       (char === "\\" && this.backslash()) ||
       (char === "`" && this.codeSpan()) ||
+      (char === "$" && this.math()) ||
       ("*_~=".includes(char) && this.delimiterRun()) ||
       (char === "[" && (this.wikiLink() || this.footnoteRef() || this.openBracket())) ||
       (char === "!" && this.imageBracket()) ||
@@ -109,6 +111,20 @@ class InlineParser {
     }
     this.pushText(ticks); // no closer: the backticks are text
     this.pos = start;
+    return true;
+  }
+
+  math() {
+    const found = readInlineMath(this.text, this.pos);
+    if (found) {
+      this.nodes.push({ type: "math", tex: found.tex, display: found.display });
+      this.pos = found.end;
+    } else {
+      // An unclosed "$$" is text as a pair, so its second "$" cannot open maths.
+      const dollars = this.text[this.pos + 1] === "$" ? "$$" : "$";
+      this.pushText(dollars);
+      this.pos += dollars.length;
+    }
     return true;
   }
 

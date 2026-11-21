@@ -72,3 +72,22 @@ test("preview element: :set nopreview and syntax=plain show raw text", () => wit
   editor.setAttribute("syntax", "plain");
   assertEqual(units(root).length, 0);
 }));
+
+const MATHS = "Intro\n\n$$\n\\frac{a}{b}\n\\\\\nc\n$$\n\nInline $x^2$ here.";
+
+test("preview element: maths renders away from the cursor and is raw under it", () => withEditor(MATHS, (editor, root) => {
+  const block = units(root).find((unit) => unit.dataset.line === "2");
+  assertTrue(block.querySelector(".katex-display") !== null, "display maths drawn");
+  assertTrue(units(root).find((unit) => unit.dataset.line === "8").querySelector(".katex") !== null, "inline maths drawn");
+  for (const key of "3j") press(editor, key);
+  assertTrue(!units(root).some((unit) => unit.dataset.line === "2"), "the block is raw under the cursor");
+  assertTrue(root.querySelector(".pd-text .md-math") !== null, "raw maths coloured");
+}));
+
+test("preview element: a maths block's height is measured as drawn", () => withEditor(MATHS, (editor, root) => {
+  const block = units(root).find((unit) => unit.dataset.line === "2");
+  const drawn = block.getBoundingClientRect().height;
+  const measured = editor.previewLayout.unitAt(editor.vim, 2).rows * editor.view.rowHeight;
+  assertTrue(drawn > editor.view.rowHeight * 2, `drawn height ${drawn}`);
+  assertTrue(Math.abs(measured - drawn) < 1, `measured ${measured}px, drawn ${drawn}px`);
+}));

@@ -36,6 +36,19 @@ A footnote[^1] and a jump to [the tasks](#md-tasks).
 
 > Keep it simple.
 
+## Maths
+
+The area is $A = \\pi r^2$, and prices like $5 and $10 stay text.
+Inline display: $$e^{i\\pi} + 1 = 0$$ in a sentence.
+
+$$
+\\int_0^1 x^2\\,dx = \\frac{1}{3}
+\\qquad
+\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}
+$$
+
+A broken formula: $\\frac{a$.
+
 ---
 
 ${LIST}

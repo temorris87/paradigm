@@ -1,6 +1,7 @@
 // Dev-only: render a sample note with every construct, to eyeball markdown.css. The status
 // line reports any CSP violation the output causes.
 import { renderMarkdown } from "../../static/js/markdown/index.js";
+import { ensureMathFonts, typesetMath } from "../../static/js/math/typeset.js";
 
 const SAMPLE = `# Project Northwind kickoff
 Notes from the **kickoff**, with *emphasis*, ~~old plan~~ and ==the key point==.
@@ -53,6 +54,19 @@ def greet(name):
 
 > [!quote] Quote
 
+## Maths
+
+The area is $A = \\pi r^2$, and prices like $5 and $10 stay text.
+Inline display: $$e^{i\\pi} + 1 = 0$$ in a sentence.
+
+$$
+\\int_0^1 x^2\\,dx = \\frac{1}{3}
+\\qquad
+\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}
+$$
+
+A broken formula: $\\frac{a$.
+
 ---
 
 <b>raw HTML stays text</b> &amp; :smile: stays too.
@@ -69,6 +83,8 @@ document.addEventListener("securitypolicyviolation", (event) => {
 });
 
 const doc = document.getElementById("doc");
+ensureMathFonts();
 doc.innerHTML = renderMarkdown(SAMPLE);
+typesetMath(doc);
 status.textContent = "rendered, no CSP violations";
 document.title = "Markdown sample OK";

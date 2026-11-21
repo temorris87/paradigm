@@ -112,7 +112,3 @@ test("markdown extras: wiki links use the resolver when given", () => {
   const evil = () => ({ href: "javascript:alert(1)", exists: true });
   assertEqual(md("[[X]]", { resolveWikiLink: evil }), '<p><a class="md-wikilink" data-target="X">X</a></p>');
 });
-
-test("markdown extras: math and Mermaid are left alone for now", () => {
-  assertEqual(md("$a_b$ and $$x$$"), "<p>$a_b$ and $$x$$</p>");
-});

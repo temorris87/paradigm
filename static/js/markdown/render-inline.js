@@ -19,6 +19,8 @@ function renderInline(node, options) {
       return "<br>\n";
     case "code":
       return `<code>${escapeHtml(node.value)}</code>`;
+    case "math":
+      return renderMathPlaceholder(node.tex, node.display, "span");
     case "em":
     case "strong":
     case "del":
@@ -35,6 +37,15 @@ function renderInline(node, options) {
     default:
       return "";
   }
+}
+
+/**
+ * Maths stays TeX source here: this module has no DOM, and KaTeX may only draw into an
+ * element (static/js/math/typeset.js fills these in once they are on the page).
+ */
+export function renderMathPlaceholder(tex, display, tag) {
+  const cls = display ? "md-math md-math-display" : "md-math";
+  return `<${tag} class="${cls}">${escapeHtml(tex)}</${tag}>`;
 }
 
 function renderLink(node, options) {
@@ -85,6 +96,7 @@ export function plainText(nodes) {
   return nodes
     .map((node) => {
       if (node.type === "text" || node.type === "code") return node.value;
+      if (node.type === "math") return node.tex;
       if (node.type === "softbreak" || node.type === "break") return " ";
       if (node.type === "wikilink") return node.alias || node.target || node.heading;
       if (node.type === "footnoteRef") return "";

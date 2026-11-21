@@ -5,6 +5,7 @@
 import { isSpaceOrTab } from "./lines.js";
 import { isTight, markTask } from "./lists.js";
 import { markCallout } from "./callouts.js";
+import { endsMath, mathBlockTex } from "./math.js";
 import { unescapeBackslashes } from "./link-syntax.js";
 import { takeReferences } from "./references.js";
 
@@ -105,6 +106,26 @@ export const BLOCK_TYPES = {
       } else {
         while (block.lines.length && !/\S/.test(block.lines[block.lines.length - 1])) block.lines.pop();
       }
+    },
+    canContain: never,
+    acceptsLines: true,
+  },
+
+  // Like a fenced code block, but the closing "$$" may end a line of TeX.
+  math: {
+    proceed(parser, block) {
+      if (block.closed) return NOT_MATCHED;
+      const line = parser.line;
+      for (let i = block.fenceOffset; i > 0 && isSpaceOrTab(line.peek(line.offset)); i -= 1) {
+        line.advanceOffset(1, true);
+      }
+      if (endsMath(line.remainder())) block.closed = true;
+      return MATCHED;
+    },
+    finish(parser, block) {
+      block.tex = mathBlockTex(block.lines, block.closed);
+      delete block.lines;
+      delete block.fenceOffset;
     },
     canContain: never,
     acceptsLines: true,

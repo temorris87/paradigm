@@ -24,6 +24,14 @@ See [the Nord palette](https://www.nordtheme.com) and \`inline code\`.
 
 > [!tip] Links open in a new tab
 > Click a rendered block to edit it.
+
+### Maths
+
+Inline $e^{i\\pi} + 1 = 0$, while $5 and $10 stay prices.
+
+$$
+\\sum_{k=1}^{n} k = \\frac{n(n+1)}{2}
+$$
 `;
 
 export function mountScratchEditor(editor) {

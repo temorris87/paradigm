@@ -81,7 +81,7 @@ class BlockParser {
         this.addLine();
       }
     }
-    if (!line.blank || (this.tip.type === "code" && this.tip.fenced)) this.touch(this.tip);
+    if (!line.blank || keepsBlankLines(this.tip)) this.touch(this.tip);
   }
 
   // Loose and tight lists depend on where the blank lines fall.
@@ -95,7 +95,7 @@ class BlockParser {
       !(
         type === "quote" ||
         type === "callout" ||
-        (type === "code" && container.fenced) ||
+        keepsBlankLines(container) ||
         (type === "item" && container.children.length === 0 && container.startLine === line.number)
       );
     for (let block = container; block; block = block.parent) block.lastLineBlank = blank;
@@ -114,7 +114,7 @@ class BlockParser {
   addChild(type, startLine = this.line.number) {
     while (!BLOCK_TYPES[this.tip.type].canContain(type)) this.finalize(this.tip);
     const block = makeBlock(type, startLine);
-    if (type === "paragraph" || type === "code") block.lines = [];
+    if (type === "paragraph" || type === "code" || type === "math") block.lines = [];
     block.parent = this.tip;
     block.depth = this.tip.depth + 1;
     this.tip.children.push(block);
@@ -159,6 +159,11 @@ class BlockParser {
   touch(block) {
     for (let at = block; at; at = at.parent) at.endLine = Math.max(at.endLine, this.line.number);
   }
+}
+
+// Blank lines inside a fence belong to it: they neither end it nor loosen a list.
+function keepsBlankLines(block) {
+  return (block.type === "code" && block.fenced) || block.type === "math";
 }
 
 function lastOpenChild(block) {

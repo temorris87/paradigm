@@ -3,7 +3,9 @@
 // as it was, and a link being clicked is still there when the click lands.
 //
 // The HTML comes from the Markdown renderer (static/js/markdown/), which escapes every value
-// and allows only safe URL schemes.
+// and allows only safe URL schemes. Maths arrives as TeX placeholders and is drawn here.
+import { typesetMath } from "../math/typeset.js";
+
 export class PreviewView {
   /** onResize(html, node): the node changed height by itself. */
   constructor({ onResize }) {
@@ -32,6 +34,7 @@ export class PreviewView {
     const node = document.createElement("div");
     node.className = "pd-unit md-doc";
     node.innerHTML = html;
+    typesetMath(node);
     for (const link of node.querySelectorAll("a[href]")) {
       // Tab leaves the editor, so it must not stop on links inside it.
       link.tabIndex = -1;

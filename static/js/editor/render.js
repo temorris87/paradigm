@@ -56,7 +56,7 @@ export class EditorView {
     const nodes = [];
     const selection = vim.mode === "visual" && vim.visual ? visualRegion(vim) : null;
     const regex = this.searchRegex(vim);
-    let inFence = syntax ? fenceStateAt(vim.buf.lines, vim.view.top) : false;
+    let fence = syntax ? fenceStateAt(vim.buf.lines, vim.view.top) : null;
     this.preview?.begin();
     let rows = -vim.view.skip;
     let line = vim.view.top;
@@ -64,7 +64,7 @@ export class EditorView {
       const unit = unitAt(vim, line);
       if (unit.rendered) {
         nodes.push(this.preview.node(unit, line === vim.view.top ? vim.view.skip * this.rowHeight : 0));
-        if (syntax) for (let at = unit.start; at <= unit.end; at += 1) inFence = tokenizeLine(vim.buf.line(at), inFence).inFence;
+        if (syntax) for (let at = unit.start; at <= unit.end; at += 1) fence = tokenizeLine(vim.buf.line(at), fence).fence;
         rows += unit.rows;
         line = unit.end;
         continue;
@@ -72,8 +72,8 @@ export class EditorView {
       const text = vim.buf.line(line);
       const decorations = [];
       if (syntax) {
-        const result = tokenizeLine(text, inFence);
-        inFence = result.inFence;
+        const result = tokenizeLine(text, fence);
+        fence = result.fence;
         decorations.push(...result.tokens);
       }
       if (regex) {

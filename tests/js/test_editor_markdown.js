@@ -1,8 +1,8 @@
 import { fenceStateAt, tokenizeLine } from "../../static/js/editor/markdown-tokens.js";
 import { assertEqual, test } from "./harness.js";
 
-function classes(text, inFence = false) {
-  return tokenizeLine(text, inFence).tokens.map(({ from, to, cls }) => `${cls}:${text.slice(from, to)}`).join(" | ");
+function classes(text, fence = null) {
+  return tokenizeLine(text, fence).tokens.map(({ from, to, cls }) => `${cls}:${text.slice(from, to)}`).join(" | ");
 }
 
 test("markdown: headings get a class per level", () => {
@@ -36,10 +36,30 @@ test("markdown: lists, tasks and quotes", () => {
 });
 
 test("markdown: code fences switch the state", () => {
-  const open = tokenizeLine("```js", false);
-  assertEqual(open.inFence, true);
-  assertEqual(classes("# not a heading", true), "md-code-block:# not a heading");
-  assertEqual(tokenizeLine("```", true).inFence, false);
-  assertEqual(fenceStateAt(["a", "```", "b", "```", "c"], 2), true);
-  assertEqual(fenceStateAt(["a", "```", "b", "```", "c"], 4), false);
+  const open = tokenizeLine("```js", null);
+  assertEqual(open.fence, "code");
+  assertEqual(classes("# not a heading", "code"), "md-code-block:# not a heading");
+  assertEqual(classes("$$", "code"), "md-code-block:$$");
+  assertEqual(tokenizeLine("```", "code").fence, null);
+  assertEqual(fenceStateAt(["a", "```", "b", "```", "c"], 2), "code");
+  assertEqual(fenceStateAt(["a", "```", "b", "```", "c"], 4), null);
+});
+
+test("markdown: maths blocks switch the state", () => {
+  assertEqual(tokenizeLine("$$", null).fence, "math");
+  assertEqual(tokenizeLine("$$ x = 1 $$", null).fence, null);
+  assertEqual(tokenizeLine("> $$", null).fence, "math");
+  assertEqual(classes("# a*b*", "math"), "md-math:# a*b*");
+  assertEqual(classes("```", "math"), "md-math:```");
+  assertEqual(tokenizeLine("x $$", "math").fence, null);
+  assertEqual(fenceStateAt(["$$", "x", "$$", "y"], 1), "math");
+  assertEqual(fenceStateAt(["$$", "x", "$$", "y"], 3), null);
+  assertEqual(tokenizeLine("$$x$$ and more", null).fence, null);
+});
+
+test("markdown: inline maths, with no other colour inside it", () => {
+  assertEqual(classes("let $a*b*c$ be"), "md-math:$a*b*c$");
+  assertEqual(classes("see $$x$$ here"), "md-math:$$x$$");
+  assertEqual(classes("costs $5 and $10"), "");
+  assertEqual(classes("`$x$` and \\$y$"), "md-code:`$x$`");
 });

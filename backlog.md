@@ -15,7 +15,7 @@ Features in build order. "build feature" takes the first unchecked item.
   shows raw Markdown; variable-height scrolling; links open in a new tab (done 2026-11-21)
 - [x] Security audit of vendored KaTeX and Mermaid: written report, go/no-go per library (CSP fit,
   no eval or network, CVEs, sanitising, pinned files with hashes) (done 2026-11-21)
-- [ ] LaTeX math ($…$ and $$…$$) with vendored KaTeX, if the audit passes
+- [x] LaTeX math ($…$ and $$…$$) with vendored KaTeX, if the audit passes (done 2026-11-21)
 - [ ] Mermaid diagrams with vendored Mermaid, if the audit passes
 - [ ] Notes in SQLite with a hierarchy: the database layer (connection, numbered migrations,
   repositories), notes that nest under other notes (hierarchy designed with Tyson), and

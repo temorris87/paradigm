@@ -1,24 +1,35 @@
 // Light colouring of raw Markdown, one line at a time. Pure: a line in, coloured spans out,
-// as [{ from, to, cls }] with `to` exclusive. Code fences need to know whether the line is
-// inside one, so the state is passed along.
+// as [{ from, to, cls }] with `to` exclusive. Fenced blocks need to know whether the line is
+// inside one, so the state is passed along: null, "code" (``` or ~~~) or "math" ($$).
+import { endsMath, readInlineMath, readMathOpener } from "../markdown/math.js";
 
 const FENCE = /^\s*(```|~~~)/;
+const MATH_OPENER = /^[ \t]*(?:>[ \t]?)*[ \t]*(?=\$\$)/; // "$$", also in a quote
 
-/** Is `index` inside a fenced code block? Counts the fences above it. */
+/** The fence the line at `index` is inside, from the lines above it. */
 export function fenceStateAt(lines, index) {
-  let inFence = false;
-  for (let line = 0; line < index && line < lines.length; line += 1) {
-    if (FENCE.test(lines[line])) inFence = !inFence;
-  }
-  return inFence;
+  let fence = null;
+  for (let line = 0; line < index && line < lines.length; line += 1) fence = fenceAfter(lines[line], fence).fence;
+  return fence;
 }
 
-export function tokenizeLine(text, inFence) {
-  if (FENCE.test(text)) return { tokens: [whole(text, "md-fence")], inFence: !inFence };
-  if (inFence) return { tokens: [whole(text, "md-code-block")], inFence };
+// { fence: the state after this line, cls: the whole line's class, or null for an ordinary line }
+function fenceAfter(text, fence) {
+  if (fence === "math") return { fence: endsMath(text) ? null : "math", cls: "md-math" };
+  if (FENCE.test(text)) return { fence: fence === "code" ? null : "code", cls: "md-fence" };
+  if (fence === "code") return { fence, cls: "md-code-block" };
+  const quote = MATH_OPENER.exec(text);
+  const opener = quote && readMathOpener(text.slice(quote[0].length));
+  if (opener) return { fence: opener.closed ? null : "math", cls: "md-math" };
+  return { fence: null, cls: null };
+}
+
+export function tokenizeLine(text, fence) {
+  const state = fenceAfter(text, fence);
+  if (state.cls) return { tokens: [whole(text, state.cls)], fence: state.fence };
   const heading = /^(#{1,6})(\s|$)/.exec(text);
-  if (heading) return { tokens: [whole(text, `md-h${heading[1].length}`)], inFence };
-  if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(text)) return { tokens: [whole(text, "md-hr")], inFence };
+  if (heading) return { tokens: [whole(text, `md-h${heading[1].length}`)], fence: null };
+  if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(text)) return { tokens: [whole(text, "md-hr")], fence: null };
   const tokens = [];
   let from = 0;
   const quote = /^\s*(>\s?)+/.exec(text);
@@ -38,7 +49,7 @@ export function tokenizeLine(text, inFence) {
     }
   }
   tokens.push(...inlineTokens(text));
-  return { tokens, inFence };
+  return { tokens, fence: null };
 }
 
 function whole(text, cls) {
@@ -55,7 +66,7 @@ const INLINE = [
   { regex: /~~(?=\S)(.+?)(?<=\S)~~/g, cls: "md-strike" },
 ];
 
-// Inline code first: nothing inside backticks is coloured any other way.
+// Inline code and maths first: nothing inside them is coloured any other way.
 function inlineTokens(text) {
   const tokens = [];
   const code = [];
@@ -63,6 +74,10 @@ function inlineTokens(text) {
   for (let match = codeRegex.exec(text); match; match = codeRegex.exec(text)) {
     code.push([match.index, match.index + match[0].length]);
     tokens.push({ from: match.index, to: match.index + match[0].length, cls: "md-code" });
+  }
+  for (const [from, to] of mathSpans(text, code)) {
+    code.push([from, to]);
+    tokens.push({ from, to, cls: "md-math" });
   }
   const links = [];
   const overlaps = (ranges, from, to) => ranges.some(([start, end]) => from < end && to > start);
@@ -81,4 +96,27 @@ function inlineTokens(text) {
     }
   }
   return tokens;
+}
+
+// "$...$" and "$$...$$" outside code spans, by the renderer's own rules (markdown/math.js).
+function mathSpans(text, code) {
+  const spans = [];
+  for (let at = 0; at < text.length; at += 1) {
+    const char = text[at];
+    const inCode = code.find(([from, to]) => at >= from && at < to);
+    if (inCode) {
+      at = inCode[1] - 1;
+    } else if (char === "\\") {
+      at += 1;
+    } else if (char === "$") {
+      const found = readInlineMath(text, at);
+      if (found) {
+        spans.push([at, found.end]);
+        at = found.end - 1;
+      } else if (text[at + 1] === "$") {
+        at += 1;
+      }
+    }
+  }
+  return spans;
 }

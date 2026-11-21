@@ -5,6 +5,7 @@
 import { FOOTNOTE_START } from "./footnotes.js";
 import { isSpaceOrTab } from "./lines.js";
 import { readListMarker, sameListKind } from "./lists.js";
+import { readMathOpener } from "./math.js";
 import { takeReferences } from "./references.js";
 import { fitRow, readDelimiterRow, splitRow } from "./tables.js";
 
@@ -64,6 +65,20 @@ function fencedCode(parser) {
   line.advanceNextNonspace();
   line.advanceOffset(match[0].length);
   return LEAF; // the rest of this line, the info string, becomes the first "line"
+}
+
+// "$$" opens a maths block; what follows it on the line is the first line of TeX.
+function mathBlock(parser) {
+  const line = parser.line;
+  const opener = !line.indented && readMathOpener(line.rest());
+  if (!opener) return NONE;
+  parser.closeUnmatchedBlocks();
+  const math = parser.addChild("math");
+  math.closed = opener.closed;
+  math.fenceOffset = line.indent;
+  line.advanceNextNonspace();
+  line.advanceOffset(2);
+  return LEAF;
 }
 
 function footnoteDefinition(parser, container) {
@@ -158,6 +173,7 @@ function indentedCode(parser) {
 export const BLOCK_STARTS = [
   blockQuote,
   atxHeading,
+  mathBlock,
   fencedCode,
   footnoteDefinition,
   table,
