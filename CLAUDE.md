@@ -207,3 +207,6 @@ how the app is launched.
   Manager as `pythonw.exe`; `http://127.0.0.1:8765/api/ping` answers when it is running.
 - Python 3.11.1. Browser: Chrome. Add `127.0.0.1` under Settings, Performance, "Always keep
   these sites active" so Memory Saver never unloads the app's tab.
+- Vimium (and similar Vim extensions) catches Escape in text fields before the page sees it,
+  so the editor stays in insert mode. Exclude `127.0.0.1` in the extension's settings
+  (2026-11-21). The page cannot win this: the extension's handler runs first.

@@ -21,7 +21,7 @@ Features in build order. "build feature" takes the first unchecked item.
   repositories), notes that nest under other notes (hierarchy designed with Tyson), and
   [[wiki links]] that resolve to notes in that hierarchy; the editor opens and saves real notes
   in place of the scratch buffer (done 2026-11-21)
-- [ ] Escape in insert mode is not putting me in normal mode.
+- [x] Escape in insert mode is not putting me in normal mode. (done 2026-11-21)
 - [ ] Images: paste from the clipboard and drag-and-drop, stored in SQLite, downscaled above
   ~1600 px wide (needs notes in SQLite)
 - [ ] Export a note as one self-contained .html file (:export): images inlined, diagrams as SVG,
