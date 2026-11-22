@@ -3,10 +3,15 @@ JSON body. A record's title and text are its note's (/api/note/rename, /api/note
 
 GET  /api/records             -> {records: [{id, kind, day, people: [person ids],
                                  answered (questions only: 'YYYY-MM-DD' or '' while open)}]}
-POST /api/record/create       {parent_id, kind, title, day}  -> {note, record}
-                              (kind: decision | question; parent: a hub, or a meeting in one)
+                                 source_id, quote, quote_found}]}
+POST /api/record/create       {parent_id, kind, title, day, source_id?, quote?}  -> {note, record}
+                              (kind: decision | question; parent: a hub, or a note or meeting
+                              in one; the record goes directly under the hub, and comes from
+                              source_id (default: the parent, unless that is the hub), made
+                              from the text quote there)
 POST /api/record/date         {id, day}                      -> record
-POST /api/record/answer       {id, day}                      -> record (questions only)
+POST /api/record/answer       {id, day, text?}               -> record (questions only; text is
+                                                                added to the question's note)
 POST /api/record/reopen       {id}                           -> record (questions only)
 POST /api/record/with         {id, person_ids}               -> {record, added: [person ids]}
 POST /api/record/unwith       {id, person_id}                -> record
@@ -19,7 +24,7 @@ from paradigm.db.notes_repo import NoteRepository, TitleTaken
 from paradigm.db.records_repo import (BadKind, BadTitle, BadWhen, HubArchived, NotAHub,
                                       NotAPerson, NotAQuestion, NotARecord, NotAnswered, NotFound,
                                       NotInvolved, RecordRepository)
-from paradigm.web.requests import BadRequest, int_field, int_list_field, read_json
+from paradigm.web.requests import BadRequest, int_field, int_list_field, optional_int_field, read_json
 from paradigm.web.router import Router
 
 _STATUS = {NotFound: 404, NotInvolved: 404, TitleTaken: 409, NotARecord: 400, NotAQuestion: 400,
@@ -48,7 +53,8 @@ class RecordsApi:
     def create(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)
         note_id, record = self._records.create(int_field(payload, "parent_id"), payload.get("kind"),
-                                               payload.get("title"), payload.get("day"))
+                                               payload.get("title"), payload.get("day"),
+                                               optional_int_field(payload, "source_id"), payload.get("quote", ""))
         return {"note": self._notes.get(note_id), "record": record}
 
     def date(self, req: BaseHTTPRequestHandler) -> Dict:
@@ -57,7 +63,7 @@ class RecordsApi:
 
     def answer(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)
-        return self._records.answer(int_field(payload, "id"), payload.get("day"))
+        return self._records.answer(int_field(payload, "id"), payload.get("day"), payload.get("text", ""))
 
     def reopen(self, req: BaseHTTPRequestHandler) -> Dict:
         return self._records.reopen(int_field(read_json(req), "id"))

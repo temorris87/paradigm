@@ -23,7 +23,7 @@ class LinksApiTest(unittest.TestCase):
         status, payload = self.running.post_json(
             "/api/links/index", {"entries": [{"id": entry["id"], "version": entry["version"], "links": ["A"]}]})
         self.assertEqual((status, payload), (200, {"stored": [entry["id"]]}))
-        self.assertEqual(self.index(), {"links": [{"id": entry["id"], "targets": ["A"]}], "stale": []})
+        self.assertEqual(self.index(), {"links": [{"id": entry["id"], "targets": ["A"]}], "mentions": [], "stale": []})
 
     def test_save_and_create_carry_links(self) -> None:
         status, note = self.running.post_json("/api/note/create",

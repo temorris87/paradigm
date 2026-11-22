@@ -1,5 +1,5 @@
 import { HubPage } from "../../static/js/hubs/hub-page.js";
-import { HUB_TABS } from "../../static/js/hubs/hub-tabs.js";
+import { HUB_SECTIONS } from "../../static/js/hubs/hub-sections.js";
 import { NOTE_COMMANDS, runNoteCommand } from "../../static/js/notes/commands.js";
 import { NAV_GROUPS, groupOf, hubsIn, isHub, isPerson, PEOPLE_GROUP } from "../../static/js/notes/hub-groups.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
@@ -7,6 +7,8 @@ import { splitNameRole } from "../../static/js/people/people-commands.js";
 import { PAGE_KEYS, pageAction } from "../../static/js/pages/page-keys.js";
 import { People, filterOptions, filterPeople, findPerson, hubLinks, peopleOn, rolesText } from "../../static/js/people/people-model.js";
 import { peoplePage } from "../../static/js/people/people-page.js";
+import { Meetings } from "../../static/js/meetings/meetings-model.js";
+import { Records } from "../../static/js/records/records-model.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
 const T = "2026-11-21T12:00:00.000Z";
@@ -30,7 +32,7 @@ const PEOPLE = [
   { id: 13, org: "", job: "", email: "", hubs: [] },
 ];
 const ctx = () => ({ tree: new NoteTree(NOTES), people: new People(PEOPLE) });
-const tab = (key) => HUB_TABS.find((each) => each.key === key);
+const tab = (key) => HUB_SECTIONS.find((each) => each.key === key);
 
 test("people: a person is a top-level note in the People group, not a hub", () => {
   const { tree } = ctx();
@@ -67,18 +69,19 @@ test("people: an area lists the people on its projects too, once each", () => {
   assertEqual(peopleOn(tree, people, tree.get(2)).map((e) => e.person.title).join(), "Jane Doe,Ann Lee");
 });
 
-test("people tabs: People on a hub, Hubs and Notes on a person", () => {
-  const c = ctx();
+test("people sections: People on a hub; Active and Archived on a person", () => {
+  const c = { ...ctx(), meetings: new Meetings(), records: new Records() };
   const rows = tab("people").rows(c, c.tree.get(2));
   assertEqual(rows.map((r) => `${r.title}|${r.detail}${r.muted ? "~" : ""}`).join(),
     "Jane Doe|Lead · Northwind · Data engineer,Ann Lee|SME · Acme~");
   assertEqual(tab("people").empty({ kind: "resource" }), "No people on this resource yet");
-  const hubs = tab("hubs").rows(c, c.tree.get(10));
-  assertEqual(hubs.map((r) => `${r.title}|${r.detail}${r.muted ? "~" : ""}`).join(),
-    "Operations|Sponsor · Area,Rollout|Lead · Project,Old plan|Lead · Project · archived~");
-  assertEqual(tab("hubs").empty(c.tree.get(13)), "Cy Young is on no hubs yet");
-  assertEqual(tab("notes").rows(c, c.tree.get(10)).map((r) => r.title).join(), "1:1 notes");
-  assertEqual(tab("notes").empty(c.tree.get(13)), "No notes under Cy Young yet");
+  const live = tab("active").rows(c, c.tree.get(10));
+  assertEqual(live.map((r) => `${r.title}|${r.detail}`).join(), "Operations|Area · Sponsor,Rollout|Project · Lead");
+  assertEqual(live[0].actions.map((a) => a.key).join(), "role,remove");
+  const gone = tab("archived").rows(c, c.tree.get(10));
+  assertEqual(gone.map((r) => `${r.title}${r.muted ? "~" : ""}`).join(), "Old plan~");
+  assertTrue(tab("archived").folded, "Archived starts folded");
+  assertEqual(tab("active").empty(c.tree.get(13)), "Cy Young is on nothing live yet");
 });
 
 test("people: filters combine; a hub filter on an area includes its projects", () => {
@@ -246,7 +249,7 @@ test("people page: keys move, open, reach the name box and leave", () => withPeo
   assertEqual(opened.join(), "10,11");
 }));
 
-test("person page: the person line and the Hubs tab", () => {
+test("person page: the card and the Active, Archived and Backlinks sections", () => {
   const page = document.createElement("main");
   const line = document.createElement("div");
   const section = document.createElement("section");
@@ -255,16 +258,16 @@ test("person page: the person line and the Hubs tab", () => {
   try {
     const hub = new HubPage({ page, line, section, onOpen: () => {}, onLeave: () => {} });
     hub.show(ctx(), 10);
-    assertEqual(line.textContent, "Person·Northwind·Data engineer·jane@example.com✎");
-    assertEqual([...section.querySelectorAll("[role=tab]")].map((t) => t.textContent).join(), "Notes,Hubs,Meetings,Decisions,Questions");
+    assertEqual(line.textContent, "Person·jane@example.com·Northwind·Data engineer✎");
+    assertEqual([...section.querySelectorAll(".hub__label")].map((t) => t.textContent).join(), "Active,Archived,Backlinks");
     hub.show(ctx(), 13);
     assertEqual(line.textContent, "Person·Add details");
     hub.show(ctx(), 12);
     assertTrue(line.textContent.startsWith("Archived·Person"), line.textContent);
     hub.show(ctx(), 14);
-    assertTrue(section.hidden, "a note under a person has no panel");
+    assertTrue(section.hidden, "a note under a person has no sections");
   } finally {
     page.remove();
-    ["paradigm.hub.size", "paradigm.hub.tabs"].forEach((key) => localStorage.removeItem(key));
+    localStorage.removeItem("paradigm.hub.folds");
   }
 });

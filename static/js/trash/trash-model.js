@@ -3,7 +3,7 @@
 //
 //   trashRows(trash, tree, { title }) -> [{ id, title, where, when, inside, blocked }]
 //     trash: what trashApi.list() answered ({ entries, days }); title: the search box
-import { dayOf } from "../hubs/hub-tabs.js";
+import { dayOf } from "../hubs/hub-sections.js";
 import { groupForKind, isRecordKind } from "../notes/hub-groups.js";
 import { whereText } from "../notes/note-actions.js";
 import { titleKey } from "../notes/titles.js";

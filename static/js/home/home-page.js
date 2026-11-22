@@ -55,8 +55,9 @@ export class HomePage {
     return group;
   }
 
-  row({ id, cells, group, indent }, sectionIndex) {
-    const classes = ["home__row", group && "home__row--group", indent && "home__row--indent"].filter(Boolean).join(" ");
+  row({ id, cells, group, indent, muted }, sectionIndex) {
+    const classes = ["home__row", group && "home__row--group", indent && "home__row--indent", muted && "home__row--muted"]
+      .filter(Boolean).join(" ");
     const node = element("div", classes);
     node.append(...cells.map(([className, text]) => element("span", `home__cell ${className}`, text)));
     if (id === null) return node;

@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="/css/breadcrumb.css">
   <link rel="stylesheet" href="/css/topbar.css">
   <link rel="stylesheet" href="/css/navigator.css">
+  <link rel="stylesheet" href="/css/markdown.css">
   <link rel="stylesheet" href="/css/hub.css">
   <link rel="stylesheet" href="/css/list-page.css">
   <link rel="stylesheet" href="/css/home.css">
@@ -35,6 +36,12 @@
         <button type="button" class="topbar__page topbar__meetings" title="Every meeting">Meetings</button>
       </header>
       <div class="hub-line" hidden></div>
+      <!-- A meeting's agenda: a second text box over the minutes (hidden on other notes). -->
+      <div class="app__agenda" hidden>
+        <div class="field-label field-label--agenda" id="agenda-label"></div>
+        <pd-editor class="app__agenda-editor" compact aria-labelledby="agenda-label" aria-label="Agenda"></pd-editor>
+      </div>
+      <div class="field-label field-label--main" id="note-label"></div>
       <pd-editor class="app__editor" aria-label="Note"></pd-editor>
       <section class="hub" aria-label="Hub sections" hidden></section>
       <section class="home" aria-label="Home" hidden></section>

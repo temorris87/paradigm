@@ -1,13 +1,16 @@
-// The buttons on the hub line (hub-line.js): a fact that can be changed is drawn as a button,
+// The buttons on the card (hub-line.js): a fact that can be changed is drawn as a button,
 // or gets a small ✎ + × beside it. They only report the click; what it does is the app's
 // (static/js/hubs/hub-actions.js), passed in as controls:
 //
-//   { file(button, hub), area(project), details(person), when(meeting), day(record),
-//     answer(button, question), addWith(record), dropWith(record, person) }
+//   { file(button, hub), area(project), status(button, project), due(project),
+//     addPerson(hub), details(person), when(meeting), addAttendee(meeting),
+//     dropAttendee(meeting, person), day(record), answer(button, question), addWith(record),
+//     dropWith(record, person) }
 //
 // Tests and pages without actions get NO_CONTROLS: the buttons are drawn and do nothing.
 export const NO_CONTROLS = Object.freeze({
-  file() {}, area() {}, details() {}, when() {}, day() {}, answer() {}, addWith() {}, dropWith() {},
+  file() {}, area() {}, status() {}, due() {}, addPerson() {}, details() {}, when() {}, addAttendee() {},
+  dropAttendee() {}, day() {}, answer() {}, addWith() {}, dropWith() {},
 });
 
 /** A fact drawn as a button: "Project ▾", "Tue 2026-11-24 14:00". */

@@ -54,7 +54,7 @@ class LinkRepositoryTest(unittest.TestCase):
         one = self.notes.create(None, "One", "[[A]]")
         two = self.notes.create(None, "Two", "[[B]]")
         self.notes.save(two["id"], "[[C]]", 1)
-        stored = self.links.catch_up([(one["id"], 1, ["A"]), (two["id"], 1, ["B"])])
+        stored = self.links.catch_up([(one["id"], 1, ["A"], []), (two["id"], 1, ["B"], [])])
         self.assertEqual(stored, [one["id"]])
         self.assertEqual(self.targets(), {one["id"]: ["A"]})
         self.assertEqual(self.stale_ids(), [two["id"]])

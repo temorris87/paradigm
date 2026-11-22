@@ -1,5 +1,5 @@
 import { HubPage } from "../../static/js/hubs/hub-page.js";
-import { HUB_TABS, tabsFor } from "../../static/js/hubs/hub-tabs.js";
+import { HUB_SECTIONS, sectionsFor } from "../../static/js/hubs/hub-sections.js";
 import { CATCH_UP_BATCH, LinkIndex } from "../../static/js/notes/link-index.js";
 import { Links, linksInto, wikiTargets } from "../../static/js/notes/links.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
@@ -25,7 +25,7 @@ const LINKS = [
   { id: 99, targets: ["Style guide"] },
 ];
 const tree = () => new NoteTree(NOTES);
-const linked = HUB_TABS.find((tab) => tab.key === "linked");
+const linked = HUB_SECTIONS.find((section) => section.key === "linked");
 
 test("links: wiki link texts skip code spans and fences", () => {
   assertEqual(wikiTargets("[[A]] `[[B]]`\n\n```\n[[C]]\n```\n\n[[D#H|d]]").join(), "A,D");
@@ -47,11 +47,11 @@ test("links: a link counts where it resolves today", () => {
   assertEqual(linksInto(tree(), links, tree().get(3)).length, 0, "links inside a hub are its own");
 });
 
-test("links: the Linked from tab on resources, last", () => {
+test("links: the Linked from section on resources, last", () => {
   const t = tree();
-  const tabs = tabsFor(t.get(1));
-  assertEqual(tabs.at(-1).key, "linked");
-  assertTrue(!tabsFor(t.get(3)).some((tab) => tab.key === "linked"), "not on projects yet");
+  const sections = sectionsFor(t.get(1));
+  assertEqual(sections.at(-1).key, "linked");
+  assertTrue(!sectionsFor(t.get(3)).some((section) => section.key === "linked"), "not on projects yet");
   const rows = linked.rows({ tree: t, links: new Links(LINKS) }, t.get(1));
   assertEqual(rows.map((r) => r.detail).join(" | "),
     "to Colours · Pilot · 2026-11-21 | Pilot · 2026-11-20 | 2026-11-22 · archived");
@@ -60,13 +60,13 @@ test("links: the Linked from tab on resources, last", () => {
   assertEqual(linked.empty(t.get(9)), "Nothing links to Second yet. Write [[Second]] in any note.");
 });
 
-test("links: the hub page passes the links to the tab", () => {
+test("links: the hub page passes the links to the section", () => {
   const page = document.createElement("main");
-  const hub = new HubPage({ page, line: document.createElement("div"), section: document.createElement("section"),
-    onOpen: () => {}, onLeave: () => {} });
+  const section = document.createElement("section");
+  const hub = new HubPage({ page, line: document.createElement("div"), section, onOpen: () => {}, onLeave: () => {} });
   hub.show({ tree: tree(), links: new Links(LINKS) }, 1);
-  hub.selectTab(hub.tabs.findIndex((tab) => tab.key === "linked"));
-  assertEqual(hub.rows.map((r) => r.id).join(), "5,4,6");
+  const titles = [...section.querySelectorAll(".hub__section--linked .hub__title")].map((n) => n.textContent);
+  assertEqual(titles.join(), "2026-11-19 Kickoff,Rollout,Old");
 });
 
 test("links: a save sends the body's links and remembers them", async () => {

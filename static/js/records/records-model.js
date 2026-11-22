@@ -1,28 +1,35 @@
 // Decisions and questions read together with the notes tree. A record's title, place and
 // archived state are its note's (in the tree); its day, answer day and people come from
-// /api/records. Its hub is its top-level note, and it counts only while that is a hub; one
-// under a meeting came from that meeting. Pure.
+// /api/records. Its hub is its top-level note (it sits directly under it), and it counts only
+// while that is a hub. It came from its source note (source_id): a meeting, or a note in the
+// hub where its text was selected (quote). Pure.
 //
 //   const records = new Records(await recordsApi.list());
-//   records.get(id)                         { id, kind, day, people: [person ids], answered }
+//   records.get(id)                         { id, kind, day, people: [person ids], answered,
+//                                           source_id, quote, quote_found }
 //   recordsOn(tree, records, owner, kind)   [entry] for a hub (an area: its projects' too), a
 //                                           meeting (the ones under it) or a person (the
 //                                           ones they're on); entry: { note, record, hub,
-//                                           meeting, archived }
+//                                           meeting, source, archived }
+//   recordsFrom(tree, records, sourceId)    the records made from a note, for its highlights
 //   peopleOf(tree, records, id)             their notes, by name
 //   isOpen(record)                          a question not answered yet
 //   allOfKind(tree, records, kind)          every entry of a kind, unsorted; questionOrder
 // Decisions come newest first; questions open first (oldest first: they've waited longest),
 // then answered ones (newest answer first). Those in archived hubs come last.
-import { hubOf, isArchived, isPerson, meetingOf } from "../notes/hub-groups.js";
+import { hubOf, isArchived, isMeeting, isPerson, meetingOf } from "../notes/hub-groups.js";
 import { titleKey } from "../notes/titles.js";
 import { hubScope } from "../people/people-model.js";
 
-const NO_RECORD = Object.freeze({ kind: "", day: "", people: [], answered: "" });
+const NO_RECORD = Object.freeze({ kind: "", day: "", people: [], answered: "", source_id: null, quote: "", quote_found: false });
 
 export class Records {
   constructor(list = []) {
-    this.byId = new Map(list.map((record) => [record.id, { answered: "", ...record }]));
+    this.byId = new Map(list.map((record) => [record.id, { ...NO_RECORD, ...record }]));
+  }
+
+  all() {
+    return [...this.byId.values()];
   }
 
   /** The record; no day and no one when the list hasn't caught up. */
@@ -39,13 +46,22 @@ export function isOpen(record) {
 export function allOfKind(tree, records, kind) {
   return tree.inOrder()
     .filter((note) => note.kind === kind && hubOf(tree, note.id))
-    .map((note) => ({
-      note,
-      record: records.get(note.id),
-      hub: hubOf(tree, note.id),
-      meeting: meetingOf(tree, note.id),
-      archived: isArchived(tree, note.id),
-    }));
+    .map((note) => {
+      const record = records.get(note.id);
+      const source = tree.get(record.source_id);
+      return {
+        note,
+        record,
+        hub: hubOf(tree, note.id),
+        source,
+        meeting: source && (isMeeting(tree, source.id) ? source : meetingOf(tree, source.id)),
+        archived: isArchived(tree, note.id),
+      };
+    });
+}
+
+export function recordsFrom(tree, records, sourceId) {
+  return records.all().filter((record) => record.source_id === sourceId && tree.has(record.id));
 }
 
 export function recordsOn(tree, records, owner, kind) {
@@ -57,7 +73,7 @@ export function recordsOn(tree, records, owner, kind) {
 
 function belongsTo(tree, owner) {
   if (owner.kind === "person") return (entry) => entry.record.people.includes(owner.id);
-  if (owner.kind === "meeting") return (entry) => tree.path(entry.note.id).some((note) => note.id === owner.id);
+  if (owner.kind === "meeting") return (entry) => entry.meeting?.id === owner.id;
   const scope = hubScope(tree, owner.id);
   return (entry) => scope.includes(entry.hub.id);
 }

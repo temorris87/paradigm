@@ -20,15 +20,19 @@ class MeetingsApiTest(unittest.TestCase):
         self.post("/api/note/kind", {"id": hub["id"], "kind": "project"})
         made = self.post("/api/meeting/create", {"hub_id": hub["id"], "name": "Kickoff", "day": "2026-11-24"})
         meeting = made["meeting"]["id"]
-        self.assertEqual((made["note"]["title"], made["note"]["kind"]), ("2026-11-24 Kickoff", "meeting"))
+        self.assertEqual((made["note"]["title"], made["note"]["kind"]), ("Kickoff", "meeting"))
         updated = self.post("/api/meeting/update", {"id": meeting, "day": "2026-11-25", "time": "10:00"})
-        self.assertEqual((updated["meeting"]["time"], updated["note"]["title"]), ("10:00", "2026-11-25 Kickoff"))
+        self.assertEqual((updated["meeting"]["time"], updated["note"]["title"]), ("10:00", "Kickoff"))
         jane = self.post("/api/person/create", {"name": "Jane Doe"})["person"]["id"]
         attended = self.post("/api/meeting/attend", {"meeting_id": meeting, "person_ids": [jane]})
         self.assertEqual(attended["added"], [jane])
         status, payload = self.running.get_json("/api/meetings")
         self.assertEqual(status, 200)
-        self.assertEqual(payload["meetings"], [{"id": meeting, "day": "2026-11-25", "time": "10:00", "attendees": [jane]}])
+        self.assertEqual(payload["meetings"], [{"id": meeting, "day": "2026-11-25", "time": "10:00", "attendees": [jane],
+                                                "agenda_version": 1}])
+        saved = self.post("/api/meeting/agenda", {"id": meeting, "agenda": "1. Dates", "version": 1, "links": []})
+        self.assertEqual(saved["version"], 2)
+        self.post("/api/meeting/agenda", {"id": meeting, "agenda": "old", "version": 1}, 409)
         self.assertEqual(self.post("/api/meeting/unattend", {"meeting_id": meeting, "person_id": jane})["attendees"], [])
 
     def test_errors(self) -> None:

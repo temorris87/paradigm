@@ -32,14 +32,18 @@ export const notesApi = {
   get: (id) => call(`/api/note?id=${encodeURIComponent(id)}`),
   create: (parentId, title, body = "") => call("/api/note/create", { payload: { parent_id: parentId, title, body } }),
   // keepalive: a save sent as the tab closes still arrives (bodies up to 64 KB). links: the
-  // [[wiki link]] texts in body (links.js wikiTargets); left out, the server marks them stale.
-  save: ({ id, body, version, force = false, links }, { keepalive = false } = {}) =>
-    call("/api/note/save", { payload: { id, body, version, force, links }, keepalive }),
+  // [[wiki link]] texts in body (links.js wikiTargets), mentions its @mentions (mentions.js);
+  // links left out, the server marks the note stale.
+  save: ({ id, body, version, force = false, links, mentions }, { keepalive = false } = {}) =>
+    call("/api/note/save", { payload: { id, body, version, force, links, mentions }, keepalive }),
   rename: (id, title) => call("/api/note/rename", { payload: { id, title } }),
   // kind: "project" | "area" | "resource" | null (the Inbox)
   setKind: (id, kind) => call("/api/note/kind", { payload: { id, kind } }),
   // areaId: an area's id, or null for no area (projects only)
   setArea: (id, areaId) => call("/api/note/area", { payload: { id, area_id: areaId } }),
+  // a project's status: "active" | "on_hold"; its due date "YYYY-MM-DD" ("" for none)
+  setStatus: (id, status) => call("/api/note/status", { payload: { id, status } }),
+  setDue: (id, due) => call("/api/note/due", { payload: { id, due } }),
   // -> { note, inside }: archived true archives a hub with everything in it, false restores it
   archive: (id, archived) => call("/api/note/archive", { payload: { id, archived } }),
   move: (id, parentId) => call("/api/note/move", { payload: { id, parent_id: parentId } }),
@@ -52,8 +56,9 @@ export const imagesApi = {
 };
 
 export const linksApi = {
-  // -> { links: [{ id, targets }], stale: [{ id, version, body }] }
+  // -> { links: [{ id, targets }], mentions: [{ id, field, line, name, context }],
+  //      stale: [{ id, version, body, agenda? }] }
   list: () => call("/api/links"),
-  // entries: [{ id, version, links }] -> { stored: [ids] }
+  // entries: [{ id, version, links, mentions }] -> { stored: [ids] }
   catchUp: (entries) => call("/api/links/index", { payload: { entries } }),
 };

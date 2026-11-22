@@ -2,13 +2,15 @@
 // It owns what the editor's events mean here: saving, following [[links]], note commands.
 //
 //   const app = new NotesApp({ editor, tree: ulElement, crumbs: navElement, navigator,
-//                              hub: { page, line, section }, home: { section, button },
+//                              hub: { page, line, section, labels },
+//                              agenda: { editor, field }, home: { section, button },
 //                              people: { section, button }, meetings: { section, button },
 //                              api: notesApi, imagesApi, peopleApi, meetingsApi, recordsApi,
 //                              linksApi });
 //
 // navigator (static/js/layout/navigator.js) holds the tree: a drawer on narrow windows.
-// hub (static/js/hubs/hub-page.js) is the hub line and section panel shown on a hub.
+// hub (static/js/hubs/hub-page.js) is the card, the text boxes' labels and the sections.
+// agenda is a meeting's second text box (agenda.js), over the minutes.
 // home, people and meetings are the Home, People and Meetings pages (static/js/home/,
 // static/js/people/people-page.js, static/js/meetings/meetings-page.js), drawn in place of
 // the note while the URL has &home, &people or &meetings (page-views.js; the note stays
@@ -16,15 +18,21 @@
 //   await app.start();
 import { exportNote } from "../export/export.js";
 import { HomePage } from "../home/home-page.js";
-import { hubLineControls, hubTabActions, newMeetingDialog } from "../hubs/hub-actions.js";
+import { hubLineControls, hubTabActions, newMeetingDialog, personDetailsDialog } from "../hubs/hub-actions.js";
 import { HubPage } from "../hubs/hub-page.js";
 import { showBreadcrumb } from "./breadcrumb.js";
 import { registerNoteCommands, runNoteCommand } from "./commands.js";
 import { headingLine } from "./headings.js";
 import { groupOf, isArchived, topNoteOf } from "./hub-groups.js";
+import { AgendaField } from "./agenda.js";
+import { mentionCompletions, openMention, rewriteMentionsOf } from "./mention-actions.js";
+import { personForMention } from "./mentions.js";
+import { openSelectionMenu } from "./selection-menu.js";
+import { renderMarkdown } from "../markdown/index.js";
+import { recordsFrom } from "../records/records-model.js";
 import { NoteImages } from "./images.js";
 import { goToNote, newNoteDialog, openNoteMenu, whereText } from "./note-actions.js";
-import { LinkIndex } from "./link-index.js";
+import { LinkIndex, indexTexts } from "./link-index.js";
 import { NoteSession } from "./note-session.js";
 import { resolveLink, splitTarget } from "./resolve.js";
 import { NoteTree } from "./tree-model.js";
@@ -42,7 +50,7 @@ import { newPersonDialog } from "../people/people-page.js";
 const UNSAVED = "E37: No write since last change (:w to save, or ! to drop the changes)";
 
 export class NotesApp {
-  constructor({ editor, tree, crumbs, navigator, hub, home, people, meetings, trash, goTo, api, trashApi, imagesApi, peopleApi,
+  constructor({ editor, tree, crumbs, navigator, hub, agenda = {}, home, people, meetings, trash, goTo, api, trashApi, imagesApi, peopleApi,
                 meetingsApi, recordsApi, linksApi, location = window.location, history = window.history,
                 today = () => new Date() }) {
     this.editor = editor;
@@ -64,11 +72,25 @@ export class NotesApp {
     this.tree = new NoteTree();
     // Each save sends the note's [[wiki links]] along, for the Linked from tabs.
     this.linkIndex = new LinkIndex({ api: linksApi, onChange: () => this.redraw() });
+    // A meeting's index holds its agenda's links and mentions too: each save sends both.
     this.session = new NoteSession({
-      api: { ...api, save: this.linkIndex.saver(api.save) },
-      onChange: () => { this.editor.modified = this.session.dirty; },
+      api: { ...api, save: this.linkIndex.saver(api.save, (note) => ({ body: note.body, agenda: this.agenda.textFor(note.id) })) },
+      onChange: () => {
+        this.editor.modified = this.session.dirty;
+        this.markEmptyFields();
+      },
       onError: (error) => this.fail(error),
     });
+    this.agendaEditor = agenda.editor ?? null;
+    this.agenda = new AgendaField({
+      editor: this.agendaEditor,
+      field: agenda.field ?? null,
+      api: meetingsApi ?? {},
+      saver: (save) => this.linkIndex.saver(save, (note) => ({ body: this.editor.value, agenda: note.body })),
+      onChange: () => this.markEmptyFields(),
+      onError: (error) => this.fail(error),
+    });
+    this.labels = hub.labels ?? {};
     this.treeView = new TreeView(tree, {
       // The drawer closes even when the note can't be opened, so the editor's message shows.
       onOpen: (id) => this.open(id).finally(() => this.navigator.hide()),
@@ -78,10 +100,11 @@ export class NotesApp {
     });
     this.hubPage = new HubPage({
       ...hub,
-      onOpen: (id) => this.guard(this.openFromHub(id)),
+      onOpen: (id, at) => this.guard(this.openFromHub(id, at)),
       onLeave: () => this.editor.focus(),
       controls: hubLineControls(this),
       tabActions: hubTabActions(this),
+      renderSnippet: (markdown) => renderMarkdown(markdown, this.markdownOptions()),
     });
     const onPage = { onOpen: (id) => this.guard(this.open(id)), onLeave: () => this.leaveView() };
     this.views = new PageViews({
@@ -105,6 +128,9 @@ export class NotesApp {
     goTo?.addEventListener("click", () => this.guard(goToNote(this)));
     this.images = new NoteImages({ editor, api: imagesApi, currentId: () => this.currentId });
     registerNoteCommands(editor);
+    if (this.agendaEditor) registerNoteCommands(this.agendaEditor);
+    editor.completions = mentionCompletions(this);
+    if (this.agendaEditor) this.agendaEditor.completions = editor.completions;
     this.listen();
   }
 
@@ -116,10 +142,19 @@ export class NotesApp {
     const editor = this.editor;
     editor.addEventListener("change", (event) => this.session.edited(event.detail.value));
     editor.addEventListener("save", (event) => this.saveCommand(Boolean(event.detail.force)));
-    editor.addEventListener("quit", () => editor.showMessage("Nothing to close here: closing the tab stops Paradigm"));
-    editor.addEventListener("ex", (event) => this.guard(runNoteCommand(this, event.detail)));
-    editor.addEventListener("link", (event) => this.guard(this.followLink(event.detail.target)));
     editor.addEventListener("files", (event) => this.guard(this.images.add(event.detail)));
+    for (const box of [editor, this.agendaEditor].filter(Boolean)) {
+      box.addEventListener("quit", () => box.showMessage("Nothing to close here: closing the tab stops Paradigm"));
+      box.addEventListener("ex", (event) => this.guard(runNoteCommand(this, event.detail)));
+      box.addEventListener("link", (event) => this.guard(this.followLink(event.detail.target)));
+      box.addEventListener("mention", (event) => this.guard(openMention(this, event.detail.name)));
+      box.addEventListener("highlight", (event) => this.guard(this.openRecord(event.detail.data)));
+      box.addEventListener("menu", (event) => {
+        event.preventDefault();
+        openSelectionMenu(this, event.detail, box);
+      });
+    }
+    this.agendaEditor?.addEventListener("save", (event) => this.guard(this.saveAgendaCommand(Boolean(event.detail.force))));
     // A file dropped beside the editor would make the browser open it in place of the app.
     for (const type of ["dragover", "drop"]) {
       window.addEventListener(type, (event) => {
@@ -127,9 +162,15 @@ export class NotesApp {
       });
     }
     window.addEventListener("popstate", () => this.guard(this.openFromUrl("none")));
-    window.addEventListener("pagehide", () => this.session.saveBeforeLeaving());
+    window.addEventListener("pagehide", () => {
+      this.session.saveBeforeLeaving();
+      this.agenda.saveBeforeLeaving();
+    });
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden") this.session.save().catch(() => {});
+      if (document.visibilityState === "hidden") {
+        this.session.save().catch(() => {});
+        this.agenda.save().catch(() => {});
+      }
       else this.guard(this.refreshTree());
     });
     // Another tab may have made or moved notes.
@@ -191,6 +232,7 @@ export class NotesApp {
       const note = await this.api.get(id);
       this.session.open(note);
       this.editor.value = note.body;
+      this.agenda.open(note);
       if (history === "push") this.history.pushState({}, "", noteUrl(id));
       if (history === "replace") this.history.replaceState({}, "", noteUrl(id));
       this.redraw();
@@ -200,14 +242,15 @@ export class NotesApp {
   }
 
   async saveBeforeSwitching() {
-    if (!this.session.dirty) return true;
+    if (!this.session.dirty && !this.agenda.dirty) return true;
     try {
       await this.session.save();
+      await this.agenda.save();
     } catch (error) {
       this.fail(error);
       return false;
     }
-    if (this.session.dirty) {
+    if (this.session.dirty || this.agenda.dirty) {
       this.fail(new Error(UNSAVED));
       return false;
     }
@@ -226,7 +269,7 @@ export class NotesApp {
     showBreadcrumb(this.crumbs, this.tree, id, (target) => this.guard(this.open(target)),
       (button) => openNoteMenu(this, button));
     const ctx = { tree: this.tree, people: this.people, meetings: this.meetings, records: this.records,
-      links: this.linkIndex.links, trash: this.trash };
+      links: this.linkIndex.links, mentions: this.linkIndex.mentions, trash: this.trash, today: this.today() };
     const trashed = this.trash.entries.length;
     if (this.trashButton) this.trashButton.textContent = trashed ? `Trash · ${trashed}` : "Trash";
     this.hubPage.show(ctx, id);
@@ -234,7 +277,47 @@ export class NotesApp {
     const title = this.tree.get(id)?.title ?? this.session.note?.title;
     document.title = title ? `${title} - Paradigm` : "Paradigm";
     // Links resolve against the tree and the open note, so both changing means new links.
-    this.editor.markdownOptions = { resolveWikiLink: (link) => this.wikiHref(link) };
+    const options = this.markdownOptions();
+    const highlights = this.highlightsOf(id);
+    for (const box of [this.editor, this.agendaEditor].filter(Boolean)) {
+      box.markdownOptions = options;
+      box.highlights = highlights;
+    }
+    this.markEmptyFields();
+  }
+
+  markdownOptions() {
+    return {
+      resolveWikiLink: (link) => this.wikiHref(link),
+      resolveMention: (name) => {
+        const person = personForMention(this.tree, name);
+        return person ? { href: noteUrl(person.id), archived: isArchived(this.tree, person.id) } : null;
+      },
+    };
+  }
+
+  /** The text the open note's decisions and questions were made from, for its badges. */
+  highlightsOf(id) {
+    if (id === null) return [];
+    const labels = { decision: "Decision", question: "Question" };
+    return recordsFrom(this.tree, this.records, id).filter((record) => record.quote).map((record) => ({
+      text: record.quote,
+      label: record.kind === "question" && record.answered ? "Answered" : labels[record.kind],
+      title: `${labels[record.kind]}: ${this.tree.get(record.id).title} (click to open)`,
+      data: record.id,
+    }));
+  }
+
+  /** The labels over the text boxes show their hint while the box is empty. */
+  markEmptyFields() {
+    if (this.labels.main) this.labels.main.dataset.empty = String(!this.editor.value.trim());
+    if (this.labels.agenda && this.agendaEditor) this.labels.agenda.dataset.empty = String(!this.agendaEditor.value.trim());
+  }
+
+  async openRecord(id) {
+    if (id === null || !this.tree.has(id)) return;
+    await this.open(id);
+    this.editor.focus();
   }
 
   wikiHref(link) {
@@ -258,6 +341,15 @@ export class NotesApp {
   }
 
   // ---- the ex commands (commands.js) ---------------------------------------------------
+
+  async saveAgendaCommand(force) {
+    try {
+      await this.agenda.save({ force });
+      this.agendaEditor.showMessage("Agenda saved");
+    } catch (error) {
+      this.agendaEditor.showMessage(error?.message ?? String(error), { error: true });
+    }
+  }
 
   async saveCommand(force) {
     try {
@@ -358,16 +450,63 @@ export class NotesApp {
     this.editor.showMessage(`"${note.title}"${moved} is now ${group.asWhat}`);
   }
 
-  async openFromHub(id) {
-    await this.open(id);
-    // The next note may be a hub with the panel over it: then the panel keeps the focus.
-    if (this.hubPage.editorHidden) this.hubPage.focus();
-    else this.editor.focus();
+  /** Opens a note from a section row; at: { field, line } puts the cursor there (a mention). */
+  async openFromHub(id, at = null) {
+    const opened = await this.open(id);
+    if (!opened) return;
+    const box = at?.field === "agenda" && this.agendaEditor && this.agenda.id === id ? this.agendaEditor : this.editor;
+    if (at) box.goToLine(at.line);
+    box.focus();
   }
 
   async hubCommand() {
-    if (!this.hubPage.hasPanel) throw new Error("E: this note has no section panel (a hub, a person or a meeting has one)");
+    if (!this.hubPage.hasPanel) throw new Error("E: this note has no sections (a hub, a person or a meeting has them)");
     this.hubPage.focus();
+  }
+
+  async setProjectStatus(id, status) {
+    const note = await this.api.setStatus(id, status);
+    await this.refreshTree();
+    this.editor.showMessage(`"${note.title}" is ${status === "on_hold" ? "on hold" : "active"}`);
+  }
+
+  async setProjectDue(id, due) {
+    const note = await this.api.setDue(id, due);
+    await this.refreshTree();
+    this.editor.showMessage(due ? `"${note.title}" is due ${due}` : `"${note.title}" has no due date`);
+  }
+
+  /** A person's name changed: offer to make their @mentions follow. */
+  offerMentionRewrite(personId, before, after) {
+    return rewriteMentionsOf(this, personId, before, after);
+  }
+
+  /** Rewrites the open note's text (and agenda) in place, as edits: they save as usual.
+   * change(text) -> { text, changed }; returns how many changes were made. */
+  rewriteOpenText(change) {
+    let changed = 0;
+    for (const box of [this.editor, this.agenda.id === this.currentId ? this.agendaEditor : null].filter(Boolean)) {
+      const result = change(box.value);
+      if (!result.changed) continue;
+      box.value = result.text;
+      box.dispatchEvent(new CustomEvent("change", { detail: { value: result.text } }));
+      changed += result.changed;
+    }
+    return changed;
+  }
+
+  /** Saves another note's new text (not the open one), with its index. */
+  async saveOther(note, body, agenda) {
+    await this.api.save({ id: note.id, body, version: note.version, ...indexTexts({ body, agenda: agenda ?? note.agenda }) });
+  }
+
+  async saveOtherAgenda(note, agenda, body) {
+    await this.meetingsApi.saveAgenda({ id: note.id, body: agenda, version: note.agenda_version,
+      ...indexTexts({ body: body ?? note.body, agenda }) });
+  }
+
+  personDetails(id) {
+    return personDetailsDialog(this, this.tree.get(id));
   }
 
   async inAreaCommand(arg) {

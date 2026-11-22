@@ -30,7 +30,8 @@ class PeopleApiTest(unittest.TestCase):
         self.assertTrue(linked["created"])
         status, payload = self.running.get_json("/api/people")
         self.assertEqual(status, 200)
-        self.assertEqual(payload["people"], [{"id": jane, "org": "Northwind", "job": "", "email": "",
+        self.assertEqual(payload["people"], [{"id": jane, "first": "Jane", "last": "Doe", "email": "", "phone": "",
+                                              "org": "Northwind", "job": "",
                                               "hubs": [{"hub_id": hub["id"], "role": "Sponsor"}]}])
         status, tree = self.running.get_json("/api/notes")
         self.assertIn(("Jane Doe", "person"), [(note["title"], note["kind"]) for note in tree["notes"]])

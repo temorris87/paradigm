@@ -1,4 +1,5 @@
-"""What a meeting's date, time and title may be. Pure."""
+"""What a meeting's date and time may be. Pure. (Its title is any note title: meetings in
+one hub may share one, 011_pages.sql.)"""
 from datetime import date
 
 # Keep in step with db/migrations/007_meetings.sql and static/js/meetings/.
@@ -28,15 +29,3 @@ def clean_time(value: object) -> str:
     if int(value[:2]) > 23 or int(value[3:]) > 59:
         raise BadWhen('"{}" is not a time of day'.format(value))
     return value
-
-
-def meeting_title(day: str, name: str) -> str:
-    """'2026-11-24 Kickoff': the date first, so two meetings with one name don't clash and
-    a hub's meetings sort by date."""
-    return "{} {}".format(day, name)
-
-
-def retitle(title: str, old_day: str, new_day: str) -> str:
-    """The title with its leading old date swapped for the new one (unchanged otherwise)."""
-    prefix = old_day + " "
-    return new_day + " " + title[len(prefix):] if title.startswith(prefix) else title

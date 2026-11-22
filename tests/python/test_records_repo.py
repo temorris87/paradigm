@@ -6,7 +6,7 @@ from pathlib import Path
 from paradigm.db.connection import Database
 from paradigm.db.meetings_repo import MeetingRepository
 from paradigm.db.migrate import migrate
-from paradigm.db.notes_repo import NoteRepository, StaysInAHub, TitleTaken
+from paradigm.db.notes_repo import NoNotesUnder, NoteRepository, StaysInAHub
 from paradigm.db.people_repo import PeopleRepository
 from paradigm.db.records_repo import (BadKind, BadWhen, HubArchived, NotAHub, NotAPerson, NotAQuestion,
                                       NotARecord, NotAnswered, NotInvolved, RecordRepository)
@@ -35,7 +35,8 @@ class RecordRepositoryTest(unittest.TestCase):
 
     def test_a_decision_is_a_note_under_the_hub(self) -> None:
         note_id, record = self.records.create(self.hub, "decision", "Use Postgres", "2026-11-24")
-        self.assertEqual(record, {"id": note_id, "kind": "decision", "day": "2026-11-24", "people": []})
+        self.assertEqual(record, {"id": note_id, "kind": "decision", "day": "2026-11-24", "people": [],
+                                  "source_id": None, "quote": "", "quote_found": False})
         note = self.notes.get(note_id)
         self.assertEqual((note["parent_id"], note["title"], note["kind"]), (self.hub, "Use Postgres", "decision"))
 
@@ -50,16 +51,38 @@ class RecordRepositoryTest(unittest.TestCase):
         with self.assertRaises(NotAQuestion):
             self.records.answer(self.make(), "2026-11-25")
 
-    def test_under_a_meeting(self) -> None:
+    def test_from_a_meeting_it_sits_under_the_hub(self) -> None:
         meeting = self.meetings.create(self.hub, "Kickoff", "2026-11-24")[0]
         decision = self.make(parent=meeting)
-        self.assertEqual(self.notes.get(decision)["parent_id"], meeting)
+        self.assertEqual(self.notes.get(decision)["parent_id"], self.hub)
+        self.assertEqual(self.records.get(decision)["source_id"], meeting)
+        with self.assertRaises(NoNotesUnder):
+            self.notes.create(meeting, "Minutes part two")
 
-    def test_only_under_a_hub_or_a_meeting(self) -> None:
+    def test_from_selected_text_in_a_note_deep_in_the_hub(self) -> None:
+        plan = self.notes.create(self.hub, "Plan")["id"]
+        deep = self.notes.create(plan, "Detail", "Who owns the feed? Nobody yet")["id"]
+        question, record = self.records.create(deep, "question", "Who owns the feed?", "2026-11-24",
+                                               quote="Who owns the feed?")
+        self.assertEqual(self.notes.get(question)["parent_id"], self.hub)
+        self.assertEqual((record["source_id"], record["quote"], record["quote_found"]), (deep, "Who owns the feed?", True))
+        self.notes.save(deep, "It changed", self.notes.get(deep)["version"])
+        self.assertFalse(self.records.get(question)["quote_found"])
+        other = self.notes.create(None, "Elsewhere")["id"]
+        with self.assertRaises(NotAHub):
+            self.records.create(self.hub, "question", "Why?", "2026-11-24", source_id=other)
+
+    def test_answer_text_goes_into_its_note(self) -> None:
+        question = self.make("question", "Who owns the feed?")
+        self.records.answer(question, "2026-11-25", "  Priya, from December ")
+        self.assertEqual(self.notes.get(question)["body"], "Priya, from December\n")
+        self.records.answer(question, "2026-11-26", "Confirmed")
+        self.assertEqual(self.notes.get(question)["body"], "Priya, from December\n\nConfirmed\n")
+
+    def test_only_from_a_hub_or_a_note_in_one(self) -> None:
         loose = self.notes.create(None, "Loose")["id"]
-        inside = self.notes.create(self.hub, "Plan")["id"]
         person = self.people.create("Jane Doe")[0]
-        for parent in (loose, inside, person):
+        for parent in (loose, person):
             with self.assertRaises(NotAHub):
                 self.make(parent=parent)
         self.notes.set_archived(self.hub, True)
@@ -72,8 +95,7 @@ class RecordRepositoryTest(unittest.TestCase):
         with self.assertRaises(BadWhen):
             self.make(day="tomorrow")
         self.make()
-        with self.assertRaises(TitleTaken):
-            self.make()
+        self.make()  # records may share a title
         with self.assertRaises(NotARecord):
             self.records.set_day(self.hub, "2026-11-24")
 
@@ -114,6 +136,9 @@ class RecordRepositoryTest(unittest.TestCase):
             self.notes.set_kind(decision, "project")
         self.notes.set_kind(other, "area")
         self.assertEqual(self.notes.move(decision, other)["parent_id"], other)
+        inside = self.notes.create(other, "Plan")["id"]
+        with self.assertRaises(StaysInAHub):
+            self.notes.move(decision, inside)
 
 
 if __name__ == "__main__":

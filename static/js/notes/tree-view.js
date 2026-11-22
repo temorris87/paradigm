@@ -1,5 +1,6 @@
 // The notes tree in the sidebar: an ARIA tree with one focusable item (roving tabindex).
 // The top level is the hub groups and the Archive (hub-groups.js); the notes sit under them.
+// Meetings, decisions and questions are not in it: their hub's page lists them.
 //
 //   const view = new TreeView(ulElement, { onOpen(id), onLeave(), onAdd(group), onAddUnder(id) });
 //   view.show(tree, currentId)     draw (the open note's group and ancestors are expanded)
@@ -9,7 +10,7 @@
 // branches are open and which groups are folded are remembered in localStorage, per browser.
 // A group folded by default (the Archive) is remembered the other way round: when unfolded.
 // Each group a note can be made in (not the Archive) has a + on its heading: onAdd(group).
-import { ARCHIVE_GROUP, NAV_GROUPS, RECORD_LABELS, groupForKind, groupOf, hubsIn, isRecordKind } from "./hub-groups.js";
+import { ARCHIVE_GROUP, NAV_GROUPS, groupForKind, groupOf, hubsIn, isRecordKind } from "./hub-groups.js";
 import { treeAction } from "./tree-keys.js";
 
 const STORE_KEY = "paradigm.tree.expanded";
@@ -41,13 +42,15 @@ export class TreeView {
     });
   }
 
-  show(tree, currentId) {
+  show(tree, openId) {
     this.tree = tree;
+    // A meeting, decision or question isn't in the tree: its hub stands for it.
+    const currentId = isRecordKind(tree.get(openId)?.kind) ? tree.parentId(openId) : openId;
     // A note just opened, or the open note moved: show where it is now.
     const parent = tree.parentId(currentId);
     const group = groupOf(tree, currentId);
     if (currentId !== this.current || parent !== this.currentParent || group !== this.currentGroup) {
-      for (const id of tree.ancestors(currentId)) this.expanded.add(id);
+      for (const id of tree.ancestors(openId)) this.expanded.add(id);
       if (group) this.folded.delete(group.key);
       this.active = currentId;
     }
@@ -62,6 +65,12 @@ export class TreeView {
     const hadFocus = this.root.contains(document.activeElement);
     this.root.replaceChildren(...NAV_GROUPS.map((group) => this.groupItem(group)));
     if (hadFocus) this.focus();
+  }
+
+  /** A note's children as the tree shows them: meetings, decisions and questions are left out
+   * (they live on their hub's page). */
+  kids(id) {
+    return this.tree.children(id).filter((note) => !isRecordKind(note.kind));
   }
 
   exists(key) {
@@ -97,17 +106,17 @@ export class TreeView {
 
   // withKind: an archived hub says what it was ("Project"), since its group is the Archive.
   item(note, level, withKind = false) {
-    const kids = this.tree.children(note.id);
+    const kids = this.kids(note.id);
     const open = kids.length > 0 && this.expanded.has(note.id);
     const li = this.treeItem(note.id, level);
     li.setAttribute("aria-selected", String(note.id === this.current));
     li.dataset.id = String(note.id);
     if (kids.length) li.setAttribute("aria-expanded", String(open));
     let kind = null;
-    if (withKind || isRecordKind(note.kind)) {
+    if (withKind) {
       kind = document.createElement("span");
       kind.className = "tree__kind";
-      kind.textContent = isRecordKind(note.kind) ? RECORD_LABELS[note.kind] : groupForKind(note.kind).label;
+      kind.textContent = groupForKind(note.kind).label;
     }
     li.append(this.row(kids.length ? (open ? "▾" : "▸") : "", note.title, "tree__title", kind));
     if (open) li.append(this.group(kids, level + 1));
@@ -161,7 +170,7 @@ export class TreeView {
     const walk = (notes) => {
       for (const note of notes) {
         out.push(note.id);
-        if (this.expanded.has(note.id)) walk(this.tree.children(note.id));
+        if (this.expanded.has(note.id)) walk(this.kids(note.id));
       }
     };
     for (const group of NAV_GROUPS) {
@@ -173,7 +182,7 @@ export class TreeView {
 
   /** What a row holds: a group's hubs, or a note's children. */
   childKeys(key) {
-    if (!isGroupKey(key)) return this.tree.children(key).map((note) => note.id);
+    if (!isGroupKey(key)) return this.kids(key).map((note) => note.id);
     const group = NAV_GROUPS.find((each) => groupKey(each) === key);
     return hubsIn(this.tree, group).map((note) => note.id);
   }

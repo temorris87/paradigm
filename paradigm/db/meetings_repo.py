@@ -1,20 +1,23 @@
-"""Every read and write of meetings and their attendees. The only code that knows the
-meetings and meeting_people tables. A meeting's title is its note's (NoteRepository renames
-it); its hub is its top-level note."""
+"""Every read and write of meetings, their agendas and their attendees. The only code that
+knows the meetings and meeting_people tables. A meeting's title is its note's
+(NoteRepository renames it), and its minutes are the note's text; it sits directly under its
+hub. Meetings in one hub may share a title (a weekly one keeps its name)."""
 import sqlite3
-from typing import Callable, Dict, Iterable, List, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 from paradigm.db.connection import Database
-from paradigm.db.notes_repo import NoteError, NotFound, check_title_free, live_note_row, utc_now
+from paradigm.db.links_repo import store_links
+from paradigm.db.notes_repo import Conflict, NoteError, NotFound, live_note_row, utc_now
 from paradigm.db.people_repo import NotAHub, NotAPerson, person_row
 from paradigm.notes.hubs import HUB_KINDS
-from paradigm.notes.meetings import BadWhen, clean_day, clean_time, meeting_title, retitle
+from paradigm.notes.meetings import BadWhen, clean_day, clean_time
+from paradigm.notes.mentions import Mention
 from paradigm.notes.titles import BadTitle, clean_title
 
 Clock = Callable[[], str]
 
 __all__ = ["MeetingRepository", "NotAMeeting", "HubArchived", "NotAttending", "NotAHub",
-           "NotAPerson", "BadWhen", "BadTitle", "NotFound"]
+           "NotAPerson", "BadWhen", "BadTitle", "NotFound", "Conflict"]
 
 
 class NotAMeeting(NoteError):
@@ -50,36 +53,50 @@ class MeetingRepository:
             return _meeting(row, _attendees(conn, meeting_id).get(meeting_id, []))
 
     def create(self, hub_id: int, name: object, day: object, time: object = "") -> Tuple[int, Dict]:
-        """A new meeting: a note called '{day} {name}' directly under the hub, and its row.
-        Returns (note id, meeting)."""
+        """A new meeting: a note called name directly under the hub, and its row. Returns
+        (note id, meeting)."""
         day, time = clean_day(day), clean_time(time)
-        title = clean_title(meeting_title(day, clean_title(name)))
+        title = clean_title(name)
         now = self._clock()
         with self._db.transaction() as conn:
             hub = _hub_row(conn, hub_id)
             if hub["archived_at"] is not None:
                 raise HubArchived('"{}" is archived (:restore it first)'.format(hub["title"]))
-            check_title_free(conn, hub_id, title, None)
             note_id = conn.execute(
-                "INSERT INTO notes (parent_id, title, body, created_at, updated_at) VALUES (?, ?, '', ?, ?)",
+                "INSERT INTO notes (parent_id, title, body, created_at, updated_at, title_shared) "
+                "VALUES (?, ?, '', ?, ?, 1)",
                 (hub_id, title, now, now),
             ).lastrowid
             conn.execute("INSERT INTO meetings (note_id, day, time) VALUES (?, ?, ?)", (note_id, day, time))
         return note_id, self.get(note_id)
 
     def update(self, meeting_id: int, day: object, time: object = "") -> Dict:
-        """Sets the date and time. A title starting with the old date gets the new one."""
+        """Sets the date and time."""
         day, time = clean_day(day), clean_time(time)
         with self._db.transaction() as conn:
-            row = _meeting_row(conn, meeting_id)
-            note = live_note_row(conn, meeting_id)
-            title = retitle(note["title"], row["day"], day)
-            if title != note["title"]:
-                check_title_free(conn, note["parent_id"], title, meeting_id)
-                conn.execute("UPDATE notes SET title = ?, updated_at = ? WHERE id = ?",
-                             (title, self._clock(), meeting_id))
+            _meeting_row(conn, meeting_id)
             conn.execute("UPDATE meetings SET day = ?, time = ? WHERE note_id = ?", (day, time, meeting_id))
         return self.get(meeting_id)
+
+    def save_agenda(self, meeting_id: int, agenda: str, base_version: int, force: bool = False,
+                    links: Optional[List[str]] = None, mentions: Optional[List[Mention]] = None) -> Dict:
+        """Saves the agenda, as NoteRepository.save does a body (its own version, Conflict if
+        another tab saved it meanwhile). links and mentions are the whole meeting's (minutes
+        and agenda), stored with the note's version. Returns {id, agenda, agenda_version}."""
+        with self._db.transaction() as conn:
+            row = _meeting_row(conn, meeting_id)
+            if row["agenda_version"] != base_version and not force:
+                raise Conflict(row["agenda_version"])
+            version = row["agenda_version"]
+            if row["agenda"] != agenda:
+                version += 1
+                conn.execute("UPDATE meetings SET agenda = ?, agenda_version = ? WHERE note_id = ?",
+                             (agenda, version, meeting_id))
+                conn.execute("UPDATE notes SET updated_at = ? WHERE id = ?", (self._clock(), meeting_id))
+            if links is not None:
+                note = live_note_row(conn, meeting_id)
+                store_links(conn, meeting_id, note["version"], links, mentions or [])
+        return {"id": meeting_id, "agenda": agenda, "version": version}
 
     def attend(self, meeting_id: int, person_ids: Iterable[int]) -> Tuple[Dict, List[int]]:
         """Makes people attend. Returns (meeting, the ids that were not attending before)."""
@@ -109,7 +126,8 @@ class MeetingRepository:
 
 
 def _meeting(row: sqlite3.Row, attendees: List[int]) -> Dict:
-    return {"id": row["note_id"], "day": row["day"], "time": row["time"], "attendees": attendees}
+    return {"id": row["note_id"], "day": row["day"], "time": row["time"], "attendees": attendees,
+            "agenda_version": row["agenda_version"]}
 
 
 def _attendees(conn: sqlite3.Connection, meeting_id=None) -> Dict[int, List[int]]:

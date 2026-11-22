@@ -1,16 +1,20 @@
 """Every read and write of decisions, questions and the people involved in them. The only
-code that knows the decisions, questions and record_people tables. A record's title and
-text are its note's (NoteRepository renames and saves them). It sits under a hub, or under a
-meeting in a hub, which it then came from."""
+code that knows the decisions, questions, record_people and record_sources tables. A
+record's title and text are its note's (NoteRepository renames and saves them). It sits
+directly under its hub and remembers where it came from: the note or meeting it was made in
+(source), and the text it was made from there (quote). Records may share titles."""
 import sqlite3
-from typing import Callable, Dict, Iterable, List, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 from paradigm.db.connection import Database
-from paradigm.db.notes_repo import NoteError, NotFound, check_title_free, live_note_row, top_note_row, utc_now
+from paradigm.db.notes_repo import NoteError, NotFound, live_note_row, top_note_row, utc_now
 from paradigm.db.people_repo import NotAHub, NotAPerson, person_row
 from paradigm.notes.hubs import HUB_KINDS
 from paradigm.notes.records import BadKind, BadWhen, clean_day, clean_record_kind
 from paradigm.notes.titles import BadTitle, clean_title
+
+MAX_QUOTE_LENGTH = 5000
+MAX_ANSWER_LENGTH = 20000
 
 Clock = Callable[[], str]
 
@@ -48,13 +52,9 @@ class RecordRepository:
         self._clock = clock
 
     def list(self) -> List[Dict]:
-        """Every decision and question whose note is live, with its live people."""
+        """Every decision and question whose note is live, with its live people and source."""
         with self._db.reading() as conn:
-            rows = conn.execute(
-                "SELECT note_id, 'decision' AS kind, day, '' AS answered FROM decisions "
-                "UNION ALL SELECT note_id, 'question', day, answered FROM questions "
-                "ORDER BY note_id"
-            ).fetchall()
+            rows = conn.execute(_ROWS + " ORDER BY note_id").fetchall()
             live = {row[0] for row in conn.execute("SELECT id FROM notes WHERE deleted_at IS NULL")}
             people = _people(conn)
         return [_record(row, people.get(row["note_id"], [])) for row in rows if row["note_id"] in live]
@@ -64,19 +64,29 @@ class RecordRepository:
             row = _record_row(conn, record_id)
             return _record(row, _people(conn, record_id).get(record_id, []))
 
-    def create(self, parent_id: int, kind: object, title: object, day: object) -> Tuple[int, Dict]:
-        """A new decision or question: a note called title under the parent (a hub, or a
-        meeting in one), and its row. Returns (note id, record)."""
+    def create(self, owner_id: int, kind: object, title: object, day: object,
+               source_id: Optional[int] = None, quote: object = "") -> Tuple[int, Dict]:
+        """A new decision or question: a note called title directly under the hub of owner
+        (a hub, or a note or meeting in one), and its row. It came from source (default: the
+        owner, when that is not the hub itself), made from the text quote there. Returns
+        (note id, record)."""
         kind, day, title = clean_record_kind(kind), clean_day(day), clean_title(title)
+        quote = _clean_quote(quote)
         now = self._clock()
         with self._db.transaction() as conn:
-            _check_parent(conn, parent_id)
-            check_title_free(conn, parent_id, title, None)
+            hub = _check_owner(conn, owner_id)
+            if source_id is None and owner_id != hub["id"]:
+                source_id = owner_id
+            if source_id is not None and top_note_row(conn, source_id)["id"] != hub["id"]:
+                raise NotAHub('A record comes from a note in its own hub, "{}"'.format(hub["title"]))
             note_id = conn.execute(
-                "INSERT INTO notes (parent_id, title, body, created_at, updated_at) VALUES (?, ?, '', ?, ?)",
-                (parent_id, title, now, now),
+                "INSERT INTO notes (parent_id, title, body, created_at, updated_at, title_shared) "
+                "VALUES (?, ?, '', ?, ?, 1)",
+                (hub["id"], title, now, now),
             ).lastrowid
             conn.execute("INSERT INTO {} (note_id, day) VALUES (?, ?)".format(_TABLES[kind]), (note_id, day))
+            conn.execute("INSERT INTO record_sources (note_id, source_id, quote) VALUES (?, ?, ?)",
+                         (note_id, source_id, quote))
         return note_id, self.get(note_id)
 
     def set_day(self, record_id: int, day: object) -> Dict:
@@ -87,12 +97,20 @@ class RecordRepository:
             conn.execute("UPDATE {} SET day = ? WHERE note_id = ?".format(_TABLES[row["kind"]]), (day, record_id))
         return self.get(record_id)
 
-    def answer(self, question_id: int, day: object) -> Dict:
-        """Marks a question answered on day (an answered one gets the new day)."""
+    def answer(self, question_id: int, day: object, text: object = "") -> Dict:
+        """Marks a question answered on day (an answered one gets the new day). text, when
+        given, is added at the end of the question's note: its Answer field."""
         day = clean_day(day)
+        if not isinstance(text, str) or len(text) > MAX_ANSWER_LENGTH:
+            raise BadTitle("The answer must be text of at most {} characters".format(MAX_ANSWER_LENGTH))
+        text = text.strip()
         with self._db.transaction() as conn:
             _question_row(conn, question_id)
             conn.execute("UPDATE questions SET answered = ? WHERE note_id = ?", (day, question_id))
+            if text:
+                body = live_note_row(conn, question_id)["body"].rstrip()
+                conn.execute("UPDATE notes SET body = ?, version = version + 1, updated_at = ? WHERE id = ?",
+                             ((body + "\n\n" if body else "") + text + "\n", self._clock(), question_id))
         return self.get(question_id)
 
     def reopen(self, question_id: int) -> Dict:
@@ -130,8 +148,30 @@ class RecordRepository:
         return self.get(record_id)
 
 
+# Each record with its source, and whether the quote is still in the source's text.
+_ROWS = (
+    "SELECT kinds.*, record_sources.source_id, ifnull(record_sources.quote, '') AS quote, "
+    "(record_sources.quote != '' AND (instr(source.body, record_sources.quote) > 0 "
+    " OR instr(ifnull(meetings.agenda, ''), record_sources.quote) > 0)) AS quote_found "
+    "FROM (SELECT note_id, 'decision' AS kind, day, '' AS answered FROM decisions "
+    "      UNION ALL SELECT note_id, 'question', day, answered FROM questions) AS kinds "
+    "LEFT JOIN record_sources ON record_sources.note_id = kinds.note_id "
+    "LEFT JOIN notes AS source ON source.id = record_sources.source_id AND source.deleted_at IS NULL "
+    "LEFT JOIN meetings ON meetings.note_id = record_sources.source_id"
+)
+
+
+def _clean_quote(quote: object) -> str:
+    if quote is None:
+        return ""
+    if not isinstance(quote, str) or len(quote) > MAX_QUOTE_LENGTH:
+        raise BadTitle("The quoted text must be text of at most {} characters".format(MAX_QUOTE_LENGTH))
+    return quote.strip()
+
+
 def _record(row: sqlite3.Row, people: List[int]) -> Dict:
-    record = {"id": row["note_id"], "kind": row["kind"], "day": row["day"], "people": people}
+    record = {"id": row["note_id"], "kind": row["kind"], "day": row["day"], "people": people,
+              "source_id": row["source_id"], "quote": row["quote"], "quote_found": bool(row["quote_found"])}
     if row["kind"] == "question":
         record["answered"] = row["answered"]
     return record
@@ -152,11 +192,7 @@ def _people(conn: sqlite3.Connection, record_id=None) -> Dict[int, List[int]]:
 
 def _record_row(conn: sqlite3.Connection, record_id: int) -> sqlite3.Row:
     note = live_note_row(conn, record_id)
-    row = conn.execute(
-        "SELECT note_id, 'decision' AS kind, day, '' AS answered FROM decisions WHERE note_id = ? "
-        "UNION ALL SELECT note_id, 'question', day, answered FROM questions WHERE note_id = ?",
-        (record_id, record_id),
-    ).fetchone()
+    row = conn.execute(_ROWS + " WHERE kinds.note_id = ?", (record_id,)).fetchone()
     if row is None:
         raise NotARecord('"{}" is not a decision or a question'.format(note["title"]))
     return row
@@ -169,14 +205,12 @@ def _question_row(conn: sqlite3.Connection, question_id: int) -> sqlite3.Row:
     return row
 
 
-def _check_parent(conn: sqlite3.Connection, parent_id: int) -> None:
-    """A record goes under a live hub, or under a meeting in one."""
-    parent = live_note_row(conn, parent_id)
-    top = top_note_row(conn, parent_id)
-    is_hub = parent["parent_id"] is None and not parent["is_person"] and parent["kind"] in HUB_KINDS
-    in_hub = not top["is_person"] and top["kind"] in HUB_KINDS
-    if not (is_hub or (parent["is_meeting"] and in_hub)):
-        raise NotAHub('"{}" is not a hub or a meeting: decisions and questions go in a project, '
-                      'an area or a resource'.format(parent["title"]))
+def _check_owner(conn: sqlite3.Connection, owner_id: int) -> sqlite3.Row:
+    """A record is made from a live hub, or a note or meeting in one. Returns the hub."""
+    owner = live_note_row(conn, owner_id)
+    top = top_note_row(conn, owner_id)
+    if top["is_person"] or top["kind"] not in HUB_KINDS:
+        raise NotAHub('"{}" is not in a hub: file it in a project or an area first'.format(owner["title"]))
     if top["archived_at"] is not None:
         raise HubArchived('"{}" is archived (:restore it first)'.format(top["title"]))
+    return top

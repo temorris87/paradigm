@@ -1,5 +1,5 @@
 import { HubPage } from "../../static/js/hubs/hub-page.js";
-import { HUB_TABS, tabsFor } from "../../static/js/hubs/hub-tabs.js";
+import { HUB_SECTIONS, sectionsFor } from "../../static/js/hubs/hub-sections.js";
 import { PERIODS, localDay, parseDay, parseTime, periodRange, whenText } from "../../static/js/meetings/meeting-days.js";
 import { splitNames, splitWhen } from "../../static/js/meetings/meetings-commands.js";
 import { Meetings, allMeetings, attendeesOf, filterMeetings, meetingFilterHubs, meetingsOn, meetingsWith, shortTitle } from "../../static/js/meetings/meetings-model.js";
@@ -35,8 +35,8 @@ const MEETINGS = [
   { id: 23, day: "2025-06-01", time: "", attendees: [10, 99] },
 ];
 const PEOPLE = [{ id: 10, org: "Northwind", job: "Data engineer", email: "", hubs: [] }];
-const ctx = () => ({ tree: new NoteTree(NOTES), people: new People(PEOPLE), meetings: new Meetings(MEETINGS) });
-const tab = (key) => HUB_TABS.find((each) => each.key === key);
+const ctx = () => ({ tree: new NoteTree(NOTES), people: new People(PEOPLE), meetings: new Meetings(MEETINGS), today: TODAY });
+const tab = (key) => HUB_SECTIONS.find((each) => each.key === key);
 const titles = (entries) => entries.map((e) => e.note.title).join();
 
 test("meeting days: local days, words, times and the weekday", () => {
@@ -101,23 +101,19 @@ test("meetings: the page's filters combine", () => {
   assertEqual(meetingFilterHubs(tree, meetings).map((h) => h.title).join(), "Operations,Rollout");
 });
 
-test("meeting tabs: Meetings on hubs and people, Attendees and Notes on a meeting", () => {
-  const c = ctx();
-  assertEqual(tabsFor(c.tree.get(2)).map((t) => t.key).join(), "notes,people,meetings,decisions,questions");
-  assertEqual(tabsFor(c.tree.get(20)).map((t) => t.key).join(), "attendees,notes,decisions,questions");
-  assertEqual(tabsFor(c.tree.get(10)).map((t) => t.key).join(), "notes,hubs,meetings,decisions,questions");
+test("meeting sections: Meetings on hubs (upcoming first), what a person attended", () => {
+  const c = { ...ctx(), records: { all: () => [], get: () => ({ people: [] }) } };
+  assertEqual(sectionsFor(c.tree.get(20)).map((t) => t.key).join(), "questions,decisions");
   const rows = (key, id) => tab(key).rows(c, c.tree.get(id)).map((r) => `${r.title}|${r.detail}${r.muted ? "~" : ""}`).join(",");
-  assertEqual(rows("meetings", 1), "Kickoff|Tue 2026-11-24 14:00 · on Rollout · 2 attendees,"
-    + "Review|Sat 2026-11-21 09:30 · no attendees,Planning|Tue 2026-11-17 · on Rollout · 1 attendee");
-  assertEqual(rows("meetings", 10), "Kickoff|Tue 2026-11-24 14:00 · Rollout · 2 attendees,"
-    + "Planning|Tue 2026-11-17 · Rollout · 1 attendee,Old sync|Sun 2025-06-01 · Old plan · 1 attendee · archived~");
-  assertEqual(rows("attendees", 20), "Bob Lee|,Jane Doe|Northwind · Data engineer");
-  assertEqual(tab("notes").rows(c, c.tree.get(2)).map((r) => r.title).join(), "Plan", "meetings have their own tab");
-  assertEqual(tab("notes").rows(c, c.tree.get(20)).map((r) => r.title).join(), "Actions");
+  assertEqual(rows("meetings", 1), "Review|Sat 2026-11-21 09:30 · no attendees,"
+    + "Kickoff|Tue 2026-11-24 14:00 · on Rollout · 2 attendees,Planning|Tue 2026-11-17 · on Rollout · 1 attendee");
+  assertEqual(rows("active", 10), "Kickoff|Meeting · Tue 2026-11-24 14:00 · Rollout,Planning|Meeting · Tue 2026-11-17 · Rollout");
+  assertEqual(rows("archived", 10), "Old sync|Meeting · Sun 2025-06-01 · Old plan~");
+  assertEqual(tab("notes").rows(c, c.tree.get(2)).map((r) => r.title).join(), "Plan", "meetings have their own section");
   assertEqual(tab("meetings").empty({ kind: "resource" }), "No meetings in this resource yet");
 });
 
-test("meeting page: the meeting line and its tabs", () => {
+test("meeting page: the card and its sections", () => {
   const page = document.createElement("main");
   const line = document.createElement("div");
   const section = document.createElement("section");
@@ -127,15 +123,15 @@ test("meeting page: the meeting line and its tabs", () => {
   try {
     const hub = new HubPage({ page, line, section, onOpen: (id) => opened.push(id), onLeave: () => {} });
     hub.show(ctx(), 20);
-    assertEqual(line.textContent, "Meeting·Tue 2026-11-24 14:00·in Rollout·2 attendees");
+    const rows = [...line.querySelectorAll(".hub-line__row")].map((row) => row.textContent);
+    assertEqual(rows.join("|"), "Meeting·Tue 2026-11-24 14:00·in Rollout|Attendees:Bob Lee×, Jane Doe×+ Add attendee");
     line.querySelector(".hub-line__link").click();
     assertEqual(opened.join(), "2");
-    assertEqual([...section.querySelectorAll("[role=tab]")].map((t) => t.textContent).join(), "Attendees,Notes,Decisions,Questions");
-    hub.show(ctx(), 24);
-    assertTrue(section.hidden, "a note under a meeting has no panel");
+    assertEqual([...section.querySelectorAll(".hub__label")].map((t) => t.textContent).join(), "Questions,Decisions");
+    assertEqual(page.dataset.page, "meeting");
   } finally {
     page.remove();
-    ["paradigm.hub.size", "paradigm.hub.tabs"].forEach((key) => localStorage.removeItem(key));
+    localStorage.removeItem("paradigm.hub.folds");
   }
 });
 

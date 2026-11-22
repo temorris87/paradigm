@@ -5,15 +5,17 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 from paradigm.db.connection import Database
 from paradigm.db.links_repo import store_links
-from paradigm.notes.hubs import HUB_KINDS, BadKind, clean_kind
+from paradigm.notes.hubs import HUB_KINDS, BadKind, BadProjectField, clean_due, clean_kind, clean_status
+from paradigm.notes.mentions import Mention
+from paradigm.notes.people import split_name
 from paradigm.notes.titles import BadTitle, clean_title
 
 Clock = Callable[[], str]
 
 __all__ = ["NoteRepository", "NoteError", "NotFound", "Conflict", "TitleTaken", "BadTitle",
            "HasChildren", "WouldCycle", "LastNote", "BadKind", "NotAProject", "NotAnArea",
-           "NotTopLevel", "NotArchived", "AreaArchived", "IsAPerson", "StaysInAHub",
-           "live_note_row", "check_title_free", "top_note_row"]
+           "NotTopLevel", "NotArchived", "AreaArchived", "IsAPerson", "StaysInAHub", "NoNotesUnder",
+           "BadProjectField", "live_note_row", "check_title_free", "top_note_row", "refuse_notes_under"]
 
 
 class NoteError(Exception):
@@ -73,8 +75,12 @@ class IsAPerson(NoteError):
 
 
 class StaysInAHub(NoteError):
-    """A meeting's, decision's or question's note stays inside a hub: never at the top
-    level, never filed."""
+    """A meeting's, decision's or question's note stays directly under a hub: never at the
+    top level, never filed, never under another note."""
+
+
+class NoNotesUnder(NoteError):
+    """A meeting, decision or question has no notes under it: its page holds its text."""
 
 
 def utc_now() -> str:
@@ -86,7 +92,7 @@ _LIVE = "deleted_at IS NULL"
 # (007_meetings.sql), one with a decisions or questions row a decision or a question
 # (008_decisions.sql): the is_* columns say so.
 _WITH_PERSON = ("SELECT notes.*, people.note_id IS NOT NULL AS is_person, "
-                "meetings.note_id IS NOT NULL AS is_meeting, "
+                "meetings.note_id IS NOT NULL AS is_meeting, meetings.agenda, meetings.agenda_version, "
                 "decisions.note_id IS NOT NULL AS is_decision, "
                 "questions.note_id IS NOT NULL AS is_question FROM notes "
                 "LEFT JOIN people ON people.note_id = notes.id "
@@ -109,9 +115,11 @@ class NoteRepository:
         return [_summary(row) for row in rows]
 
     def all_bodies(self) -> List[str]:
-        """The text of every note, trashed ones too (a note back from the trash keeps its links)."""
+        """The text of every note and meeting agenda, trashed ones too (a note back from the
+        trash keeps its links)."""
         with self._db.reading() as conn:
-            return [row[0] for row in conn.execute("SELECT body FROM notes").fetchall()]
+            bodies = [row[0] for row in conn.execute("SELECT body FROM notes").fetchall()]
+            return bodies + [row[0] for row in conn.execute("SELECT agenda FROM meetings").fetchall()]
 
     def count(self) -> int:
         with self._db.reading() as conn:
@@ -120,17 +128,21 @@ class NoteRepository:
     def get(self, note_id: int) -> Dict:
         with self._db.reading() as conn:
             row = _live_row(conn, note_id)
-        return dict(_summary(row), body=row["body"], created_at=row["created_at"])
+        note = dict(_summary(row), body=row["body"], created_at=row["created_at"])
+        if row["is_meeting"]:
+            note.update(agenda=row["agenda"], agenda_version=row["agenda_version"])
+        return note
 
     def create(self, parent_id: Optional[int], title: object, body: str = "",
-               links: Optional[List[str]] = None) -> Dict:
-        """links: the wiki-link texts in body (009_links.sql); None leaves them to be read
-        later (the note is stale until then)."""
+               links: Optional[List[str]] = None, mentions: Optional[List[Mention]] = None) -> Dict:
+        """links: the wiki-link texts in body (009_links.sql), mentions its @mentions
+        (011_pages.sql); links None leaves both to be read later (the note is stale until
+        then)."""
         title = clean_title(title)
         now = self._clock()
         with self._db.transaction() as conn:
             if parent_id is not None:
-                _live_row(conn, parent_id)
+                _refuse_notes_under(_live_row(conn, parent_id))
             _check_free(conn, parent_id, title, None)
             cursor = conn.execute(
                 "INSERT INTO notes (parent_id, title, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
@@ -138,12 +150,13 @@ class NoteRepository:
             )
             note_id = cursor.lastrowid
             if links is not None:
-                store_links(conn, note_id, 1, links)
+                store_links(conn, note_id, 1, links, mentions or [])
         return self.get(note_id)
 
     def save(self, note_id: int, body: str, base_version: int, force: bool = False,
-             links: Optional[List[str]] = None) -> Dict:
-        """links: as for create, stored with the version the note ends on."""
+             links: Optional[List[str]] = None, mentions: Optional[List[Mention]] = None) -> Dict:
+        """links, mentions: as for create, stored with the version the note ends on. On a
+        meeting they are its whole text's: the agenda's too."""
         with self._db.transaction() as conn:
             row = _live_row(conn, note_id)
             if row["version"] != base_version and not force:
@@ -153,15 +166,20 @@ class NoteRepository:
                 self._change(conn, note_id, "body = ?, version = version + 1", (body,))
                 version += 1
             if links is not None:
-                store_links(conn, note_id, version, links)
+                store_links(conn, note_id, version, links, mentions or [])
         return self.get(note_id)
 
     def rename(self, note_id: int, title: object) -> Dict:
         title = clean_title(title)
         with self._db.transaction() as conn:
             row = _live_row(conn, note_id)
-            _check_free(conn, row["parent_id"], title, note_id)
+            if not row["title_shared"]:
+                _check_free(conn, row["parent_id"], title, note_id)
             self._change(conn, note_id, "title = ?", (title,))
+            if row["is_person"]:
+                # A person's title is their name: keep the first and last names in step.
+                first, last = split_name(title)
+                conn.execute("UPDATE people SET first = ?, last = ? WHERE note_id = ?", (first, last, note_id))
         return self.get(note_id)
 
     def move(self, note_id: int, parent_id: Optional[int]) -> Dict:
@@ -172,10 +190,11 @@ class NoteRepository:
             if _in_hub_only(row):
                 _check_hub_place(conn, row, parent_id)
             if parent_id is not None:
-                _live_row(conn, parent_id)
+                _refuse_notes_under(_live_row(conn, parent_id))
                 if parent_id == note_id or note_id in _ancestors(conn, parent_id):
                     raise WouldCycle("A note cannot go under itself or under a note inside it")
-            _check_free(conn, parent_id, row["title"], note_id)
+            if not row["title_shared"]:
+                _check_free(conn, parent_id, row["title"], note_id)
             # Only top-level notes are hubs: going under another note leaves its group.
             # Only top-level notes are archived: under another note, it shares that one's state.
             if parent_id is not None:
@@ -219,6 +238,22 @@ class NoteRepository:
                 if area["archived_at"] is not None:
                     raise AreaArchived('"{}" is archived (:restore it first)'.format(area["title"]))
             self._change(conn, note_id, "area_id = ?", (area_id,))
+        return self.get(note_id)
+
+    def set_status(self, note_id: int, status: object) -> Dict:
+        """A project's state: active or on_hold."""
+        status = clean_status(status)
+        with self._db.transaction() as conn:
+            _project_row(conn, note_id)
+            self._change(conn, note_id, "status = ?", (status,))
+        return self.get(note_id)
+
+    def set_due(self, note_id: int, due: object) -> Dict:
+        """A project's due date ('YYYY-MM-DD'; '' for none)."""
+        due = clean_due(due)
+        with self._db.transaction() as conn:
+            _project_row(conn, note_id)
+            self._change(conn, note_id, "due = ?", (due,))
         return self.get(note_id)
 
     def set_archived(self, note_id: int, archived: bool) -> Tuple[Dict, int]:
@@ -265,7 +300,7 @@ class NoteRepository:
 def _summary(row: sqlite3.Row) -> Dict:
     return {"id": row["id"], "parent_id": row["parent_id"], "title": row["title"],
             "kind": _kind(row), "area_id": row["area_id"], "archived_at": row["archived_at"],
-            "version": row["version"],
+            "status": row["status"], "due": row["due"], "version": row["version"],
             "updated_at": row["updated_at"]}
 
 
@@ -284,12 +319,25 @@ def _in_hub_only(row: sqlite3.Row) -> bool:
 
 
 def _check_hub_place(conn: sqlite3.Connection, row: sqlite3.Row, parent_id: Optional[int]) -> None:
-    """A meeting, decision or question may move anywhere inside a hub (its hub then
-    changes), nowhere else."""
-    top = None if parent_id is None else _top_row(conn, parent_id)
-    if top is None or top["is_person"] or top["kind"] not in HUB_KINDS:
-        raise StaysInAHub('"{}" is a {}: it goes inside a project, an area or a resource'.format(
+    """A meeting, decision or question may move to another hub (directly under it), nowhere
+    else."""
+    parent = None if parent_id is None else _live_row(conn, parent_id)
+    if parent is None or parent["parent_id"] is not None or parent["is_person"] or parent["kind"] not in HUB_KINDS:
+        raise StaysInAHub('"{}" is a {}: it goes directly in a project, an area or a resource'.format(
             row["title"], _kind(row)))
+
+
+def _refuse_notes_under(parent: sqlite3.Row) -> None:
+    if _in_hub_only(parent):
+        raise NoNotesUnder('"{}" is a {}: it has no notes under it (write in its page instead)'.format(
+            parent["title"], _kind(parent)))
+
+
+def _project_row(conn: sqlite3.Connection, note_id: int) -> sqlite3.Row:
+    row = _live_row(conn, note_id)
+    if row["kind"] != "project" or row["parent_id"] is not None or _in_hub_only(row) or row["is_person"]:
+        raise NotAProject('"{}" is not a project: only a project has a status and a due date'.format(row["title"]))
+    return row
 
 
 def _top_row(conn: sqlite3.Connection, note_id: int) -> sqlite3.Row:
@@ -320,9 +368,10 @@ def _live_row(conn: sqlite3.Connection, note_id: int) -> sqlite3.Row:
 
 def _check_free(conn: sqlite3.Connection, parent_id: Optional[int], title: str,
                 except_id: Optional[int]) -> None:
+    # Meetings, decisions and questions may share titles (title_shared): they never clash.
     row = conn.execute(
         "SELECT id FROM notes WHERE ifnull(parent_id, 0) = ifnull(?, 0) AND title = ? COLLATE NOCASE "
-        "AND id IS NOT ? AND " + _LIVE,
+        "AND id IS NOT ? AND title_shared = 0 AND " + _LIVE,
         (parent_id, title, except_id),
     ).fetchone()
     if row is not None:
@@ -352,3 +401,4 @@ def _subtree(conn: sqlite3.Connection, note_id: int) -> List[int]:
 live_note_row = _live_row
 check_title_free = _check_free
 top_note_row = _top_row
+refuse_notes_under = _refuse_notes_under

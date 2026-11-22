@@ -7,9 +7,11 @@ from paradigm.db.connection import Database
 from paradigm.db.meetings_repo import (BadTitle, BadWhen, HubArchived, MeetingRepository, NotAHub,
                                        NotAMeeting, NotAPerson, NotAttending)
 from paradigm.db.migrate import migrate
-from paradigm.db.notes_repo import StaysInAHub, NoteRepository, TitleTaken
+from paradigm.db.notes_repo import Conflict, NoNotesUnder, StaysInAHub, NoteRepository
 from paradigm.db.people_repo import PeopleRepository
-from paradigm.notes.meetings import clean_day, clean_time, retitle
+from paradigm.db.links_repo import LinkRepository
+from paradigm.notes.meetings import clean_day, clean_time
+from paradigm.notes.mentions import Mention
 
 
 class MeetingRulesTest(unittest.TestCase):
@@ -27,9 +29,6 @@ class MeetingRulesTest(unittest.TestCase):
             with self.assertRaises(BadWhen):
                 clean_time(bad)
 
-    def test_retitle_swaps_only_a_leading_date(self) -> None:
-        self.assertEqual(retitle("2026-11-24 Kickoff", "2026-11-24", "2026-11-25"), "2026-11-25 Kickoff")
-        self.assertEqual(retitle("Kickoff 2026-11-24", "2026-11-24", "2026-11-25"), "Kickoff 2026-11-24")
 
 
 class MeetingRepositoryTest(unittest.TestCase):
@@ -61,17 +60,43 @@ class MeetingRepositoryTest(unittest.TestCase):
     def test_a_meeting_is_a_dated_note_under_its_hub(self) -> None:
         hub = self.hub()
         note_id, meeting = self.meetings.create(hub, "  Kickoff ", "2026-11-24", "14:00")
-        self.assertEqual(meeting, {"id": note_id, "day": "2026-11-24", "time": "14:00", "attendees": []})
+        self.assertEqual(meeting, {"id": note_id, "day": "2026-11-24", "time": "14:00", "attendees": [],
+                                   "agenda_version": 1})
         note = self.notes.get(note_id)
-        self.assertEqual((note["title"], note["parent_id"], note["kind"]), ("2026-11-24 Kickoff", hub, "meeting"))
+        self.assertEqual((note["title"], note["parent_id"], note["kind"]), ("Kickoff", hub, "meeting"))
+        self.assertEqual((note["agenda"], note["agenda_version"]), ("", 1))
         self.assertEqual(self.meetings.list(), [meeting])
 
-    def test_same_name_on_two_days_but_not_one(self) -> None:
+    def test_meetings_in_a_hub_may_share_a_name(self) -> None:
         hub = self.hub()
-        self.meeting(hub, "Weekly sync", "2026-11-24")
-        self.meeting(hub, "Weekly sync", "2026-12-01")
-        with self.assertRaises(TitleTaken):
-            self.meeting(hub, "weekly sync", "2026-11-24")
+        first = self.meeting(hub, "Weekly sync", "2026-11-24")
+        second = self.meeting(hub, "Weekly sync", "2026-11-24")
+        self.assertEqual({self.notes.get(each)["title"] for each in (first, second)}, {"Weekly sync"})
+        self.notes.create(hub, "Weekly sync")  # a note beside them too
+        self.notes.rename(first, "weekly sync")
+
+    def test_a_meeting_has_no_notes_under_it(self) -> None:
+        hub = self.hub()
+        meeting = self.meeting(hub)
+        with self.assertRaises(NoNotesUnder):
+            self.notes.create(meeting, "Part two")
+        loose = self.notes.create(hub, "Loose")["id"]
+        with self.assertRaises(NoNotesUnder):
+            self.notes.move(loose, meeting)
+
+    def test_the_agenda_saves_with_its_own_version(self) -> None:
+        meeting = self.meeting(self.hub())
+        saved = self.meetings.save_agenda(meeting, "1. Dates @Jane", 1, links=["Plan"],
+                                          mentions=[Mention("agenda", 0, "Jane", "1. Dates @Jane")])
+        self.assertEqual(saved, {"id": meeting, "agenda": "1. Dates @Jane", "version": 2})
+        self.assertEqual(self.notes.get(meeting)["version"], 1)
+        with self.assertRaises(Conflict):
+            self.meetings.save_agenda(meeting, "older", 1)
+        self.assertEqual(self.meetings.save_agenda(meeting, "mine", 1, force=True)["version"], 3)
+        index = LinkRepository(self.db).index()
+        self.assertEqual(index["links"], [{"id": meeting, "targets": ["Plan"]}])
+        self.assertEqual(index["mentions"][0]["field"], "agenda")
+        self.assertIn("mine", self.notes.all_bodies())
 
     def test_meetings_go_only_in_a_live_hub(self) -> None:
         inbox = self.notes.create(None, "Loose")["id"]
@@ -89,24 +114,14 @@ class MeetingRepositoryTest(unittest.TestCase):
         with self.assertRaises(BadWhen):
             self.meeting(self.hub("Other"), "X", "tomorrow")
 
-    def test_update_moves_the_date_in_the_title(self) -> None:
+    def test_update_leaves_the_title(self) -> None:
         hub = self.hub()
         meeting = self.meeting(hub, day="2026-11-24")
         got = self.meetings.update(meeting, "2026-11-25", "09:30")
         self.assertEqual((got["day"], got["time"]), ("2026-11-25", "09:30"))
-        self.assertEqual(self.notes.get(meeting)["title"], "2026-11-25 Kickoff")
-        self.notes.rename(meeting, "Kickoff, moved")
+        self.assertEqual(self.notes.get(meeting)["title"], "Kickoff")
         self.meetings.update(meeting, "2026-11-26")
-        self.assertEqual(self.notes.get(meeting)["title"], "Kickoff, moved")
         self.assertEqual(self.meetings.get(meeting)["time"], "")
-
-    def test_update_refuses_a_title_clash(self) -> None:
-        hub = self.hub()
-        self.meeting(hub, day="2026-11-25")
-        meeting = self.meeting(hub, day="2026-11-24")
-        with self.assertRaises(TitleTaken):
-            self.meetings.update(meeting, "2026-11-25")
-        self.assertEqual(self.meetings.get(meeting)["day"], "2026-11-24")
 
     def test_attend_and_unattend(self) -> None:
         meeting = self.meeting(self.hub())
@@ -137,8 +152,8 @@ class MeetingRepositoryTest(unittest.TestCase):
         other = self.hub("Pilot")
         meeting = self.meeting(hub)
         folder = self.notes.create(other, "Meetings")["id"]
-        self.assertEqual(self.notes.move(meeting, folder)["parent_id"], folder)
-        for where in (None, self.notes.create(None, "Loose")["id"], self.person()):
+        self.assertEqual(self.notes.move(meeting, other)["parent_id"], other)
+        for where in (None, self.notes.create(None, "Loose")["id"], self.person(), folder):
             with self.assertRaises(StaysInAHub):
                 self.notes.move(meeting, where)
         with self.assertRaises(StaysInAHub):

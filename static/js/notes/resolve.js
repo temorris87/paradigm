@@ -3,7 +3,9 @@
 // "Name" finds the nearest note called that: the current note's children, then its
 // siblings, then the siblings of each ancestor up to the top level; failing all of those, a
 // note with that title anywhere, if there is only one (live notes counted before archived ones). "A/B" finds A that way, then B under
-// it. "/A/B" starts at the top level.
+// it. "/A/B" starts at the top level. Meetings, decisions and questions may share a title
+// with their siblings (a weekly meeting): among those a plain note wins, then the one made
+// last.
 //
 // resolveLink(tree, fromId, text) ->
 //   { note }                                       found
@@ -11,7 +13,7 @@
 // create says where a note made from this link goes: beside the current note for "Name",
 // under A for "A/B" (when A exists), at the top for "/Name". It is null when the link is
 // ambiguous or more than its last part is missing.
-import { isArchived } from "./hub-groups.js";
+import { isArchived, isRecordKind } from "./hub-groups.js";
 import { NoteTree } from "./tree-model.js";
 import { normalTitle, titleKey } from "./titles.js";
 
@@ -46,7 +48,7 @@ function nearest(tree, fromId, title) {
   if (tree.has(fromId)) {
     const scopes = [tree.children(fromId), tree.siblings(fromId), ...tree.ancestors(fromId).map((id) => tree.siblings(id))];
     for (const scope of scopes) {
-      const note = NoteTree.pick(scope, title);
+      const note = pickShared(scope, title);
       if (note) return { note };
     }
   } else {
@@ -60,6 +62,15 @@ function nearest(tree, fromId, title) {
   const anywhere = live.length ? live : all;
   if (anywhere.length > 1) return { note: null, ambiguous: true };
   return { note: anywhere[0] ?? null };
+}
+
+function pickShared(notes, title) {
+  const key = titleKey(title);
+  const matches = notes.filter((note) => titleKey(note.title) === key);
+  if (matches.length < 2) return NoteTree.pick(notes, title);
+  const plain = matches.filter((note) => !isRecordKind(note.kind));
+  if (plain.length) return NoteTree.pick(plain, title);
+  return matches.reduce((last, note) => (note.id > last.id ? note : last));
 }
 
 function missing(reason, create) {

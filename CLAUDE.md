@@ -47,12 +47,13 @@ paradigm/                Python package
   web/                   server.py (ThreadingHTTPServer), handler.py, router.py,
                          static.py (serves static/), responses.py, security.py
   api/                   JSON endpoints; session.py = /api/ping, /api/events, /api/closing;
-                         notes.py; images.py (raw-bytes upload, GET /api/image?id=N cached);
+                         notes.py (also /api/note/status|due: a project's); images.py
+                         (raw-bytes upload, GET /api/image?id=N cached);
                          people.py (/api/people, /api/person/create|update|link|unlink);
-                         meetings.py (/api/meetings, /api/meeting/create|update|attend|
+                         meetings.py (/api/meetings, /api/meeting/create|update|agenda|attend|
                          unattend); records.py (/api/records, /api/record/create|date|
-                         answer|reopen|with|unwith); links.py (/api/links: the wiki-link
-                         index and stale notes; /api/links/index: the page's catch-up);
+                         answer|reopen|with|unwith); links.py (/api/links: the wiki-link and
+                         mention index and stale notes; /api/links/index: the page's catch-up);
                          trash.py (/api/trash, /api/trash/restore);
                          answers.py (result or expected error -> response)
   db/                    (migrations: 001 notes, 002 images, 003 notes.kind for PARA hubs,
@@ -63,18 +64,24 @@ paradigm/                Python package
                          record_people: their days, an answer day, the people on them,
                          009 note_links + link_index: each note's wiki-link texts as
                          written, and the note version they were read from, 010 images.note_id
-                         may be NULL: an image outlives its note deleted for good)
+                         may be NULL: an image outlives its note deleted for good, 011 pages:
+                         notes.title_shared (meetings and records may share titles),
+                         notes.status/due (a project's), meetings.agenda, people first/
+                         last/phone, record_sources (where a record came from, the quote),
+                         note_mentions; records and notes moved out from under meetings)
                          connection.py (one locked connection, transactions, VACUUM at start
                          when worth it), migrate.py
                          (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py,
                          people_repo.py (people and hub links; a people row is what
                          makes a note a person, reported as kind "person"),
                          meetings_repo.py (a meetings row makes a note a meeting, kind
-                         "meeting"; created directly under its hub as "{day} {name}"),
-                         records_repo.py (decisions and questions: a row makes a note one,
-                         kind "decision"/"question"; under a hub or a meeting in one),
-                         links_repo.py (the wiki-link index; store_links runs inside a
-                         note save; a note whose version moved past its index is stale),
+                         "meeting"; directly under its hub, its name as its title; its
+                         agenda saves with its own version), records_repo.py (decisions and
+                         questions: a row makes a note one, kind "decision"/"question";
+                         directly under its hub; source and quote: where it was made from),
+                         links_repo.py (the wiki-link and mention index; store_links runs
+                         inside a note save; a note whose version moved past its index is
+                         stale),
                          trash_repo.py (the Trash: one entry per note trashed with the notes
                          trashed with it (same deleted_at); restore; purge deletes for good
                          what was trashed over Config.trash_days (7) ago, at start and stop),
@@ -82,10 +89,11 @@ paradigm/                Python package
                          sweep_unused deletes images no note links to, at start and stop only)
   images/                formats.py: PNG/JPEG/GIF/WebP from magic bytes + size (SVG refused)
   notes/                 titles.py (title rules), hubs.py (HUB_KINDS: project, area,
-                         resource), people.py (person fields, roles), seed.py + welcome.md
-                         (first-run note), meetings.py (day, time, title rules),
-                         records.py (decision/question kinds), links.py (a save's list
-                         of link texts)
+                         resource; a project's statuses and due date), people.py (person
+                         fields, roles, first/last name), seed.py + welcome.md (first-run
+                         note), meetings.py (day, time), records.py (decision/question
+                         kinds), links.py (a save's list of link texts), mentions.py (a
+                         save's list of @mentions)
 static/
   index.html
   vendor/katex-0.19.1/   KaTeX exactly as audited (package paths kept; checked against
@@ -101,15 +109,23 @@ static/
                          over the note below that (inert while closed); NARROW_QUERY is the
                          one breakpoint, kept in step with the CSS
   js/notes/              app.js (tree + breadcrumb + editor on the open note), api.js,
-                         note-session.js (autosave, versions, conflicts), resolve.js (wiki
+                         note-session.js (autosave, versions, conflicts), agenda.js (a
+                         meeting's second text box, saved like the note), resolve.js (wiki
                          links, nearest note wins), links.js (wikiTargets: a body's link
                          texts, read by the renderer; linksInto: who links to a note, resolved
-                         now; pure), link-index.js (the page's copy: saves send links, stale
-                         notes caught up after load), tree-model.js, tree-view.js, tree-keys.js
+                         now; pure), mentions.js (@mentions: found by the renderer, with their
+                         line and the lines indented under it; which person a name reaches;
+                         who mentions a person; rewriting a renamed person's; pure),
+                         mention-actions.js (@ completion, opening a mention, the rename
+                         rewrite), selection-menu.js (THE right-click menu in the text: Add
+                         question… / Add decision… from the selection), link-index.js (the
+                         page's copy: saves send links and mentions, stale notes caught up
+                         after load), tree-model.js, tree-view.js (meetings, decisions and
+                         questions left out), tree-keys.js
                          (THE tree key table), breadcrumb.js, commands.js (THE note ex
                          commands: :e :new :child :rename :parent :nav :project :area
                          :resource :inbox :inarea :archive :restore :people :newperson
-                         :addperson :dropperson :org :job :email :meetings :meeting :date
+                         :addperson :dropperson :org :job :email :phone :meetings :meeting :date
                          :attendee :dropattendee :decision :question :answered :reopen :with
                          :dropwith :hub :home :export :trash :trashed :find),
                          page-views.js (which page replaces the note: &home, &people,
@@ -120,19 +136,24 @@ static/
                          which items show for which note; pure), note-actions.js (what the
                          menu, its dialogs and the Go to picker do: NotesApp methods),
                          images.js (editor "files" event -> shrink, upload, insert links)
-  js/hubs/               the hub page (shown while a hub, person or meeting is open; a
-                         decision or question gets the line alone): hub-page.js
-                         (wiring; data-hub-size on .app__note), hub-line.js ("Project · Area:
-                         X", "Person · Northwind · ...", "Decision · ... · from Kickoff"),
-                         hub-line-controls.js (the line's buttons: ▾ ✎ + ×, they only report),
-                         hub-actions.js (what the line's and the tabs' buttons do: menus,
-                         pickers, dialogs, then the same code as the ex commands;
-                         personDialog, newMeetingDialog, newRecordDialog), hub-panel.js (tabs + one-focus-stop
-                         listbox), hub-tabs.js (THE hub tab table: Notes, People, an area's
-                         Projects, a person's Hubs, Meetings, Decisions, Questions, a resource's
-                         Linked from; a meeting's Attendees; pure), hub-areas.js (project
-                         <-> area; pure), hub-size.js (collapsed/open/expanded, remembered),
-                         hub-keys.js (THE section panel key table)
+  js/hubs/               the page around the open note (a hub, person or meeting gets the card,
+                         labels and sections; a decision or question the card and label; any
+                         other note its label): hub-page.js (wiring; data-page on .app__note),
+                         hub-line.js (the card: "Project ▾ · Active ▾ · due ... · Area: X",
+                         People, Next meeting; a meeting's Attendees; a person's details; a
+                         record's state, people and From), hub-line-controls.js (the card's
+                         buttons: ▾ ✎ + ×, they only report), hub-actions.js (what the card's
+                         and the sections' buttons do: menus, pickers, dialogs, then the same
+                         code as the ex commands; personDialog, personDetailsDialog,
+                         answerDialog, newMeetingDialog, newRecordDialog), fields.js (THE field
+                         table: the label over each text box per kind: Outcome, Purpose,
+                         Agenda + Notes, Why, Answer, Notes), hub-panel.js (the sections: one
+                         focus stop, headings fold, Show all), hub-sections.js (THE section
+                         table and each kind's order: Projects, Questions, Decisions, Notes,
+                         Meetings, People, Linked from; a person's Active, Archived,
+                         Backlinks; pure), project-facts.js (status, due, next meeting texts;
+                         pure), hub-areas.js (project <-> area; pure), hub-folds.js (folded
+                         sections, remembered per kind), hub-keys.js (THE sections key table)
   js/home/               the Home page (the start page): home-model.js (today's meetings, open
                          questions, live projects by area, the Inbox; pure), home-sections.js
                          (THE Home section table; tasks join "today"; pure), home-page.js
@@ -178,7 +199,11 @@ static/
                          back first; pure), trash-page.js (the Trash page, a ListPage)
   js/connection/         connection.js (event stream + beacon), banner.js, tab-id.js
   js/editor/             the <pd-editor> component:
-    pd-editor.js         the custom element (hidden textarea takes keys; events out)
+    pd-editor.js         the custom element (hidden textarea takes keys; events out: change,
+                         save, link, mention, menu, highlight, files, image...)
+    completion.js        a list under the cursor in insert mode ("@" offers people; the
+                         host gives the items)
+    highlights.js        marks quoted text in rendered blocks with a badge (a record's source)
     render.js            draws visible lines, cursor, selection, matches, status line
     view.js              viewport math in steps: top line + skip rows, scrolloff, H/M/L
     text-layout.js       the layout interface (units of lines and their rows); plain text
@@ -200,7 +225,8 @@ static/
     render.js renderCode ```mermaid fences become .md-mermaid placeholders (source as text)
     math.js              the $ rules ($...$, $$...$$, $$ blocks); maths renders as a
                          placeholder holding the TeX, filled in by js/math/typeset.js
-    inline.js            inline parser; delimiters.js (emphasis), autolinks.js (bare URLs)
+    inline.js            inline parser; delimiters.js (emphasis), autolinks.js (bare URLs),
+                         mentions.js (@Name at a word start; never in code or links)
     link-syntax.js urls.js (scheme allowlist) escape.js slug.js
     render.js render-inline.js   tree -> HTML; every value escaped, no style="" attributes
 docs/security/           vendor-audit.md (KaTeX + Mermaid go/no-go, conditions for use) and
@@ -254,45 +280,73 @@ Update this section when the structure changes.
   the Archive group (last, folded by default) and keeps its kind and area link, so `:restore`
   (from any note inside) puts it back. Archived titles stay taken. Links into an archived hub
   still work but are drawn muted; no project goes into an archived area.
-- Hub page: a hub shows a hub line under the breadcrumb and a tabbed section panel under the
-  note (Notes: the whole subtree; Projects on areas). `:hub` or Tab reaches the panel; its keys
-  live in `static/js/hubs/hub-keys.js`. Each tab that can grow has an add button (`add` in
-  its `hub-tabs.js` row; also in an empty tab, and the `a` key); rows that are links (a
-  person on a hub, an attendee, a project in an area) have Role… / Remove (`r`, `x`). `-`/`+` size it (collapsed, open, expanded; expanded
-  hides the editor). New record types become new rows in `hub-tabs.js` (at the end, so the
-  number keys of the others stay). `:inarea {area}` puts
-  a project in an area; a note that stops being a project or area loses the link.
+- Pages: the open note is laid out as a page (`static/js/hubs/`). A card under the breadcrumb
+  shows what it is and changes it (a project: kind ▾, status ▾ Active / On hold, due date ✎,
+  area ✎, People, Next meeting; an area: live / on hold projects, people; a meeting: date,
+  hub, Attendees; a person: details ✎; a record: state, date, people, From). Every text box
+  has a label (`fields.js`: a project's Outcome, an area's Purpose, a meeting's Agenda over
+  its Notes, a decision's Why, a question's Answer, else Notes) with a hint while empty.
+  Under the text, a hub, person or meeting has sections (`hub-sections.js`, each kind's
+  order in SECTION_ORDER; a project: Questions, Decisions, Notes, Meetings, People; an area:
+  Projects first; a resource: Linked from last; a meeting: Questions, Decisions; a person:
+  Active, Archived (folded), Backlinks). The page scrolls as a whole. Tab or `:hub` reaches
+  the sections: one focus stop, headings fold (Enter or `z`, remembered per kind), long
+  sections end in "Show all (n)"; its keys live in `static/js/hubs/hub-keys.js`. Each
+  section that can grow has an add button (`add` in its row, and the `a` key); rows that are
+  links have Role… / Remove (`r`, `x`); an open question has Answer… (`r`). New record types
+  become new rows in `hub-sections.js`. `:inarea {area}` puts a project in an area; a note
+  that stops being a project or area loses the link.
 - The notes tree is reached with `:nav` or the ☰ button in the top bar. Under 1400 px wide it
   is a drawer: it opens over the note and closes on Enter (opening a note), Escape, a click on
-  the backdrop, or the focus leaving it.
+  the backdrop, or the focus leaving it. Meetings, decisions and questions are not in it (they
+  live on their hub's page); while one is open, its hub stands for it.
 - People: a person is a top-level note (free text, notes under it) plus a `people` row with
-  organisation, job title and email (`:org`, `:job`, `:email`), never written into the note.
-  `:newperson {name}` adds one. On a hub, `:addperson[!] {name}[, {role}]` puts them on it
-  (again: changes the role; `!` adds someone new) and `:dropperson {name}` takes them off. A
-  person can't be filed or nested. Hubs have a People tab (an area's includes its projects'
-  people); a person has a Hubs tab. `:people` or the People button opens the People page
-  (filters: hub, role, organisation, name); its keys live in `static/js/pages/page-keys.js`.
-  Archived people leave the People page and are muted in tabs; links survive trash and archive.
-- Meetings: a meeting is a note inside a hub (its text is the minutes) plus a `meetings` row
-  (day, optional time) and attendees. `:meeting [{date}] [{time}] {title}` on a hub or any
-  note in it makes `"{date} {title}"` directly under the hub (today if no date; dates also
-  `today`, `tomorrow`, `yesterday`). `:date {date} [{time}]` changes it (a title starting
-  with the old date gets the new one); `:attendee[!] {name}, {name}...` and `:dropattendee`.
-  Its hub is its top-level note: it can't go to the top, into the Inbox or under a person.
-  A meeting shows a meeting line and Attendees / Notes tabs; hubs (an area: its projects'
-  too) and people have a Meetings tab, newest first; a hub's Notes tab leaves meetings out.
-  `:meetings` or the Meetings button opens the Meetings page (filters: hub, period, title),
-  with the same keys as the People page (`static/js/pages/page-keys.js`).
-- Decisions and questions: each is a note inside a hub (its title says it; its text is the
-  why, or the discussion and answer) plus a row with its day, an answer day for a question,
-  and the people on it. `:decision [{date}] {title}` / `:question ...` on a hub or a note in
-  it makes one directly under the hub (today); on a meeting or a note in one, under the
-  meeting (its day): one under a meeting came from it. `:answered [{date}]`, `:reopen`,
-  `:date {date}`, `:with[!] {name}, ...`, `:dropwith {name}`. It stays inside a hub, like a
-  meeting. Hubs (an area: its projects' too), meetings and people have Decisions (newest
-  first) and Questions (open first, oldest first; then answered, muted) tabs. Its own note
-  shows a line ("Question · open · asked ... · in Rollout · from Kickoff · with ...") and no
-  section panel; Notes tabs leave them out.
+  first and last name (the note's title is "First Last": changing either renames it, and the
+  @mentions of the old name can follow after a confirm), email, phone, organisation and job
+  title (`:org`, `:job`, `:email`, `:phone`), never written into the note. New person asks
+  first and last name; `:newperson {name}` splits at the first space. On a hub,
+  `:addperson[!] {name}[, {role}]` puts them on it (again: changes the role; `!` adds someone
+  new) and `:dropperson {name}` takes them off. A person can't be filed or nested. Hubs have a
+  People section (an area's includes its projects' people). A person's page: Active (live
+  hubs with their role, meetings attended, decisions and questions they're on), Archived (the
+  same, archived), Backlinks (notes that @mention them, with the lines, or [[link]] to them).
+  `:people` or the People button opens the People page (filters: hub, role, organisation,
+  name); its keys live in `static/js/pages/page-keys.js`. Archived people leave the People
+  page and are muted; links survive trash and archive.
+- @mentions: `@PriyaShah` (the full name without spaces) or `@Priya` (a first name only one
+  live person has) in any note or agenda links to that person; case is ignored, `@` must start
+  a word (an email is never one), code never holds one, and an unknown name stays text. The
+  page reads them with the renderer and sends them with every save beside the wiki links
+  (`note_mentions`: name, line, field, and context: the line and the lines indented under it).
+  Typing `@` in insert mode offers people (`completion.js`); Enter puts in the full form; the
+  last row adds someone new. A click on a rendered mention opens the person.
+- Meetings: a meeting is a note directly under its hub (its title is its name, never its date;
+  its text is the minutes) plus a `meetings` row (day, optional time, agenda) and attendees.
+  Meetings in one hub may share a name (`title_shared`); `[[Weekly sync]]` reaches a plain
+  note of that name, else the meeting made last (`resolve.js`). A meeting has no notes under it, and it can only move to another hub.
+  `:meeting [{date}] [{time}] {title}` on a hub or any note in it makes one (today if no date;
+  dates also `today`, `tomorrow`, `yesterday`). `:date {date} [{time}]` changes the date;
+  `:attendee[!] {name}, {name}...` and `:dropattendee`. Its page: the card (date ✎, hub,
+  Attendees × and + Add attendee), Agenda, Notes, then Questions and Decisions made from it.
+  Hubs (an area: its projects' too) have a Meetings section, upcoming first; a person's are
+  in Active / Archived. `:meetings` or the Meetings button opens the Meetings page (filters:
+  hub, period, title), with the same keys as the People page (`static/js/pages/page-keys.js`).
+- Decisions and questions: each is a note directly under its hub (its title says it; its text
+  is the Why, or the Answer) plus a row with its day, an answer day for a question, the people
+  on it, and where it came from (`record_sources`: the source note or meeting and the quoted
+  text). They are made from text: select it in any note inside a hub (drag with the mouse, or
+  visual mode) and right-click (or Shift-F10, the Menu key): Add question… / Add decision…
+  (`selection-menu.js`). The dialog has the text as the title, the meeting's day or today, and
+  the people @mentioned in it. The note stays open; the quoted text gets a muted underline and
+  a badge (Question / Answered / Decision; a click opens it). Not in a hub, the items are
+  greyed with the reason. Each section's + New question / New decision, and `:decision
+  [{date}] {title}` / `:question ...`, make one too (from the open note). `:answered [{date}]`,
+  `:reopen`, `:date {date}`, `:with[!] {name}, ...`, `:dropwith {name}`. Answer… (the card's ▾,
+  or a question row) writes the answer into the question's note and marks it answered. Hubs
+  (an area: its projects' too), the meeting it came from and its people show them: Questions
+  (open first, oldest first; then answered, muted) near the top of a hub's page, Decisions
+  newest first; its own page shows its card ("From: Site checklist “...”", and when that text
+  has changed since) and no sections.
 - Backlinks: the server keeps each note's `[[link]]` texts as written; the page reads them with
   the Markdown renderer (so never in code) and sends them with every save, and catches up
   notes saved without them after load. They are resolved in the page with `resolve.js`, so a
@@ -302,8 +356,8 @@ Update this section when the structure changes.
 - Home: a page in place of the note (`&home`), and the start page: a URL with no `?note=` opens
   on it. `:home` or the Home button. Sections top to bottom (`static/js/home/home-sections.js`):
   Today (today's meetings: timed by time, then untimed; tasks will join it), Open questions
-  (oldest first), Projects (live ones by area, "No area" last, with open questions and the next
-  meeting), Inbox (newest change first). Archived hubs are left out. One focus stop; its keys
+  (oldest first), Projects (live ones by area, "No area" last, with the due date, open questions
+  and the next meeting; on hold ones muted), Inbox (newest change first). Archived hubs are left out. One focus stop; its keys
   (`}`/`{` jump sections) live in `static/js/home/home-keys.js`.
 - Note menu: clicking the open note's name (the last crumb, with ▾) opens its menu: rename,
   move (a picker), new note beside / under, file as, archive or restore, export, move to
@@ -311,11 +365,12 @@ Update this section when the structure changes.
   button (or `:find [text]`) opens a picker over every note: each typed word must appear in
   the title or the path. Menus, pickers and dialogs share `static/js/ui/` and its keys
   (`ui-keys.js`).
-- Hub line controls: what the line shows can be changed there: a hub's kind (▾), a project's
-  area (✎, a picker), a person's details (✎), a meeting's date and time, a record's date, a
-  question's state (▾: answered today / on a day, reopen), and the people on a record (× and
-  + Add person). The person dialog adds someone new to People only when its button says
-  "Add new person".
+- Card controls: what the card shows can be changed there: a hub's kind (▾), a project's
+  status (▾) and due date (✎; red once overdue) and area (✎, a picker) and people (+ Add
+  person), a person's details (✎), a meeting's date and time and attendees, a record's date,
+  a question's state (▾: Answer…, answered today / on a day, reopen), and the people on a
+  record (× and + Add person). The person dialog adds someone new to People only when its
+  button says "Add new person".
 - Clicking a rendered image opens `<pd-image-viewer>` (its keys live in
   `static/js/images/viewer-keys.js`).
 - Trash: trashing a note (its menu, or `:trash`) takes the notes under it too; they stay in the

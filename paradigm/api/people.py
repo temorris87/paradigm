@@ -1,9 +1,11 @@
 """Endpoints for people. The list is a GET; every change is a POST with a JSON body. A
 person's name is their note's title: /api/note/rename renames them.
 
-GET  /api/people              -> {people: [{id, org, job, email, hubs: [{hub_id, role}]}]}
-POST /api/person/create       {name}                        -> {note, person}
-POST /api/person/update       {id, field, value}            field: org | job | email ('' clears)
+GET  /api/people              -> {people: [{id, first, last, email, phone, org, job,
+                                            hubs: [{hub_id, role}]}]}
+POST /api/person/create       {name} or {first, last}       -> {note, person}
+POST /api/person/update       {id, field, value}            field: first | last | email | phone |
+                                                            org | job ('' clears; a name renames)
 POST /api/person/link         {hub_id, person_id, role?}    -> {person, created}
                                                             (again: changes the role)
 POST /api/person/unlink       {hub_id, person_id}           -> person
@@ -40,7 +42,7 @@ class PeopleApi:
 
     def create(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)
-        note_id, person = self._people.create(payload.get("name"))
+        note_id, person = self._people.create(payload.get("name"), payload.get("first"), payload.get("last"))
         return {"note": self._notes.get(note_id), "person": person}
 
     def update(self, req: BaseHTTPRequestHandler) -> Dict:

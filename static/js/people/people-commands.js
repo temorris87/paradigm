@@ -5,7 +5,7 @@ import { isHub, isMeeting, isPerson } from "../notes/hub-groups.js";
 import { titleKey } from "../notes/titles.js";
 import { findPerson } from "./people-model.js";
 
-const FIELD_NAMES = { org: "Organisation", job: "Job title", email: "Email" };
+const FIELD_NAMES = { org: "Organisation", job: "Job title", email: "Email", phone: "Phone" };
 
 /** :newperson {name} */
 export async function newPersonCommand(app, arg) {
@@ -14,17 +14,21 @@ export async function newPersonCommand(app, arg) {
   await makePerson(app, name);
 }
 
-/** Adds a person to People and opens their note. strict (from a dialog): an open note that
- * can't be saved first is an error to show there. */
-export async function makePerson(app, name, { strict = false } = {}) {
-  if (!(await app.saveBeforeSwitching())) {
+/** Adds a person to People (name: one text, or { first, last }) and opens their note.
+ * strict (from a dialog): an open note that can't be saved first is an error to show there.
+ * open false: the note isn't opened (from @ completion). Returns the person's note. */
+export async function makePerson(app, name, { strict = false, open = true } = {}) {
+  if (open && !(await app.saveBeforeSwitching())) {
     if (strict) throw new Error("This note's changes could not be saved first");
-    return;
+    return null;
   }
-  const { note } = await app.peopleApi.create(name);
+  const { note } = typeof name === "string"
+    ? await app.peopleApi.create(name)
+    : await app.peopleApi.createNamed(name.first, name.last);
   await app.refreshTree();
-  await app.open(note.id);
+  if (open) await app.open(note.id);
   app.editor.showMessage(`"${note.title}" added to People`);
+  return note;
 }
 
 /** :addperson[!] {name}[, {role}]: on a hub; again changes the role; ! makes a new person. */
@@ -71,7 +75,7 @@ export async function unlinkPerson(app, hub, person) {
   app.editor.showMessage(`${person.title} is off ${hub.title}`);
 }
 
-/** :org / :job / :email {text}: on a person's note; with no text, clears it. */
+/** :org / :job / :email / :phone {text}: on a person's note; with no text, clears it. */
 export async function fieldCommand(app, field, arg) {
   const id = app.currentId;
   if (!isPerson(app.tree, id)) throw new Error(`E: this note is not a person (:newperson {name} adds one)`);

@@ -56,6 +56,8 @@ export const NOTE_COMMANDS = [
     run: (app, { arg }) => fieldCommand(app, "job", arg) },
   { name: "email", min: 5, usage: ":email [{address}]", help: "set this person's email (with nothing: clear it)",
     run: (app, { arg }) => fieldCommand(app, "email", arg) },
+  { name: "phone", min: 5, usage: ":phone [{number}]", help: "set this person's phone number (with nothing: clear it)",
+    run: (app, { arg }) => fieldCommand(app, "phone", arg) },
   { name: "meetings", min: 8, usage: ":meetings", help: "open the Meetings page (Escape comes back to the note)",
     run: (app) => app.showView("meetings", "push") },
   { name: "meeting", min: 7, usage: ":meeting [{date}] [{time}] {title}", help: "make a meeting in this hub, titled \"{date} {title}\" (date: 2026-11-24, today, tomorrow, yesterday; today if left out)",

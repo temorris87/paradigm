@@ -14,7 +14,7 @@ import { Registers } from "./registers.js";
 import { TEXT_LAYOUT } from "./text-layout.js";
 import { UndoHistory } from "./undo.js";
 import { ensureCursorVisible, scrollLines } from "./view.js";
-import { exitVisual } from "./visual.js";
+import { enterVisual, exitVisual, visualRegion } from "./visual.js";
 
 export class Vim {
   constructor({ text = "", clipboard = null } = {}) {
@@ -192,6 +192,39 @@ export class Vim {
     this.setCursor(at);
     if (!this.isInsertLike()) this.clampCursor();
     ensureCursorVisible(this);
+  }
+
+  /** The mouse dragged from one text position to another: a character selection between
+   * them, as Vim's mouse does (insert mode is left first). */
+  drag(from, to) {
+    if (this.mode === "cmdline") return;
+    if (this.isInsertLike()) this.feed("<Esc>");
+    if (this.mode !== "visual") {
+      this.pending = [];
+      this.setCursor(from);
+      this.clampCursor();
+      enterVisual(this, "char");
+    }
+    this.setCursor(to);
+    this.clampCursor();
+    ensureCursorVisible(this);
+  }
+
+  /** The selected text in visual mode (whole lines in line mode), else null. */
+  selectedText() {
+    if (this.mode !== "visual" || !this.visual) return null;
+    const region = visualRegion(this);
+    if (region.kind === "line") return this.buf.lines.slice(region.first, region.last + 1).join("\n");
+    if (region.kind === "block") {
+      return this.buf.lines.slice(region.top, region.bottom + 1)
+        .map((line) => line.slice(region.left, region.toEnd ? undefined : region.right)).join("\n");
+    }
+    const { start, end } = region;
+    if (start.line === end.line) return this.buf.line(start.line).slice(start.col, end.col);
+    const lines = [this.buf.line(start.line).slice(start.col)];
+    for (let line = start.line + 1; line < end.line; line += 1) lines.push(this.buf.line(line));
+    lines.push(this.buf.line(end.line).slice(0, end.col));
+    return lines.join("\n");
   }
 
   /** The mouse wheel: scroll by rows, keeping the cursor on screen. */

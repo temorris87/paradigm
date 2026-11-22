@@ -1,12 +1,15 @@
-// What the hub page's buttons do: the hub line's controls (hub-line-controls.js) and the
-// section panel's add and row buttons. Each one asks with a menu, picker or dialog
-// (static/js/ui/) and ends in the same code the matching ex command runs.
+// What the hub page's buttons do: the card's controls (hub-line-controls.js) and the
+// sections' add and row buttons. Each one asks with a menu, picker or dialog (static/js/ui/)
+// and ends in the same code the matching ex command runs.
 //
 //   const controls = hubLineControls(app)    for HubPage({ controls })
-//   const tabActions = hubTabActions(app)    for HubPage({ tabActions }): the tabs' add buttons
-//                                            (hub-tabs.js add) and row buttons (role, remove)
+//   const tabActions = hubTabActions(app)    for HubPage({ tabActions }): the sections' add
+//                                            buttons (hub-sections.js add) and row buttons
+//                                            (role, remove, answer)
 //   newMeetingDialog(app, owner?) / newRecordDialog(app, kind, owner)   also from the pages
+//   answerDialog(app, question)              the answer, written into the question's note
 //   personDialog(app, { title, fields?, run(person, values) })   who: someone in People, or new
+//   personDetailsDialog(app, person)         names, email, phone, organisation, job title
 import { localDay } from "../meetings/meeting-days.js";
 import { addAttendees, dropAttendee, makeMeeting, setMeetingWhen } from "../meetings/meetings-commands.js";
 import { newNoteDialog } from "../notes/note-actions.js";
@@ -15,13 +18,17 @@ import { linkPerson, peopleNamed, unlinkPerson } from "../people/people-commands
 import { allPeople, filterOptions, findPerson } from "../people/people-model.js";
 import { addPeopleTo, answerQuestion, defaultDay, dropPersonFrom, makeRecord, reopenQuestion,
   setRecordDay } from "../records/records-commands.js";
+import { PROJECT_STATUSES } from "./project-facts.js";
 import { isOpen } from "../records/records-model.js";
 import { formDialog } from "../ui/dialog.js";
 import { openMenu } from "../ui/menu.js";
 import { pickFrom } from "../ui/picker.js";
 import { areaOf, projectsIn } from "./hub-areas.js";
 
-const FIELDS = [["org", "Organisation"], ["job", "Job title"], ["email", "Email"]];
+// The person dialog's fields, in order (paradigm/notes/people.py PERSON_FIELDS).
+const FIELDS = [["first", "First name"], ["last", "Last name"], ["email", "Email"], ["phone", "Phone"],
+  ["org", "Organisation"], ["job", "Job title"]];
+const FIELD_TYPES = { email: "email", phone: "tel" };
 
 export function hubLineControls(app) {
   const back = { fallbackFocus: () => app.focusNote() };
@@ -43,23 +50,30 @@ export function hubLineControls(app) {
       if (picked?.item) app.guard(app.setAreaOf(project.id, picked.item.id));
     },
 
-    details: (person) => {
-      const record = app.people.get(person.id);
-      return formDialog({
-        title: `Details of ${person.title}`,
-        fields: FIELDS.map(([key, label]) => ({ key, label, value: record[key], optional: true, type: key === "email" ? "email" : "text" })),
-        submit: "Save",
-        run: async (values) => {
-          for (const [key] of FIELDS) {
-            const value = values[key].trim();
-            if (value !== record[key]) await app.peopleApi.update(person.id, key, value);
-          }
-          await app.refreshTree();
-          app.editor.showMessage(`${person.title}'s details saved`);
-        },
-        ...back,
-      });
-    },
+    details: (person) => personDetailsDialog(app, person),
+
+    status: (button, project) => openMenu(button, PROJECT_STATUSES.map((status) => ({
+      label: status.label,
+      checked: (project.status ?? "active") === status.key,
+      run: () => app.guard(app.setProjectStatus(project.id, status.key).then(() => app.focusNote())),
+    })), { label: "Status" }),
+
+    due: (project) => formDialog({
+      title: `When is "${project.title}" due?`,
+      fields: [{ key: "due", label: "Due date (leave it empty for none)", type: "date", value: project.due ?? "", optional: true }],
+      submit: "Save",
+      run: ({ due }) => app.setProjectDue(project.id, due),
+      ...back,
+    }),
+
+    addPerson: (hub) => addPersonTo(app, hub),
+
+    addAttendee: (meeting) => personDialog(app, {
+      title: `Add an attendee to "${meeting.title}"`,
+      run: (found) => addAttendees(app, meeting.id, found),
+    }),
+
+    dropAttendee: (meeting, person) => app.guard(dropAttendee(app, meeting.id, person)),
 
     when: (meeting) => {
       const record = app.meetings.get(meeting.id);
@@ -86,7 +100,8 @@ export function hubLineControls(app) {
       const today = localDay(app.today());
       const answerOn = (title, value) => dateDialog(app, { title, value, run: (day) => answerQuestion(app, question.id, day) });
       const entries = isOpen(record)
-        ? [{ label: "Answered today", run: () => app.guard(answerQuestion(app, question.id, today).then(() => app.focusNote())) },
+        ? [{ label: "Answer…", run: () => app.guard(answerDialog(app, question)) },
+          { label: "Answered today", run: () => app.guard(answerQuestion(app, question.id, today).then(() => app.focusNote())) },
           { label: "Answered on…", run: () => app.guard(answerOn(`When was "${question.title}" answered?`, today)) }]
         : [{ label: "Reopen", run: () => app.guard(reopenQuestion(app, question.id).then(() => app.focusNote())) },
           { label: "Change the answer date…", run: () => app.guard(answerOn(`When was "${question.title}" answered?`, record.answered)) }];
@@ -118,6 +133,56 @@ export function personDialog(app, { title, fields = [], submit = "Add", run }) {
   });
 }
 
+/** The person dialog: first and last name (the note's title), email, phone, organisation,
+ * job title. A new name renames the note, and the @mentions of them follow after a confirm. */
+export async function personDetailsDialog(app, person) {
+  const record = app.people.get(person.id);
+  let renamed = null;
+  const result = await formDialog({
+    title: `Details of ${person.title}`,
+    fields: FIELDS.map(([key, label]) => ({ key, label, value: record[key] ?? "", optional: key !== "first",
+      type: FIELD_TYPES[key] ?? "text" })),
+    submit: "Save",
+    run: async (values) => {
+      const before = person.title;
+      for (const [key] of FIELDS) {
+        const value = values[key].trim();
+        if (value !== (record[key] ?? "")) await app.peopleApi.update(person.id, key, value);
+      }
+      await app.refreshTree();
+      const after = app.tree.get(person.id)?.title ?? before;
+      app.editor.showMessage(`${after}'s details saved`);
+      if (after !== before) renamed = { before, after };
+    },
+    fallbackFocus: () => app.focusNote(),
+  });
+  // Once this dialog is closed: the mentions of the old name can follow the new one.
+  if (renamed) await app.offerMentionRewrite(person.id, renamed.before, renamed.after);
+  return result;
+}
+
+/** Answer…: the answer (added to the question's note, its Answer field) and the day. */
+export function answerDialog(app, question) {
+  return formDialog({
+    title: `Answer "${question.title}"`,
+    fields: [
+      { key: "answer", label: "Answer", type: "textarea", optional: true, placeholder: "what was decided or found out" },
+      { key: "day", label: "Answered on", type: "date", value: localDay(app.today()) },
+    ],
+    submit: "Save answer",
+    run: ({ answer, day }) => answerQuestion(app, question.id, day, answer),
+    fallbackFocus: () => app.focusNote(),
+  });
+}
+
+function addPersonTo(app, hub) {
+  return personDialog(app, {
+    title: `Add a person to "${hub.title}"`,
+    fields: [roleField(app, "")],
+    run: ({ people: [person], made }, { role }) => linkPerson(app, hub, person, role.trim(), made),
+  });
+}
+
 /** A dialog asking for one date. */
 export function dateDialog(app, { title, value, run }) {
   return formDialog({
@@ -138,13 +203,9 @@ export function hubTabActions(app) {
   const back = { fallbackFocus: () => app.focusNote() };
   const add = {
     notes: (owner) => newNoteDialog(app, owner.id, { heading: `New note in "${owner.title}"` }),
-    people: (hub) => personDialog(app, {
-      title: `Add a person to "${hub.title}"`,
-      fields: [roleField(app, "")],
-      run: ({ people: [person], made }, { role }) => linkPerson(app, hub, person, role.trim(), made),
-    }),
+    people: (hub) => addPersonTo(app, hub),
     projects: (area) => addProject(app, area, back),
-    hubs: (person) => formDialog({
+    active: (person) => formDialog({
       title: `Put ${person.title} on a hub`,
       fields: [hubField(app), roleField(app, "")],
       submit: "Add",
@@ -161,8 +222,8 @@ export function hubTabActions(app) {
   };
   const remove = {
     people: (hub, row) => unlinkPerson(app, hub, app.tree.get(row.id)),
-    hubs: (person, row) => unlinkPerson(app, app.tree.get(row.id), person),
-    attendees: (meeting, row) => dropAttendee(app, meeting.id, app.tree.get(row.id)),
+    active: (person, row) => unlinkPerson(app, app.tree.get(row.id), person),
+    archived: (person, row) => unlinkPerson(app, app.tree.get(row.id), person),
     projects: (area, row) => app.setAreaOf(row.id, null),
   };
   const roleOn = (hub, person, role) => formDialog({
@@ -176,8 +237,9 @@ export function hubTabActions(app) {
     add: (tabKey, owner) => app.guard(add[tabKey]?.(owner)),
     row: (key, tabKey, owner, row) => {
       if (key === "remove") return app.guard(remove[tabKey]?.(owner, row));
+      if (key === "answer") return app.guard(answerDialog(app, app.tree.get(row.id)));
       if (key !== "role") return undefined;
-      const [hub, person] = tabKey === "hubs" ? [app.tree.get(row.id), owner] : [owner, app.tree.get(row.id)];
+      const [hub, person] = owner.kind === "person" ? [app.tree.get(row.id), owner] : [owner, app.tree.get(row.id)];
       return app.guard(roleOn(hub, person, row.role ?? ""));
     },
   };

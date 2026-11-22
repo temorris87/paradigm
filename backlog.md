@@ -60,3 +60,16 @@ Features in build order. "build feature" takes the first unchecked item.
   button; a + on each tree group; New person and New meeting on their pages (done 2026-11-21)
 - [x] Trash view: trashed notes are kept for one week, then deleted for good; a Trash page
   lists them and restores a note (with the notes under it) (done 2026-11-21)
+- [x] Meetings tidy-up: meetings out of the sidebar, no notes under a meeting, the date a
+  field and not part of the name (meetings may share a name), no `~` on empty editor lines
+  (done 2026-11-22)
+- [x] Pages as layouts: a card under the breadcrumb (a project's status, due date, area,
+  people, next meeting), a label over every text box (Outcome, Purpose, Agenda + Notes, Why,
+  Answer), sections under the text in place of tabs; people get first and last name and phone
+  (done 2026-11-22)
+- [x] @mentions: `@Name` links to the person, with completion after `@`; a person's page lists
+  what they are on (live, archived) and Backlinks with the mentioning lines; renaming someone
+  offers to rewrite their mentions (done 2026-11-22)
+- [x] Decisions and questions from selected text: select, right-click, Add question… / Add
+  decision…; the record rolls up to the hub, its area, the meeting and Home; the source text
+  gets a badge; Answer… writes the answer into the question (done 2026-11-22)

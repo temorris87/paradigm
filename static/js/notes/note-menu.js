@@ -14,7 +14,9 @@ export function noteMenuItems(tree, id) {
   const nested = tree.parentId(id) !== null;
   const items = [{ key: "rename", label: "Rename…" }];
   if (!person) items.push({ key: "move", label: "Move…" });
-  items.push({ key: "newBeside", label: "New note beside…" }, { key: "newUnder", label: "New note under…" });
+  // A meeting, decision or question has no notes under it: its page holds its text.
+  if (isRecordKind(note.kind)) items.push({ key: "newBeside", label: "New note in the hub…" });
+  else items.push({ key: "newBeside", label: "New note beside…" }, { key: "newUnder", label: "New note under…" });
   if (!person && !isRecordKind(note.kind)) {
     items.push("separator", { group: "File as" });
     const current = nested ? null : groupForKind(note.kind);

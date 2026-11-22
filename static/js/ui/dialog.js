@@ -10,6 +10,7 @@
 //       { key: "time", label: "Time", type: "time", value: "", optional: true },
 //       { key: "hub", label: "Hub", type: "select", options: [["3", "Acme"]] },
 //       { key: "name", label: "Person", suggestions: ["Jane Doe"] },          // a <datalist>
+//       { key: "answer", label: "Answer", type: "textarea" },                  // several lines
 //     ],
 //     submit: "Rename",                 // or (values) => "Add new person": the label follows the fields
 //     danger: false,                    // a red submit button (trash)
@@ -109,6 +110,13 @@ export function confirmDialog({ title, text, confirm = "OK", danger = false, run
 }
 
 function fieldInput(field) {
+  if (field.type === "textarea") {
+    const area = element("textarea", "dialog__input dialog__input--area");
+    area.rows = field.rows ?? 4;
+    area.value = field.value ?? "";
+    if (field.placeholder) area.placeholder = field.placeholder;
+    return area;
+  }
   if (field.type === "select") {
     const select = element("select", "dialog__input");
     for (const [value, text] of field.options ?? []) {

@@ -32,7 +32,8 @@ class RecordsApiTest(unittest.TestCase):
         status, payload = self.running.get_json("/api/records")
         self.assertEqual(status, 200)
         self.assertEqual(payload["records"], [{"id": question, "kind": "question", "day": "2026-11-23",
-                                               "answered": "2026-11-25", "people": [jane]}])
+                                               "answered": "2026-11-25", "people": [jane], "source_id": None,
+                                               "quote": "", "quote_found": False}])
         self.assertEqual(self.post("/api/record/unwith", {"id": question, "person_id": jane})["people"], [])
         self.assertEqual(self.post("/api/record/reopen", {"id": question})["answered"], "")
 

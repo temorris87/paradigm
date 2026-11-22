@@ -4,7 +4,7 @@
 import { localDay, parseDay } from "../meetings/meeting-days.js";
 import { splitNames } from "../meetings/meetings-commands.js";
 import { shortTitle } from "../meetings/meetings-model.js";
-import { hubOf, isDecisionOrQuestion, meetingOf } from "../notes/hub-groups.js";
+import { hubOf, isDecisionOrQuestion, isHub, isMeeting, meetingOf } from "../notes/hub-groups.js";
 import { titleKey } from "../notes/titles.js";
 import { peopleNamed } from "../people/people-commands.js";
 import { findPerson } from "../people/people-model.js";
@@ -18,10 +18,10 @@ export async function newRecordCommand(app, kind, arg) {
   const id = app.currentId;
   const hub = hubOf(app.tree, id);
   if (!hub) throw new Error(`E: a ${WHAT[kind]} goes in a hub: open a project, an area or a resource (or a note in one)`);
-  const meeting = app.tree.get(id)?.kind === "meeting" ? app.tree.get(id) : meetingOf(app.tree, id);
+  const meeting = isMeeting(app.tree, id) ? app.tree.get(id) : meetingOf(app.tree, id);
   const { day, rest } = splitDay(arg, app.today());
   if (!rest) throw new Error(`E471: Argument required: :${kind} [{date}] {title}`);
-  await makeRecord(app, kind, meeting ?? hub, rest, day ?? defaultDay(app, meeting));
+  await makeRecord(app, kind, meeting ?? app.tree.get(id), rest, day ?? defaultDay(app, meeting));
 }
 
 /** The day a new record gets: its meeting's, else today. */
@@ -30,9 +30,9 @@ export function defaultDay(app, meeting) {
 }
 
 /**
- * Makes a decision or question under parent (a hub, or a meeting: then it came from it) and
- * opens it; peopleIds are on it from the start. strict (from a dialog): an open note that can't
- * be saved first is an error to show there.
+ * Makes a decision or question in parent's hub (parent: a hub, or a note or meeting in one,
+ * which it then came from) and opens it; peopleIds are on it from the start. strict (from a
+ * dialog): an open note that can't be saved first is an error to show there.
  */
 export async function makeRecord(app, kind, parent, title, day, { peopleIds = [], strict = false } = {}) {
   if (!(await app.saveBeforeSwitching())) {
@@ -43,9 +43,23 @@ export async function makeRecord(app, kind, parent, title, day, { peopleIds = []
   if (peopleIds.length) await app.recordsApi.involve(note.id, peopleIds);
   await app.refreshTree();
   await app.open(note.id);
-  const meeting = parent.kind === "meeting" ? parent : null;
-  const from = meeting ? `from ${shortTitle(meeting, app.meetings.get(meeting.id))}` : `in ${parent.title}`;
+  const name = isMeeting(app.tree, parent.id) ? shortTitle(parent, app.meetings.get(parent.id)) : parent.title;
+  const from = isHub(app.tree, parent.id) ? `in ${parent.title}` : `from ${name}`;
   app.editor.showMessage(`${capital(WHAT[kind])} "${note.title}" made ${from}`);
+}
+
+/**
+ * A decision or question made from text selected in a note (or a meeting): it goes in the
+ * note's hub, remembers the note and the text, and the note stays open. Returns the record's
+ * note.
+ */
+export async function recordFromText(app, kind, sourceId, title, day, quote, peopleIds = []) {
+  const { note } = await app.recordsApi.create(sourceId, kind, title, day, { sourceId, quote });
+  if (peopleIds.length) await app.recordsApi.involve(note.id, peopleIds);
+  await app.refreshTree();
+  const hub = hubOf(app.tree, note.id);
+  app.editor.showMessage(`${capital(WHAT[kind])} "${note.title}" added to ${hub?.title ?? "its hub"}`);
+  return note;
 }
 
 /** :date {date} on a decision or question. */
@@ -72,10 +86,15 @@ export async function answeredCommand(app, arg) {
   await answerQuestion(app, id, day ?? localDay(app.today()));
 }
 
-/** Marks a question answered on a day ("YYYY-MM-DD"). */
-export async function answerQuestion(app, id, day) {
-  const record = await app.recordsApi.answer(id, day);
+/** Marks a question answered on a day ("YYYY-MM-DD"); text, if any, is added to its note. */
+export async function answerQuestion(app, id, day, text = "") {
+  const open = app.currentId === id && text.trim();
+  // The server writes the answer into the note: what is typed there goes first, and the
+  // note is read again after.
+  if (open && !(await app.saveBeforeSwitching())) throw new Error("This note's changes could not be saved first");
+  const record = await app.recordsApi.answer(id, day, text);
   await app.refreshTree();
+  if (open) await app.open(id, { discard: true, history: "none" });
   app.editor.showMessage(`"${app.tree.get(id).title}" answered ${record.answered}`);
 }
 

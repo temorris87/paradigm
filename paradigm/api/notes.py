@@ -2,10 +2,11 @@
 
 GET  /api/notes            the tree: every note without its body
 GET  /api/note?id=N        one note with its body
-POST /api/note/create      {parent_id|null, title, body?, links?}
-POST /api/note/save        {id, body, version, force?, links?}   409 {error, version} if stale
-                           links: the [[wiki link]] texts in body, as the page reads them
-                           (paradigm/api/links.py); left out, the note's links go stale
+POST /api/note/create      {parent_id|null, title, body?, links?, mentions?}
+POST /api/note/save        {id, body, version, force?, links?, mentions?}   409 {error, version}
+                           if stale. links: the [[wiki link]] texts in body, mentions its
+                           @mentions [{field, line, name, context}], as the page reads them
+                           (paradigm/api/links.py); links left out, the note's index goes stale
 POST /api/note/rename      {id, title}
 POST /api/note/move        {id, parent_id|null}           a hub moved under a note stops being one;
                                                           a person stays at the top level;
@@ -13,6 +14,8 @@ POST /api/note/move        {id, parent_id|null}           a hub moved under a no
 POST /api/note/kind        {id, kind}   kind: project | area | resource | null (the Inbox);
                                         a nested note moves to the top level first
 POST /api/note/area        {id, area_id|null}   put a project in an area (null: in none)
+POST /api/note/status      {id, status}         a project's: active | on_hold
+POST /api/note/due         {id, due}            a project's due date 'YYYY-MM-DD' ('' for none)
 POST /api/note/archive     {id, archived}   archive a hub with everything under it, or restore it
                                             -> {note, inside: number of notes under it}
 POST /api/note/delete      {id, recursive?}              -> {deleted: [ids]}
@@ -20,10 +23,12 @@ POST /api/note/delete      {id, recursive?}              -> {deleted: [ids]}
 from http.server import BaseHTTPRequestHandler
 from typing import Callable, Dict, List, Optional
 
-from paradigm.db.notes_repo import (AreaArchived, BadKind, BadTitle, Conflict, HasChildren, StaysInAHub, IsAPerson, LastNote,
-                                    NoteError, NoteRepository, NotAnArea, NotAProject, NotArchived,
-                                    NotFound, NotTopLevel, TitleTaken, WouldCycle)
+from paradigm.db.notes_repo import (AreaArchived, BadKind, BadProjectField, BadTitle, Conflict, HasChildren,
+                                    StaysInAHub, IsAPerson, LastNote, NoNotesUnder, NoteError, NoteRepository,
+                                    NotAnArea, NotAProject, NotArchived, NotFound, NotTopLevel, TitleTaken,
+                                    WouldCycle)
 from paradigm.notes.links import BadLinks, clean_links
+from paradigm.notes.mentions import BadMentions, Mention, clean_mentions
 from paradigm.web.requests import (BadRequest, bool_field, int_field, optional_int_field,
                                    read_json, str_field)
 from paradigm.web.responses import send_error_json, send_json
@@ -31,7 +36,8 @@ from paradigm.web.router import Router
 
 _STATUS = {NotFound: 404, Conflict: 409, TitleTaken: 409, HasChildren: 409, LastNote: 409,
            WouldCycle: 400, NotAProject: 400, NotAnArea: 400, AreaArchived: 400, NotTopLevel: 400,
-           NotArchived: 400, IsAPerson: 400, StaysInAHub: 400, BadTitle: 400, BadKind: 400, BadLinks: 400, BadRequest: 400}
+           NotArchived: 400, IsAPerson: 400, StaysInAHub: 400, NoNotesUnder: 400, BadTitle: 400, BadKind: 400,
+           BadProjectField: 400, BadLinks: 400, BadMentions: 400, BadRequest: 400}
 
 
 class NotesApi:
@@ -47,6 +53,8 @@ class NotesApi:
         router.add("POST", "/api/note/move", self._answer(self.move))
         router.add("POST", "/api/note/kind", self._answer(self.kind))
         router.add("POST", "/api/note/area", self._answer(self.area))
+        router.add("POST", "/api/note/status", self._answer(self.status))
+        router.add("POST", "/api/note/due", self._answer(self.due))
         router.add("POST", "/api/note/archive", self._answer(self.archive))
         router.add("POST", "/api/note/delete", self._answer(self.delete))
 
@@ -65,12 +73,13 @@ class NotesApi:
         if not isinstance(body, str):
             raise BadRequest("body must be text")
         return self._notes.create(optional_int_field(payload, "parent_id"), payload.get("title"), body,
-                                  _links(payload))
+                                  _links(payload), _mentions(payload))
 
     def save(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)
         return self._notes.save(int_field(payload, "id"), str_field(payload, "body"),
-                                int_field(payload, "version"), bool_field(payload, "force"), _links(payload))
+                                int_field(payload, "version"), bool_field(payload, "force"), _links(payload),
+                                _mentions(payload))
 
     def rename(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)
@@ -87,6 +96,14 @@ class NotesApi:
     def area(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)
         return self._notes.set_area(int_field(payload, "id"), optional_int_field(payload, "area_id"))
+
+    def status(self, req: BaseHTTPRequestHandler) -> Dict:
+        payload = read_json(req)
+        return self._notes.set_status(int_field(payload, "id"), payload.get("status"))
+
+    def due(self, req: BaseHTTPRequestHandler) -> Dict:
+        payload = read_json(req)
+        return self._notes.set_due(int_field(payload, "id"), payload.get("due"))
 
     def archive(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)
@@ -107,7 +124,7 @@ class NotesApi:
         def route(req: BaseHTTPRequestHandler) -> None:
             try:
                 result = handler(req)
-            except (NoteError, BadTitle, BadKind, BadLinks, BadRequest) as error:
+            except (NoteError, BadTitle, BadKind, BadProjectField, BadLinks, BadMentions, BadRequest) as error:
                 _send_failure(req, error)
                 return
             send_json(req, 200, result)
@@ -116,6 +133,10 @@ class NotesApi:
 
 def _links(payload: Dict) -> Optional[List[str]]:
     return None if payload.get("links") is None else clean_links(payload["links"])
+
+
+def _mentions(payload: Dict) -> Optional[List[Mention]]:
+    return clean_mentions(payload.get("mentions"))
 
 
 def _send_failure(req: BaseHTTPRequestHandler, error: Exception) -> None:

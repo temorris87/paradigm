@@ -70,6 +70,14 @@
   color: var(--nord9);
   opacity: 0.75;
 }
+/* An @mention of someone in People: a link to them, no underline. */
+.md-doc .md-mention {
+  text-decoration: none;
+}
+.md-doc .md-mention-archived {
+  color: var(--nord4);
+  opacity: 0.55;
+}
 /* A link into an archived hub: still a link, greyed so finished work stands back. */
 .md-doc .md-wikilink-archived {
   color: var(--nord4);

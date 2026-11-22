@@ -1,12 +1,13 @@
 """Every read and write of people and their hub links. The only code that knows the people
-and hub_people tables. A person's name is their note's title (NoteRepository renames it)."""
+and hub_people tables. A person's note title is their name, "First Last": changing the first
+or last name renames the note."""
 import sqlite3
 from typing import Callable, Dict, List, Tuple
 
 from paradigm.db.connection import Database
 from paradigm.db.notes_repo import NoteError, NotFound, check_title_free, live_note_row, utc_now
 from paradigm.notes.hubs import HUB_KINDS
-from paradigm.notes.people import BadField, clean_field, clean_role
+from paradigm.notes.people import NAME_FIELDS, BadField, clean_field, clean_role, full_name, split_name
 from paradigm.notes.titles import clean_title
 
 Clock = Callable[[], str]
@@ -47,9 +48,13 @@ class PeopleRepository:
             row = _person_row(conn, person_id)
             return _person(row, _links(conn, person_id).get(person_id, []))
 
-    def create(self, name: object) -> Tuple[int, Dict]:
-        """A new person: a top-level note called name, and their row. Returns (note id, person)."""
-        title = clean_title(name)
+    def create(self, name: object = None, first: object = None, last: object = None) -> Tuple[int, Dict]:
+        """A new person: a top-level note called "First Last", and their row. Give the name
+        (split at its first space) or the first and last names. Returns (note id, person)."""
+        if first is None and last is None:
+            first, last = split_name(clean_title(name))
+        first, last = clean_field("first", first or ""), clean_field("last", last or "")
+        title = clean_title(full_name(first, last))
         now = self._clock()
         with self._db.transaction() as conn:
             check_title_free(conn, None, title, None)
@@ -57,13 +62,19 @@ class PeopleRepository:
                 "INSERT INTO notes (parent_id, title, body, created_at, updated_at) VALUES (NULL, ?, '', ?, ?)",
                 (title, now, now),
             ).lastrowid
-            conn.execute("INSERT INTO people (note_id) VALUES (?)", (note_id,))
+            conn.execute("INSERT INTO people (note_id, first, last) VALUES (?, ?, ?)", (note_id, first, last))
         return note_id, self.get(note_id)
 
     def update(self, person_id: int, field: object, value: object) -> Dict:
+        """Sets one field; a first or last name renames the note too."""
         value = clean_field(field, value)
         with self._db.transaction() as conn:
-            _person_row(conn, person_id)
+            row = _person_row(conn, person_id)
+            if field in NAME_FIELDS:
+                names = {"first": row["first"], "last": row["last"], field: value}
+                title = clean_title(full_name(names["first"], names["last"]))
+                check_title_free(conn, None, title, person_id)
+                conn.execute("UPDATE notes SET title = ?, updated_at = ? WHERE id = ?", (title, self._clock(), person_id))
             # field is one of PERSON_FIELDS (clean_field checked), never other input.
             conn.execute("UPDATE people SET {} = ? WHERE note_id = ?".format(field), (value, person_id))
         return self.get(person_id)
@@ -96,7 +107,8 @@ class PeopleRepository:
 
 
 def _person(row: sqlite3.Row, links: List[Dict]) -> Dict:
-    return {"id": row["note_id"], "org": row["org"], "job": row["job"], "email": row["email"], "hubs": links}
+    return {"id": row["note_id"], "first": row["first"], "last": row["last"], "email": row["email"],
+            "phone": row["phone"], "org": row["org"], "job": row["job"], "hubs": links}
 
 
 def _links(conn: sqlite3.Connection, person_id=None) -> Dict[int, List[Dict]]:

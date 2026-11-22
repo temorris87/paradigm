@@ -99,8 +99,9 @@ export class EditorView {
     }
     for (; rows < vim.view.height; rows += 1) {
       const filler = document.createElement("div");
+      // Rows past the end stay so the layout holds, but blank (no Vim "~").
       filler.className = "pd-line pd-line--end";
-      filler.textContent = "~";
+      filler.textContent = "\u00a0";
       nodes.push(filler);
     }
     return nodes;

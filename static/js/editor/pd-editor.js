@@ -11,6 +11,15 @@
 //   editor.goToLine(12);              // cursor to a line (0-based)
 //   editor.insertText("text");        // at the cursor, as if pasted (see "files" below)
 //   editor.insertText("a\nb", { asLines: true, line: 4 })  // whole lines below line 4
+//   editor.selectedText                // the visual selection's text, or null
+//   editor.completions = { "@": (query) => [item] }   // a list under the cursor in insert mode
+//                                     // while "@query" is typed (a word start): item
+//                                     // { label, detail?, insert } puts insert in place of
+//                                     // "@query"; { label, run(query) } calls run, which may
+//                                     // resolve to the text to put there
+//   editor.highlights = [{ text, label, title, data }]   // marks text in rendered blocks with
+//                                     // a badge; a click sends "highlight" (detail.data)
+//   <pd-editor compact>               // the status line shows only while it has the focus
 //
 // Live preview (on by default, :set nopreview turns it off): Markdown blocks away from the
 // cursor are drawn rendered; the block holding the cursor shows its raw text.
@@ -20,8 +29,13 @@
 // added with addExCommand: detail.name, .arg, .bang) and "link" (a rendered [[wiki link]] was
 // clicked: detail.target, the text inside the brackets before any "|"). Each carries
 // detail.value. A wiki link clicked with Ctrl, Shift or Cmd is left to the browser.
+// "mention": a rendered @mention the host resolved was clicked (detail.name).
 // "image": a rendered image was clicked (detail.src, the full URL, and detail.alt); the
 // cursor stays where it is. An image inside a link is the link's.
+//
+// "menu": a right-click, or the context-menu key (Shift-F10, Menu), detail.text: the visual
+// selection's text or null, detail.x / .y where to show a menu. Cancel it (preventDefault)
+// to keep the browser's own menu away.
 //
 // "files": images pasted in insert mode (detail.how "paste"; they win over any text on the
 // clipboard too) or files dropped on the text in any mode (detail.how "drop", detail.line
@@ -36,6 +50,8 @@ import { syncDiagramSheets } from "../diagrams/insert-svg.js";
 import { KATEX_CSS, ensureMathFonts } from "../math/typeset.js";
 import { isTextKey, keyName } from "./key-names.js";
 import { BOUND_KEYS, INSERT_ONLY_KEYS } from "./keys.js";
+import { Completion } from "./completion.js";
+import { markHighlights } from "./highlights.js";
 import { PreviewLayout } from "./preview-layout.js";
 import { PreviewMeasure } from "./preview-measure.js";
 import { PreviewView } from "./preview-view.js";
@@ -81,6 +97,11 @@ export class PdEditor extends HTMLElement {
     this.sizes = new PreviewMeasure(this.frame);
     this.previewLayout = new PreviewLayout({ measure: this.sizes });
     const preview = new PreviewView({ onResize: (html, node) => this.unitResized(html, node) });
+    this.preview = preview;
+    this.completion = new Completion(this.frame, {
+      accept: (length, text) => this.replaceBeforeCursor(length, text),
+      onRun: () => this.input.focus(),
+    });
     this.view = new EditorView({ text: this.textArea, status: this.statusLine, preview });
     this.chooseLayout();
     this.queue = [];
@@ -109,11 +130,16 @@ export class PdEditor extends HTMLElement {
     input.addEventListener("focus", () => this.render());
     input.addEventListener("blur", () => this.render());
     this.textArea.addEventListener("mousedown", (event) => this.onMouseDown(event));
+    this.frame.addEventListener("contextmenu", (event) => this.onContextMenu(event));
+    this.textArea.addEventListener("click", (event) => {
+      const mark = event.target.closest?.("[data-highlight]");
+      if (mark) this.emitEvent("highlight", { data: this.preview.highlightData(Number(mark.dataset.highlight)) });
+    });
     // A "#" link moved the cursor on mousedown; the page itself must not jump. A wiki link
     // was handed to the host on mousedown, unless a modifier asks the browser for a new tab.
     this.textArea.addEventListener("click", (event) => {
       if (event.target.closest?.('.pd-unit a[href^="#"]')) event.preventDefault();
-      else if (event.target.closest?.(".pd-unit a.md-wikilink") && !hasModifier(event)) event.preventDefault();
+      else if (event.target.closest?.(".pd-unit a.md-wikilink, .pd-unit a.md-mention") && !hasModifier(event)) event.preventDefault();
     });
     this.textArea.addEventListener("wheel", (event) => this.onWheel(event), { passive: false });
     this.frame.addEventListener("animationend", () => this.frame.classList.remove("pd-editor--bell"));
@@ -187,6 +213,27 @@ export class PdEditor extends HTMLElement {
     this.render();
   }
 
+  get selectedText() {
+    return this.vim.selectedText();
+  }
+
+  get completions() {
+    return this.completion.sources;
+  }
+
+  set completions(sources) {
+    this.completion.sources = sources ?? {};
+  }
+
+  get highlights() {
+    return this.preview.highlights;
+  }
+
+  set highlights(list) {
+    if (!this.preview.setHighlights(list ?? [], markHighlights)) return;
+    this.render();
+  }
+
   addExCommand(name, minLength = name.length) {
     this.vim.exCommands.set(name, minLength);
   }
@@ -224,6 +271,10 @@ export class PdEditor extends HTMLElement {
     if (event.isComposing || this.composing || event.key === "Process" || event.key === "Dead") return;
     const name = keyName(event);
     if (!name) return;
+    if (this.completion.open && this.completion.onKey(name)) {
+      event.preventDefault();
+      return;
+    }
     if (INSERT_ONLY_KEYS.has(name) && !this.vim.isInsertLike()) return;
     // In insert and command-line mode the browser pastes, and the paste event brings the text.
     if (PASTE_KEYS.has(name) && this.acceptsText()) return;
@@ -281,11 +332,51 @@ export class PdEditor extends HTMLElement {
     if (event.button !== 0) return;
     event.preventDefault();
     this.input.focus();
+    if (event.target.closest?.("[data-highlight]")) return;
     if (this.onPreviewMouseDown(event.target, event)) return;
     const at = this.view.positionAt(event.clientX, event.clientY);
     if (!at) return;
     this.vim.click(at);
     this.render();
+    this.followDrag(at);
+  }
+
+  // Dragging with the button held selects, as in Vim with the mouse on.
+  followDrag(from) {
+    const move = (event) => {
+      if (!(event.buttons & 1)) return stop();
+      const to = this.view.positionAt(event.clientX, event.clientY);
+      if (!to || (to.line === from.line && to.col === from.col && this.vim.mode !== "visual")) return undefined;
+      this.vim.drag(from, to);
+      this.afterFeed();
+      return undefined;
+    };
+    const stop = () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", stop);
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", stop);
+  }
+
+  onContextMenu(event) {
+    // The context-menu key comes with no pointer position: show the menu at the cursor.
+    const box = this.view.cursorBox();
+    const fromKey = event.button !== 2 || (event.clientX === 0 && event.clientY === 0);
+    const x = fromKey && box ? box.left : event.clientX;
+    const y = fromKey && box ? box.bottom : event.clientY;
+    const menu = new CustomEvent("menu", { cancelable: true,
+      detail: { text: this.vim.selectedText(), x, y, value: this.vim.text } });
+    this.dispatchEvent(menu);
+    if (menu.defaultPrevented) event.preventDefault();
+  }
+
+  /** Completion: length characters before the cursor give way to text (insert mode only). */
+  replaceBeforeCursor(length, text) {
+    if (!this.vim.isInsertLike()) return;
+    this.input.focus();
+    for (let index = 0; index < length; index += 1) this.enqueue("<BS>");
+    this.enqueue({ paste: text });
   }
 
   // Links, images and fold toggles in rendered Markdown. Returns true if the press was theirs:
@@ -302,6 +393,10 @@ export class PdEditor extends HTMLElement {
     }
     if (!link) return false;
     const href = link.getAttribute("href") ?? "";
+    if (link.classList.contains("md-mention")) {
+      if (!hasModifier(event)) this.emitEvent("mention", { name: link.dataset.mention ?? "" });
+      return true;
+    }
     if (link.classList.contains("md-wikilink") && !href.startsWith("#")) {
       if (!hasModifier(event)) this.emitEvent("link", { target: link.dataset.target ?? "" });
       return true;
@@ -379,6 +474,7 @@ export class PdEditor extends HTMLElement {
       this.frame.classList.add("pd-editor--bell");
     }
     this.render();
+    this.completion.update(vim, () => this.view.cursorBox(), this.frame.getBoundingClientRect());
   }
 
   emitEvent(type, detail = {}) {

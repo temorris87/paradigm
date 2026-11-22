@@ -15,7 +15,7 @@ from paradigm.db.notes_repo import (Clock, NoteError, NotFound, StaysInAHub, Tit
 
 __all__ = ["TrashRepository", "NotFound", "StaysInAHub"]
 
-_ROWS = ("SELECT notes.id, notes.parent_id, notes.title, notes.kind, notes.deleted_at, "
+_ROWS = ("SELECT notes.id, notes.parent_id, notes.title, notes.kind, notes.deleted_at, notes.title_shared, "
          "people.note_id IS NOT NULL AS is_person, "
          "meetings.note_id IS NOT NULL AS is_meeting, "
          "decisions.note_id IS NOT NULL AS is_decision, "
@@ -30,7 +30,8 @@ _RECORD_KINDS = ("meeting", "decision", "question")
 _OWN_ROWS = [("hub_people", "hub_id"), ("hub_people", "person_id"), ("meeting_people", "meeting_id"),
              ("meeting_people", "person_id"), ("record_people", "note_id"), ("record_people", "person_id"),
              ("meetings", "note_id"), ("decisions", "note_id"), ("questions", "note_id"), ("people", "note_id"),
-             ("note_links", "note_id"), ("link_index", "note_id")]
+             ("note_links", "note_id"), ("note_mentions", "note_id"), ("link_index", "note_id"),
+             ("record_sources", "note_id")]
 
 
 class TrashRepository:
@@ -69,7 +70,8 @@ class TrashRepository:
             parent = _live_parent(conn, row["parent_id"])
             if parent is None and _kind(row) in _RECORD_KINDS:
                 raise StaysInAHub('"{}" is a {}: restore the hub it was in first'.format(row["title"], _kind(row)))
-            title = _free_title(conn, parent, row["title"], note_id)
+            # Meetings and records may share titles: theirs is always free.
+            title = row["title"] if row["title_shared"] else _free_title(conn, parent, row["title"], note_id)
             batch = _batch(conn, note_id, row["deleted_at"])
             now = self._clock()
             conn.execute("UPDATE notes SET parent_id = ?, title = ?, deleted_at = NULL, updated_at = ? WHERE id = ?",
@@ -91,6 +93,7 @@ class TrashRepository:
                 # table and column come from the fixed list above, never from input.
                 conn.executemany("DELETE FROM {} WHERE {} = ?".format(table, column), ids)
             conn.executemany("UPDATE images SET note_id = NULL WHERE note_id = ?", ids)
+            conn.executemany("UPDATE record_sources SET source_id = NULL WHERE source_id = ?", ids)
             conn.executemany("UPDATE notes SET area_id = NULL WHERE area_id = ?", ids)
             conn.executemany("UPDATE notes SET parent_id = NULL WHERE parent_id = ?", ids)
             conn.executemany("DELETE FROM notes WHERE id = ?", ids)

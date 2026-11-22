@@ -1,8 +1,9 @@
 // The inline parser: text of a paragraph, heading or table cell in, a list of inline nodes
 // out. Nodes: text, code, math, em, strong, del, mark, link, image, break, softbreak,
-// wikilink, footnoteRef. Brackets and emphasis are resolved with the CommonMark stacks; bare URLs are
-// linked afterwards (autolinks.js).
+// wikilink, footnoteRef, mention. Brackets and emphasis are resolved with the CommonMark stacks;
+// bare URLs are linked afterwards (autolinks.js), then @mentions found (mentions.js).
 import { linkBareUrls } from "./autolinks.js";
+import { linkMentions } from "./mentions.js";
 import { readInlineMath } from "./math.js";
 import { MAX_INLINE_NESTING, nestingDepth, processEmphasis, scanDelimiterRun } from "./delimiters.js";
 import {
@@ -39,7 +40,7 @@ class InlineParser {
   parse() {
     while (this.pos < this.text.length) this.step();
     processEmphasis(this, null);
-    return linkBareUrls(mergeText(this.nodes));
+    return linkMentions(linkBareUrls(mergeText(this.nodes)));
   }
 
   step() {

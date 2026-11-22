@@ -4,7 +4,7 @@ import { escapeHtml } from "./escape.js";
 import { slugify } from "./slug.js";
 import { isExternal, safeImageUrl, safeLinkUrl } from "./urls.js";
 
-/** options: { idPrefix, breaks, resolveWikiLink } */
+/** options: { idPrefix, breaks, resolveWikiLink, resolveMention } */
 export function renderInlines(nodes, options) {
   return nodes.map((node) => renderInline(node, options)).join("");
 }
@@ -34,6 +34,8 @@ function renderInline(node, options) {
       return renderWikiLink(node, options);
     case "footnoteRef":
       return renderFootnoteRef(node, options);
+    case "mention":
+      return renderMention(node, options);
     default:
       return "";
   }
@@ -90,6 +92,17 @@ function renderWikiLink(node, options) {
   return `<a class="md-wikilink${missing}${archived}"${hrefAttr}${data}>${text}</a>`;
 }
 
+// A mention of someone the host knows is a link to them; any other @word stays text.
+function renderMention(node, options) {
+  const text = escapeHtml(`@${node.name}`);
+  const resolved = options.resolveMention ? options.resolveMention(node.name) : null;
+  if (!resolved) return text;
+  const href = resolved.href ? safeLinkUrl(resolved.href) : null;
+  const hrefAttr = href === null ? "" : ` href="${escapeHtml(href)}"`;
+  const archived = resolved.archived ? " md-mention-archived" : "";
+  return `<a class="md-mention${archived}"${hrefAttr} data-mention="${escapeHtml(node.name)}">${text}</a>`;
+}
+
 function renderFootnoteRef(node, options) {
   const p = escapeHtml(options.idPrefix);
   const id = `${p}fnref-${node.number}${node.refIndex > 1 ? `-${node.refIndex}` : ""}`;
@@ -105,6 +118,7 @@ export function plainText(nodes) {
       if (node.type === "softbreak" || node.type === "break") return " ";
       if (node.type === "wikilink") return node.alias || node.target || node.heading;
       if (node.type === "footnoteRef") return "";
+      if (node.type === "mention") return `@${node.name}`;
       return node.children ? plainText(node.children) : "";
     })
     .join("");

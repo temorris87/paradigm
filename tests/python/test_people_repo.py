@@ -34,7 +34,8 @@ class PeopleRepositoryTest(unittest.TestCase):
 
     def test_a_person_is_a_top_level_note_reported_as_a_person(self) -> None:
         note_id, person = self.people.create("  Jane   Doe ")
-        self.assertEqual(person, {"id": note_id, "org": "", "job": "", "email": "", "hubs": []})
+        self.assertEqual(person, {"id": note_id, "first": "Jane", "last": "Doe", "email": "", "phone": "",
+                                  "org": "", "job": "", "hubs": []})
         note = self.notes.get(note_id)
         self.assertEqual((note["title"], note["parent_id"], note["kind"]), ("Jane Doe", None, "person"))
         kinds = {each["title"]: each["kind"] for each in self.notes.tree()}
@@ -57,9 +58,21 @@ class PeopleRepositoryTest(unittest.TestCase):
                          ("Northwind", "Data engineer", "jane@example.com"))
         self.assertEqual(self.people.update(jane, "org", "")["org"], "")
 
+    def test_names_make_the_title(self) -> None:
+        priya = self.people.create(first="Priya", last="Shah")[0]
+        self.assertEqual(self.notes.get(priya)["title"], "Priya Shah")
+        self.people.update(priya, "last", "Shah-Lee")
+        self.assertEqual(self.notes.get(priya)["title"], "Priya Shah-Lee")
+        self.people.update(priya, "phone", "+1 (555) 010-0100")
+        self.notes.rename(priya, "Priya Lee")
+        self.assertEqual((self.people.get(priya)["first"], self.people.get(priya)["last"]), ("Priya", "Lee"))
+        self.people.create("Sam Lee")
+        with self.assertRaises(TitleTaken):
+            self.people.update(priya, "first", "Sam")
+
     def test_bad_fields(self) -> None:
         jane = self.person()
-        for field, value in [("phone", "1"), ("email", "Jane Doe"), ("org", 5), ("job", "x" * 201),
+        for field, value in [("phone", "call me"), ("fax", "1"), ("email", "Jane Doe"), ("org", 5), ("job", "x" * 201),
                              ("org", "bell\x07")]:
             with self.subTest(field=field, value=value), self.assertRaises(BadField):
                 self.people.update(jane, field, value)

@@ -108,3 +108,8 @@
   color: var(--nord4);
   font-style: italic;
 }
+
+/* A project on hold. */
+.home__row--muted .home__title {
+  opacity: 0.55;
+}

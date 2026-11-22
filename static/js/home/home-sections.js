@@ -3,12 +3,14 @@
 // has none. Tasks will join "today" as more rows there. Pure.
 //
 //   ctx: { tree, meetings, records, ... }; today: a Date
-//   section.rows(ctx, today)  -> [{ id, cells: [[className, text]], group?, indent? }]
-//                                (group: an area's row heading its projects, not counted)
+//   section.rows(ctx, today)  -> [{ id, cells: [[className, text]], group?, indent?, muted? }]
+//                                (group: an area's row heading its projects, not counted;
+//                                muted: a project on hold)
 //   homeSections(ctx, today)  -> [{ key, heading, detail, rows, empty }]
 import { localDay, whenText } from "../meetings/meeting-days.js";
 import { attendeesOf, attendeesText, shortTitle } from "../meetings/meetings-model.js";
-import { daysSince, inboxNotes, openQuestions, projectFacts, projectsByArea, todayMeetings } from "./home-model.js";
+import { daysSince, inboxNotes, openQuestions, projectsByArea, todayMeetings } from "./home-model.js";
+import { projectFactsText, statusText } from "../hubs/project-facts.js";
 
 export const HOME_SECTIONS = [
   {
@@ -49,9 +51,10 @@ export const HOME_SECTIONS = [
       ...projects.map((project) => ({
         id: project.id,
         indent: true,
+        muted: project.status === "on_hold",
         cells: [
           ["home__title", project.title],
-          ["home__meta", factsText(projectFacts(tree, meetings, records, project.id, today))],
+          ["home__meta", [statusText(project), projectFactsText({ tree, meetings, records, today }, project)].filter(Boolean).join(" · ")],
         ],
       })),
     ]),
@@ -84,9 +87,3 @@ function askedText(day, today) {
   return `asked ${day} (${ago})`;
 }
 
-function factsText({ openQuestions: open, next }) {
-  return [
-    open && (open === 1 ? "1 open question" : `${open} open questions`),
-    next && `next ${whenText(next)}`,
-  ].filter(Boolean).join(" · ");
-}

@@ -5,11 +5,12 @@
 //   openNoteMenu(app, anchorButton)
 //   goToNote(app, query?)            the Go to picker (top bar, :find)
 //   newNoteDialog(app, parentId, { heading?, kind? })   a title, then the new note opens
-//   moveTargets(tree, id) / goToItems(tree)            what the pickers list (pure)
+//   moveTargets(tree, id) / goToItems(tree, meetings?)  what the pickers list (pure)
 import { confirmDialog, formDialog } from "../ui/dialog.js";
 import { openMenu } from "../ui/menu.js";
 import { pickFrom } from "../ui/picker.js";
-import { groupOf, hubOf, isRecordKind } from "./hub-groups.js";
+import { groupOf, isHub, isRecordKind, RECORD_LABELS } from "./hub-groups.js";
+import { whenText } from "../meetings/meeting-days.js";
 import { noteMenuItems } from "./note-menu.js";
 
 export function openNoteMenu(app, anchor) {
@@ -80,7 +81,7 @@ export async function goToNote(app, query = "") {
   const picked = await pickFrom({
     title: "Go to note",
     placeholder: "part of a title or path",
-    items: goToItems(app.tree),
+    items: goToItems(app.tree, app.meetings),
     query,
     empty: "No note matches",
     ...focusNote(app),
@@ -88,22 +89,28 @@ export async function goToNote(app, query = "") {
   if (picked?.item) await app.open(picked.item.id);
 }
 
-/** Every note, in tree order, with where it is ("Projects › Acme"). */
-export function goToItems(tree) {
-  return tree.inOrder().map((note) => ({ id: note.id, title: note.title, detail: whereText(tree, note.id) }));
+/** Every note, in tree order, with where it is ("Projects › Acme"); a meeting with its date
+ * ("Meeting · Tue 2026-11-24 · Projects › Acme"), since meetings may share a name. */
+export function goToItems(tree, meetings = null) {
+  return tree.inOrder().map((note) => {
+    const where = whereText(tree, note.id);
+    if (!isRecordKind(note.kind)) return { id: note.id, title: note.title, detail: where };
+    const when = note.kind === "meeting" && meetings ? whenText(meetings.get(note.id)) : "";
+    return { id: note.id, title: note.title, detail: [RECORD_LABELS[note.kind], when, where].filter(Boolean).join(" · ") };
+  });
 }
 
 /**
  * Where a note can be moved: the top level (id null), then every note it may go under in tree
- * order: never itself or a note inside it, never a person's own place for a meeting, decision
- * or question (those stay inside a hub).
+ * order: never itself or a note inside it, never a meeting, decision or question (they have no
+ * notes under them). A meeting, decision or question itself goes only to another hub.
  */
 export function moveTargets(tree, id) {
   const note = tree.get(id);
   const inHubOnly = isRecordKind(note?.kind);
   const below = new Set(tree.inOrder(id).map((each) => each.id));
-  const targets = tree.inOrder().filter((each) => each.id !== id && !below.has(each.id)
-    && (!inHubOnly || hubOf(tree, each.id)) && each.id !== tree.parentId(id));
+  const targets = tree.inOrder().filter((each) => each.id !== id && !below.has(each.id) && !isRecordKind(each.kind)
+    && (!inHubOnly || isHub(tree, each.id)) && each.id !== tree.parentId(id));
   const items = targets.map((each) => ({ id: each.id, title: each.title, detail: whereText(tree, each.id) }));
   if (!inHubOnly && tree.parentId(id) !== null) items.unshift({ id: null, title: "Top level", detail: "the Inbox" });
   return items;

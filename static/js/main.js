@@ -16,9 +16,9 @@ mountBanner(connection);
 window.addEventListener("pagehide", () => connection.sendClosing());
 connection.start();
 
-const editor = document.querySelector("pd-editor");
+const editor = document.querySelector(".app__editor");
 const viewer = document.querySelector("pd-image-viewer");
-editor.addEventListener("image", (event) => viewer.open(event.detail));
+for (const box of document.querySelectorAll("pd-editor")) box.addEventListener("image", (event) => viewer.open(event.detail));
 
 const notesNavigator = new Navigator({
   panel: document.querySelector(".app__sidebar"),
@@ -36,6 +36,15 @@ const app = new NotesApp({
     page: document.querySelector(".app__note"),
     line: document.querySelector(".hub-line"),
     section: document.querySelector(".hub"),
+    labels: {
+      main: document.querySelector(".field-label--main"),
+      agenda: document.querySelector(".field-label--agenda"),
+      agendaField: document.querySelector(".app__agenda"),
+    },
+  },
+  agenda: {
+    editor: document.querySelector(".app__agenda-editor"),
+    field: document.querySelector(".app__agenda"),
   },
   home: {
     section: document.querySelector(".home"),

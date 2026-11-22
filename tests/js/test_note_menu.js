@@ -25,7 +25,7 @@ test("note menu: a hub can be renamed, moved, filed, archived, exported and tras
 
 test("note menu: a person is never moved or filed; a meeting is never filed; nested notes are not archived", () => {
   assertEqual(keys(5), "rename newBeside newUnder | archive export | trash");
-  assertEqual(keys(2), "rename move newBeside newUnder | export | trash");
+  assertEqual(keys(2), "rename move newBeside | export | trash", "a meeting has no notes under it");
   assertEqual(keys(3).includes("archive"), false);
   const file = noteMenuItems(tree(), 3).filter((item) => item.key === "file");
   assertEqual(file.some((item) => item.checked), false, "a nested note is in no group itself");
@@ -45,15 +45,16 @@ test("note menu: the last note can't be trashed", () => {
 });
 
 test("move picker: never itself, under itself or its own parent; records stay in hubs", () => {
-  assertEqual(moveTargets(tree(), 3).map((item) => item.id).join(), ",2,5,6,7", "top level first; not 1 (its parent) or 4");
-  assertEqual(moveTargets(tree(), 2).map((item) => item.id).join(), "3,4,6,7", "a meeting: only notes inside hubs");
+  assertEqual(moveTargets(tree(), 3).map((item) => item.id).join(), ",5,6,7", "top level first; not 1 (its parent), 2 (a meeting) or 4");
+  assertEqual(moveTargets(tree(), 2).map((item) => item.id).join(), "6", "a meeting: only another hub");
   assertEqual(moveTargets(tree(), 1).map((item) => item.id).join(), "5,6,7", "a top-level note: no Top level row, nothing under it");
 });
 
-test("go to: every note with where it is", () => {
-  const items = goToItems(tree());
+test("go to: every note with where it is; a meeting with its date", () => {
+  const items = goToItems(tree(), { get: () => ({ day: "2026-11-24", time: "10:00" }) });
   assertEqual(items.length, 7);
   assertEqual(items.find((item) => item.id === 4).detail, "Projects › Acme › Budget");
+  assertEqual(items.find((item) => item.id === 2).detail, "Meeting · Tue 2026-11-24 10:00 · Projects › Acme");
   assertEqual(whereText(tree(), 1), "Projects");
 });
 

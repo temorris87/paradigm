@@ -10,13 +10,14 @@
 // Options: idPrefix ("md-") goes before every id, so two notes on one page never clash;
 // breaks (true) renders single newlines as <br>, like Obsidian; resolveWikiLink(link) returns
 // { href, exists }, { plain: true } (text only) or null for [[wiki links]] ({ target, heading,
-// alias }); href may be null for a missing note.
+// alias }); href may be null for a missing note. resolveMention(name) returns { href, archived }
+// for an @mention of someone known, or null (it stays text).
 import { parseBlocks } from "./blocks.js";
 import { parseInline } from "./inline.js";
 import { renderBlock, renderFootnotes, renderListItem, plainText } from "./render.js";
 import { makeSlugger } from "./slug.js";
 
-const DEFAULTS = { idPrefix: "md-", breaks: true, resolveWikiLink: null };
+const DEFAULTS = { idPrefix: "md-", breaks: true, resolveWikiLink: null, resolveMention: null };
 
 export function parseMarkdown(source) {
   const { document, references, footnotes } = parseBlocks(source);

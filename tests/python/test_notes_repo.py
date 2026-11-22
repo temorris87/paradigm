@@ -8,6 +8,9 @@ from paradigm.db.migrate import migrate
 from paradigm.db.notes_repo import (AreaArchived, BadKind, BadTitle, Conflict, HasChildren, LastNote,
                                     NoteRepository, NotAnArea, NotAProject, NotArchived, NotFound,
                                     NotTopLevel, TitleTaken, WouldCycle)
+from paradigm.db.links_repo import LinkRepository
+from paradigm.notes.hubs import BadProjectField
+from paradigm.notes.mentions import Mention
 from paradigm.notes.seed import WELCOME_TITLE, seed_if_empty
 
 
@@ -29,6 +32,27 @@ class NoteRepositoryTest(unittest.TestCase):
         self.assertIsNone(note["parent_id"])
         self.assertEqual(self.notes.get(note["id"])["body"], "# Hello")
         self.assertEqual(note["version"], 1)
+
+    def test_a_projects_status_and_due_date(self) -> None:
+        project = self.notes.create(None, "Rollout")["id"]
+        with self.assertRaises(NotAProject):
+            self.notes.set_status(project, "on_hold")
+        self.notes.set_kind(project, "project")
+        self.assertEqual(self.notes.get(project)["status"], "active")
+        self.assertEqual(self.notes.set_status(project, "on_hold")["status"], "on_hold")
+        self.assertEqual(self.notes.set_due(project, "2026-12-15")["due"], "2026-12-15")
+        self.assertEqual(self.notes.set_due(project, "")["due"], "")
+        with self.assertRaises(BadProjectField):
+            self.notes.set_status(project, "paused")
+        with self.assertRaises(BadProjectField):
+            self.notes.set_due(project, "soon")
+
+    def test_mentions_are_stored_with_a_save(self) -> None:
+        note = self.notes.create(None, "Plan")
+        self.notes.save(note["id"], "- @Priya to check", 1, links=[], mentions=[Mention("body", 0, "Priya", "- @Priya to check")])
+        index = LinkRepository(self.db).index()
+        self.assertEqual(index["mentions"], [{"id": note["id"], "field": "body", "line": 0, "name": "Priya",
+                                              "context": "- @Priya to check"}])
 
     def test_nesting_and_the_tree(self) -> None:
         top = self.notes.create(None, "Projects")

@@ -3,18 +3,22 @@
 //
 //   const page = peoplePage(sectionElement, { onOpen(id), onLeave(), onAdd() });
 //   page.show({ tree, people }); page.focus();
-//   newPersonDialog(app)     New person: a name, then their note opens
+//   newPersonDialog(app, { first?, last?, open? })   New person: first and last name, then
+//                            their note opens (open false: it doesn't; resolves to the note)
 import { ListPage } from "../pages/list-page.js";
 import { formDialog } from "../ui/dialog.js";
 import { makePerson } from "./people-commands.js";
 import { filterOptions, filterPeople, hubLinks, workText } from "./people-model.js";
 
-export function newPersonDialog(app) {
+export function newPersonDialog(app, { first = "", last = "", open = true } = {}) {
   return formDialog({
     title: "New person",
-    fields: [{ key: "name", label: "Name" }],
+    fields: [
+      { key: "first", label: "First name", value: first },
+      { key: "last", label: "Last name", value: last, optional: true },
+    ],
     submit: "Add to People",
-    run: ({ name }) => makePerson(app, name.trim(), { strict: true }),
+    run: ({ first: given, last: family }) => makePerson(app, { first: given.trim(), last: family.trim() }, { strict: true, open }),
     fallbackFocus: () => app.focusNote(),
   });
 }

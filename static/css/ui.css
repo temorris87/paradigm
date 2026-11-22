@@ -130,6 +130,12 @@
   color-scheme: dark;
 }
 
+.dialog__input--area {
+  min-height: 5rem;
+  resize: vertical;
+  font: inherit;
+}
+
 .dialog__input:focus-visible {
   outline: 1px solid var(--nord9);
   outline-offset: 0;

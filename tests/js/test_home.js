@@ -33,7 +33,7 @@ const NOTES = [
   { id: 24, parent_id: 3, title: "2026-11-21 Old sync", kind: "meeting", updated_at: T },
   { id: 25, parent_id: 2, title: "2026-11-01 Past", kind: "meeting", updated_at: T },
   { id: 40, parent_id: 2, title: "Which region?", kind: "question", updated_at: T },
-  { id: 41, parent_id: 20, title: "Budget?", kind: "question", updated_at: T },
+  { id: 41, parent_id: 2, title: "Budget?", kind: "question", updated_at: T },
   { id: 42, parent_id: 2, title: "Answered?", kind: "question", updated_at: T },
   { id: 43, parent_id: 3, title: "Archived?", kind: "question", updated_at: T },
 ];
@@ -47,7 +47,7 @@ const MEETINGS = [
 ];
 const RECORDS = [
   { id: 40, kind: "question", day: "2026-11-02", answered: "", people: [] },
-  { id: 41, kind: "question", day: "2026-11-20", answered: "", people: [] },
+  { id: 41, kind: "question", day: "2026-11-20", answered: "", people: [], source_id: 20 },
   { id: 42, kind: "question", day: "2026-11-01", answered: "2026-11-05", people: [] },
   { id: 43, kind: "question", day: "2026-10-01", answered: "", people: [] },
 ];

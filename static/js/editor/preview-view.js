@@ -14,6 +14,28 @@ export class PreviewView {
     this.onResize = onResize;
     this.nodes = new Map(); // html -> nodes drawn last time
     this.previous = new Map();
+    this.highlights = [];
+    this.mark = null;
+  }
+
+  /** Text to mark in rendered blocks (highlights.js). Returns whether they changed; nodes
+   * drawn with the old ones are drawn again. */
+  setHighlights(list, mark) {
+    const key = JSON.stringify(list.map(({ text, label, title }) => [text, label, title]));
+    if (key === this.highlightKey) {
+      this.highlights = list;
+      return false;
+    }
+    this.highlightKey = key;
+    this.highlights = list;
+    this.mark = mark;
+    this.nodes = new Map();
+    this.previous = new Map();
+    return true;
+  }
+
+  highlightData(index) {
+    return this.highlights[index]?.data ?? null;
   }
 
   begin() {
@@ -47,6 +69,7 @@ export class PreviewView {
         link.rel = "noopener noreferrer";
       }
     }
+    if (this.mark && this.highlights.length) this.mark(node, this.highlights);
     const resized = () => this.onResize(html, node);
     for (const image of node.querySelectorAll("img")) image.addEventListener("load", resized);
     for (const details of node.querySelectorAll("details")) details.addEventListener("toggle", resized);
