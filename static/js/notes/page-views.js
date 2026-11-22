@@ -1,8 +1,8 @@
-// The pages drawn in place of the note (Home, People, Meetings): which one shows, if any, and its
+// The pages drawn in place of the note (Home, People, Meetings, Trash): which one shows, if any, and its
 // URL flag and history step. The note stays open under them: /?note=N&people.
 //
 //   const views = new PageViews({ main, pages: { home, people, meetings }, history, noteUrl() });
-//   views.shown                    "home" | "people" | "meetings" | null
+//   views.shown                    "home" | "people" | "meetings" | "trash" | null
 //   views.fromUrl(searchParams)    the view a URL asks for, or null
 //   views.show(key, history)       history: "push" (a command or button), "replace" (the
 //                                  page was loaded with the flag) or "none" (Back/Forward)
@@ -17,6 +17,7 @@ export const PAGE_VIEWS = [
   { key: "home", label: "Home" },
   { key: "people", label: "People" },
   { key: "meetings", label: "Meetings" },
+  { key: "trash", label: "Trash" },
 ];
 
 export class PageViews {

@@ -56,3 +56,17 @@ test("go to: every note with where it is", () => {
   assertEqual(items.find((item) => item.id === 4).detail, "Projects › Acme › Budget");
   assertEqual(whereText(tree(), 1), "Projects");
 });
+
+test("trash: where a note goes back to, and what must come back first", async () => {
+  const { trashRows, whereBack, blockedText } = await import("../../static/js/trash/trash-model.js");
+  const entry = (more) => ({ id: 20, title: "Q3", kind: null, deleted_at: "2026-11-20T10:00:00.000Z",
+    purge_at: "2026-11-27T10:00:00.000Z", inside: 0, parent_id: 3, parent_title: "Budget", parent_state: "live", ...more });
+  assertEqual(whereBack(entry(), tree()), "back in Projects › Acme › Budget");
+  assertEqual(whereBack(entry({ parent_state: "trashed" }), tree()), "was in Budget (in the Trash): back at the top");
+  assertEqual(whereBack(entry({ parent_id: null, parent_state: null, kind: "project" }), tree()), "back in Projects");
+  assertEqual(blockedText(entry({ kind: "meeting", parent_state: "trashed", parent_title: "Acme" })), "restore Acme first");
+  assertEqual(blockedText(entry({ kind: "meeting" })), null);
+  const rows = trashRows({ entries: [entry({ inside: 2 }), entry({ id: 21, title: "Other" })], days: 7 }, tree(), { title: "q" });
+  assertEqual(rows.map((row) => `${row.title}|${row.inside}|${row.when}`).join(),
+    "Q3|2 notes under it|trashed 2026-11-20 · gone for good 2026-11-27");
+});

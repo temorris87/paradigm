@@ -137,3 +137,14 @@
   border-color: var(--nord9);
   color: var(--nord6);
 }
+
+/* What a page says (page.say): the editor's status line is hidden under a page. */
+.list-page__message {
+  margin: 0;
+  color: var(--nord13);
+  font-size: 0.9rem;
+}
+
+.list-page__message[hidden] {
+  display: none;
+}

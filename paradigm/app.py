@@ -12,6 +12,7 @@ from paradigm.api.notes import NotesApi
 from paradigm.api.people import PeopleApi
 from paradigm.api.records import RecordsApi
 from paradigm.api.session import SessionApi
+from paradigm.api.trash import TrashApi
 from paradigm.config import Config, parse_args
 from paradigm.db.connection import Database
 from paradigm.db.images_repo import ImageRepository
@@ -21,6 +22,7 @@ from paradigm.db.meetings_repo import MeetingRepository
 from paradigm.db.notes_repo import NoteRepository
 from paradigm.db.people_repo import PeopleRepository
 from paradigm.db.records_repo import RecordRepository
+from paradigm.db.trash_repo import TrashRepository
 from paradigm.instance import PortState, probe
 from paradigm.logging_setup import setup_logging
 from paradigm.notes.seed import seed_if_empty
@@ -115,7 +117,9 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
         server.on_close.append(db.close)
         notes = NoteRepository(db)
         images = ImageRepository(db)
+        trash = TrashRepository(db, keep_days=config.trash_days)
         seed_if_empty(notes)
+        empty_trash(trash)
         sweep_images(images, notes)
         # Whichever sweep deleted the images, this one or the one at the last stop (which
         # doesn't vacuum, so closing the last tab stays quick), the file shrinks here.
@@ -129,7 +133,12 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
         raise
     # Before the database closes. Only with no tab open: an open tab's undo could bring a
     # deleted link back (Ctrl-C stops the server with tabs still open).
-    server.on_close.insert(0, lambda: presence.tab_count == 0 and sweep_images(images, notes))
+    def tidy_at_stop() -> None:
+        if presence.tab_count == 0:
+            empty_trash(trash)
+            sweep_images(images, notes)
+
+    server.on_close.insert(0, tidy_at_stop)
     SessionApi(presence, config.keepalive_seconds, config.max_streams).register(server.router)
     NotesApi(notes).register(server.router)
     PeopleApi(PeopleRepository(db), notes).register(server.router)
@@ -137,6 +146,21 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
     RecordsApi(RecordRepository(db), notes).register(server.router)
     ImagesApi(images).register(server.router)
     LinksApi(LinkRepository(db)).register(server.router)
+    TrashApi(trash, notes).register(server.router)
+
+
+def empty_trash(trash: TrashRepository) -> int:
+    """Deletes for good the notes trashed over a week ago (before the image sweep, so their
+    images can go too). A failure is logged, never fatal: they only wait for the next time."""
+    try:
+        removed = trash.purge()
+    except Exception:
+        log.exception("could not empty the trash")
+        return 0
+    if removed:
+        log.info("Deleted %d note%s for good (in the Trash for over %d days)", removed, "" if removed == 1 else "s",
+                 trash.keep_days)
+    return removed
 
 
 def sweep_images(images: ImageRepository, notes: NoteRepository) -> int:

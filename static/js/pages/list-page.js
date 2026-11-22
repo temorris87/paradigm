@@ -15,6 +15,8 @@
 //     onOpen(id), onLeave() });
 //   page.show(ctx)    draw (again) with the filters as they are
 //   page.focus()      the list
+//   page.say(text)    a line under the bar, since the editor's status line is hidden here
+//                     (cleared on the next draw)
 //
 // The list is one focus stop (a listbox with aria-activedescendant, as on the hub panel);
 // the filters are ordinary form fields, so Tab goes through them like on any web page.
@@ -58,7 +60,15 @@ export class ListPage {
       add.addEventListener("click", () => spec.add.run());
       bar.append(add);
     }
-    section.replaceChildren(bar, this.list);
+    this.message = element("p", "list-page__message");
+    this.message.setAttribute("role", "status");
+    this.message.hidden = true;
+    section.replaceChildren(bar, this.message, this.list);
+  }
+
+  say(text) {
+    this.message.textContent = text;
+    this.message.hidden = !text;
   }
 
   select({ key, label }) {
@@ -71,6 +81,7 @@ export class ListPage {
 
   show(ctx) {
     this.ctx = ctx;
+    this.say("");
     const activeId = this.rows[this.active]?.id;
     this.fillOptions();
     this.rows = this.spec.rows(ctx, this.values);

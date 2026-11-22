@@ -68,7 +68,7 @@ function trashDialog(app, note, inside) {
   const others = inside === 0 ? "" : ` and the ${inside === 1 ? "note" : `${inside} notes`} under it`;
   return confirmDialog({
     title: "Move to trash",
-    text: `Move "${note.title}"${others} to the trash?`,
+    text: `Move "${note.title}"${others} to the Trash? You can restore ${inside === 0 ? "it" : "them"} from the Trash for ${app.trash.days} days.`,
     confirm: "Move to trash",
     danger: true,
     run: () => app.trashCommand(true),

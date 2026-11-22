@@ -82,8 +82,10 @@ export const NOTE_COMMANDS = [
     run: (app) => app.hubCommand() },
   { name: "export", min: 3, usage: ":exp[ort]", help: "download this note, and the linked notes beside or under it, as one .html file",
     run: (app) => app.exportCommand() },
-  { name: "trash", min: 5, usage: ":trash[!]", help: "delete this note (:trash! with the notes under it)",
+  { name: "trash", min: 5, usage: ":trash[!]", help: "move this note to the Trash (:trash! with the notes under it)",
     run: (app, { bang }) => app.trashCommand(bang) },
+  { name: "trashed", min: 7, usage: ":trashed", help: "open the Trash page: notes trashed in the last week, to restore (Escape comes back to the note)",
+    run: (app) => app.showView("trash", "push") },
 ];
 
 export function registerNoteCommands(editor) {

@@ -6,6 +6,7 @@ import "./images/viewer.js";
 import { Navigator } from "./layout/navigator.js";
 import { meetingsApi } from "./meetings/api.js";
 import { recordsApi } from "./records/api.js";
+import { trashApi } from "./trash/api.js";
 import { imagesApi, linksApi, notesApi } from "./notes/api.js";
 import { NotesApp } from "./notes/app.js";
 import { peopleApi } from "./people/api.js";
@@ -48,6 +49,10 @@ const app = new NotesApp({
     section: document.querySelector(".meetings"),
     button: document.querySelector(".topbar__meetings"),
   },
+  trash: {
+    section: document.querySelector(".trash"),
+    button: document.querySelector(".navigator__trash"),
+  },
   goTo: document.querySelector(".topbar__goto"),
   navigator: notesNavigator,
   api: notesApi,
@@ -55,6 +60,7 @@ const app = new NotesApp({
   peopleApi,
   meetingsApi,
   recordsApi,
+  trashApi,
   linksApi,
 });
 app.start().catch((error) => app.fail(error));

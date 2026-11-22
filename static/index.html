@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="/css/home.css">
   <link rel="stylesheet" href="/css/people.css">
   <link rel="stylesheet" href="/css/meetings.css">
+  <link rel="stylesheet" href="/css/trash.css">
   <link rel="stylesheet" href="/css/image-viewer.css">
   <link rel="stylesheet" href="/css/ui.css">
   <script type="module" src="/js/main.js"></script>
@@ -39,11 +40,13 @@
       <section class="home" aria-label="Home" hidden></section>
       <section class="people" aria-label="People" hidden></section>
       <section class="meetings" aria-label="Meetings" hidden></section>
+      <section class="trash" aria-label="Trash" hidden></section>
     </main>
     <div class="navigator__backdrop" hidden></div>
     <nav class="app__sidebar" id="navigator" aria-label="Notes">
       <h1 class="app__title">Paradigm</h1>
       <ul class="tree" aria-label="Notes"></ul>
+      <button type="button" class="navigator__trash" title="Notes trashed in the last week: restore them from here">Trash</button>
     </nav>
   </div>
   <pd-image-viewer></pd-image-viewer>

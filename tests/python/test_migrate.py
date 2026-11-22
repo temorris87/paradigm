@@ -94,6 +94,22 @@ class MigrateTest(unittest.TestCase):
         with self.db.reading() as conn:
             self.assertIsNone(conn.execute("SELECT archived_at FROM notes").fetchone()[0])
 
+    def test_images_keep_their_rows_and_may_lose_their_note(self) -> None:
+        folder = Path(self.tmp.name) / "upto9"
+        folder.mkdir()
+        for number, path in migrations()[:9]:
+            (folder / path.name).write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+        migrate(self.db, folder)
+        with self.db.transaction() as conn:
+            conn.execute("INSERT INTO notes (id, title, created_at, updated_at) VALUES (1, 'Acme', 'x', 'x')")
+            conn.execute("INSERT INTO images (id, note_id, mime, width, height, size, sha256, data, created_at) "
+                         "VALUES (5, 1, 'image/png', 1, 1, 3, 'abc', x'010203', 'x')")
+        migrate(self.db)
+        with self.db.transaction() as conn:
+            self.assertEqual(tuple(conn.execute("SELECT id, note_id, size FROM images").fetchone()), (5, 1, 3))
+            conn.execute("UPDATE images SET note_id = NULL")
+            conn.execute("DELETE FROM notes")
+
     def test_foreign_keys_are_on(self) -> None:
         with self.db.reading() as conn:
             self.assertEqual(conn.execute("PRAGMA foreign_keys").fetchone()[0], 1)

@@ -53,6 +53,7 @@ paradigm/                Python package
                          unattend); records.py (/api/records, /api/record/create|date|
                          answer|reopen|with|unwith); links.py (/api/links: the wiki-link
                          index and stale notes; /api/links/index: the page's catch-up);
+                         trash.py (/api/trash, /api/trash/restore);
                          answers.py (result or expected error -> response)
   db/                    (migrations: 001 notes, 002 images, 003 notes.kind for PARA hubs,
                          004 notes.area_id: a project's area, 005 notes.archived_at:
@@ -61,7 +62,8 @@ paradigm/                Python package
                          meeting's day, time and attendees, 008 decisions + questions +
                          record_people: their days, an answer day, the people on them,
                          009 note_links + link_index: each note's wiki-link texts as
-                         written, and the note version they were read from)
+                         written, and the note version they were read from, 010 images.note_id
+                         may be NULL: an image outlives its note deleted for good)
                          connection.py (one locked connection, transactions, VACUUM at start
                          when worth it), migrate.py
                          (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py,
@@ -73,6 +75,9 @@ paradigm/                Python package
                          kind "decision"/"question"; under a hub or a meeting in one),
                          links_repo.py (the wiki-link index; store_links runs inside a
                          note save; a note whose version moved past its index is stale),
+                         trash_repo.py (the Trash: one entry per note trashed with the notes
+                         trashed with it (same deleted_at); restore; purge deletes for good
+                         what was trashed over Config.trash_days (7) ago, at start and stop),
                          images_repo.py (image bytes in SQLite, deduped per note by sha256;
                          sweep_unused deletes images no note links to, at start and stop only)
   images/                formats.py: PNG/JPEG/GIF/WebP from magic bytes + size (SVG refused)
@@ -106,9 +111,9 @@ static/
                          :resource :inbox :inarea :archive :restore :people :newperson
                          :addperson :dropperson :org :job :email :meetings :meeting :date
                          :attendee :dropattendee :decision :question :answered :reopen :with
-                         :dropwith :hub :home :export :trash :find),
+                         :dropwith :hub :home :export :trash :trashed :find),
                          page-views.js (which page replaces the note: &home, &people,
-                         &meetings; the URL flag and Back),
+                         &meetings, &trash; the URL flag and Back),
                          hub-groups.js (THE PARA group table: Inbox, Projects, Areas,
                          Resources; then People and the Archive, folded by default),
                          headings.js, note-menu.js (THE note menu on the open note's crumb:
@@ -169,6 +174,8 @@ static/
                          errors show inside and keep it open), picker.js (a text box over a
                          filtered list; filterItems is pure), ui-keys.js (THE key table of
                          menus, pickers and dialogs), dom.js
+  js/trash/              api.js, trash-model.js (where a note goes back to, what must come
+                         back first; pure), trash-page.js (the Trash page, a ListPage)
   js/connection/         connection.js (event stream + beacon), banner.js, tab-id.js
   js/editor/             the <pd-editor> component:
     pd-editor.js         the custom element (hidden textarea takes keys; events out)
@@ -311,6 +318,13 @@ Update this section when the structure changes.
   "Add new person".
 - Clicking a rendered image opens `<pd-image-viewer>` (its keys live in
   `static/js/images/viewer-keys.js`).
+- Trash: trashing a note (its menu, or `:trash`) takes the notes under it too; they stay in the
+  Trash for a week, then are deleted for good (with their person, meeting, record rows and
+  links) when Paradigm starts or stops. The Trash page (`&trash`; the Trash button at the foot
+  of the notes panel, or `:trashed`) lists them; Enter or a click restores one with the notes
+  trashed with it and opens it: under its old parent, or at the top when that is still
+  trashed (a meeting, decision or question waits for its hub). A title taken meanwhile gets
+  " (restored)".
 - An image is deleted from the database once no note (trashed ones included) links to it any
   more, but only when Paradigm starts or stops: while a tab is open, `u` or `p` can bring a
   deleted link back.

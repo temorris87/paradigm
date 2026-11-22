@@ -23,7 +23,7 @@ import { registerNoteCommands, runNoteCommand } from "./commands.js";
 import { headingLine } from "./headings.js";
 import { groupOf, isArchived, topNoteOf } from "./hub-groups.js";
 import { NoteImages } from "./images.js";
-import { goToNote, newNoteDialog, openNoteMenu } from "./note-actions.js";
+import { goToNote, newNoteDialog, openNoteMenu, whereText } from "./note-actions.js";
 import { LinkIndex } from "./link-index.js";
 import { NoteSession } from "./note-session.js";
 import { resolveLink, splitTarget } from "./resolve.js";
@@ -35,18 +35,23 @@ import { People } from "../people/people-model.js";
 import { peoplePage } from "../people/people-page.js";
 import { Records } from "../records/records-model.js";
 import { TreeView, addLabel } from "./tree-view.js";
+import { NO_TRASH } from "../trash/trash-model.js";
+import { trashPage } from "../trash/trash-page.js";
 import { newPersonDialog } from "../people/people-page.js";
 
 const UNSAVED = "E37: No write since last change (:w to save, or ! to drop the changes)";
 
 export class NotesApp {
-  constructor({ editor, tree, crumbs, navigator, hub, home, people, meetings, goTo, api, imagesApi, peopleApi,
+  constructor({ editor, tree, crumbs, navigator, hub, home, people, meetings, trash, goTo, api, trashApi, imagesApi, peopleApi,
                 meetingsApi, recordsApi, linksApi, location = window.location, history = window.history,
                 today = () => new Date() }) {
     this.editor = editor;
     this.peopleApi = peopleApi;
     this.meetingsApi = meetingsApi;
     this.recordsApi = recordsApi;
+    this.trashApi = trashApi;
+    this.trash = NO_TRASH;
+    this.trashButton = trash.button;
     this.records = new Records();
     this.people = new People();
     this.meetings = new Meetings();
@@ -85,12 +90,17 @@ export class NotesApp {
         home: new HomePage(home.section, { ...onPage, today }),
         people: peoplePage(people.section, { ...onPage, onAdd: () => this.guard(newPersonDialog(this)) }),
         meetings: meetingsPage(meetings.section, { ...onPage, today, onAdd: () => this.guard(newMeetingDialog(this)) }),
+        trash: trashPage(trash.section, { onRestore: (id) => this.restoreFromTrash(id), onLeave: onPage.onLeave }),
       },
       history,
       noteUrl: () => noteUrl(this.currentId),
     });
-    for (const [key, { button }] of Object.entries({ home, people, meetings })) {
-      button?.addEventListener("click", () => (this.views.shown === key ? this.leaveView() : this.showView(key, "push")));
+    for (const [key, { button }] of Object.entries({ home, people, meetings, trash })) {
+      button?.addEventListener("click", () => {
+        this.navigator.hide({ refocus: false });
+        if (this.views.shown === key) this.leaveView();
+        else this.showView(key, "push");
+      });
     }
     goTo?.addEventListener("click", () => this.guard(goToNote(this)));
     this.images = new NoteImages({ editor, api: imagesApi, currentId: () => this.currentId });
@@ -145,10 +155,11 @@ export class NotesApp {
   }
 
   async refreshTree() {
-    const [notes, people, meetings, records] = await Promise.all([
+    const [notes, people, meetings, records, trash] = await Promise.all([
       this.api.list(), this.peopleApi.list(), this.meetingsApi.list(), this.recordsApi.list(),
-      this.linkIndex.refresh(),
+      this.trashApi.list(), this.linkIndex.refresh(),
     ]);
+    this.trash = trash;
     this.tree = new NoteTree(notes);
     this.people = new People(people);
     this.meetings = new Meetings(meetings);
@@ -215,7 +226,9 @@ export class NotesApp {
     showBreadcrumb(this.crumbs, this.tree, id, (target) => this.guard(this.open(target)),
       (button) => openNoteMenu(this, button));
     const ctx = { tree: this.tree, people: this.people, meetings: this.meetings, records: this.records,
-      links: this.linkIndex.links };
+      links: this.linkIndex.links, trash: this.trash };
+    const trashed = this.trash.entries.length;
+    if (this.trashButton) this.trashButton.textContent = trashed ? `Trash · ${trashed}` : "Trash";
     this.hubPage.show(ctx, id);
     this.views.draw(ctx, this.crumbs);
     const title = this.tree.get(id)?.title ?? this.session.note?.title;
@@ -444,7 +457,23 @@ export class NotesApp {
     this.session.close();
     await this.refreshTree();
     if (next !== null) await this.open(next, { history: "replace", discard: true });
-    this.editor.showMessage(`"${title}" deleted`);
+    this.editor.showMessage(`"${title}" moved to the Trash (kept for ${this.trash.days} days)`);
+  }
+
+  /** From the Trash page: brings a note back (with the notes trashed with it) and opens it. */
+  async restoreFromTrash(id) {
+    let answer;
+    try {
+      answer = await this.trashApi.restore(id);
+    } catch (error) {
+      this.views.pages.trash.say(error.message);
+      return;
+    }
+    const { note, renamed } = answer;
+    await this.refreshTree();
+    await this.open(note.id);
+    const where = this.tree.parentId(note.id) === null ? groupLabel(this.tree, note.id) : whereText(this.tree, note.id);
+    this.editor.showMessage(`"${note.title}" restored to ${where}${renamed ? " (its title was taken there)" : ""}`);
   }
 
   /** Where to go once a note is gone: its parent, else a sibling, else any other top note. */

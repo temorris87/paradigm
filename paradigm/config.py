@@ -28,6 +28,8 @@ class Config:
     keepalive_seconds: float = 15.0
     # Most event streams open at once (one per tab).
     max_streams: int = 50
+    # A trashed note can be restored for this many days; then it is deleted for good.
+    trash_days: int = 7
 
     @property
     def url(self) -> str:
