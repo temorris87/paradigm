@@ -1,0 +1,443 @@
+/* The calendar window (calendar.html): a bar, the task sidebar and the week grid. Landscape:
+   it opens on the left 2/3 of the screen. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+.cal-page {
+  --cal-hour: 48px; /* keep in step with HOUR_PX in grid-view.js */
+  --cal-gutter: 3.5rem;
+  display: flex;
+  flex-direction: column;
+  background: var(--nord0);
+  color: var(--nord4);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.4;
+}
+
+.cal-page.is-dragging,
+.cal-page.is-dragging * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+.cal-button {
+  padding: 0.25rem 0.7rem;
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  background: var(--nord1);
+  color: var(--nord5);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.cal-button:hover,
+.cal-button:focus-visible {
+  border-color: var(--nord8);
+}
+
+.cal-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---- the bar ---- */
+.cal-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--nord2);
+  background: var(--nord1);
+}
+
+.cal-bar__week {
+  margin: 0 0.75rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--nord13);
+}
+
+.cal-bar__status {
+  flex: 1 1 20rem;
+  min-width: 0;
+  font-size: 0.85rem;
+  color: var(--nord4);
+}
+
+.cal-bar__status--due {
+  color: var(--nord13);
+}
+
+/* ---- the layout: sidebar | week ---- */
+.cal {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
+  min-height: 0;
+}
+
+/* ---- the sidebar ---- */
+.cal-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+  padding: 0.75rem;
+  border-right: 1px solid var(--nord2);
+  background: var(--nord1);
+}
+
+.cal-side__tabs {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.cal-side__tab {
+  flex: 1;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  background: var(--nord0);
+  color: var(--nord4);
+  font: inherit;
+  cursor: pointer;
+}
+
+.cal-side__tab[aria-selected="true"] {
+  border-color: var(--nord8);
+  color: var(--nord6);
+  font-weight: 600;
+}
+
+.cal-side__filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.cal-side__hub,
+.cal-side__search,
+.cal-file__hub {
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  background: var(--nord0);
+  color: var(--nord5);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.cal-file__hub.is-missing {
+  border-color: var(--nord11);
+}
+
+.cal-side__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--nord4);
+  opacity: 0.8;
+}
+
+.cal-side__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.cal-side__empty {
+  padding: 0.5rem;
+  font-style: italic;
+  color: var(--nord4);
+}
+
+.cal-task {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  padding: 0.3rem 0.4rem;
+  border-radius: 4px;
+}
+
+.cal-task:hover {
+  background: var(--nord2);
+}
+
+.cal-task--depth-1 { padding-left: 1.4rem; }
+.cal-task--depth-2 { padding-left: 2.4rem; }
+.cal-task--depth-3 { padding-left: 3.4rem; }
+.cal-task--depth-4 { padding-left: 4.4rem; }
+
+.cal-task__box {
+  margin-top: 0.25rem;
+  accent-color: var(--nord14);
+}
+
+.cal-task__grip {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  cursor: grab;
+  touch-action: none;
+}
+
+.cal-task__title {
+  color: var(--nord6);
+}
+
+.cal-task--done .cal-task__title {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.cal-task__meta,
+.cal-file__meta {
+  font-size: 0.8rem;
+  color: var(--nord4);
+  opacity: 0.85;
+}
+
+.cal-file {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem 0.4rem;
+  border-bottom: 1px solid var(--nord2);
+}
+
+.cal-file__title {
+  color: var(--nord6);
+}
+
+.cal-file__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+/* ---- the week ---- */
+.cal-week {
+  --cal-days: 5;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.cal-head,
+.cal-allday,
+.cal-body {
+  display: grid;
+  grid-template-columns: var(--cal-gutter) repeat(var(--cal-days), minmax(0, 1fr));
+}
+
+.cal-head {
+  border-bottom: 1px solid var(--nord2);
+}
+
+.cal-dayhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0;
+  border-left: 1px solid var(--nord2);
+}
+
+.cal-dayhead__name {
+  color: var(--nord4);
+}
+
+.cal-dayhead__date {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--nord6);
+}
+
+.cal-dayhead--today .cal-dayhead__date {
+  color: var(--nord13);
+}
+
+.cal-allday {
+  border-bottom: 1px solid var(--nord2);
+  min-height: 1.9rem;
+}
+
+.cal-corner--label {
+  align-self: center;
+  padding-right: 0.4rem;
+  text-align: right;
+  font-size: 0.75rem;
+  color: var(--nord4);
+}
+
+.cal-allday__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px;
+  border-left: 1px solid var(--nord2);
+}
+
+.cal-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.cal-body {
+  position: relative;
+  height: calc(var(--cal-hour) * 24);
+}
+
+.cal-gutter {
+  position: relative;
+}
+
+.cal-gutter__hour {
+  position: absolute;
+  right: 0.4rem;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  color: var(--nord4);
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-col {
+  position: relative;
+  border-left: 1px solid var(--nord2);
+  /* an hour line every hour, a fainter one at the half hour */
+  background-image:
+    linear-gradient(to bottom, var(--nord2) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--nord2) 45%, transparent) 1px, transparent 1px);
+  background-size: 100% var(--cal-hour), 100% calc(var(--cal-hour) / 2);
+  cursor: cell;
+}
+
+.cal-col--today {
+  background-color: color-mix(in srgb, var(--nord1) 60%, transparent);
+}
+
+.cal-now {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--nord11);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* ---- blocks ---- */
+.cal-block {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 2px 6px;
+  border-left: 3px solid var(--nord10);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--nord10) 45%, var(--nord0));
+  color: var(--nord6);
+  font-size: 0.8rem;
+  line-height: 1.25;
+  cursor: grab;
+  touch-action: none;
+  z-index: 1;
+}
+
+.cal-allday .cal-block {
+  position: static;
+}
+
+.cal-block--task {
+  border-left-color: var(--nord14);
+  background: color-mix(in srgb, var(--nord14) 30%, var(--nord0));
+}
+
+.cal-block--pending {
+  border: 1px dashed var(--nord4);
+  border-left-width: 3px;
+  background: color-mix(in srgb, var(--nord3) 50%, var(--nord0));
+  cursor: pointer;
+}
+
+.cal-block--muted {
+  opacity: 0.6;
+}
+
+.cal-block--cancelled .cal-block__title {
+  text-decoration: line-through;
+}
+
+.cal-block--done .cal-block__title {
+  text-decoration: line-through;
+}
+
+.cal-block--selected {
+  outline: 2px solid var(--nord13);
+  z-index: 2;
+}
+
+.cal-block--ghost {
+  border: 2px dashed var(--nord13);
+  background: color-mix(in srgb, var(--nord13) 20%, transparent);
+  color: var(--nord6);
+  left: 2px;
+  right: 2px;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.cal-block__title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal-block__time,
+.cal-block__sub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.85;
+}
+
+/* Half an hour or less: one line, the time beside the title. */
+.cal-block--short {
+  flex-direction: row;
+  gap: 0.4rem;
+}
+
+.cal-block--short .cal-block__sub {
+  display: none;
+}
+
+/* The bottom edge: drag it to make the block longer or shorter. */
+.cal-block__edge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 7px;
+  cursor: ns-resize;
+}
+
+.cal-block__edge:hover {
+  background: color-mix(in srgb, var(--nord6) 25%, transparent);
+}

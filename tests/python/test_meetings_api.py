@@ -28,8 +28,9 @@ class MeetingsApiTest(unittest.TestCase):
         self.assertEqual(attended["added"], [jane])
         status, payload = self.running.get_json("/api/meetings")
         self.assertEqual(status, 200)
-        self.assertEqual(payload["meetings"], [{"id": meeting, "day": "2026-11-25", "time": "10:00", "attendees": [jane],
-                                                "agenda_version": 1}])
+        self.assertEqual(payload["meetings"], [{"id": meeting, "day": "2026-11-25", "time": "10:00", "end_time": "",
+                                                "cancelled": False, "location": "", "join_url": "",
+                                                "attendees": [jane], "agenda_version": 1}])
         saved = self.post("/api/meeting/agenda", {"id": meeting, "agenda": "1. Dates", "version": 1, "links": []})
         self.assertEqual(saved["version"], 2)
         self.post("/api/meeting/agenda", {"id": meeting, "agenda": "old", "version": 1}, 409)

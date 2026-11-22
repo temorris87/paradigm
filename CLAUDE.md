@@ -55,6 +55,11 @@ paradigm/                Python package
                          answer|reopen|with|unwith); links.py (/api/links: the wiki-link and
                          mention index and stale notes; /api/links/index: the page's catch-up);
                          trash.py (/api/trash, /api/trash/restore);
+                         tasks.py (/api/tasks, /api/task/done: ticks the box in the text;
+                         /api/sessions, /api/session/add|move|remove: blocks of time);
+                         calendar.py (the Outlook import: /api/calendar/status|import|upload|
+                         pending|file|ignore); timesheet.py (/api/time/week, /api/time/
+                         settings, holiday/add|update|remove, off/add|remove);
                          answers.py (result or expected error -> response)
   db/                    (migrations: 001 notes, 002 images, 003 notes.kind for PARA hubs,
                          004 notes.area_id: a project's area, 005 notes.archived_at:
@@ -68,7 +73,12 @@ paradigm/                Python package
                          notes.title_shared (meetings and records may share titles),
                          notes.status/due (a project's), meetings.agenda, people first/
                          last/phone, record_sources (where a record came from, the quote),
-                         note_mentions; records and notes moved out from under meetings)
+                         note_mentions; records and notes moved out from under meetings,
+                         012 tasks + task_texts + task_sessions: a note's boxes, the text
+                         they were read from, their blocks of time, 013 notes.time_code,
+                         014 meetings end_time/cancelled/location/join_url, 015
+                         meeting_sources (Outlook uid + day -> meeting), import_pending (To
+                         file), import_log, 016 time_settings, holidays, time_off)
                          connection.py (one locked connection, transactions, VACUUM at start
                          when worth it), migrate.py
                          (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py,
@@ -86,16 +96,35 @@ paradigm/                Python package
                          trashed with it (same deleted_at); restore; purge deletes for good
                          what was trashed over Config.trash_days (7) ago, at start and stop),
                          images_repo.py (image bytes in SQLite, deduped per note by sha256;
-                         sweep_unused deletes images no note links to, at start and stop only)
+                         sweep_unused deletes images no note links to, at start and stop only),
+                         task_index.py (store_tasks: runs inside a note save with the tasks
+                         the page read; follows each task's line, task_match.py),
+                         tasks_repo.py (tasks, ticking a box from outside the editor,
+                         sessions), import_repo.py (applies an Outlook .ics: new, moved,
+                         cancelled, removed; series go to their hub, the rest wait in To
+                         file; attendees matched or made as people; <data>/import/ read at
+                         start and when the calendar asks), time_repo.py (settings, holidays,
+                         time off; gathers a week for the report)
+  calendar/              ics.py (reads Outlook's .ics: unfolding, its own VTIMEZONE rules,
+                         then this computer's local time; pure), import_rules.py (skipped,
+                         cancelled, moved, title, agenda, join link, attendees; pure)
+  timesheet/             report.py (the week: each weekday exactly the working day in
+                         quarter hours, overlaps shared, largest remainder, the rest to the
+                         Default code; pure), holidays.py (rules like "4th Thu of Nov + 1",
+                         observed Sat->Fri / Sun->Mon, the US seed list; pure)
   images/                formats.py: PNG/JPEG/GIF/WebP from magic bytes + size (SVG refused)
   notes/                 titles.py (title rules), hubs.py (HUB_KINDS: project, area,
                          resource; a project's statuses and due date), people.py (person
                          fields, roles, first/last name), seed.py + welcome.md (first-run
                          note), meetings.py (day, time), records.py (decision/question
                          kinds), links.py (a save's list of link texts), mentions.py (a
-                         save's list of @mentions)
+                         save's list of @mentions), tasks.py (a save's list of tasks; the
+                         box on a line), task_match.py (following lines between texts with
+                         difflib; pure), sessions.py (a block's day, start, end)
 static/
-  index.html
+  index.html             the notes app
+  calendar.html          the calendar window (js/calendar/calendar-main.js)
+  time.html              the timesheet window (js/timesheet/time-main.js)
   vendor/katex-0.19.1/   KaTeX exactly as audited (package paths kept; checked against
                          docs/security/katex-0.19.1.sha256 by tests/python/test_vendor.py)
   vendor/mermaid-12.3.0/ Mermaid exactly as audited (same check, mermaid-12.3.0.sha256)
@@ -119,15 +148,18 @@ static/
                          mention-actions.js (@ completion, opening a mention, the rename
                          rewrite), selection-menu.js (THE right-click menu in the text: Add
                          question… / Add decision… from the selection), link-index.js (the
-                         page's copy: saves send links and mentions, stale notes caught up
-                         after load), tree-model.js, tree-view.js (meetings, decisions and
+                         page's copy: saves send links, mentions and tasks, stale notes caught
+                         up after load), tasks.js (tasksIn: a text's "- [ ]" boxes, their lines
+                         and parents, read by the renderer; boxState/setBox; pure),
+                         tree-model.js, tree-view.js (meetings, decisions and
                          questions left out), tree-keys.js
                          (THE tree key table), breadcrumb.js, commands.js (THE note ex
                          commands: :e :new :child :rename :parent :nav :project :area
                          :resource :inbox :inarea :archive :restore :people :newperson
                          :addperson :dropperson :org :job :email :phone :meetings :meeting :date
                          :attendee :dropattendee :decision :question :answered :reopen :with
-                         :dropwith :hub :home :export :trash :trashed :find),
+                         :dropwith :task :timecode :calendar :time :hub :home :export :trash
+                         :trashed :find),
                          page-views.js (which page replaces the note: &home, &people,
                          &meetings, &trash; the URL flag and Back),
                          hub-groups.js (THE PARA group table: Inbox, Projects, Areas,
@@ -197,7 +229,24 @@ static/
                          menus, pickers and dialogs), dom.js
   js/trash/              api.js, trash-model.js (where a note goes back to, what must come
                          back first; pure), trash-page.js (the Trash page, a ListPage)
-  js/connection/         connection.js (event stream + beacon), banner.js, tab-id.js
+  js/connection/         connection.js (event stream + beacon), banner.js, tab-id.js (a key
+                         per window kind: a popup copies its opener's sessionStorage),
+                         changes.js (BroadcastChannel between the app's windows: "changed",
+                         "open" a note)
+  js/windows/popout.js   the calendar and timesheet windows: a popup on the left 2/3 of the
+                         screen, full height; an open one is brought forward, not reloaded
+  js/tasks/              api.js, tasks-model.js (a task's note and hub, subtasks under their
+                         task; a hub's, the calendar's open list and its filter, today's
+                         blocks; pure)
+  js/calendar/           api.js (the import), week-model.js (days shown, the weekend rule,
+                         blocks, side-by-side layout, 15-minute snap; pure), grid-view.js
+                         (the week grid), drag.js (pointer drags: drop, move, resize),
+                         task-sidebar.js (Tasks and To file), calendar-page.js (the window:
+                         loading, menus, dialogs, the import), calendar-keys.js (THE
+                         calendar key table)
+  js/timesheet/          api.js, copy.js (the grid as HTML and tab-separated text; pure),
+                         time-page.js (Week and Settings), time-keys.js (THE timesheet key
+                         table), time-main.js
   js/editor/             the <pd-editor> component:
     pd-editor.js         the custom element (hidden textarea takes keys; events out: change,
                          save, link, mention, menu, highlight, files, image...)
@@ -355,7 +404,8 @@ Update this section when the structure changes.
   archived ones last and muted. More kinds get the tab by adding them to its row.
 - Home: a page in place of the note (`&home`), and the start page: a URL with no `?note=` opens
   on it. `:home` or the Home button. Sections top to bottom (`static/js/home/home-sections.js`):
-  Today (today's meetings: timed by time, then untimed; tasks will join it), Open questions
+  Today (today's meetings and task blocks by time, untimed meetings last; "Calendar not
+  imported today" first until today's export is read), Open questions
   (oldest first), Projects (live ones by area, "No area" last, with the due date, open questions
   and the next meeting; on hold ones muted), Inbox (newest change first). Archived hubs are left out. One focus stop; its keys
   (`}`/`{` jump sections) live in `static/js/home/home-keys.js`.
@@ -371,6 +421,51 @@ Update this section when the structure changes.
   a question's state (▾: Answer…, answered today / on a day, reopen), and the people on a
   record (× and + Add person). The person dialog adds someone new to People only when its
   button says "Add new person".
+- Tasks (Tyson, 2026-11-22: here the text is the source, unlike meetings and records): a
+  `- [ ]` list item in any note, or a meeting's Agenda or Notes, is a task; a box nested under
+  another box is its subtask (any depth; a box under a plain bullet is a task of its own);
+  `- [x]` is done; never in code. The page reads the boxes with the renderer and sends them
+  with every save (`tasksIn`); the server follows each task's line through edits (difflib:
+  unchanged or edited lines keep their task; a cut-and-put line keeps it by its title), so
+  its blocks of time stay with it. A deleted line removes the task (its past blocks still
+  count as time; undo brings it back). Ticking anywhere (a hub's Tasks row, Space or Done;
+  the calendar; a click on the rendered box) writes `[x]` into its line: in the open note as
+  an edit (one undo step, saved at once), in any other note on the server. A hub (an area: its
+  projects' too) and a meeting have a Tasks section: open first as in the text, subtasks
+  indented, done ones muted, "next" block shown; + New task adds a `- [ ]` line (`:task`).
+- Time codes: a project or area has one on its card (`Time code: X ✎`, `(from area)` when a
+  project books to its area's, else Set time code; `:timecode`). A resource or Inbox note has
+  none: its time is listed as not counted.
+- Calendar (Calendar button, `:calendar`): never in the notes page; a popup window on the left
+  2/3 of the screen, full height (`/calendar.html`, `js/windows/popout.js`). Monday to Sunday;
+  Saturday and Sunday show only when something is on them, or with Show weekend. Meetings
+  (an end time, else 30 min; cancelled ones struck through; untimed ones in the All day strip)
+  and task blocks. The sidebar lists open tasks (filter by project or area, an area with its
+  projects; a search box); drag one onto the week for a 30-minute block (again for another);
+  drag a block to move it, its bottom edge to change its length (15-minute steps). Click a
+  block (or right-click) for its menu: open its note (in the notes window), done, Edit time…,
+  remove (a task block) or cancel (a meeting). An empty slot makes a meeting there. A block
+  that has passed is time worked (worknotes' rule: scheduled = logged). Windows keep each
+  other up to date over a BroadcastChannel. Its keys live in `js/calendar/calendar-keys.js`.
+- Outlook import (worknotes' rules): each morning, Outlook File › Save Calendar, Next 7 days,
+  Full details, into `<data>/import/` (made at start). It is read at start, when the calendar
+  window gets focus, and with Import (or Import a file…, or a drop on the calendar); the file
+  is deleted once read (an unreadable one becomes `*.unreadable`). An event is its uid + day:
+  known ones follow Outlook (time, end, place, Join link; a moved day; cancelled, declined or
+  gone from an export that covers it: cancelled; back on), new ones of a series with meetings
+  go into that hub, the rest wait in the sidebar's To file tab (hub guessed from the newest
+  meeting of that name; File, File all, Don't import) and show muted on the week. Skipped:
+  all-day, free, tentative, out of office, working elsewhere. Attendees are matched by email,
+  then name, else made as people (rooms, groups and you left out; none past 20). A trashed
+  imported meeting is never made again. Home and the calendar remind until today's import.
+- Timesheet (Time button, `:time`): a popup like the calendar (`/time.html`). Week: a code per
+  row x Mon-Fri, each day exactly the working day (8.00 h) in quarter hours: holidays, time
+  off and sick time first, then meetings and task blocks inside the working hours (not lunch),
+  overlaps shared evenly, largest-remainder rounding, the rest to the Default code; warnings,
+  not counted, what made each code; Copy puts it on the clipboard as HTML and tab-separated
+  text. Settings: the codes, the working day and lunch, holiday rules (US federal ones seeded;
+  observed Sat->Fri, Sun->Mon), time off and sick days. Its keys live in
+  `js/timesheet/time-keys.js`.
 - Clicking a rendered image opens `<pd-image-viewer>` (its keys live in
   `static/js/images/viewer-keys.js`).
 - Trash: trashing a note (its menu, or `:trash`) takes the notes under it too; they stay in the

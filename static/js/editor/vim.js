@@ -115,6 +115,19 @@ export class Vim {
     this.afterKey();
   }
 
+  /** One line's text replaced by the host (a task box ticked elsewhere): one undo step; the
+   * cursor stays where it is. In insert mode it waits: the host tries again later. */
+  replaceLineFromOutside(line, text) {
+    if (line < 0 || line > this.buf.lastLine || this.isInsertLike()) return false;
+    const cursor = { ...this.cursor };
+    this.commandStart = cursor;
+    this.edit(pos(line, 0), pos(line, this.buf.lineLength(line)), text);
+    this.setCursor(cursor);
+    this.clampCursor();
+    this.afterKey();
+    return true;
+  }
+
   putLinesBelow(text, line) {
     const end = pos(line, this.buf.lineLength(line));
     this.edit(end, end, `\n${text}`);

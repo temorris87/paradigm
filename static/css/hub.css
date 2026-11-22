@@ -380,3 +380,9 @@
 .hub-line__list .mini-button {
   margin-left: 0.1rem;
 }
+
+/* A timesheet code on the card. */
+.hub-line__code {
+  font-family: var(--mono, monospace);
+  color: var(--nord8);
+}

@@ -1,0 +1,218 @@
+/* The timesheet window (time.html): the week's grid by time code, and its settings. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+.time-page {
+  display: flex;
+  flex-direction: column;
+  background: var(--nord0);
+  color: var(--nord4);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.45;
+}
+
+.time-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--nord2);
+  background: var(--nord1);
+}
+
+.time-bar__week {
+  margin: 0 0.75rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--nord13);
+}
+
+.time-bar__status {
+  flex: 1 1 16rem;
+  font-size: 0.85rem;
+}
+
+.time-bar__status--error {
+  color: var(--nord11);
+}
+
+.time-button {
+  padding: 0.25rem 0.7rem;
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  background: var(--nord1);
+  color: var(--nord5);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.time-button:hover,
+.time-button:focus-visible {
+  border-color: var(--nord8);
+}
+
+.time-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.time-button--small {
+  padding: 0.05rem 0.45rem;
+  font-size: 0.8rem;
+}
+
+.time-tab[aria-pressed="true"] {
+  border-color: var(--nord8);
+  color: var(--nord6);
+  font-weight: 600;
+}
+
+.time-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 1rem 1.25rem 3rem;
+}
+
+.time-grid {
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.time-grid th,
+.time-grid td {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--nord2);
+  text-align: left;
+}
+
+.time-grid thead th {
+  color: var(--nord6);
+  background: var(--nord1);
+}
+
+.time-grid__num {
+  text-align: right !important;
+  min-width: 6rem;
+}
+
+.time-grid__code {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color: var(--nord8);
+}
+
+.time-grid__default .time-grid__code {
+  color: var(--nord4);
+}
+
+.time-grid__total {
+  font-weight: 600;
+  color: var(--nord6);
+}
+
+.time-grid__totals th,
+.time-grid__totals td {
+  font-weight: 600;
+  color: var(--nord6);
+  background: var(--nord1);
+}
+
+.time-heading {
+  margin: 1.4rem 0 0.4rem;
+  font-size: 1.05rem;
+  color: var(--nord13);
+}
+
+.time-note {
+  margin: 0.6rem 0;
+  font-size: 0.9rem;
+}
+
+.time-warnings .time-list__main {
+  color: var(--nord12);
+}
+
+.time-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.time-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.2rem 0;
+}
+
+.time-list__main {
+  color: var(--nord5);
+}
+
+.time-list__meta {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.time-list--bad .time-list__meta {
+  color: var(--nord11);
+}
+
+.time-code {
+  margin: 0.3rem 0;
+}
+
+.time-code summary {
+  cursor: pointer;
+  color: var(--nord6);
+}
+
+.time-form,
+.time-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem 1rem;
+  max-width: 60rem;
+}
+
+.time-form .time-heading {
+  flex-basis: 100%;
+}
+
+.time-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+}
+
+.time-input {
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  background: var(--nord1);
+  color: var(--nord5);
+  font: inherit;
+}
+
+.time-check {
+  flex-basis: 100%;
+  font-size: 0.9rem;
+}
+
+.time-part {
+  margin-top: 1rem;
+}

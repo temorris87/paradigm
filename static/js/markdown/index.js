@@ -17,7 +17,7 @@ import { parseInline } from "./inline.js";
 import { renderBlock, renderFootnotes, renderListItem, plainText } from "./render.js";
 import { makeSlugger } from "./slug.js";
 
-const DEFAULTS = { idPrefix: "md-", breaks: true, resolveWikiLink: null, resolveMention: null };
+const DEFAULTS = { idPrefix: "md-", breaks: true, resolveWikiLink: null, resolveMention: null, taskLines: false };
 
 export function parseMarkdown(source) {
   const { document, references, footnotes } = parseBlocks(source);

@@ -5,6 +5,7 @@ import time
 import webbrowser
 from typing import Callable, List, Optional
 
+from paradigm.api.calendar import CalendarApi
 from paradigm.api.images import ImagesApi
 from paradigm.api.links import LinksApi
 from paradigm.api.meetings import MeetingsApi
@@ -12,16 +13,21 @@ from paradigm.api.notes import NotesApi
 from paradigm.api.people import PeopleApi
 from paradigm.api.records import RecordsApi
 from paradigm.api.session import SessionApi
+from paradigm.api.tasks import TasksApi
+from paradigm.api.timesheet import TimesheetApi
 from paradigm.api.trash import TrashApi
 from paradigm.config import Config, parse_args
 from paradigm.db.connection import Database
 from paradigm.db.images_repo import ImageRepository
+from paradigm.db.import_repo import ImportRepository
 from paradigm.db.links_repo import LinkRepository
 from paradigm.db.migrate import SchemaTooNew, migrate
 from paradigm.db.meetings_repo import MeetingRepository
 from paradigm.db.notes_repo import NoteRepository
 from paradigm.db.people_repo import PeopleRepository
 from paradigm.db.records_repo import RecordRepository
+from paradigm.db.tasks_repo import TaskRepository
+from paradigm.db.time_repo import TimeRepository
 from paradigm.db.trash_repo import TrashRepository
 from paradigm.instance import PortState, probe
 from paradigm.logging_setup import setup_logging
@@ -118,6 +124,7 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
         notes = NoteRepository(db)
         images = ImageRepository(db)
         trash = TrashRepository(db, keep_days=config.trash_days)
+        imports = ImportRepository(db, config.import_dir)
         seed_if_empty(notes)
         empty_trash(trash)
         sweep_images(images, notes)
@@ -125,6 +132,7 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
         # doesn't vacuum, so closing the last tab stays quick), the file shrinks here.
         if db.vacuum_if_worth_it():
             log.info("Database compacted")
+        import_calendar(imports)
     except BaseException:
         # Not server.stop(): it would wait for a serve loop that never started.
         server.server_close()
@@ -147,6 +155,24 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
     ImagesApi(images).register(server.router)
     LinksApi(LinkRepository(db)).register(server.router)
     TrashApi(trash, notes).register(server.router)
+    TasksApi(TaskRepository(db)).register(server.router)
+    CalendarApi(imports).register(server.router)
+    TimesheetApi(TimeRepository(db)).register(server.router)
+
+
+def import_calendar(imports: ImportRepository) -> None:
+    """Imports the Outlook calendar files waiting in the import folder (made if missing, so
+    Outlook's Save Calendar can be pointed at it). A failure is logged, never fatal."""
+    try:
+        imports.folder.mkdir(parents=True, exist_ok=True)
+        counts = imports.import_folder()
+    except Exception:
+        log.exception("could not import the calendar")
+        return
+    if counts["files"]:
+        log.info("Imported %d calendar file%s", counts["files"], "" if counts["files"] == 1 else "s")
+    for error in counts["errors"]:
+        log.warning("calendar import: %s", error)
 
 
 def empty_trash(trash: TrashRepository) -> int:

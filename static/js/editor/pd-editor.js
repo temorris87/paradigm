@@ -11,6 +11,8 @@
 //   editor.goToLine(12);              // cursor to a line (0-based)
 //   editor.insertText("text");        // at the cursor, as if pasted (see "files" below)
 //   editor.insertText("a\nb", { asLines: true, line: 4 })  // whole lines below line 4
+//   editor.replaceLine(4, "- [x] Done")  // one line's text from the host: one undo step, the
+//                                     // cursor stays; resolves false in insert mode (not done)
 //   editor.selectedText                // the visual selection's text, or null
 //   editor.completions = { "@": (query) => [item] }   // a list under the cursor in insert mode
 //                                     // while "@query" is typed (a word start): item
@@ -24,7 +26,8 @@
 // Live preview (on by default, :set nopreview turns it off): Markdown blocks away from the
 // cursor are drawn rendered; the block holding the cursor shows its raw text.
 //
-// Events: "change" (the text changed, on every edit), "save" (:w, :x, ZZ; detail.force for
+// Events: "task" (a rendered task box was clicked: detail.line, its source line),
+// "change" (the text changed, on every edit), "save" (:w, :x, ZZ; detail.force for
 // :w!), "quit" (:q, :x, ZZ, ZQ; detail.force for :q!), "mode" (detail.mode), "ex" (a command
 // added with addExCommand: detail.name, .arg, .bang) and "link" (a rendered [[wiki link]] was
 // clicked: detail.target, the text inside the brackets before any "|"). Each carries
@@ -328,6 +331,10 @@ export class PdEditor extends HTMLElement {
     else this.enqueue(() => this.vim.putFromOutside(clean, { asLines, line }));
   }
 
+  replaceLine(line, text) {
+    return new Promise((resolve) => this.enqueue(() => resolve(this.vim.replaceLineFromOutside(line, text))));
+  }
+
   onMouseDown(event) {
     if (event.button !== 0) return;
     event.preventDefault();
@@ -385,6 +392,12 @@ export class PdEditor extends HTMLElement {
   onPreviewMouseDown(target, event) {
     if (!target.closest?.(".pd-unit")) return false;
     if (target.closest("summary")) return true;
+    const box = target.closest("input.md-taskbox");
+    if (box) {
+      event.preventDefault();
+      this.emitEvent("task", { line: Number(box.dataset.line) });
+      return true;
+    }
     const link = target.closest("a");
     if (!link && target.closest("img")) {
       const image = target.closest("img");

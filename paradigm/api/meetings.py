@@ -1,11 +1,14 @@
 """Endpoints for meetings. The list is a GET; every change is a POST with a JSON body. A
 meeting's title is its note's: /api/note/rename renames it, and its text is the minutes.
 
-GET  /api/meetings            -> {meetings: [{id, day, time, attendees: [person ids]}]}
-POST /api/meeting/create      {hub_id, name, day, time?}   -> {note, meeting}
+GET  /api/meetings            -> {meetings: [{id, day, time, end_time, cancelled, location,
+                                 join_url, attendees: [person ids]}]}
+POST /api/meeting/create      {hub_id, name, day, time?, end_time?}   -> {note, meeting}
                               (the note is called name, directly under the hub; meetings in
                               one hub may share a name)
-POST /api/meeting/update      {id, day, time?}             -> {note, meeting} ('' or no time: none)
+POST /api/meeting/update      {id, day, time?, end_time?}  -> {note, meeting} ('' or no time: none;
+                              no end_time: it keeps its length)
+POST /api/meeting/cancel      {id, cancelled}              -> {note, meeting}
 POST /api/meeting/agenda      {id, agenda, version, force?, links?, mentions?}
                               -> {id, agenda, version}     409 {error, version} if stale; links
                               and mentions are the whole meeting's (minutes and agenda)
@@ -21,13 +24,14 @@ from paradigm.db.meetings_repo import (BadTitle, BadWhen, Conflict, HubArchived,
 from paradigm.db.notes_repo import NoteRepository, TitleTaken
 from paradigm.notes.links import BadLinks, clean_links
 from paradigm.notes.mentions import BadMentions, clean_mentions
+from paradigm.notes.tasks import BadTasks, clean_tasks
 from paradigm.web.requests import BadRequest, bool_field, int_field, int_list_field, read_json, str_field
 from paradigm.web.responses import send_json
 from paradigm.web.router import Router
 
 _STATUS = {NotFound: 404, NotAttending: 404, TitleTaken: 409, NotAMeeting: 400, NotAPerson: 400,
            NotAHub: 400, HubArchived: 400, BadWhen: 400, BadTitle: 400, BadLinks: 400, BadMentions: 400,
-           BadRequest: 400}
+           BadTasks: 400, BadRequest: 400}
 _answer = answering(_STATUS)
 
 
@@ -40,6 +44,7 @@ class MeetingsApi:
         router.add("GET", "/api/meetings", _answer(self.list))
         router.add("POST", "/api/meeting/create", _answer(self.create))
         router.add("POST", "/api/meeting/update", _answer(self.update))
+        router.add("POST", "/api/meeting/cancel", _answer(self.cancel))
         router.add("POST", "/api/meeting/agenda", self.agenda)
         router.add("POST", "/api/meeting/attend", _answer(self.attend))
         router.add("POST", "/api/meeting/unattend", _answer(self.unattend))
@@ -50,12 +55,19 @@ class MeetingsApi:
     def create(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)
         note_id, meeting = self._meetings.create(int_field(payload, "hub_id"), payload.get("name"),
-                                                 payload.get("day"), payload.get("time", ""))
+                                                 payload.get("day"), payload.get("time", ""),
+                                                 payload.get("end_time", ""))
         return {"note": self._notes.get(note_id), "meeting": meeting}
 
     def update(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)
-        meeting = self._meetings.update(int_field(payload, "id"), payload.get("day"), payload.get("time", ""))
+        meeting = self._meetings.update(int_field(payload, "id"), payload.get("day"), payload.get("time", ""),
+                                        payload.get("end_time"))
+        return {"note": self._notes.get(meeting["id"]), "meeting": meeting}
+
+    def cancel(self, req: BaseHTTPRequestHandler) -> Dict:
+        payload = read_json(req)
+        meeting = self._meetings.set_cancelled(int_field(payload, "id"), bool_field(payload, "cancelled"))
         return {"note": self._notes.get(meeting["id"]), "meeting": meeting}
 
     def agenda(self, req: BaseHTTPRequestHandler) -> None:
@@ -70,7 +82,8 @@ class MeetingsApi:
         links = None if payload.get("links") is None else clean_links(payload["links"])
         return self._meetings.save_agenda(int_field(payload, "id"), str_field(payload, "agenda"),
                                           int_field(payload, "version"), bool_field(payload, "force"),
-                                          links, clean_mentions(payload.get("mentions")))
+                                          links, clean_mentions(payload.get("mentions")),
+                                          None if payload.get("tasks") is None else clean_tasks(payload["tasks"]))
 
     def attend(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)

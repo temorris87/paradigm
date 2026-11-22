@@ -2,9 +2,10 @@
 // buttons that change it (hub-line-controls.js). One or two rows:
 //   Project ▾ · Active ▾ · due Tue 2026-12-15 ✎ · Area: Operations ✎
 //     People: Jane Doe (Sponsor), Bob Lee + Add person · Next: Tue 2026-11-24 Kickoff
-//   Area ▾ · 3 live projects · 6 people
+//     Time code: ACME-114 ✎ (or "ACME-100 (from area)", or Set time code)
+//   Area ▾ · 3 live projects · 6 people · Time code: OPS ✎
 //   Resource ▾
-//   Meeting · Tue 2026-11-24 14:00 ✎ · in Rollout
+//   Meeting · Tue 2026-11-24 14:00–15:00 ✎ · in Rollout · Room 4 · Join ↗ (Cancelled first)
 //     Attendees: Jane Doe ×, Bob Lee × + Add attendee
 //   Person · Jane Doe · jane@example.com · +1 555 0100 · Northwind · Data engineer ✎
 //   Question ▾ open · asked 2026-11-24 · in Rollout · with Jane Doe × + Add person
@@ -44,7 +45,7 @@ function detailsOf(ctx, hub, onOpen, controls) {
   if (hub.kind === "meeting") return meetingDetails(ctx, hub, onOpen, controls);
   if (isRecordKind(hub.kind)) return recordDetails(ctx, hub, onOpen, controls);
   if (hub.kind === "project") return projectDetails(ctx, hub, onOpen, controls);
-  if (hub.kind === "area") return areaDetails(ctx, hub);
+  if (hub.kind === "area") return areaDetails(ctx, hub, controls);
   return [[], []];
 }
 
@@ -69,6 +70,7 @@ function projectDetails(ctx, project, onOpen, controls) {
     if (archived) first.push(span("hub-line__text hub-line__text--none", "(archived)"));
     first.push(miniButton("✎", "Change the area", choose));
   }
+  first.push(separator(), ...timeCodeParts(tree, project, controls));
   const second = [...peopleRow(ctx, project, onOpen, controls)];
   const { next } = projectFacts(tree, ctx.meetings, ctx.records, project.id, today);
   if (next) {
@@ -78,7 +80,22 @@ function projectDetails(ctx, project, onOpen, controls) {
   return [first, second];
 }
 
-function areaDetails(ctx, area) {
+/** "Time code: X ✎", "Time code: X (from area) ✎" or "Set time code". */
+function timeCodeParts(tree, hub, controls) {
+  const edit = () => controls.timeCode(hub);
+  if (hub.time_code) {
+    return [span("hub-line__text", "Time code: "), span("hub-line__code", hub.time_code),
+      miniButton("✎", "Change the time code its time is booked to", edit)];
+  }
+  const area = hub.kind === "project" ? areaOf(tree, hub.id) : null;
+  if (area?.time_code) {
+    return [span("hub-line__text", "Time code: "), span("hub-line__code", area.time_code),
+      span("hub-line__text hub-line__text--none", " (from area)"), miniButton("✎", "Give it a time code of its own", edit)];
+  }
+  return [factButton("hub-line__set", "Set time code", "The timesheet code its time is booked to", edit)];
+}
+
+function areaDetails(ctx, area, controls) {
   const projects = projectsIn(ctx.tree, area.id);
   const live = projects.filter((project) => project.status !== "on_hold").length;
   const held = projects.length - live;
@@ -88,6 +105,8 @@ function areaDetails(ctx, area) {
     ...(held ? [separator(), span("hub-line__text", `${held} on hold`)] : []),
     separator(),
     span("hub-line__text", people === 1 ? "1 person" : `${people} people`),
+    separator(),
+    ...timeCodeParts(ctx.tree, area, controls),
   ], []];
 }
 
@@ -117,10 +136,13 @@ function meetingDetails({ tree, meetings }, meeting, onOpen, controls) {
   const record = meetings.get(meeting.id);
   const hub = hubOf(tree, meeting.id);
   const first = [
+    ...(record.cancelled ? [span("hub-line__archived", "Cancelled"), separator()] : []),
     factButton("hub-line__when", record.day ? whenText(record) : "no date", "Change the date and time", () => controls.when(meeting)),
     separator(),
     ...(hub ? [span("hub-line__text", "in "), linkTo(hub, false, onOpen)] : [span("hub-line__text hub-line__text--none", "in no hub")]),
   ];
+  if (record.location) first.push(separator(), span("hub-line__text", record.location));
+  if (record.join_url) first.push(separator(), externalLink("Join ↗", record.join_url, "Join the online meeting"));
   const attendees = attendeesOf(tree, meetings, meeting.id);
   const names = list(attendees.map((person) => [linkTo(person, isArchived(tree, person.id), onOpen),
     miniButton("×", `Take ${person.title} off`, () => controls.dropAttendee(meeting, person))]));
@@ -173,6 +195,17 @@ function personDetails(person, note, controls) {
   });
   parts.push(miniButton("✎", "Change the name, email, phone, organisation or job title", edit));
   return parts;
+}
+
+function externalLink(text, href, title) {
+  const link = document.createElement("a");
+  link.className = "hub-line__link";
+  link.textContent = text;
+  link.title = title;
+  link.href = href;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  return link;
 }
 
 function oneLine(text) {

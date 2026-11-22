@@ -32,6 +32,11 @@ class Config:
     trash_days: int = 7
 
     @property
+    def import_dir(self) -> Path:
+        """Where Outlook's Save Calendar puts the .ics files to import."""
+        return self.data_dir / "import"
+
+    @property
     def url(self) -> str:
         return "http://{}:{}/".format(self.host, self.port)
 

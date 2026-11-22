@@ -16,7 +16,7 @@
 import { hubAction } from "./hub-keys.js";
 
 const MAX_DEPTH = 6;
-const KEYS_OF = { remove: "x", role: "r", answer: "r" };
+const KEYS_OF = { remove: "x", role: "r", answer: "r", done: "Space" };
 
 export class HubPanel {
   constructor(section, handlers) {
@@ -146,6 +146,7 @@ export class HubPanel {
       case "add": return option?.section.add ? this.handlers.onAdd(option.section) : undefined;
       case "remove": return this.rowAction(option, ["remove"]);
       case "second": return this.rowAction(option, ["role", "answer"]);
+      case "toggle": return this.rowAction(option, ["done"]);
       case "editor": return this.handlers.onLeave();
       default: return undefined;
     }

@@ -39,3 +39,20 @@ def clean_due(due: object) -> str:
         return clean_day(due)
     except BadWhen as error:
         raise BadProjectField(str(error)) from None
+
+
+MAX_TIME_CODE_LENGTH = 50
+
+
+def clean_time_code(code: object) -> str:
+    """A timesheet code: one line of text, outer spaces removed ('' for none)."""
+    if code is None:
+        return ""
+    if not isinstance(code, str):
+        raise BadProjectField("A time code must be text")
+    code = " ".join(code.split())
+    if len(code) > MAX_TIME_CODE_LENGTH:
+        raise BadProjectField("A time code can be at most {} characters".format(MAX_TIME_CODE_LENGTH))
+    if any(ord(char) < 32 for char in code):
+        raise BadProjectField("A time code cannot contain control characters")
+    return code

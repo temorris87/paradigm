@@ -5,7 +5,7 @@
 //   parseDay(word, today)        "2026-11-24", "today", "tomorrow", "yesterday" -> a day;
 //                                anything else -> null; a date that isn't real -> throws
 //   parseTime(word)              "9:30" / "09:30" -> "09:30"; anything else -> null
-//   whenText(meeting)            "Tue 2026-11-24 14:00"
+//   whenText(meeting)            "Tue 2026-11-24 14:00" ("14:00–15:00" with an end_time)
 //   PERIODS, periodRange(key, today)   the Meetings page's Period filter
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const RELATIVE = { yesterday: -1, today: 0, tomorrow: 1 };
@@ -40,9 +40,9 @@ export function parseTime(word) {
   return `${String(hours).padStart(2, "0")}:${match[2]}`;
 }
 
-export function whenText({ day, time }) {
+export function whenText({ day, time, end_time: end = "" }) {
   const date = dateOf(day);
-  return [date ? WEEKDAYS[date.getDay()] : "", day, time].filter(Boolean).join(" ");
+  return [date ? WEEKDAYS[date.getDay()] : "", day, time && end ? `${time}–${end}` : time].filter(Boolean).join(" ");
 }
 
 // THE Period filter's choices, in the dropdown's order (any time is the "" entry before them).
@@ -79,6 +79,6 @@ export function inRange(day, range) {
   return !range || ((range.from === null || day >= range.from) && (range.to === null || day <= range.to));
 }
 
-function addDays(date, days) {
+export function addDays(date, days) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
 }

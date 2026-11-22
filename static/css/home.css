@@ -86,7 +86,7 @@
 
 .home__when {
   flex: none;
-  width: 3rem;
+  width: 6.5rem;
   font-variant-numeric: tabular-nums;
   color: var(--nord4);
 }
@@ -112,4 +112,10 @@
 /* A project on hold. */
 .home__row--muted .home__title {
   opacity: 0.55;
+}
+
+/* "Calendar not imported today": a reminder until the day's export is read. */
+.home__notice {
+  color: var(--nord13);
+  font-size: 0.9rem;
 }

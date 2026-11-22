@@ -42,11 +42,17 @@ function wrapLine(html) {
 }
 
 function renderParagraph(block, options, tight, suffix = "") {
-  const box = block.taskBox
-    ? `<input type="checkbox" disabled${block.taskBox.checked ? " checked" : ""}>${block.inlines.length ? " " : ""}`
-    : "";
+  const box = block.taskBox ? `${taskBoxHtml(block.taskBox, block.startLine, options)}${block.inlines.length ? " " : ""}` : "";
   const inner = box + renderInlines(block.inlines, options) + suffix;
   return tight ? inner : `<p>${inner}</p>`;
+}
+
+/** A task's box: shown only, or (options.taskLines, the editor's live preview) one a click
+ * ticks, carrying the line of its "- [ ]" in the source. */
+function taskBoxHtml(task, line, options) {
+  const checked = task.checked ? " checked" : "";
+  if (options.taskLines && Number.isInteger(line)) return `<input type="checkbox" class="md-taskbox" data-line="${line}" tabindex="-1"${checked}>`;
+  return `<input type="checkbox" disabled${checked}>`;
 }
 
 function renderCode(block) {
@@ -103,7 +109,7 @@ function renderItem(item, options, tight) {
     })
     .join("");
   if (item.task && !item.children.some((child) => child.taskBox)) {
-    inner = `<input type="checkbox" disabled${item.task.checked ? " checked" : ""}>${inner}`;
+    inner = `${taskBoxHtml(item.task, item.startLine, options)}${inner}`;
   }
   const last = item.children[item.children.length - 1];
   const closeOnNewLine = last && !(tight && last.type === "paragraph");

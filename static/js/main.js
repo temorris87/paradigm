@@ -10,6 +10,8 @@ import { trashApi } from "./trash/api.js";
 import { imagesApi, linksApi, notesApi } from "./notes/api.js";
 import { NotesApp } from "./notes/app.js";
 import { peopleApi } from "./people/api.js";
+import { tasksApi } from "./tasks/api.js";
+import { calendarApi } from "./calendar/api.js";
 
 const connection = new Connection({ tabId: tabId() });
 mountBanner(connection);
@@ -63,6 +65,10 @@ const app = new NotesApp({
     button: document.querySelector(".navigator__trash"),
   },
   goTo: document.querySelector(".topbar__goto"),
+  popOuts: {
+    calendar: document.querySelector(".topbar__calendar"),
+    time: document.querySelector(".topbar__time"),
+  },
   navigator: notesNavigator,
   api: notesApi,
   imagesApi,
@@ -71,5 +77,7 @@ const app = new NotesApp({
   recordsApi,
   trashApi,
   linksApi,
+  tasksApi,
+  calendarApi,
 });
 app.start().catch((error) => app.fail(error));

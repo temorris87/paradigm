@@ -2,10 +2,13 @@
 The only code that knows the note_links, note_mentions and link_index tables.
 NoteRepository calls store_links inside its save (a meeting's agenda save too)."""
 import sqlite3
-from typing import Dict, Iterable, List, Tuple
+from datetime import datetime, timezone
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from paradigm.db.connection import Database
+from paradigm.db.task_index import store_tasks
 from paradigm.notes.mentions import Mention
+from paradigm.notes.tasks import Task
 
 __all__ = ["LinkRepository", "store_links"]
 
@@ -13,8 +16,11 @@ _LIVE = "notes.deleted_at IS NULL"
 
 
 def store_links(conn: sqlite3.Connection, note_id: int, version: int, targets: List[str],
-                mentions: Iterable[Mention] = ()) -> None:
-    """Replaces a note's links with targets and its mentions, read from its text at version."""
+                mentions: Iterable[Mention] = (), tasks: Optional[List[Task]] = None) -> None:
+    """Replaces a note's links with targets and its mentions, read from its text at version,
+    and (tasks not None) its tasks: the text must already be stored."""
+    if tasks is not None:
+        store_tasks(conn, note_id, tasks, _utc_now())
     conn.execute("DELETE FROM note_links WHERE note_id = ?", (note_id,))
     conn.executemany("INSERT INTO note_links (note_id, target) VALUES (?, ?)",
                      [(note_id, target) for target in targets])
@@ -58,17 +64,18 @@ class LinkRepository:
             "stale": [_stale(row) for row in stale],
         }
 
-    def catch_up(self, entries: Iterable[Tuple[int, int, List[str], List[Mention]]]) -> List[int]:
-        """Stores (note id, version, targets, mentions) for each note still at that version; a
+    def catch_up(self, entries: Iterable[Tuple[int, int, List[str], List[Mention], Optional[List[Task]]]]) -> List[int]:
+        """Stores (note id, version, targets, mentions, tasks) for each note still at that version; a
         note saved meanwhile (or trashed) is skipped, since its save brought its own index.
         Returns the ids stored."""
         stored = []
         with self._db.transaction() as conn:
-            for note_id, version, targets, mentions in entries:
+            for note_id, version, targets, mentions, *rest in entries:
+                tasks = rest[0] if rest else None
                 row = conn.execute("SELECT version FROM notes WHERE id = ? AND deleted_at IS NULL",
                                    (note_id,)).fetchone()
                 if row is not None and row[0] == version:
-                    store_links(conn, note_id, version, targets, mentions)
+                    store_links(conn, note_id, version, targets, mentions, tasks)
                     stored.append(note_id)
         return stored
 
@@ -78,3 +85,7 @@ def _stale(row: sqlite3.Row) -> Dict:
     if row["agenda"] is not None:
         entry["agenda"] = row["agenda"]
     return entry
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")

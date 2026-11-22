@@ -46,14 +46,30 @@ import { TreeView, addLabel } from "./tree-view.js";
 import { NO_TRASH } from "../trash/trash-model.js";
 import { trashPage } from "../trash/trash-page.js";
 import { newPersonDialog } from "../people/people-page.js";
+import { Changes } from "../connection/changes.js";
+import { Tasks } from "../tasks/tasks-model.js";
+import { boxState, setBox, withTaskAdded } from "./tasks.js";
+import { addDays, localDay } from "../meetings/meeting-days.js";
+import { popOut } from "../windows/popout.js";
+
+// The blocks of time loaded for the pages (a task's next block, Home's Today).
+const SESSIONS_BACK_DAYS = 7;
+const SESSIONS_AHEAD_DAYS = 120;
 
 const UNSAVED = "E37: No write since last change (:w to save, or ! to drop the changes)";
 
 export class NotesApp {
   constructor({ editor, tree, crumbs, navigator, hub, agenda = {}, home, people, meetings, trash, goTo, api, trashApi, imagesApi, peopleApi,
-                meetingsApi, recordsApi, linksApi, location = window.location, history = window.history,
-                today = () => new Date() }) {
+                meetingsApi, recordsApi, linksApi, tasksApi = null, calendarApi = null, popOuts = {},
+                location = window.location, history = window.history, today = () => new Date(),
+                changes = new Changes() }) {
     this.editor = editor;
+    this.tasksApi = tasksApi;
+    this.calendarApi = calendarApi;
+    this.tasks = new Tasks();
+    this.sessions = [];
+    this.importStatus = null;
+    this.changes = changes;
     this.peopleApi = peopleApi;
     this.meetingsApi = meetingsApi;
     this.recordsApi = recordsApi;
@@ -74,7 +90,7 @@ export class NotesApp {
     this.linkIndex = new LinkIndex({ api: linksApi, onChange: () => this.redraw() });
     // A meeting's index holds its agenda's links and mentions too: each save sends both.
     this.session = new NoteSession({
-      api: { ...api, save: this.linkIndex.saver(api.save, (note) => ({ body: note.body, agenda: this.agenda.textFor(note.id) })) },
+      api: { ...api, save: this.announcing(this.linkIndex.saver(api.save, (note) => ({ body: note.body, agenda: this.agenda.textFor(note.id) }))) },
       onChange: () => {
         this.editor.modified = this.session.dirty;
         this.markEmptyFields();
@@ -86,7 +102,7 @@ export class NotesApp {
       editor: this.agendaEditor,
       field: agenda.field ?? null,
       api: meetingsApi ?? {},
-      saver: (save) => this.linkIndex.saver(save, (note) => ({ body: this.editor.value, agenda: note.body })),
+      saver: (save) => this.announcing(this.linkIndex.saver(save, (note) => ({ body: this.editor.value, agenda: note.body }))),
       onChange: () => this.markEmptyFields(),
       onError: (error) => this.fail(error),
     });
@@ -126,6 +142,8 @@ export class NotesApp {
       });
     }
     goTo?.addEventListener("click", () => this.guard(goToNote(this)));
+    popOuts.calendar?.addEventListener("click", () => this.calendarCommand());
+    popOuts.time?.addEventListener("click", () => this.timeCommand());
     this.images = new NoteImages({ editor, api: imagesApi, currentId: () => this.currentId });
     registerNoteCommands(editor);
     if (this.agendaEditor) registerNoteCommands(this.agendaEditor);
@@ -149,6 +167,7 @@ export class NotesApp {
       box.addEventListener("link", (event) => this.guard(this.followLink(event.detail.target)));
       box.addEventListener("mention", (event) => this.guard(openMention(this, event.detail.name)));
       box.addEventListener("highlight", (event) => this.guard(this.openRecord(event.detail.data)));
+      box.addEventListener("task", (event) => this.guard(this.tickLine(box, event.detail.line)));
       box.addEventListener("menu", (event) => {
         event.preventDefault();
         openSelectionMenu(this, event.detail, box);
@@ -175,6 +194,42 @@ export class NotesApp {
     });
     // Another tab may have made or moved notes.
     window.addEventListener("focus", () => this.guard(this.refreshTree()));
+    this.changes.listen((message) => this.guard(this.onMessage(message)));
+  }
+
+  /** A message from the calendar or timesheet window (connection/changes.js). */
+  async onMessage(message) {
+    if (message.type === "open" && this.tree) {
+      this.changes.send({ type: "opened" });
+      await this.refreshTree();
+      if (!this.tree.has(message.id)) return;
+      await this.openFromHub(message.id, message.at ?? null);
+      window.focus();
+    } else if (message.type === "changed") {
+      await this.refreshTree();
+      await this.reloadIfChanged();
+    }
+  }
+
+  /** The open note was changed in another window (a box ticked there): show the new text
+   * unless there are unsaved changes here (then the save finds the conflict, as usual). */
+  async reloadIfChanged() {
+    const id = this.currentId;
+    if (id === null || this.session.dirty || this.agenda.dirty) return;
+    const note = await this.api.get(id);
+    const agendaChanged = note.agenda_version !== undefined && this.agenda.id === id
+      && note.agenda_version !== this.agenda.session.note?.version;
+    if (note.version === this.session.note?.version && !agendaChanged) return;
+    await this.open(id, { discard: true, history: "none" });
+  }
+
+  /** A save that tells the other windows once it is stored. */
+  announcing(save) {
+    return (note, options) => {
+      const saving = save(note, options);
+      saving.then(() => this.changes.send({ type: "changed", what: ["notes"] }), () => {});
+      return saving;
+    };
   }
 
   async start() {
@@ -196,10 +251,16 @@ export class NotesApp {
   }
 
   async refreshTree() {
-    const [notes, people, meetings, records, trash] = await Promise.all([
+    const today = this.today();
+    const [notes, people, meetings, records, trash, , tasks, sessions, importStatus] = await Promise.all([
       this.api.list(), this.peopleApi.list(), this.meetingsApi.list(), this.recordsApi.list(),
-      this.trashApi.list(), this.linkIndex.refresh(),
+      this.trashApi.list(), this.linkIndex.refresh(), this.tasksApi?.list() ?? [],
+      this.tasksApi?.sessions(localDay(addDays(today, -SESSIONS_BACK_DAYS)), localDay(addDays(today, SESSIONS_AHEAD_DAYS))) ?? [],
+      this.calendarApi?.status().catch(() => null) ?? null,
     ]);
+    this.tasks = new Tasks(tasks);
+    this.sessions = sessions;
+    this.importStatus = importStatus;
     this.trash = trash;
     this.tree = new NoteTree(notes);
     this.people = new People(people);
@@ -269,7 +330,8 @@ export class NotesApp {
     showBreadcrumb(this.crumbs, this.tree, id, (target) => this.guard(this.open(target)),
       (button) => openNoteMenu(this, button));
     const ctx = { tree: this.tree, people: this.people, meetings: this.meetings, records: this.records,
-      links: this.linkIndex.links, mentions: this.linkIndex.mentions, trash: this.trash, today: this.today() };
+      links: this.linkIndex.links, mentions: this.linkIndex.mentions, trash: this.trash, tasks: this.tasks,
+      sessions: this.sessions, importStatus: this.importStatus, today: this.today() };
     const trashed = this.trash.entries.length;
     if (this.trashButton) this.trashButton.textContent = trashed ? `Trash · ${trashed}` : "Trash";
     this.hubPage.show(ctx, id);
@@ -392,12 +454,14 @@ export class NotesApp {
   }
 
   /** Makes a top-level note filed as kind (a project, area or resource) and opens it; areaId
-   * puts a new project in an area. From a dialog: errors are thrown for it to show. */
-  async createFiled(kind, title, { areaId = null } = {}) {
+   * puts a new project in an area; timeCode is its timesheet code. From a dialog: errors are
+   * thrown for it to show. */
+  async createFiled(kind, title, { areaId = null, timeCode = "" } = {}) {
     if (!(await this.saveBeforeSwitching())) throw new Error("This note's changes could not be saved first");
     const made = await this.api.create(null, title);
     await this.api.setKind(made.id, kind);
     if (areaId !== null) await this.api.setArea(made.id, areaId);
+    if (timeCode) await this.api.setTimeCode(made.id, timeCode);
     await this.refreshTree();
     await this.open(made.id);
     const where = areaId === null ? groupLabel(this.tree, made.id) : `${groupLabel(this.tree, made.id)}, in ${this.tree.get(areaId).title}`;
@@ -474,6 +538,80 @@ export class NotesApp {
     const note = await this.api.setDue(id, due);
     await this.refreshTree();
     this.editor.showMessage(due ? `"${note.title}" is due ${due}` : `"${note.title}" has no due date`);
+  }
+
+  /** A project's or an area's timesheet code ("" for none). */
+  async setTimeCode(id, code) {
+    const note = await this.api.setTimeCode(id, code);
+    await this.refreshTree();
+    this.changes.send({ type: "changed", what: ["notes"] });
+    this.editor.showMessage(note.time_code ? `"${note.title}" books time to ${note.time_code}` : `"${note.title}" has no time code`);
+  }
+
+  /** Ticks a task's box (or clears it). In the open note it is an edit there (one undo step,
+   * saved at once); in any other note the server changes the line. */
+  async setTaskDone(taskId, done) {
+    const task = this.tasks.get(taskId);
+    if (!task) throw new Error("E: that task is gone (its note changed): reload the page");
+    const open = this.openBoxFor(task);
+    if (open) {
+      // Saved first, so the task's line is the line in the editor.
+      await open.session.save();
+      const line = open.box.value.split("\n")[task.line];
+      if (boxState(line) === null) throw new Error(`E: "${task.title}" is no longer on its line: tick it in the text`);
+      if (!(await open.box.replaceLine(task.line, setBox(line, done)))) {
+        throw new Error("E: leave insert mode first (Escape), then tick it");
+      }
+      await open.session.save();
+    } else {
+      await this.tasksApi.setDone(taskId, done);
+      this.changes.send({ type: "changed", what: ["tasks", "notes"] });
+    }
+    await this.refreshTree();
+    this.editor.showMessage(`"${task.title}" ${done ? "done" : "open again"}`);
+  }
+
+  /** A rendered box was clicked: tick (or clear) it in the text, as an edit. */
+  async tickLine(box, line) {
+    const text = box.value.split("\n")[line];
+    const state = boxState(text);
+    if (state === null) return;
+    if (!(await box.replaceLine(line, setBox(text, !state)))) throw new Error("E: leave insert mode first (Escape), then tick it");
+  }
+
+  /** The editor and session holding a task's line, when its note is open. */
+  openBoxFor(task) {
+    if (task.note_id !== this.currentId) return null;
+    if (task.field === "agenda") {
+      return this.agendaEditor && this.agenda.id === task.note_id ? { box: this.agendaEditor, session: this.agenda.session } : null;
+    }
+    return { box: this.editor, session: this.session };
+  }
+
+  /** New task: a "- [ ] title" line at the end of a note's text. */
+  async addTask(noteId, title) {
+    if (!title) throw new Error("A task needs some text");
+    if (noteId === this.currentId) {
+      const body = withTaskAdded(this.editor.value, title);
+      this.rewriteOpenText((text) => (text === this.editor.value ? { text: body, changed: 1 } : { text, changed: 0 }));
+      await this.session.save();
+    } else {
+      const note = await this.api.get(noteId);
+      await this.saveOther(note, withTaskAdded(note.body, title));
+      this.changes.send({ type: "changed", what: ["tasks", "notes"] });
+    }
+    await this.refreshTree();
+    this.editor.showMessage(`Task "${title}" added to "${this.tree.get(noteId)?.title ?? ""}"`);
+  }
+
+  /** :calendar, the Calendar button: the calendar in its own window. */
+  calendarCommand() {
+    if (!popOut("/calendar.html", "paradigm-calendar")) this.fail(new Error("E: the browser blocked the calendar window: allow popups for Paradigm"));
+  }
+
+  /** :time, the Time button: the weekly timesheet in its own window. */
+  timeCommand() {
+    if (!popOut("/time.html", "paradigm-time")) this.fail(new Error("E: the browser blocked the timesheet window: allow popups for Paradigm"));
   }
 
   /** A person's name changed: offer to make their @mentions follow. */

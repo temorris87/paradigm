@@ -5,8 +5,10 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 from paradigm.db.connection import Database
 from paradigm.db.links_repo import store_links
-from paradigm.notes.hubs import HUB_KINDS, BadKind, BadProjectField, clean_due, clean_kind, clean_status
+from paradigm.notes.hubs import (HUB_KINDS, BadKind, BadProjectField, clean_due, clean_kind, clean_status,
+                                 clean_time_code)
 from paradigm.notes.mentions import Mention
+from paradigm.notes.tasks import Task
 from paradigm.notes.people import split_name
 from paradigm.notes.titles import BadTitle, clean_title
 
@@ -134,7 +136,8 @@ class NoteRepository:
         return note
 
     def create(self, parent_id: Optional[int], title: object, body: str = "",
-               links: Optional[List[str]] = None, mentions: Optional[List[Mention]] = None) -> Dict:
+               links: Optional[List[str]] = None, mentions: Optional[List[Mention]] = None,
+               tasks: Optional[List[Task]] = None) -> Dict:
         """links: the wiki-link texts in body (009_links.sql), mentions its @mentions
         (011_pages.sql); links None leaves both to be read later (the note is stale until
         then)."""
@@ -150,13 +153,14 @@ class NoteRepository:
             )
             note_id = cursor.lastrowid
             if links is not None:
-                store_links(conn, note_id, 1, links, mentions or [])
+                store_links(conn, note_id, 1, links, mentions or [], tasks)
         return self.get(note_id)
 
     def save(self, note_id: int, body: str, base_version: int, force: bool = False,
-             links: Optional[List[str]] = None, mentions: Optional[List[Mention]] = None) -> Dict:
-        """links, mentions: as for create, stored with the version the note ends on. On a
-        meeting they are its whole text's: the agenda's too."""
+             links: Optional[List[str]] = None, mentions: Optional[List[Mention]] = None,
+             tasks: Optional[List[Task]] = None) -> Dict:
+        """links, mentions, tasks: as for create, stored with the version the note ends on. On
+        a meeting they are its whole text's: the agenda's too."""
         with self._db.transaction() as conn:
             row = _live_row(conn, note_id)
             if row["version"] != base_version and not force:
@@ -166,7 +170,7 @@ class NoteRepository:
                 self._change(conn, note_id, "body = ?, version = version + 1", (body,))
                 version += 1
             if links is not None:
-                store_links(conn, note_id, version, links, mentions or [])
+                store_links(conn, note_id, version, links, mentions or [], tasks)
         return self.get(note_id)
 
     def rename(self, note_id: int, title: object) -> Dict:
@@ -256,6 +260,17 @@ class NoteRepository:
             self._change(conn, note_id, "due = ?", (due,))
         return self.get(note_id)
 
+    def set_time_code(self, note_id: int, code: object) -> Dict:
+        """A project's or an area's timesheet code ('' for none)."""
+        code = clean_time_code(code)
+        with self._db.transaction() as conn:
+            row = _live_row(conn, note_id)
+            if row["kind"] not in ("project", "area") or row["parent_id"] is not None or _in_hub_only(row) \
+                    or row["is_person"]:
+                raise NotAProject('"{}" is not a project or an area: only they have a time code'.format(row["title"]))
+            self._change(conn, note_id, "time_code = ?", (code,))
+        return self.get(note_id)
+
     def set_archived(self, note_id: int, archived: bool) -> Tuple[Dict, int]:
         """Archives a hub with everything under it, or restores it. The kind and area link are
         kept, so it goes back to its group. Returns the note and how many notes are under it."""
@@ -300,7 +315,7 @@ class NoteRepository:
 def _summary(row: sqlite3.Row) -> Dict:
     return {"id": row["id"], "parent_id": row["parent_id"], "title": row["title"],
             "kind": _kind(row), "area_id": row["area_id"], "archived_at": row["archived_at"],
-            "status": row["status"], "due": row["due"], "version": row["version"],
+            "status": row["status"], "due": row["due"], "time_code": row["time_code"], "version": row["version"],
             "updated_at": row["updated_at"]}
 
 

@@ -4,11 +4,12 @@
 //
 //   sectionsFor(note)          the sections for a hub, person or meeting note, in page order
 //   section.rows(ctx, note)    [{ id, title, depth, detail, muted?, actions?, snippet?, at? }]
-//                              ctx: { tree, people, meetings, records, links, mentions, today }
+//                              ctx: { tree, people, meetings, records, links, mentions, tasks,
+//                              sessions, today }
 //                              (static/js/people/people-model.js, static/js/meetings/
 //                              meetings-model.js, static/js/records/records-model.js,
 //                              static/js/notes/links.js, static/js/notes/mentions.js)
-//                              actions: [{ key, label }]: "role", "remove", "answer"
+//                              actions: [{ key, label }]: "role", "remove", "answer", "done"
 //                              (hub-actions.js runs them); snippet: Markdown shown under the
 //                              row (a mention's context); at: { field, line } to open it at
 //   section.detail(rows)       beside the heading ("3 open")
@@ -24,19 +25,22 @@ import { Links, linksInto } from "../notes/links.js";
 import { mentionsOf } from "../notes/mentions.js";
 import { hubLinks, peopleOn, rolesText, workText } from "../people/people-model.js";
 import { isOpen, peopleOf, recordsOn } from "../records/records-model.js";
+import { tasksOn } from "../tasks/tasks-model.js";
 import { projectFactsText, statusText } from "./project-facts.js";
 
 const REMOVE = Object.freeze({ key: "remove", label: "Remove" });
 const ROLE = Object.freeze({ key: "role", label: "Role…" });
 const ANSWER = Object.freeze({ key: "answer", label: "Answer…" });
+const DONE = Object.freeze({ key: "done", label: "Done" });
+const UNDONE = Object.freeze({ key: "done", label: "Reopen" });
 const LIMIT = 5;
 
 // Which sections each kind shows, top to bottom.
 export const SECTION_ORDER = {
-  project: ["questions", "decisions", "notes", "meetings", "people"],
-  area: ["projects", "questions", "decisions", "notes", "meetings", "people"],
-  resource: ["notes", "questions", "decisions", "meetings", "people", "linked"],
-  meeting: ["questions", "decisions"],
+  project: ["questions", "tasks", "decisions", "notes", "meetings", "people"],
+  area: ["projects", "tasks", "questions", "decisions", "notes", "meetings", "people"],
+  resource: ["notes", "tasks", "questions", "decisions", "meetings", "people", "linked"],
+  meeting: ["tasks", "questions", "decisions"],
   person: ["active", "archived", "backlinks"],
 };
 
@@ -82,6 +86,32 @@ export const HUB_SECTIONS = [
       : "No questions yet. Select text in a note and right-click to add one.",
     add: { label: "New question" },
     limit: LIMIT,
+  },
+  {
+    key: "tasks",
+    label: "Tasks",
+    // The "- [ ]" boxes in its notes (an area: its projects' too), each subtask under its task;
+    // open ones first, as they are in the text, then done ones, muted. A row opens the note at
+    // the box's line.
+    rows: (ctx, owner) => tasksOn(ctx.tree, ctx.tasks, owner).map(({ task, note, hub, depth, archived }) => ({
+      id: note.id,
+      title: task.title || "(no text)",
+      depth,
+      detail: [note.id !== owner.id ? note.title : "", hub && hub.id !== owner.id && owner.kind !== "meeting" ? `on ${hub.title}` : "",
+        nextBlockText(ctx, task.id), task.done ? `done ${task.done_day}`.trim() : "", archived ? "archived" : ""]
+        .filter(Boolean).join(" · "),
+      muted: task.done || archived,
+      at: { field: task.field, line: task.line },
+      task: task.id,
+      done: task.done,
+      actions: archived ? [] : [task.done ? UNDONE : DONE],
+    })),
+    detail: (rows) => counted(rows.filter((row) => !row.done).length, "open"),
+    empty: (owner) => owner.kind === "meeting"
+      ? "No tasks from this meeting yet. Write - [ ] in its notes, or add one here."
+      : "No tasks yet. Write - [ ] in any of its notes, or add one here.",
+    add: { label: "New task" },
+    limit: 8,
   },
   {
     key: "decisions",
@@ -282,6 +312,14 @@ function upcomingFirst(entries, today = new Date()) {
   const upcoming = live.filter((entry) => entry.meeting.day >= day).sort((a, b) => when(a).localeCompare(when(b)));
   const past = live.filter((entry) => entry.meeting.day < day);
   return [...upcoming, ...past, ...entries.filter((entry) => entry.archived)];
+}
+
+/** "next Tue 09:00": a task's next block on the calendar, from today on ("" if none). */
+function nextBlockText(ctx, taskId) {
+  const today = localDay(ctx.today ?? new Date());
+  const next = (ctx.sessions ?? []).filter((session) => session.task_id === taskId && session.day >= today)
+    .sort((a, b) => `${a.day} ${a.start}`.localeCompare(`${b.day} ${b.start}`))[0];
+  return next ? `next ${whenText({ day: next.day, time: next.start })}` : "";
 }
 
 function counted(n, word) {

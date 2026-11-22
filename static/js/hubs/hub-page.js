@@ -11,7 +11,7 @@
 //     controls: the card's buttons (hub-actions.js hubLineControls)
 //     tabActions: { add(sectionKey, owner), row(key, sectionKey, owner, row) } (hub-actions.js)
 //     at: { field, line } when a row points into the text (a mention)
-//   hub.show(ctx, currentId)    after every redraw; ctx: { tree, people, meetings, records,
+//   hub.show(ctx, currentId)    after every redraw; ctx: { tree, people, meetings, records, tasks, sessions,
 //                               links, mentions, today }
 //   hub.focus()                 :hub: the sections
 //   hub.hub                     the open hub, person, meeting, decision or question, or null
@@ -19,6 +19,7 @@
 //
 // page carries data-page (project, area, resource, person, meeting, decision, question,
 // note) for the CSS: how tall each text box is.
+import { Tasks } from "../tasks/tasks-model.js";
 import { Meetings } from "../meetings/meetings-model.js";
 import { hubOf, isDecisionOrQuestion, isHub, isMeeting, isPerson } from "../notes/hub-groups.js";
 import { Links } from "../notes/links.js";
@@ -44,7 +45,8 @@ export class HubPage {
     this.onLeave = onLeave;
     this.controls = controls;
     this.tabActions = tabActions;
-    this.ctx = { tree: null, people: new People(), meetings: new Meetings(), records: new Records(), links: new Links(), mentions: [] };
+    this.ctx = { tree: null, people: new People(), meetings: new Meetings(), records: new Records(), links: new Links(), mentions: [],
+      tasks: new Tasks(), sessions: [] };
     this.hub = null;
     this.sections = [];
     this.folds = loadFolds();
@@ -70,7 +72,8 @@ export class HubPage {
   }
 
   show(ctx, currentId) {
-    this.ctx = { people: new People(), meetings: new Meetings(), records: new Records(), links: new Links(), mentions: [], ...ctx };
+    this.ctx = { people: new People(), meetings: new Meetings(), records: new Records(), links: new Links(), mentions: [],
+      tasks: new Tasks(), sessions: [], ...ctx };
     const { tree } = this.ctx;
     const shown = [isHub, isPerson, isMeeting, isDecisionOrQuestion].some((is) => is(tree, currentId));
     const note = tree.get(currentId) ?? null;

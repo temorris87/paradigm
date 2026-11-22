@@ -13,6 +13,7 @@ export const HUB_KEYS = [
   { keys: ["a"], action: "add", help: "the section's add button: new note, add person, new meeting..." },
   { keys: ["x", "Delete"], action: "remove", help: "take the row off (a person, a project from an area)" },
   { keys: ["r"], action: "second", help: "the row's other button: Role… on a person, Answer… on a question" },
+  { keys: [" "], action: "toggle", help: "tick a task done, or reopen it" },
   { keys: ["Escape"], action: "editor", help: "back to the text" },
 ];
 

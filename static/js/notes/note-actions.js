@@ -45,11 +45,16 @@ function runItem(app, id, item) {
 }
 
 export function newNoteDialog(app, parentId, { heading = "New note", kind = null, label = "Title", submit = "Make it" } = {}) {
+  // A project or an area books time to a code (the timesheet); a project with none uses its area's.
+  const coded = kind === "project" || kind === "area";
   return formDialog({
     title: heading,
-    fields: [{ key: "title", label }],
+    fields: [{ key: "title", label },
+      ...(coded ? [{ key: "code", label: kind === "project" ? "Time code (optional: else its area's)" : "Time code (optional)",
+        optional: true, placeholder: "the code on the timesheet" }] : [])],
     submit,
-    run: ({ title }) => (kind ? app.createFiled(kind, title) : app.createAndOpen(parentId, title, { strict: true })),
+    run: ({ title, code = "" }) => (kind ? app.createFiled(kind, title, { timeCode: code.trim() })
+      : app.createAndOpen(parentId, title, { strict: true })),
     ...focusNote(app),
   });
 }

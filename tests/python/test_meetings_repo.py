@@ -60,7 +60,8 @@ class MeetingRepositoryTest(unittest.TestCase):
     def test_a_meeting_is_a_dated_note_under_its_hub(self) -> None:
         hub = self.hub()
         note_id, meeting = self.meetings.create(hub, "  Kickoff ", "2026-11-24", "14:00")
-        self.assertEqual(meeting, {"id": note_id, "day": "2026-11-24", "time": "14:00", "attendees": [],
+        self.assertEqual(meeting, {"id": note_id, "day": "2026-11-24", "time": "14:00", "end_time": "",
+                                   "cancelled": False, "location": "", "join_url": "", "attendees": [],
                                    "agenda_version": 1})
         note = self.notes.get(note_id)
         self.assertEqual((note["title"], note["parent_id"], note["kind"]), ("Kickoff", hub, "meeting"))

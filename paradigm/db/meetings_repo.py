@@ -11,7 +11,9 @@ from paradigm.db.notes_repo import Conflict, NoteError, NotFound, live_note_row,
 from paradigm.db.people_repo import NotAHub, NotAPerson, person_row
 from paradigm.notes.hubs import HUB_KINDS
 from paradigm.notes.meetings import BadWhen, clean_day, clean_time
+from paradigm.notes.sessions import DAY_END, clean_end, minutes
 from paradigm.notes.mentions import Mention
+from paradigm.notes.tasks import Task
 from paradigm.notes.titles import BadTitle, clean_title
 
 Clock = Callable[[], str]
@@ -52,10 +54,12 @@ class MeetingRepository:
             row = _meeting_row(conn, meeting_id)
             return _meeting(row, _attendees(conn, meeting_id).get(meeting_id, []))
 
-    def create(self, hub_id: int, name: object, day: object, time: object = "") -> Tuple[int, Dict]:
+    def create(self, hub_id: int, name: object, day: object, time: object = "",
+               end_time: object = "") -> Tuple[int, Dict]:
         """A new meeting: a note called name directly under the hub, and its row. Returns
         (note id, meeting)."""
         day, time = clean_day(day), clean_time(time)
+        end_time = clean_end(end_time, time)
         title = clean_title(name)
         now = self._clock()
         with self._db.transaction() as conn:
@@ -67,19 +71,32 @@ class MeetingRepository:
                 "VALUES (?, ?, '', ?, ?, 1)",
                 (hub_id, title, now, now),
             ).lastrowid
-            conn.execute("INSERT INTO meetings (note_id, day, time) VALUES (?, ?, ?)", (note_id, day, time))
+            conn.execute("INSERT INTO meetings (note_id, day, time, end_time) VALUES (?, ?, ?, ?)",
+                         (note_id, day, time, end_time))
         return note_id, self.get(note_id)
 
-    def update(self, meeting_id: int, day: object, time: object = "") -> Dict:
-        """Sets the date and time."""
+    def update(self, meeting_id: int, day: object, time: object = "", end_time: object = None) -> Dict:
+        """Sets the date and time, and the end time (None: it keeps its length)."""
         day, time = clean_day(day), clean_time(time)
         with self._db.transaction() as conn:
+            row = _meeting_row(conn, meeting_id)
+            end_time = _kept_length(row, time) if end_time is None else clean_end(end_time, time)
+            conn.execute("UPDATE meetings SET day = ?, time = ?, end_time = ? WHERE note_id = ?",
+                         (day, time, end_time, meeting_id))
+        return self.get(meeting_id)
+
+    def set_cancelled(self, meeting_id: int, cancelled: bool) -> Dict:
+        """A cancelled meeting stays (struck through) but is never counted as time worked."""
+        with self._db.transaction() as conn:
             _meeting_row(conn, meeting_id)
-            conn.execute("UPDATE meetings SET day = ?, time = ? WHERE note_id = ?", (day, time, meeting_id))
+            conn.execute("UPDATE meetings SET cancelled = ? WHERE note_id = ?", (int(cancelled), meeting_id))
+            # Cancelled or back on by hand: the next import leaves that alone.
+            conn.execute("UPDATE meeting_sources SET cancelled_by_import = 0 WHERE meeting_id = ?", (meeting_id,))
         return self.get(meeting_id)
 
     def save_agenda(self, meeting_id: int, agenda: str, base_version: int, force: bool = False,
-                    links: Optional[List[str]] = None, mentions: Optional[List[Mention]] = None) -> Dict:
+                    links: Optional[List[str]] = None, mentions: Optional[List[Mention]] = None,
+                    tasks: Optional[List[Task]] = None) -> Dict:
         """Saves the agenda, as NoteRepository.save does a body (its own version, Conflict if
         another tab saved it meanwhile). links and mentions are the whole meeting's (minutes
         and agenda), stored with the note's version. Returns {id, agenda, agenda_version}."""
@@ -95,7 +112,7 @@ class MeetingRepository:
                 conn.execute("UPDATE notes SET updated_at = ? WHERE id = ?", (self._clock(), meeting_id))
             if links is not None:
                 note = live_note_row(conn, meeting_id)
-                store_links(conn, meeting_id, note["version"], links, mentions or [])
+                store_links(conn, meeting_id, note["version"], links, mentions or [], tasks)
         return {"id": meeting_id, "agenda": agenda, "version": version}
 
     def attend(self, meeting_id: int, person_ids: Iterable[int]) -> Tuple[Dict, List[int]]:
@@ -126,8 +143,17 @@ class MeetingRepository:
 
 
 def _meeting(row: sqlite3.Row, attendees: List[int]) -> Dict:
-    return {"id": row["note_id"], "day": row["day"], "time": row["time"], "attendees": attendees,
-            "agenda_version": row["agenda_version"]}
+    return {"id": row["note_id"], "day": row["day"], "time": row["time"], "end_time": row["end_time"],
+            "cancelled": bool(row["cancelled"]), "location": row["location"], "join_url": row["join_url"],
+            "attendees": attendees, "agenda_version": row["agenda_version"]}
+
+
+def _kept_length(row: sqlite3.Row, time: str) -> str:
+    """The end time that keeps a meeting as long as it was, starting at time ('' if it had none)."""
+    if not time or not row["time"] or not row["end_time"]:
+        return ""
+    end = minutes(time) + minutes(row["end_time"]) - minutes(row["time"])
+    return DAY_END if end >= 24 * 60 else "{:02d}:{:02d}".format(end // 60, end % 60)
 
 
 def _attendees(conn: sqlite3.Connection, meeting_id=None) -> Dict[int, List[int]]:

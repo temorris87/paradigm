@@ -27,11 +27,11 @@ _ROWS = ("SELECT notes.id, notes.parent_id, notes.title, notes.kind, notes.delet
 _RECORD_KINDS = ("meeting", "decision", "question")
 
 # The tables holding a note's own rows, deleted with it for good: (table, column).
-_OWN_ROWS = [("hub_people", "hub_id"), ("hub_people", "person_id"), ("meeting_people", "meeting_id"),
+_OWN_ROWS = [("meeting_sources", "meeting_id"), ("hub_people", "hub_id"), ("hub_people", "person_id"), ("meeting_people", "meeting_id"),
              ("meeting_people", "person_id"), ("record_people", "note_id"), ("record_people", "person_id"),
              ("meetings", "note_id"), ("decisions", "note_id"), ("questions", "note_id"), ("people", "note_id"),
              ("note_links", "note_id"), ("note_mentions", "note_id"), ("link_index", "note_id"),
-             ("record_sources", "note_id")]
+             ("record_sources", "note_id"), ("task_texts", "note_id")]
 
 
 class TrashRepository:
@@ -89,6 +89,9 @@ class TrashRepository:
                 "SELECT id FROM notes WHERE deleted_at IS NOT NULL AND deleted_at <= ?", (self._cutoff(),))]
             if not ids:
                 return 0
+            # A note's tasks go with it, and their sessions (its logged time with them).
+            conn.executemany("DELETE FROM task_sessions WHERE task_id IN (SELECT id FROM tasks WHERE note_id = ?)", ids)
+            conn.executemany("DELETE FROM tasks WHERE note_id = ?", ids)
             for table, column in _OWN_ROWS:
                 # table and column come from the fixed list above, never from input.
                 conn.executemany("DELETE FROM {} WHERE {} = ?".format(table, column), ids)

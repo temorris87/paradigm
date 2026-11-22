@@ -68,6 +68,15 @@ export function hubLineControls(app) {
 
     addPerson: (hub) => addPersonTo(app, hub),
 
+    timeCode: (hub) => formDialog({
+      title: `Time code of "${hub.title}"`,
+      fields: [{ key: "code", label: hub.kind === "project" ? "Time code (leave it empty to use its area's)" : "Time code (leave it empty for none)",
+        value: hub.time_code ?? "", optional: true, placeholder: "the code on the timesheet" }],
+      submit: "Save",
+      run: ({ code }) => app.setTimeCode(hub.id, code.trim()),
+      ...back,
+    }),
+
     addAttendee: (meeting) => personDialog(app, {
       title: `Add an attendee to "${meeting.title}"`,
       run: (found) => addAttendees(app, meeting.id, found),
@@ -82,9 +91,10 @@ export function hubLineControls(app) {
         fields: [
           { key: "day", label: "Date", type: "date", value: record.day || localDay(app.today()) },
           { key: "time", label: "Time (leave it empty for none)", type: "time", value: record.time, optional: true },
+          { key: "end", label: "Ends at (leave it empty for 30 minutes)", type: "time", value: record.end_time ?? "", optional: true },
         ],
         submit: "Save",
-        run: ({ day, time }) => setMeetingWhen(app, meeting.id, day, time),
+        run: ({ day, time, end }) => setMeetingWhen(app, meeting.id, day, time, time ? end : ""),
         ...back,
       });
     },
@@ -219,6 +229,7 @@ export function hubTabActions(app) {
     meetings: (owner) => newMeetingDialog(app, owner),
     decisions: (owner) => newRecordDialog(app, "decision", owner),
     questions: (owner) => newRecordDialog(app, "question", owner),
+    tasks: (owner) => newTaskDialog(app, owner),
   };
   const remove = {
     people: (hub, row) => unlinkPerson(app, hub, app.tree.get(row.id)),
@@ -238,11 +249,23 @@ export function hubTabActions(app) {
     row: (key, tabKey, owner, row) => {
       if (key === "remove") return app.guard(remove[tabKey]?.(owner, row));
       if (key === "answer") return app.guard(answerDialog(app, app.tree.get(row.id)));
+      if (key === "done") return app.guard(app.setTaskDone(row.task, !row.done));
       if (key !== "role") return undefined;
       const [hub, person] = owner.kind === "person" ? [app.tree.get(row.id), owner] : [owner, app.tree.get(row.id)];
       return app.guard(roleOn(hub, person, row.role ?? ""));
     },
   };
+}
+
+/** New task: a "- [ ] title" line at the end of the owner's text (a meeting's notes). */
+export function newTaskDialog(app, owner) {
+  return formDialog({
+    title: `New task in "${owner.title}"`,
+    fields: [{ key: "title", label: "Task", placeholder: "what to do" }],
+    submit: "Add task",
+    run: ({ title }) => app.addTask(owner.id, title.trim()),
+    fallbackFocus: () => app.focusNote(),
+  });
 }
 
 /** New meeting: on a hub (or a note in one) it goes in that hub; elsewhere (a person, the

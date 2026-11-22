@@ -41,9 +41,11 @@ export async function dateCommand(app, arg) {
   await setMeetingWhen(app, id, day, time ?? "");
 }
 
-/** Sets a meeting's day ("YYYY-MM-DD") and time ("HH:MM", "" for none). */
-export async function setMeetingWhen(app, id, day, time) {
-  const { note, meeting } = await app.meetingsApi.update(id, day, time);
+/** Sets a meeting's day ("YYYY-MM-DD") and time ("HH:MM", "" for none); endTime undefined:
+ * it keeps its length. */
+export async function setMeetingWhen(app, id, day, time, endTime = undefined) {
+  const { note, meeting } = await app.meetingsApi.update(id, day, time, endTime);
+  app.changes?.send({ type: "changed", what: ["meetings"] });
   if (note.id === app.currentId) app.session.updateMeta(note);
   await app.refreshTree();
   app.editor.showMessage(`"${note.title}" is on ${whenText(meeting)}`);

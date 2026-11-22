@@ -153,6 +153,10 @@
 .md-doc li.md-task-done {
   color: var(--nord3);
 }
+/* In the editor's live preview a box is a task to tick: a click ticks its line. */
+.md-doc input.md-taskbox {
+  cursor: pointer;
+}
 
 /* Images get a row of their own, centred, even when written in the middle of text. */
 .md-doc img {

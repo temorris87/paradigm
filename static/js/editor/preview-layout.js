@@ -13,12 +13,13 @@ export class PreviewLayout {
     this.buf = null;
     this.version = -1;
     this.model = null;
-    this.options = {};
+    this.options = { taskLines: true };
   }
 
-  /** Renderer options (resolveWikiLink). New options: every unit renders again. */
+  /** Renderer options (resolveWikiLink). New options: every unit renders again. Task boxes
+   * always carry their line here, so a click on one ticks it. */
   setOptions(options) {
-    this.options = { ...options };
+    this.options = { ...options, taskLines: true };
     this.version = -1;
   }
 

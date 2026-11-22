@@ -96,7 +96,7 @@ test("link index: a save sends links and mentions of every field; a catch-up rea
   await index.catching;
   assertEqual(sent[1][0].mentions[0].field, "agenda");
   assertEqual(index.mentions.map((m) => `${m.id}:${m.name}`).join(), "3:Sam");
-  assertEqual(JSON.stringify(indexTexts({ body: "x", agenda: undefined })), '{"links":[],"mentions":[]}');
+  assertEqual(JSON.stringify(indexTexts({ body: "x", agenda: undefined })), '{"links":[],"mentions":[],"tasks":[]}');
 });
 
 test("tree: meetings, decisions and questions are not in it; the hub stands in for them", () => {
