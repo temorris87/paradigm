@@ -5,8 +5,9 @@ from pathlib import Path
 
 from paradigm.db.connection import Database
 from paradigm.db.migrate import migrate
-from paradigm.db.notes_repo import (BadKind, BadTitle, Conflict, HasChildren, LastNote, NoteRepository,
-                                    NotAnArea, NotAProject, NotFound, TitleTaken, WouldCycle)
+from paradigm.db.notes_repo import (AreaArchived, BadKind, BadTitle, Conflict, HasChildren, LastNote,
+                                    NoteRepository, NotAnArea, NotAProject, NotArchived, NotFound,
+                                    NotTopLevel, TitleTaken, WouldCycle)
 from paradigm.notes.seed import WELCOME_TITLE, seed_if_empty
 
 
@@ -239,6 +240,59 @@ class NoteRepositoryTest(unittest.TestCase):
         self.notes.set_area(project["id"], area["id"])
         self.notes.delete(area["id"])
         self.assertEqual(self.notes.get(project["id"])["area_id"], area["id"])
+
+    def test_archive_and_restore_a_hub_with_its_notes(self) -> None:
+        area = self.hub("Operations", "area")
+        project = self.hub("Acme", "project")
+        self.notes.set_area(project["id"], area["id"])
+        kickoff = self.notes.create(project["id"], "Kickoff")
+        self.notes.create(kickoff["id"], "Minutes")
+        archived, inside = self.notes.set_archived(project["id"], True)
+        self.assertIsNotNone(archived["archived_at"])
+        self.assertEqual(inside, 2)
+        # Kind and area stay, so it goes back where it was; the notes inside keep no mark.
+        self.assertEqual((archived["kind"], archived["area_id"]), ("project", area["id"]))
+        self.assertIsNone(self.notes.get(kickoff["id"])["archived_at"])
+        # Archiving again changes nothing.
+        self.assertEqual(self.notes.set_archived(project["id"], True)[0]["archived_at"], archived["archived_at"])
+        restored, _ = self.notes.set_archived(project["id"], False)
+        self.assertIsNone(restored["archived_at"])
+        self.assertEqual((restored["kind"], restored["area_id"]), ("project", area["id"]))
+        with self.assertRaises(NotArchived):
+            self.notes.set_archived(project["id"], False)
+
+    def test_only_a_top_level_note_is_archived(self) -> None:
+        project = self.hub("Acme", "project")
+        kickoff = self.notes.create(project["id"], "Kickoff")
+        with self.assertRaises(NotTopLevel):
+            self.notes.set_archived(kickoff["id"], True)
+        # An Inbox note is a whole hub too.
+        loose = self.notes.create(None, "Loose")
+        self.assertIsNotNone(self.notes.set_archived(loose["id"], True)[0]["archived_at"])
+
+    def test_an_archived_title_stays_taken(self) -> None:
+        project = self.hub("Acme", "project")
+        self.notes.set_archived(project["id"], True)
+        with self.assertRaises(TitleTaken):
+            self.notes.create(None, "acme")
+
+    def test_moving_an_archived_hub_under_a_note_drops_the_mark(self) -> None:
+        project = self.hub("Acme", "project")
+        other = self.notes.create(None, "Other")
+        self.notes.set_archived(project["id"], True)
+        self.assertIsNone(self.notes.move(project["id"], other["id"])["archived_at"])
+
+    def test_no_project_goes_in_an_archived_area(self) -> None:
+        area = self.hub("Operations", "area")
+        project = self.hub("Acme", "project")
+        self.notes.set_area(project["id"], area["id"])
+        self.notes.set_archived(area["id"], True)
+        # Its projects keep the link...
+        self.assertEqual(self.notes.get(project["id"])["area_id"], area["id"])
+        # ...but none is put in it while it is archived.
+        other = self.hub("Northwind", "project")
+        with self.assertRaises(AreaArchived):
+            self.notes.set_area(other["id"], area["id"])
 
     def test_seed_only_when_empty(self) -> None:
         seed_if_empty(self.notes)

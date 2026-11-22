@@ -1,5 +1,5 @@
 // The notes tree in the sidebar: an ARIA tree with one focusable item (roving tabindex).
-// The top level is the four hub groups (hub-groups.js); the notes sit under them.
+// The top level is the hub groups and the Archive (hub-groups.js); the notes sit under them.
 //
 //   const view = new TreeView(ulElement, { onOpen(id), onLeave() });
 //   view.show(tree, currentId)     draw (the open note's group and ancestors are expanded)
@@ -7,11 +7,13 @@
 //
 // Each row has a key: a note's id (a number) or "group:<key>" for a group heading. Which
 // branches are open and which groups are folded are remembered in localStorage, per browser.
-import { HUB_GROUPS, groupOf, hubsIn } from "./hub-groups.js";
+// A group folded by default (the Archive) is remembered the other way round: when unfolded.
+import { NAV_GROUPS, groupForKind, groupOf, hubsIn } from "./hub-groups.js";
 import { treeAction } from "./tree-keys.js";
 
 const STORE_KEY = "paradigm.tree.expanded";
 const FOLDED_KEY = "paradigm.tree.foldedGroups";
+const UNFOLDED_KEY = "paradigm.tree.unfoldedGroups";
 
 const groupKey = (group) => `group:${group.key}`;
 const isGroupKey = (key) => typeof key === "string";
@@ -26,7 +28,7 @@ export class TreeView {
     this.currentParent = null;
     this.active = null;
     this.expanded = loadIds(STORE_KEY, Number.isInteger);
-    this.folded = loadIds(FOLDED_KEY, (key) => HUB_GROUPS.some((group) => group.key === key));
+    this.folded = loadFolded();
     root.setAttribute("role", "tree");
     root.addEventListener("keydown", (event) => this.onKeyDown(event));
     root.addEventListener("click", (event) => this.onClick(event));
@@ -55,12 +57,12 @@ export class TreeView {
 
   redraw() {
     const hadFocus = this.root.contains(document.activeElement);
-    this.root.replaceChildren(...HUB_GROUPS.map((group) => this.groupItem(group)));
+    this.root.replaceChildren(...NAV_GROUPS.map((group) => this.groupItem(group)));
     if (hadFocus) this.focus();
   }
 
   exists(key) {
-    return isGroupKey(key) ? HUB_GROUPS.some((group) => groupKey(group) === key) : this.tree.has(key);
+    return isGroupKey(key) ? NAV_GROUPS.some((group) => groupKey(group) === key) : this.tree.has(key);
   }
 
   groupItem(group) {
@@ -75,18 +77,25 @@ export class TreeView {
     count.className = "tree__count";
     count.textContent = String(hubs.length);
     li.append(this.row(hubs.length ? (open ? "▾" : "▸") : "", group.heading, "tree__heading", count));
-    if (open && hubs.length) li.append(this.group(hubs, 2));
+    if (open && hubs.length) li.append(this.group(hubs, 2, group.foldedByDefault));
     return li;
   }
 
-  item(note, level) {
+  // withKind: an archived hub says what it was ("Project"), since its group is the Archive.
+  item(note, level, withKind = false) {
     const kids = this.tree.children(note.id);
     const open = kids.length > 0 && this.expanded.has(note.id);
     const li = this.treeItem(note.id, level);
     li.setAttribute("aria-selected", String(note.id === this.current));
     li.dataset.id = String(note.id);
     if (kids.length) li.setAttribute("aria-expanded", String(open));
-    li.append(this.row(kids.length ? (open ? "▾" : "▸") : "", note.title, "tree__title"));
+    let kind = null;
+    if (withKind) {
+      kind = document.createElement("span");
+      kind.className = "tree__kind";
+      kind.textContent = groupForKind(note.kind).label;
+    }
+    li.append(this.row(kids.length ? (open ? "▾" : "▸") : "", note.title, "tree__title", kind));
     if (open) li.append(this.group(kids, level + 1));
     return li;
   }
@@ -115,11 +124,11 @@ export class TreeView {
     return row;
   }
 
-  group(notes, level) {
+  group(notes, level, withKind = false) {
     const group = document.createElement("ul");
     group.setAttribute("role", "group");
     group.className = "tree__group";
-    group.append(...notes.map((note) => this.item(note, level)));
+    group.append(...notes.map((note) => this.item(note, level, withKind)));
     return group;
   }
 
@@ -141,7 +150,7 @@ export class TreeView {
         if (this.expanded.has(note.id)) walk(this.tree.children(note.id));
       }
     };
-    for (const group of HUB_GROUPS) {
+    for (const group of NAV_GROUPS) {
       out.push(groupKey(group));
       if (!this.folded.has(group.key)) walk(hubsIn(this.tree, group));
     }
@@ -151,7 +160,7 @@ export class TreeView {
   /** What a row holds: a group's hubs, or a note's children. */
   childKeys(key) {
     if (!isGroupKey(key)) return this.tree.children(key).map((note) => note.id);
-    const group = HUB_GROUPS.find((each) => groupKey(each) === key);
+    const group = NAV_GROUPS.find((each) => groupKey(each) === key);
     return hubsIn(this.tree, group).map((note) => note.id);
   }
 
@@ -219,7 +228,7 @@ export class TreeView {
       const name = key.slice("group:".length);
       if (open) this.folded.delete(name);
       else this.folded.add(name);
-      saveIds(FOLDED_KEY, this.folded);
+      saveFolded(this.folded);
     } else {
       if (open) this.expanded.add(key);
       else this.expanded.delete(key);
@@ -240,6 +249,23 @@ function loadIds(storeKey, valid) {
   } catch {
     return new Set();
   }
+}
+
+function loadFolded() {
+  const known = (key) => NAV_GROUPS.some((group) => group.key === key);
+  const folded = loadIds(FOLDED_KEY, known);
+  const unfolded = loadIds(UNFOLDED_KEY, known);
+  for (const group of NAV_GROUPS) {
+    if (group.foldedByDefault && !unfolded.has(group.key)) folded.add(group.key);
+    if (group.foldedByDefault && unfolded.has(group.key)) folded.delete(group.key);
+  }
+  return folded;
+}
+
+function saveFolded(folded) {
+  const byDefault = (key) => NAV_GROUPS.find((group) => group.key === key)?.foldedByDefault;
+  saveIds(FOLDED_KEY, [...folded].filter((key) => !byDefault(key)));
+  saveIds(UNFOLDED_KEY, NAV_GROUPS.filter((group) => group.foldedByDefault && !folded.has(group.key)).map((group) => group.key));
 }
 
 function saveIds(storeKey, ids) {

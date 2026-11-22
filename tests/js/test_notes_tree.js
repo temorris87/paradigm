@@ -3,7 +3,7 @@ import { TREE_KEYS, treeAction } from "../../static/js/notes/tree-keys.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
 import { TreeView } from "../../static/js/notes/tree-view.js";
 import { showBreadcrumb } from "../../static/js/notes/breadcrumb.js";
-import { HUB_GROUPS, groupOf, hubsIn } from "../../static/js/notes/hub-groups.js";
+import { ARCHIVE_GROUP, HUB_GROUPS, groupOf, hubsIn, isArchived } from "../../static/js/notes/hub-groups.js";
 import { NOTE_COMMANDS, runNoteCommand } from "../../static/js/notes/commands.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
@@ -45,7 +45,7 @@ test("tree keys: one table, modifiers left to the browser", () => {
   assertEqual(treeAction({ key: "x" }), null);
 });
 
-const STORE = ["paradigm.tree.expanded", "paradigm.tree.foldedGroups"];
+const STORE = ["paradigm.tree.expanded", "paradigm.tree.foldedGroups", "paradigm.tree.unfoldedGroups"];
 
 function withTree(body) {
   STORE.forEach((key) => localStorage.removeItem(key));
@@ -106,7 +106,7 @@ test("tree view: j k move, h l close and open, Enter opens, Escape leaves", () =
   press(ul, "k");
   assertEqual(focusedGroup(), "inbox", "stops at the top");
   press(ul, "G");
-  assertEqual(focusedGroup(), "resource", "G: the last group");
+  assertEqual(focusedGroup(), "archive", "G: the last group (the Archive)");
   press(ul, "g");
   press(ul, "j");
   press(ul, "j");
@@ -159,7 +159,7 @@ test("hub groups: four in order, notes grouped by their top-level note", () => {
 
 test("tree view: groups with counts, hubs under them, empty ones marked", () => withTree(({ ul, view }) => {
   view.show(new NoteTree(FILED), 3);
-  assertEqual(headings(ul), "▾Inbox1,▾Projects2,▾Areas1,Resources0");
+  assertEqual(headings(ul), "▾Inbox1,▾Projects2,▾Areas1,Resources0,Archive0");
   assertEqual(titles(ul), "Welcome,Acme,Beta,Health");
   assertTrue(ul.querySelector('[data-group="resource"]').classList.contains("tree__item--empty"));
   assertEqual(ul.querySelector('[data-id="1"]').getAttribute("aria-level"), "2");
@@ -218,4 +218,60 @@ test("note commands: :project :area :resource :inbox, typed in full", () => {
     runNoteCommand({ kindCommand: (to) => { filed = to; } }, { name: group.command });
     assertEqual(filed, group);
   }
+});
+
+const ARCHIVED = [
+  ...FILED,
+  { id: 6, parent_id: null, title: "Gamma", kind: "project", archived_at: "2026-11-21T00:00:00Z" },
+  { id: 7, parent_id: 6, title: "Wrap-up" },
+  { id: 8, parent_id: null, title: "Scratch", kind: null, archived_at: "2026-11-21T00:00:00Z" },
+];
+
+test("hub groups: an archived hub and its notes are in the Archive, not their group", () => {
+  const tree = new NoteTree(ARCHIVED);
+  assertEqual(groupOf(tree, 6), ARCHIVE_GROUP);
+  assertEqual(groupOf(tree, 7), ARCHIVE_GROUP, "a note inside it too");
+  assertEqual(isArchived(tree, 7), true);
+  assertEqual(isArchived(tree, 2), false);
+  assertEqual(hubsIn(tree, HUB_GROUPS[1]).map((note) => note.title).join(), "Acme,Beta");
+  assertEqual(hubsIn(tree, HUB_GROUPS[0]).map((note) => note.title).join(), "Welcome");
+  assertEqual(hubsIn(tree, ARCHIVE_GROUP).map((note) => note.title).join(), "Gamma,Scratch");
+});
+
+test("tree view: the Archive is last, folded by default, its hubs labelled with their kind", () => withTree(({ ul, view }) => {
+  const tree = new NoteTree(ARCHIVED);
+  view.show(tree, 3);
+  assertEqual(headings(ul), "▾Inbox1,▾Projects2,▾Areas1,Resources0,▸Archive2");
+  assertEqual(titles(ul), "Welcome,Acme,Beta,Health", "folded");
+  view.setOpen("group:archive", true);
+  assertEqual(titles(ul), "Welcome,Acme,Beta,Health,Gamma,Scratch");
+  assertEqual([...ul.querySelectorAll(".tree__kind")].map((n) => n.textContent).join(), "Project,Inbox");
+  const again = new TreeView(document.createElement("ul"), { onOpen() {}, onLeave() {} });
+  again.show(tree, 3);
+  assertEqual(titles(again.root), "Welcome,Acme,Beta,Health,Gamma,Scratch", "unfolding is remembered");
+  view.setOpen("group:archive", false);
+  const third = new TreeView(document.createElement("ul"), { onOpen() {}, onLeave() {} });
+  third.show(tree, 3);
+  assertEqual(titles(third.root), "Welcome,Acme,Beta,Health", "and folding again");
+}));
+
+test("tree view: opening an archived note unfolds the Archive", () => withTree(({ ul, view }) => {
+  view.show(new NoteTree(ARCHIVED), 7);
+  assertEqual(titles(ul), "Welcome,Acme,Beta,Health,Gamma,Wrap-up,Scratch");
+}));
+
+test("breadcrumb: an archived note starts with Archive", () => {
+  const nav = document.createElement("nav");
+  showBreadcrumb(nav, new NoteTree(ARCHIVED), 7, () => {});
+  assertEqual(nav.textContent, "Archive›Gamma›Wrap-up");
+});
+
+test("note commands: :arch[ive] and :resto[re]", () => {
+  const calls = [];
+  const app = { archiveCommand: () => calls.push("archive"), restoreCommand: () => calls.push("restore") };
+  runNoteCommand(app, { name: "archive" });
+  runNoteCommand(app, { name: "restore" });
+  assertEqual(calls.join(), "archive,restore");
+  assertEqual(NOTE_COMMANDS.find((c) => c.name === "archive").min, 4);
+  assertEqual(NOTE_COMMANDS.find((c) => c.name === "restore").min, 5);
 });

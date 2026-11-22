@@ -27,6 +27,11 @@
   color: var(--nord3);
 }
 
+.hub-line__archived {
+  color: var(--nord12);
+  font-weight: 600;
+}
+
 .hub-line__link {
   padding: 0;
   border: none;
@@ -34,6 +39,11 @@
   color: var(--nord8);
   font: inherit;
   cursor: pointer;
+}
+
+.hub-line__link--archived {
+  color: var(--nord4);
+  opacity: 0.55;
 }
 
 .hub-line__link:hover,
@@ -183,6 +193,11 @@
   color: var(--nord4);
   font-size: 0.85rem;
   opacity: 0.75;
+}
+
+/* An archived project in an area's Projects tab. */
+.hub__row--muted .hub__title {
+  opacity: 0.55;
 }
 
 .hub__row--depth-1 { padding-left: 1.5rem; }

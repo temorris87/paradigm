@@ -113,4 +113,7 @@ test("markdown extras: wiki links use the resolver when given", () => {
   assertEqual(md("[[X]]", { resolveWikiLink: evil }), '<p><a class="md-wikilink" data-target="X">X</a></p>');
   const noAddress = () => ({ href: null, exists: false });
   assertEqual(md("[[New]]", { resolveWikiLink: noAddress }), '<p><a class="md-wikilink md-wikilink-missing" data-target="New">New</a></p>');
+  const archived = () => ({ href: "/notes/3", exists: true, archived: true });
+  assertEqual(md("[[Old]]", { resolveWikiLink: archived }),
+    '<p><a class="md-wikilink md-wikilink-archived" href="/notes/3" data-target="Old">Old</a></p>');
 });

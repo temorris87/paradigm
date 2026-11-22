@@ -2,7 +2,7 @@
 //
 // "Name" finds the nearest note called that: the current note's children, then its
 // siblings, then the siblings of each ancestor up to the top level; failing all of those, a
-// note with that title anywhere, if there is only one. "A/B" finds A that way, then B under
+// note with that title anywhere, if there is only one (live notes counted before archived ones). "A/B" finds A that way, then B under
 // it. "/A/B" starts at the top level.
 //
 // resolveLink(tree, fromId, text) ->
@@ -11,6 +11,7 @@
 // create says where a note made from this link goes: beside the current note for "Name",
 // under A for "A/B" (when A exists), at the top for "/Name". It is null when the link is
 // ambiguous or more than its last part is missing.
+import { isArchived } from "./hub-groups.js";
 import { NoteTree } from "./tree-model.js";
 import { normalTitle, titleKey } from "./titles.js";
 
@@ -53,7 +54,10 @@ function nearest(tree, fromId, title) {
     if (note) return { note };
   }
   const key = titleKey(title);
-  const anywhere = [...tree.notes.values()].filter((note) => titleKey(note.title) === key);
+  const all = [...tree.notes.values()].filter((note) => titleKey(note.title) === key);
+  // An archived note with the same title as a live one doesn't make the link ambiguous.
+  const live = all.filter((note) => !isArchived(tree, note.id));
+  const anywhere = live.length ? live : all;
   if (anywhere.length > 1) return { note: null, ambiguous: true };
   return { note: anywhere[0] ?? null };
 }

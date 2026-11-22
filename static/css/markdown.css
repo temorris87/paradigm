@@ -70,6 +70,11 @@
   color: var(--nord9);
   opacity: 0.75;
 }
+/* A link into an archived hub: still a link, greyed so finished work stands back. */
+.md-doc .md-wikilink-archived {
+  color: var(--nord4);
+  opacity: 0.55;
+}
 
 .md-doc strong { color: var(--nord6); font-weight: 700; }
 .md-doc del { color: var(--nord3); }

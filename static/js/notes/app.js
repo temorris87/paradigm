@@ -12,6 +12,7 @@ import { HubPage } from "../hubs/hub-page.js";
 import { showBreadcrumb } from "./breadcrumb.js";
 import { registerNoteCommands, runNoteCommand } from "./commands.js";
 import { headingLine } from "./headings.js";
+import { groupOf, isArchived, topNoteOf } from "./hub-groups.js";
 import { NoteImages } from "./images.js";
 import { NoteSession } from "./note-session.js";
 import { resolveLink, splitTarget } from "./resolve.js";
@@ -147,7 +148,8 @@ export class NotesApp {
   wikiHref(link) {
     if (!link.target) return null;
     const found = resolveLink(this.tree, this.currentId, link.target);
-    return found.note ? { href: noteUrl(found.note.id), exists: true } : { href: null, exists: false };
+    if (!found.note) return { href: null, exists: false };
+    return { href: noteUrl(found.note.id), exists: true, archived: isArchived(this.tree, found.note.id) };
   }
 
   async followLink(target) {
@@ -262,6 +264,30 @@ export class NotesApp {
     this.editor.showMessage(`"${note.title}" is ${where}`);
   }
 
+  async archiveCommand() {
+    const id = this.currentId;
+    if (id === null) throw new Error("E: no note is open");
+    const top = topNoteOf(this.tree, id);
+    if (top.id !== id) throw new Error(`E: only a whole hub is archived: this note is in "${top.title}" (open it, then :archive)`);
+    if (top.archived_at) throw new Error(`E: "${top.title}" is already archived (:restore brings it back)`);
+    const { note, inside } = await this.api.archive(id, true);
+    this.session.updateMeta(note);
+    await this.refreshTree();
+    const notes = inside === 0 ? "" : ` with ${inside} note${inside === 1 ? "" : "s"}`;
+    this.editor.showMessage(`"${note.title}" archived${notes} (:restore brings it back)`);
+  }
+
+  async restoreCommand() {
+    const id = this.currentId;
+    if (id === null) throw new Error("E: no note is open");
+    const top = topNoteOf(this.tree, id);
+    if (!top.archived_at) throw new Error(`E: "${top.title}" is not archived`);
+    const { note } = await this.api.archive(top.id, false);
+    if (note.id === id) this.session.updateMeta(note);
+    await this.refreshTree();
+    this.editor.showMessage(`"${note.title}" restored to ${groupLabel(this.tree, note.id)}`);
+  }
+
   navCommand() {
     this.navigator.show();
   }
@@ -308,6 +334,11 @@ export class NotesApp {
     const text = error?.message ?? String(error);
     this.editor.showMessage(/^E\d*:/.test(text) ? text : `E: ${text}`, { error: true });
   }
+}
+
+function groupLabel(tree, id) {
+  const group = groupOf(tree, id);
+  return group.kind ? group.heading : "the Inbox";
 }
 
 export function noteUrl(id) {

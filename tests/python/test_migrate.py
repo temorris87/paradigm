@@ -82,6 +82,18 @@ class MigrateTest(unittest.TestCase):
         with self.db.reading() as conn:
             self.assertIsNone(conn.execute("SELECT area_id FROM notes").fetchone()[0])
 
+    def test_archive_comes_to_an_existing_database_with_nothing_archived(self) -> None:
+        folder = Path(self.tmp.name) / "upto4"
+        folder.mkdir()
+        for number, path in migrations()[:4]:
+            (folder / path.name).write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+        migrate(self.db, folder)
+        with self.db.transaction() as conn:
+            conn.execute("INSERT INTO notes (title, kind, created_at, updated_at) VALUES ('Acme', 'project', 'x', 'x')")
+        migrate(self.db)
+        with self.db.reading() as conn:
+            self.assertIsNone(conn.execute("SELECT archived_at FROM notes").fetchone()[0])
+
     def test_foreign_keys_are_on(self) -> None:
         with self.db.reading() as conn:
             self.assertEqual(conn.execute("PRAGMA foreign_keys").fetchone()[0], 1)

@@ -73,6 +73,16 @@
   font-size: 0.8rem;
 }
 
+/* What an archived hub was ("Project"), beside its title in the Archive group. */
+.tree__kind {
+  margin-left: auto;
+  padding-left: 0.5rem;
+  color: var(--nord4);
+  opacity: 0.6;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
 .tree__item--empty > .tree__row .tree__heading {
   color: var(--nord3);
 }

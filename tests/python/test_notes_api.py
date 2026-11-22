@@ -65,6 +65,26 @@ class NotesApiTest(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertIn("kind", payload["error"])
 
+    def test_archive_and_restore(self) -> None:
+        top = self.create("Acme")
+        child = self.create("Kickoff", top["id"])
+        status, payload = self.running.post_json("/api/note/archive", {"id": top["id"], "archived": True})
+        self.assertEqual(status, 200, payload)
+        self.assertIsNotNone(payload["note"]["archived_at"])
+        self.assertEqual(payload["inside"], 1)
+        status, listed = self.running.get_json("/api/notes")
+        marks = {note["title"]: note["archived_at"] is not None for note in listed["notes"]}
+        self.assertEqual(marks, {"Welcome": False, "Acme": True, "Kickoff": False})
+        status, payload = self.running.post_json("/api/note/archive", {"id": child["id"], "archived": True})
+        self.assertEqual(status, 400)
+        status, payload = self.running.post_json("/api/note/archive", {"id": top["id"], "archived": "yes"})
+        self.assertEqual(status, 400)
+        status, payload = self.running.post_json("/api/note/archive", {"id": top["id"], "archived": False})
+        self.assertEqual((status, payload["note"]["archived_at"]), (200, None))
+        status, payload = self.running.post_json("/api/note/archive", {"id": top["id"], "archived": False})
+        self.assertEqual(status, 400)
+        self.assertIn("not archived", payload["error"])
+
     def test_area_puts_a_project_in_an_area(self) -> None:
         area = self.create("Operations")
         project = self.create("Acme")

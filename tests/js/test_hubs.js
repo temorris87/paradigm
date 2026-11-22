@@ -1,5 +1,5 @@
 import { HUB_KEYS, hubAction } from "../../static/js/hubs/hub-keys.js";
-import { areaOf, projectsIn } from "../../static/js/hubs/hub-areas.js";
+import { archivedProjectsIn, areaOf, projectsIn } from "../../static/js/hubs/hub-areas.js";
 import { HubPage } from "../../static/js/hubs/hub-page.js";
 import { stepSize } from "../../static/js/hubs/hub-size.js";
 import { HUB_TABS, dayOf, tabsFor } from "../../static/js/hubs/hub-tabs.js";
@@ -221,4 +221,42 @@ test("hub page: a redraw of the same hub keeps the row; a click on a row opens i
   assertEqual(activeTitle(section), "Kickoff");
   section.querySelectorAll("[role=option]")[2].click();
   assertEqual(opened.join(), "4");
+}));
+
+// ---- archived hubs -----------------------------------------------------------------------
+
+const A = "2026-11-15T12:00:00.000Z";
+const WITH_ARCHIVED = [
+  ...NOTES,
+  { id: 10, parent_id: null, title: "Zeta", kind: "project", area_id: 1, archived_at: A, updated_at: T },
+];
+
+test("hubs: an area's archived projects are apart from its active ones", () => {
+  const t = new NoteTree(WITH_ARCHIVED);
+  assertEqual(projectsIn(t, 1).map((n) => n.title).join(), "Acme,Northwind");
+  assertEqual(archivedProjectsIn(t, 1).map((n) => n.title).join(), "Zeta");
+  const archivedArea = new NoteTree(NOTES.map((n) => (n.id === 1 ? { ...n, archived_at: A } : n)));
+  assertEqual(areaOf(archivedArea, 2).title, "Operations", "an archived area is still the project's area");
+});
+
+test("hub tabs: archived projects come last, muted", () => {
+  const t = new NoteTree(WITH_ARCHIVED);
+  const rows = HUB_TABS[1].rows(t, t.get(1));
+  assertEqual(rows.map((r) => `${r.title}${r.muted ? "~" : ""}`).join(), "Acme,Northwind,Zeta~");
+  assertEqual(rows[2].detail, `archived ${dayOf(A)}`);
+});
+
+test("hub page: an archived hub says so; an archived area is muted on its projects", () => withPage(({ line, section, hub }) => {
+  const t = new NoteTree(WITH_ARCHIVED);
+  hub.show(t, 10);
+  assertEqual(line.textContent, "Archived·Project·Area: Operations");
+  hub.show(t, 1);
+  assertEqual(line.textContent, "Area·2 projects", "the count leaves archived projects out");
+  const archivedArea = new NoteTree(NOTES.map((n) => (n.id === 1 ? { ...n, archived_at: A } : n)));
+  hub.show(archivedArea, 2);
+  assertEqual(line.textContent, "Project·Area: Operations(archived)");
+  assertTrue(line.querySelector(".hub-line__link--archived") !== null);
+  hub.show(t, 1);
+  hub.selectTab(1);
+  assertTrue(section.querySelector(".hub__row--muted .hub__title").textContent === "Zeta");
 }));

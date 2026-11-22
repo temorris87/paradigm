@@ -39,6 +39,8 @@ export const notesApi = {
   setKind: (id, kind) => call("/api/note/kind", { payload: { id, kind } }),
   // areaId: an area's id, or null for no area (projects only)
   setArea: (id, areaId) => call("/api/note/area", { payload: { id, area_id: areaId } }),
+  // -> { note, inside }: archived true archives a hub with everything in it, false restores it
+  archive: (id, archived) => call("/api/note/archive", { payload: { id, archived } }),
   move: (id, parentId) => call("/api/note/move", { payload: { id, parent_id: parentId } }),
   remove: (id, recursive = false) => call("/api/note/delete", { payload: { id, recursive } }),
 };

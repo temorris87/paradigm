@@ -86,8 +86,8 @@ export class HubPanel {
     return tab;
   }
 
-  row({ title, depth, detail }, index) {
-    const li = element("li", `hub__row hub__row--depth-${Math.min(depth, MAX_DEPTH)}`);
+  row({ title, depth, detail, muted }, index) {
+    const li = element("li", `hub__row hub__row--depth-${Math.min(depth, MAX_DEPTH)}${muted ? " hub__row--muted" : ""}`);
     li.id = `hub-row-${index}`;
     li.dataset.index = String(index);
     li.setAttribute("role", "option");

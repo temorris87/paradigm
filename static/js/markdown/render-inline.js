@@ -84,8 +84,10 @@ function renderWikiLink(node, options) {
   const href = resolved?.href ? safeLinkUrl(resolved.href) : null;
   // A note that doesn't exist yet may have no address at all: { href: null, exists: false }.
   const missing = resolved?.exists === false ? " md-wikilink-missing" : "";
+  // { archived: true }: the note is in an archived hub, so the link is drawn muted.
+  const archived = resolved?.archived ? " md-wikilink-archived" : "";
   const hrefAttr = href === null ? "" : ` href="${escapeHtml(href)}"`;
-  return `<a class="md-wikilink${missing}"${hrefAttr}${data}>${text}</a>`;
+  return `<a class="md-wikilink${missing}${archived}"${hrefAttr}${data}>${text}</a>`;
 }
 
 function renderFootnoteRef(node, options) {

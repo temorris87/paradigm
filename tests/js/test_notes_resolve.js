@@ -80,3 +80,16 @@ test("headings: the line of a heading, by its slug, outside code", () => {
   assertEqual(headingLine(text, "fake"), 5);
   assertEqual(headingLine(text, "Missing"), null);
 });
+
+test("resolve: anywhere, a live note wins over an archived one with the same title", () => {
+  const tree = new NoteTree([
+    { id: 1, parent_id: null, title: "Old", archived_at: "2026-11-21T00:00:00Z" },
+    { id: 2, parent_id: 1, title: "Budget" },
+    { id: 3, parent_id: null, title: "New" },
+    { id: 4, parent_id: 3, title: "Budget" },
+    { id: 5, parent_id: null, title: "Loose" },
+  ]);
+  assertEqual(resolveLink(tree, 5, "Budget").note?.id, 4);
+  // Nearest still wins: from inside the archived hub its own note is found.
+  assertEqual(resolveLink(tree, 1, "Budget").note?.id, 2);
+});

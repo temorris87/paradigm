@@ -2,9 +2,9 @@
 // each one lists. Later sections (people, meetings...) are new rows here. Pure.
 //
 //   tabsFor(hub)              the tabs for a hub note (Notes is always first)
-//   tab.rows(tree, hub)       [{ id, title, depth, detail }] in the order shown
+//   tab.rows(tree, hub)       [{ id, title, depth, detail, muted? }] in the order shown
 //   tab.empty(hub)            what the tab says when it has no rows
-import { projectsIn } from "./hub-areas.js";
+import { archivedProjectsIn, projectsIn } from "./hub-areas.js";
 
 export const HUB_TABS = [
   {
@@ -23,11 +23,17 @@ export const HUB_TABS = [
     key: "projects",
     label: "Projects",
     kinds: ["area"],
-    rows: (tree, hub) => projectsIn(tree, hub.id).map((project) => {
-      const inside = tree.inOrder(project.id);
-      const latest = [project, ...inside].map((note) => note.updated_at ?? "").sort().pop();
-      return { id: project.id, title: project.title, depth: 0, detail: `${countNotes(inside.length)} · ${dayOf(latest)}` };
-    }),
+    // Archived projects come last, muted.
+    rows: (tree, hub) => [
+      ...projectsIn(tree, hub.id).map((project) => {
+        const inside = tree.inOrder(project.id);
+        const latest = [project, ...inside].map((note) => note.updated_at ?? "").sort().pop();
+        return { id: project.id, title: project.title, depth: 0, detail: `${countNotes(inside.length)} · ${dayOf(latest)}` };
+      }),
+      ...archivedProjectsIn(tree, hub.id).map((project) => ({
+        id: project.id, title: project.title, depth: 0, detail: `archived ${dayOf(project.archived_at)}`, muted: true,
+      })),
+    ],
     empty: () => "No projects in this area yet (:inarea {area} on a project puts it here)",
   },
 ];

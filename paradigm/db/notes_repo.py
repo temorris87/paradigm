@@ -1,7 +1,7 @@
 """Every read and write of notes. The only code that knows the notes table."""
 import sqlite3
 from datetime import datetime, timezone
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 from paradigm.db.connection import Database
 from paradigm.notes.hubs import BadKind, clean_kind
@@ -10,7 +10,8 @@ from paradigm.notes.titles import BadTitle, clean_title
 Clock = Callable[[], str]
 
 __all__ = ["NoteRepository", "NoteError", "NotFound", "Conflict", "TitleTaken", "BadTitle",
-           "HasChildren", "WouldCycle", "LastNote", "BadKind", "NotAProject", "NotAnArea"]
+           "HasChildren", "WouldCycle", "LastNote", "BadKind", "NotAProject", "NotAnArea",
+           "NotTopLevel", "NotArchived", "AreaArchived"]
 
 
 class NoteError(Exception):
@@ -53,12 +54,24 @@ class NotAnArea(NoteError):
     """A project can only be put in an area."""
 
 
+class NotTopLevel(NoteError):
+    """Only a whole hub (a top-level note) is archived, never a note inside one."""
+
+
+class NotArchived(NoteError):
+    pass
+
+
+class AreaArchived(NoteError):
+    """A project is never put in an archived area."""
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 _LIVE = "deleted_at IS NULL"
-_SUMMARY = "id, parent_id, title, kind, area_id, version, updated_at"
+_SUMMARY = "id, parent_id, title, kind, area_id, archived_at, version, updated_at"
 
 
 class NoteRepository:
@@ -128,8 +141,9 @@ class NoteRepository:
                     raise WouldCycle("A note cannot go under itself or under a note inside it")
             _check_free(conn, parent_id, row["title"], note_id)
             # Only top-level notes are hubs: going under another note leaves its group.
+            # Only top-level notes are archived: under another note, it shares that one's state.
             if parent_id is not None:
-                self._change(conn, note_id, "parent_id = ?, kind = NULL", (parent_id,))
+                self._change(conn, note_id, "parent_id = ?, kind = NULL, archived_at = NULL", (parent_id,))
                 _drop_area_links(conn, note_id)
             else:
                 self._change(conn, note_id, "parent_id = ?", (parent_id,))
@@ -162,8 +176,26 @@ class NoteRepository:
                 if area["kind"] != "area" or area["parent_id"] is not None:
                     what = "a " + area["kind"] if area["kind"] else "in the Inbox"
                     raise NotAnArea('"{}" is {}, not an area'.format(area["title"], what))
+                if area["archived_at"] is not None:
+                    raise AreaArchived('"{}" is archived (:restore it first)'.format(area["title"]))
             self._change(conn, note_id, "area_id = ?", (area_id,))
         return self.get(note_id)
+
+    def set_archived(self, note_id: int, archived: bool) -> Tuple[Dict, int]:
+        """Archives a hub with everything under it, or restores it. The kind and area link are
+        kept, so it goes back to its group. Returns the note and how many notes are under it."""
+        with self._db.transaction() as conn:
+            row = _live_row(conn, note_id)
+            if row["parent_id"] is not None:
+                raise NotTopLevel('Only a whole hub is archived: "{}" is inside one'.format(row["title"]))
+            if not archived and row["archived_at"] is None:
+                raise NotArchived('"{}" is not archived'.format(row["title"]))
+            if archived and row["archived_at"] is None:
+                self._change(conn, note_id, "archived_at = ?", (self._clock(),))
+            elif not archived:
+                self._change(conn, note_id, "archived_at = NULL", ())
+            inside = len(_subtree(conn, note_id)) - 1
+        return self.get(note_id), inside
 
     def delete(self, note_id: int, recursive: bool = False) -> List[int]:
         """Marks the note (and, if recursive, everything under it) deleted. Returns the ids."""
@@ -192,7 +224,8 @@ class NoteRepository:
 
 def _summary(row: sqlite3.Row) -> Dict:
     return {"id": row["id"], "parent_id": row["parent_id"], "title": row["title"],
-            "kind": row["kind"], "area_id": row["area_id"], "version": row["version"],
+            "kind": row["kind"], "area_id": row["area_id"], "archived_at": row["archived_at"],
+            "version": row["version"],
             "updated_at": row["updated_at"]}
 
 
