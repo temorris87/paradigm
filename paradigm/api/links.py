@@ -5,24 +5,23 @@ two let it catch up on notes whose links were never read, or were read from an o
 GET  /api/links           -> {links: [{id, targets: [link texts]}],
                               mentions: [{id, field, line, name, context}],
                               stale: [{id, version, body, agenda?}]}      live notes only
-POST /api/links/index     {entries: [{id, version, links, mentions?, tasks?}]}  -> {stored: [ids]}
+POST /api/links/index     {entries: [{id, version, links, mentions?}]}  -> {stored: [ids]}
                           an entry whose note has moved past that version is skipped
 """
 from http.server import BaseHTTPRequestHandler
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 from paradigm.api.answers import answering
 from paradigm.db.links_repo import LinkRepository
 from paradigm.notes.links import BadLinks, clean_links
 from paradigm.notes.mentions import BadMentions, Mention, clean_mentions
-from paradigm.notes.tasks import BadTasks, Task, clean_tasks
 from paradigm.web.requests import BadRequest, int_field, read_json
 from paradigm.web.router import Router
 
 # More than any one catch-up sends: the page sends stale notes in batches of this size.
 MAX_ENTRIES = 200
 
-_answer = answering({BadLinks: 400, BadMentions: 400, BadTasks: 400, BadRequest: 400})
+_answer = answering({BadLinks: 400, BadMentions: 400, BadRequest: 400})
 
 
 class LinksApi:
@@ -43,13 +42,8 @@ class LinksApi:
         return {"stored": self._links.catch_up([_entry(entry) for entry in entries])}
 
 
-def _entry(entry: object) -> Tuple[int, int, List[str], List[Mention], Optional[List[Task]]]:
+def _entry(entry: object) -> Tuple[int, int, List[str], List[Mention]]:
     if not isinstance(entry, dict):
         raise BadRequest("each entry must be an object")
     return (int_field(entry, "id"), int_field(entry, "version"), clean_links(entry.get("links")),
-            clean_mentions(entry.get("mentions")), _tasks(entry))
-
-
-def _tasks(payload: Dict) -> Optional[List[Task]]:
-    """The tasks a page read (None: an older page sent none, and the tasks stay as they are)."""
-    return None if payload.get("tasks") is None else clean_tasks(payload["tasks"])
+            clean_mentions(entry.get("mentions")))

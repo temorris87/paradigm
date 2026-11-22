@@ -11,7 +11,7 @@ import { localDay, whenText } from "../meetings/meeting-days.js";
 import { attendeesOf, attendeesText, shortTitle } from "../meetings/meetings-model.js";
 import { daysSince, inboxNotes, openQuestions, projectsByArea, todayMeetings } from "./home-model.js";
 import { projectFactsText, statusText } from "../hubs/project-facts.js";
-import { todayTasks } from "../tasks/tasks-model.js";
+import { todayTasks, waitingOn } from "../tasks/tasks-model.js";
 
 export const HOME_SECTIONS = [
   {
@@ -36,6 +36,25 @@ export const HOME_SECTIONS = [
       ],
     })),
     empty: "No open questions",
+  },
+  {
+    key: "waiting",
+    heading: "Waiting on",
+    detail: counted,
+    // Tasks delegated to someone, soonest follow-up first; past their follow-up day first of all.
+    rows: ({ tree, tasks }, today) => (tasks ? waitingOn(tree, tasks) : []).map(({ task, note, hub }) => {
+      const late = Boolean(task.follow_up && task.follow_up < localDay(today));
+      return {
+        id: note.id,
+        cells: [
+          ["home__title", task.title],
+          ["home__meta", [`→ ${tree.get(task.delegate_id)?.title ?? "someone"}`, hub?.title,
+            task.follow_up ? `${late ? "follow up was due" : "follow up"} ${task.follow_up}` : ""].filter(Boolean).join(" · ")],
+        ],
+        late,
+      };
+    }),
+    empty: "Nothing delegated",
   },
   {
     key: "projects",

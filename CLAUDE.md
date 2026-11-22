@@ -55,8 +55,15 @@ paradigm/                Python package
                          answer|reopen|with|unwith); links.py (/api/links: the wiki-link and
                          mention index and stale notes; /api/links/index: the page's catch-up);
                          trash.py (/api/trash, /api/trash/restore);
-                         tasks.py (/api/tasks, /api/task/done: ticks the box in the text;
-                         /api/sessions, /api/session/add|move|remove: blocks of time);
+                         tasks.py (/api/tasks, /api/task/create|update|delegate|done|move|
+                         remove: tasks as records, one level of subtasks; /api/sessions,
+                         /api/session/add|move|remove: blocks of time);
+                         plans.py (/api/plan: phases, milestones, their date changes;
+                         /api/phase/create|make|unmake, /api/milestone/create|done,
+                         /api/plan/dates; /api/plan_template/...: create, items, tasks,
+                         apply, save); templates.py (/api/template/create: note templates);
+                         files.py (/api/files, /api/folders/browse, /api/folder/link|unlink|
+                         scan, /api/file/attach|detach|open: OneDrive files);
                          calendar.py (the Outlook import: /api/calendar/status|import|upload|
                          pending|file|ignore); timesheet.py (/api/time/week, /api/time/
                          settings, holiday/add|update|remove, off/add|remove);
@@ -78,7 +85,13 @@ paradigm/                Python package
                          they were read from, their blocks of time, 013 notes.time_code,
                          014 meetings end_time/cancelled/location/join_url, 015
                          meeting_sources (Outlook uid + day -> meeting), import_pending (To
-                         file), import_log, 016 time_settings, holidays, time_off)
+                         file), import_log, 016 time_settings, holidays, time_off, 017 tasks
+                         as records: tasks (note, parent, notes, due, delegate, follow-up,
+                         position) + task_sessions, the text-read tasks dropped, 018 phases +
+                         milestones (dates and baselines) + schedule_changes (every date
+                         move, with why), 019 note_templates, plan_templates + plan_items +
+                         plan_item_tasks (working days from 0), project_plans, 020
+                         file_folders + files + file_links)
                          connection.py (one locked connection, transactions, VACUUM at start
                          when worth it), migrate.py
                          (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py,
@@ -97,14 +110,21 @@ paradigm/                Python package
                          what was trashed over Config.trash_days (7) ago, at start and stop),
                          images_repo.py (image bytes in SQLite, deduped per note by sha256;
                          sweep_unused deletes images no note links to, at start and stop only),
-                         task_index.py (store_tasks: runs inside a note save with the tasks
-                         the page read; follows each task's line, task_match.py),
-                         tasks_repo.py (tasks, ticking a box from outside the editor,
-                         sessions), import_repo.py (applies an Outlook .ics: new, moved,
+                         tasks_repo.py (tasks and subtasks, delegation, sessions; a task
+                         with logged time is only marked removed), plan_repo.py (phases,
+                         milestones, every date change logged; a phases/milestones row
+                         makes a note kind "phase"/"milestone"), plan_templates_repo.py
+                         (templates on an area; apply: working days, weekends and the
+                         timesheet's holidays skipped; save from a project), templates_repo.py
+                         (a note_templates row makes a top-level note kind "template"),
+                         files_repo.py (linked folders, their files, attachments; scan), import_repo.py (applies an Outlook .ics: new, moved,
                          cancelled, removed; series go to their hub, the rest wait in To
                          file; attendees matched or made as people; <data>/import/ read at
                          start and when the calendar asks), time_repo.py (settings, holidays,
-                         time off; gathers a week for the report)
+                         time off; gathers a week for the report; holiday_dates)
+  files/                 folders.py (a synced OneDrive folder: OneDrive roots from the
+                         environment, listing files and folders, paths kept inside the
+                         folder, opening a file with this computer's program)
   calendar/              ics.py (reads Outlook's .ics: unfolding, its own VTIMEZONE rules,
                          then this computer's local time; pure), import_rules.py (skipped,
                          cancelled, moved, title, agenda, join link, attendees; pure)
@@ -118,26 +138,31 @@ paradigm/                Python package
                          fields, roles, first/last name), seed.py + welcome.md (first-run
                          note), meetings.py (day, time), records.py (decision/question
                          kinds), links.py (a save's list of link texts), mentions.py (a
-                         save's list of @mentions), tasks.py (a save's list of tasks; the
-                         box on a line), task_match.py (following lines between texts with
-                         difflib; pure), sessions.py (a block's day, start, end)
+                         save's list of @mentions), tasks.py (a task's fields), plans.py (a
+                         phase's dates, a move's reason), days.py (working days),
+                         sessions.py (a block's day, start, end)
 static/
-  index.html             the notes app
-  calendar.html          the calendar window (js/calendar/calendar-main.js)
-  time.html              the timesheet window (js/timesheet/time-main.js)
+  index.html             the main window (js/main.js): dashboards, pages, calendar, timesheet
+  note.html              the note window (js/note-main.js): one note, written there
   vendor/katex-0.19.1/   KaTeX exactly as audited (package paths kept; checked against
                          docs/security/katex-0.19.1.sha256 by tests/python/test_vendor.py)
   vendor/mermaid-12.3.0/ Mermaid exactly as audited (same check, mermaid-12.3.0.sha256)
-  css/                   nord.css (palette variables), base.css (the page grid; one column
+  css/                   dashboard.css (the main window's dashboard: sections in columns),
+                         gantt.css, plan-template.css,
+                         nord.css (palette variables), base.css (the page grid; one column
                          under 1400 px), one file per component (topbar.css, navigator.css...)
                          (export.css styles only the exported file, never the app)
                          (editor.css is loaded inside <pd-editor>'s shadow root;
                          markdown.css styles rendered notes under .md-doc)
-  js/main.js             wires the page together
+  js/boot.js             what both windows start with (connection, navigator, NotesApp)
+  js/main.js             the main window: its pages, the dashboard, the Window menu
+  js/note-main.js        the note window
   js/layout/navigator.js the panel holding the tree: docked at 1400 px and wider, a drawer
                          over the note below that (inert while closed); NARROW_QUERY is the
                          one breakpoint, kept in step with the CSS
-  js/notes/              app.js (tree + breadcrumb + editor on the open note), api.js,
+  js/notes/              app.js (NotesApp in either window: role "main" never edits and
+                         sends other notes to the note window; role "note" sends pages to
+                         the main window), api.js,
                          note-session.js (autosave, versions, conflicts), agenda.js (a
                          meeting's second text box, saved like the note), resolve.js (wiki
                          links, nearest note wins), links.js (wikiTargets: a body's link
@@ -148,22 +173,24 @@ static/
                          mention-actions.js (@ completion, opening a mention, the rename
                          rewrite), selection-menu.js (THE right-click menu in the text: Add
                          question… / Add decision… from the selection), link-index.js (the
-                         page's copy: saves send links, mentions and tasks, stale notes caught
-                         up after load), tasks.js (tasksIn: a text's "- [ ]" boxes, their lines
-                         and parents, read by the renderer; boxState/setBox; pure),
-                         tree-model.js, tree-view.js (meetings, decisions and
-                         questions left out), tree-keys.js
+                         page's copy: saves send links and mentions, stale notes caught
+                         up after load), tasks.js (tasksIn: a text's "- [ ]" boxes: only
+                         Markdown now, a template's become tasks; boxState/setBox; pure),
+                         tree-model.js, tree-view.js (meetings, decisions, questions and
+                         milestones left out; phases tagged), tree-keys.js
                          (THE tree key table), breadcrumb.js, commands.js (THE note ex
                          commands: :e :new :child :rename :parent :nav :project :area
                          :resource :inbox :inarea :archive :restore :people :newperson
                          :addperson :dropperson :org :job :email :phone :meetings :meeting :date
                          :attendee :dropattendee :decision :question :answered :reopen :with
-                         :dropwith :task :timecode :calendar :time :hub :home :export :trash
-                         :trashed :find),
-                         page-views.js (which page replaces the note: &home, &people,
-                         &meetings, &trash; the URL flag and Back),
+                         :dropwith :task :template :dashboard :timecode :calendar :time :hub
+                         :home :export :trash :trashed :find),
+                         page-views.js (which page the main window shows: &home, &people,
+                         &meetings, &trash, &calendar, &time, &template=ID; the URL flag
+                         and Back),
                          hub-groups.js (THE PARA group table: Inbox, Projects, Areas,
-                         Resources; then People and the Archive, folded by default),
+                         Resources; then People, Templates and the Archive, folded by
+                         default; phase, milestone and template kinds),
                          headings.js, note-menu.js (THE note menu on the open note's crumb:
                          which items show for which note; pure), note-actions.js (what the
                          menu, its dialogs and the Go to picker do: NotesApp methods),
@@ -181,9 +208,12 @@ static/
                          table: the label over each text box per kind: Outcome, Purpose,
                          Agenda + Notes, Why, Answer, Notes), hub-panel.js (the sections: one
                          focus stop, headings fold, Show all), hub-sections.js (THE section
-                         table and each kind's order: Projects, Questions, Decisions, Notes,
-                         Meetings, People, Linked from; a person's Active, Archived,
-                         Backlinks; pure), project-facts.js (status, due, next meeting texts;
+                         table and each kind's order: Plan, Projects, Tasks, Questions,
+                         Decisions, Meetings, Files, Plan templates, Notes, People, Linked
+                         from; a phase's Milestones; a plain note's Tasks and Files; a
+                         person's Waiting on, Active, Archived, Backlinks; pure), dashboard.js (the main window: a hub's text
+                         rendered with Edit ↗, a project's or an area's Gantt chart),
+                         project-facts.js (status, due, next meeting texts;
                          pure), hub-areas.js (project <-> area; pure), hub-folds.js (folded
                          sections, remembered per kind), hub-keys.js (THE sections key table)
   js/home/               the Home page (the start page): home-model.js (today's meetings, open
@@ -233,20 +263,32 @@ static/
                          per window kind: a popup copies its opener's sessionStorage),
                          changes.js (BroadcastChannel between the app's windows: "changed",
                          "open" a note)
-  js/windows/popout.js   the calendar and timesheet windows: a popup on the left 2/3 of the
-                         screen, full height; an open one is brought forward, not reloaded
-  js/tasks/              api.js, tasks-model.js (a task's note and hub, subtasks under their
-                         task; a hub's, the calendar's open list and its filter, today's
-                         blocks; pure)
+  js/windows/note-window.js  the note window: the right third on a wide screen (>= 2400 CSS
+                         px and > 2.1 times as wide as tall), else the whole screen, or as
+                         the Window menu says; one window, reused; showMainWindow
+  js/plan/               api.js, plan-model.js (phases, milestones, slip against the
+                         baseline, history; pure), plan-rows.js (a chart's rows: project,
+                         area, template; pure), plan-commands.js (dialogs: new phase /
+                         milestone, edit dates + why, history, apply / save templates),
+                         template-page.js (a plan template's page in the main window)
+  js/gantt/              gantt-model.js (axis, bars, drags; pure), gantt-view.js (the chart:
+                         drag bars, ends, diamonds), gantt-keys.js (THE Gantt key table)
+  js/templates/          api.js, template-text.js ({{date}} {{time}} {{title}} {{cursor}};
+                         boxes become tasks; pure), template-commands.js
+  js/files/              api.js, files-model.js (a page's files; folders of a hub and its
+                         area; pure), file-commands.js (link a folder, add, open, remove)
+  js/tasks/              api.js, tasks-model.js (a page's tasks with subtask counts, never
+                         rolled up past their project; waiting on; the calendar's open list
+                         of mine and its filter; today's blocks; pure), task-commands.js
   js/calendar/           api.js (the import), week-model.js (days shown, the weekend rule,
                          blocks, side-by-side layout, 15-minute snap; pure), grid-view.js
                          (the week grid), drag.js (pointer drags: drop, move, resize),
-                         task-sidebar.js (Tasks and To file), calendar-page.js (the window:
+                         task-sidebar.js (Tasks and To file), calendar-page.js (the page:
                          loading, menus, dialogs, the import), calendar-keys.js (THE
                          calendar key table)
   js/timesheet/          api.js, copy.js (the grid as HTML and tab-separated text; pure),
                          time-page.js (Week and Settings), time-keys.js (THE timesheet key
-                         table), time-main.js
+                         table)
   js/editor/             the <pd-editor> component:
     pd-editor.js         the custom element (hidden textarea takes keys; events out: change,
                          save, link, mention, menu, highlight, files, image...)
@@ -421,29 +463,69 @@ Update this section when the structure changes.
   a question's state (▾: Answer…, answered today / on a day, reopen), and the people on a
   record (× and + Add person). The person dialog adds someone new to People only when its
   button says "Add new person".
-- Tasks (Tyson, 2026-11-22: here the text is the source, unlike meetings and records): a
-  `- [ ]` list item in any note, or a meeting's Agenda or Notes, is a task; a box nested under
-  another box is its subtask (any depth; a box under a plain bullet is a task of its own);
-  `- [x]` is done; never in code. The page reads the boxes with the renderer and sends them
-  with every save (`tasksIn`); the server follows each task's line through edits (difflib:
-  unchanged or edited lines keep their task; a cut-and-put line keeps it by its title), so
-  its blocks of time stay with it. A deleted line removes the task (its past blocks still
-  count as time; undo brings it back). Ticking anywhere (a hub's Tasks row, Space or Done;
-  the calendar; a click on the rendered box) writes `[x]` into its line: in the open note as
-  an edit (one undo step, saved at once), in any other note on the server. A hub (an area: its
-  projects' too) and a meeting have a Tasks section: open first as in the text, subtasks
-  indented, done ones muted, "next" block shown; + New task adds a `- [ ]` line (`:task`).
+- Two windows (Tyson, 2026-11-22): the main window (`/`, left 2/3 of the ultrawide) shows
+  dashboards and pages and never edits text; the note window (`/note.html`) is where notes
+  are written. Opening any note in the main window that isn't a hub or a person (tree, a
+  section row, Go to, the calendar, a Gantt bar) shows it in the one note window, reused. Its
+  place: the right third, full height, on a wide screen (`availWidth >= 2400` CSS px and
+  over 2.1 times as wide as tall), else the whole screen (the laptop); the main window's
+  Window ▾ menu can force either. The page can't place the main window itself. In the note
+  window, Dashboard (or `:dashboard`) shows the note's hub in the main window; Home,
+  `:people`, `:calendar`... show there too (`showMainWindow`; Chrome may refuse to raise it).
+  A hub's dashboard: the card, a project's or an area's Gantt chart, its text rendered
+  (Edit ↗ opens it in the note window), then its sections in columns (one column under
+  1400 px). A hub's linked folders are read again when its dashboard opens.
+- Tasks (Tyson, 2026-11-22: records, not text; this replaced the `- [ ]` tasks): a task
+  belongs to one note (a project, an area, a phase, a milestone, a meeting, any note) and is
+  made in that page's Tasks section (+ New task, `a`, or `:task [!]{text}`, ! due today).
+  One level of subtasks. A Tasks section lists a task once with "2/5 subtasks"; Enter (or a
+  click) opens it in place: its subtasks, its notes and + Add subtask. Row buttons: Done
+  (Space), Edit… (`e`: text, notes, due), Delegate… / Take back (`d`), Delete (`x`; a task
+  with logged time keeps its row). A delegated task shows "→ Name, follow up …" (red past
+  the follow-up day), leaves the calendar's task list, and is listed in Waiting on (Home and
+  the person's page). Roll-up: a project lists its tasks and those of the notes inside it;
+  an area lists its own only, and each of its projects in Projects with that project's
+  counts (open tasks, decisions, open questions, next milestone). Questions and decisions
+  roll up the same way. `- [ ]` in a note is plain Markdown again (a click still ticks it).
+- Plan (Tyson, 2026-11-22): a project's phases are notes (kind "phase", directly under the
+  project, in the tree tagged Phase, with notes under them) with a start and an end day; its
+  milestones are notes (kind "milestone", under the project or a phase, out of the tree)
+  with a day and reached or not. Not every note is on the plan: "Make it a phase…" on a
+  plain note's menu (and "Make it a plain note"). The first dates are the baseline; every
+  move is kept in `schedule_changes` with when and why ("Why it moved" in Edit dates…; a
+  drag that ends later asks). The slip shows as "+9 d, moved 3×", red ("keeps slipping")
+  once moved later 3 times; History lists the moves. The main window draws a project's
+  plan as a Gantt chart (weeks, today, the baseline dashed under a bar): drag a bar, either
+  end, or a diamond; click opens it in the note window; its keys are in
+  `static/js/gantt/gantt-keys.js` (`e` Edit dates…, `h` history, Space a milestone done,
+  `p` / `m` new). An area's chart has a bar per project. The note window lists the same as
+  the project's Plan section; a phase's page has Tasks, Milestones, Files, Notes.
+- Plan templates (kept on an area, its Plan templates section): phases and milestones in
+  working days from 0, each with standard tasks and subtasks; edited on their own page in
+  the main window (a chart in days: drag; + Phase, + Milestone, + Task). "Apply plan
+  template…" on a project's chart makes them from a start day, skipping weekends and the
+  timesheet's holidays; the applied dates are the baseline; it never replaces anything.
+  "Save as plan template…" turns a project's plan into one on its area.
+- Note templates: top-level notes in the Templates group (+ on its heading). "Insert
+  template…" (the note menu, `:template [name]`) puts one in below the cursor: `{{date}}`,
+  `{{time}}`, `{{title}}` filled in, the cursor at `{{cursor}}`, and its `- [ ]` lines become
+  tasks of the note (indented ones subtasks). New note… can start from a template.
+- Files (OneDrive): a folder synced on this computer is linked to a hub ("Link a OneDrive
+  folder…": a picker over the folders under the `OneDriveCommercial` / `OneDrive` roots, or a
+  pasted path); its files are listed by reading it. "+ Add file" in any page's Files section
+  attaches one (one record, on any number of notes); Enter opens it with this computer's
+  program (`os.startfile`); Remove takes it off that note only. A file gone from the folder
+  is flagged, kept while attached. A project's Files include its phases' and notes'.
 - Time codes: a project or area has one on its card (`Time code: X ✎`, `(from area)` when a
   project books to its area's, else Set time code; `:timecode`). A resource or Inbox note has
   none: its time is listed as not counted.
-- Calendar (Calendar button, `:calendar`): never in the notes page; a popup window on the left
-  2/3 of the screen, full height (`/calendar.html`, `js/windows/popout.js`). Monday to Sunday;
+- Calendar (Calendar button, `:calendar`): a page in the main window (`&calendar`). Monday to Sunday;
   Saturday and Sunday show only when something is on them, or with Show weekend. Meetings
   (an end time, else 30 min; cancelled ones struck through; untimed ones in the All day strip)
   and task blocks. The sidebar lists open tasks (filter by project or area, an area with its
   projects; a search box); drag one onto the week for a 30-minute block (again for another);
   drag a block to move it, its bottom edge to change its length (15-minute steps). Click a
-  block (or right-click) for its menu: open its note (in the notes window), done, Edit time…,
+  block (or right-click) for its menu: open its note (in the note window), done, Edit time…,
   remove (a task block) or cancel (a meeting). An empty slot makes a meeting there. A block
   that has passed is time worked (worknotes' rule: scheduled = logged). Windows keep each
   other up to date over a BroadcastChannel. Its keys live in `js/calendar/calendar-keys.js`.
@@ -458,7 +540,7 @@ Update this section when the structure changes.
   all-day, free, tentative, out of office, working elsewhere. Attendees are matched by email,
   then name, else made as people (rooms, groups and you left out; none past 20). A trashed
   imported meeting is never made again. Home and the calendar remind until today's import.
-- Timesheet (Time button, `:time`): a popup like the calendar (`/time.html`). Week: a code per
+- Timesheet (Time button, `:time`): a page in the main window (`&time`). Week: a code per
   row x Mon-Fri, each day exactly the working day (8.00 h) in quarter hours: holidays, time
   off and sick time first, then meetings and task blocks inside the working hours (not lunch),
   overlaps shared evenly, largest-remainder rounding, the rest to the Default code; warnings,

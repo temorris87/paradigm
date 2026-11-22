@@ -8,12 +8,15 @@ export const HUB_KEYS = [
   { keys: ["G", "End"], action: "last", help: "last row" },
   { keys: ["}"], action: "nextSection", help: "the next section's heading" },
   { keys: ["{"], action: "previousSection", help: "this section's heading, then the previous one's" },
-  { keys: ["Enter"], action: "open", help: "open the row's note; on a heading, fold or unfold it; Show all" },
+  { keys: ["Enter"], action: "open", help: "open the row's note (a task: show its subtasks; a file: open it); on a heading, fold or unfold it; Show all" },
   { keys: ["z"], action: "fold", help: "fold or unfold the section" },
   { keys: ["a"], action: "add", help: "the section's add button: new note, add person, new meeting..." },
-  { keys: ["x", "Delete"], action: "remove", help: "take the row off (a person, a project from an area)" },
+  { keys: ["x", "Delete"], action: "remove", help: "take the row off (a person, a project from an area, a file); delete a task" },
   { keys: ["r"], action: "second", help: "the row's other button: Role… on a person, Answer… on a question" },
-  { keys: [" "], action: "toggle", help: "tick a task done, or reopen it" },
+  { keys: [" "], action: "toggle", help: "tick a task (or a milestone) done, or reopen it" },
+  { keys: ["e"], action: "edit", help: "Edit… a task: its text, notes and due date" },
+  { keys: ["d"], action: "delegate", help: "Delegate… a task to someone, or take it back" },
+  { keys: ["h"], action: "history", help: "the date history of a phase or milestone" },
   { keys: ["Escape"], action: "editor", help: "back to the text" },
 ];
 

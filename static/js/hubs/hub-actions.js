@@ -24,6 +24,11 @@ import { formDialog } from "../ui/dialog.js";
 import { openMenu } from "../ui/menu.js";
 import { pickFrom } from "../ui/picker.js";
 import { areaOf, projectsIn } from "./hub-areas.js";
+import { delegateDialog, editTaskDialog, newTaskDialog, removeTaskDialog, setTaskDone, takeBack } from "../tasks/task-commands.js";
+import { editDatesDialog, historyDialog, newMilestoneDialog, newPhaseDialog, newPlanTemplateDialog,
+  setMilestoneDone } from "../plan/plan-commands.js";
+import { addFileDialog, detachFile, openFile } from "../files/file-commands.js";
+import { confirmDialog } from "../ui/dialog.js";
 
 // The person dialog's fields, in order (paradigm/notes/people.py PERSON_FIELDS).
 const FIELDS = [["first", "First name"], ["last", "Last name"], ["email", "Email"], ["phone", "Phone"],
@@ -124,6 +129,18 @@ export function hubLineControls(app) {
     }),
 
     dropWith: (note, person) => app.guard(dropPersonFrom(app, note.id, person)),
+
+    dates: (note) => app.guard(editDatesDialog(app, note.id)),
+
+    history: (note) => app.guard(historyDialog(app, note.id)),
+
+    milestoneState: (button, note) => {
+      const done = Boolean(app.plan.milestone(note.id)?.done_day);
+      openMenu(button, [
+        { label: "Reached", checked: done, run: () => app.guard(setMilestoneDone(app, note.id, true)) },
+        { label: "To come", checked: !done, run: () => app.guard(setMilestoneDone(app, note.id, false)) },
+      ], { label: "Milestone" });
+    },
   };
 }
 
@@ -161,7 +178,7 @@ export async function personDetailsDialog(app, person) {
       }
       await app.refreshTree();
       const after = app.tree.get(person.id)?.title ?? before;
-      app.editor.showMessage(`${after}'s details saved`);
+      app.say(`${after}'s details saved`);
       if (after !== before) renamed = { before, after };
     },
     fallbackFocus: () => app.focusNote(),
@@ -230,12 +247,19 @@ export function hubTabActions(app) {
     decisions: (owner) => newRecordDialog(app, "decision", owner),
     questions: (owner) => newRecordDialog(app, "question", owner),
     tasks: (owner) => newTaskDialog(app, owner),
+    plan: (project) => newPhaseDialog(app, project),
+    milestones: (phase) => newMilestoneDialog(app, phase),
+    files: (owner) => addFileDialog(app, owner),
+    templates: (area) => newPlanTemplateDialog(app, area),
   };
   const remove = {
     people: (hub, row) => unlinkPerson(app, hub, app.tree.get(row.id)),
     active: (person, row) => unlinkPerson(app, app.tree.get(row.id), person),
     archived: (person, row) => unlinkPerson(app, app.tree.get(row.id), person),
     projects: (area, row) => app.setAreaOf(row.id, null),
+    tasks: (owner, row) => removeTaskDialog(app, row.task),
+    files: (owner, row) => detachFile(app, row.file, row.owner),
+    templates: (area, row) => removeTemplateDialog(app, row.template),
   };
   const roleOn = (hub, person, role) => formDialog({
     title: `${person.title}'s role on ${hub.title}`,
@@ -249,7 +273,15 @@ export function hubTabActions(app) {
     row: (key, tabKey, owner, row) => {
       if (key === "remove") return app.guard(remove[tabKey]?.(owner, row));
       if (key === "answer") return app.guard(answerDialog(app, app.tree.get(row.id)));
-      if (key === "done") return app.guard(app.setTaskDone(row.task, !row.done));
+      if (key === "done" && row.milestone !== undefined) return app.guard(setMilestoneDone(app, row.milestone, !row.done));
+      if (key === "done") return app.guard(setTaskDone(app, row.task, !row.done));
+      if (key === "edit") return app.guard(editTaskDialog(app, row.task));
+      if (key === "delegate") return app.guard(delegateDialog(app, row.task));
+      if (key === "takeBack") return app.guard(takeBack(app, row.task));
+      if (key === "history") return app.guard(historyDialog(app, row.id));
+      if (key === "addSubtask") return app.guard(newTaskDialog(app, owner, app.tasks.get(row.addSubtask)));
+      if (key === "openFile") return app.guard(openFile(app, row.file));
+      if (key === "openTemplate") return app.showTemplate(row.template);
       if (key !== "role") return undefined;
       const [hub, person] = owner.kind === "person" ? [app.tree.get(row.id), owner] : [owner, app.tree.get(row.id)];
       return app.guard(roleOn(hub, person, row.role ?? ""));
@@ -257,13 +289,19 @@ export function hubTabActions(app) {
   };
 }
 
-/** New task: a "- [ ] title" line at the end of the owner's text (a meeting's notes). */
-export function newTaskDialog(app, owner) {
-  return formDialog({
-    title: `New task in "${owner.title}"`,
-    fields: [{ key: "title", label: "Task", placeholder: "what to do" }],
-    submit: "Add task",
-    run: ({ title }) => app.addTask(owner.id, title.trim()),
+function removeTemplateDialog(app, templateId) {
+  const template = app.planTemplates.find((each) => each.id === templateId);
+  if (!template) return undefined;
+  return confirmDialog({
+    title: "Delete plan template",
+    text: `Delete the plan template "${template.title}"? Projects already made from it keep their plans.`,
+    confirm: "Delete",
+    danger: true,
+    run: async () => {
+      await app.planTemplatesApi.remove(templateId);
+      await app.refreshTree();
+      app.say(`Plan template "${template.title}" deleted`);
+    },
     fallbackFocus: () => app.focusNote(),
   });
 }

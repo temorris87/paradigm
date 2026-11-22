@@ -76,7 +76,7 @@ export class TaskSidebar {
     const entries = openTasks(tree, tasks, this.filter);
     if (!entries.length) {
       this.list.replaceChildren(element("li", "cal-side__empty", this.filter.text || this.filter.hubId !== null
-        ? "No open task matches" : "No open tasks. Write - [ ] in a note to make one."));
+        ? "No open task matches" : "No open tasks of yours. Add one in a project's or a meeting's Tasks."));
       return;
     }
     this.list.replaceChildren(...entries.map((entry) => {
@@ -87,7 +87,8 @@ export class TaskSidebar {
       box.addEventListener("change", () => this.handlers.onToggle(entry));
       const grip = element("div", "cal-task__grip");
       grip.append(element("span", "cal-task__title", entry.task.title || "(no text)"),
-        element("span", "cal-task__meta", [entry.hub?.title, entry.note.id !== entry.hub?.id ? entry.note.title : ""].filter(Boolean).join(" · ")));
+        element("span", "cal-task__meta", [entry.hub?.title, entry.note.id !== entry.hub?.id ? entry.note.title : "",
+          entry.task.due ? `due ${entry.task.due}` : ""].filter(Boolean).join(" · ")));
       grip.title = "Drag onto the week to schedule it; click to open its note";
       grip.addEventListener("pointerdown", (event) => {
         if (event.button === 0) this.handlers.onTaskDown(entry, event);

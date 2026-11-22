@@ -1,0 +1,93 @@
+/* The main window's dashboard of a hub or a person (static/js/hubs/dashboard.js): the card,
+   the plan as a Gantt chart (gantt.css), the hub's text rendered, then its sections laid out
+   in columns. Under 1400 px wide (the laptop) the columns fall back to one. */
+[data-role="main"] .app__note {
+  gap: 0.75rem;
+  padding: 1rem 1.5rem 3rem;
+}
+
+.dash-chart[hidden],
+.dash-text[hidden] {
+  display: none;
+}
+
+.dash-text {
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--nord2);
+  border-radius: 6px;
+}
+
+.dash-text__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.dash-text__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--nord4);
+  opacity: 0.8;
+}
+
+.dash-text__edit {
+  margin-left: auto;
+  padding: 0.05rem 0.55rem;
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  background: var(--nord1);
+  color: var(--nord5);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.dash-text__edit:hover,
+.dash-text__edit:focus-visible {
+  border-color: var(--nord8);
+}
+
+.dash-text__body {
+  max-height: 18rem;
+  overflow: auto;
+}
+
+.dash-text__empty {
+  color: var(--nord3);
+}
+
+/* The sections in columns: each section a card of its own. */
+[data-role="main"] .hub {
+  border-top: none;
+}
+
+[data-role="main"] .hub__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(26rem, 1fr));
+  align-items: start;
+  gap: 0.75rem;
+}
+
+[data-role="main"] .hub__section {
+  padding: 0.4rem 0.5rem 0.5rem;
+  border: 1px solid var(--nord2);
+  border-radius: 6px;
+  min-width: 0;
+}
+
+/* Tasks and Projects hold the most: two columns' worth when there is room. */
+@media (min-width: 1900px) {
+  [data-role="main"] .hub__section--tasks,
+  [data-role="main"] .hub__section--projects {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 1399.98px) {
+  [data-role="main"] .hub__list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

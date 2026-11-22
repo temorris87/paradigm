@@ -43,12 +43,12 @@ test("hubs: a project's area, an area's projects; a non-area target counts as no
 
 test("hub sections: each kind's sections, top to bottom", () => {
   const keys = (kind) => sectionsFor({ kind }).map((each) => each.key).join();
-  assertEqual(keys("project"), "questions,tasks,decisions,notes,meetings,people");
-  assertEqual(keys("area"), "projects,tasks,questions,decisions,notes,meetings,people");
-  assertEqual(keys("resource"), "notes,tasks,questions,decisions,meetings,people,linked");
-  assertEqual(keys("meeting"), "tasks,questions,decisions");
-  assertEqual(keys("person"), "active,archived,backlinks");
-  assertEqual(sectionsFor({ kind: null }).length, 0);
+  assertEqual(keys("project"), "plan,tasks,questions,decisions,meetings,files,notes,people");
+  assertEqual(keys("area"), "projects,tasks,questions,decisions,meetings,files,templates,notes,people");
+  assertEqual(keys("resource"), "notes,files,tasks,questions,decisions,meetings,people,linked");
+  assertEqual(keys("meeting"), "tasks,questions,decisions,files");
+  assertEqual(keys("person"), "waiting,active,archived,backlinks");
+  assertEqual(keys(null), "tasks,files", "a plain note: its tasks and files");
   assertEqual(sectionsFor({ kind: "decision" }).length, 0);
 });
 
@@ -131,7 +131,7 @@ function withPage(body, { tabActions } = {}) {
   const opened = [];
   let left = 0;
   const hub = new HubPage({ page, line, section, labels: { main }, onOpen: (id, at) => opened.push(at ? `${id}@${at.line}` : id),
-    onLeave: () => { left += 1; }, ...(tabActions ? { tabActions } : {}) });
+    onLeave: () => { left += 1; }, hideSections: ["plan", "files"], ...(tabActions ? { tabActions } : {}) });
   try {
     body({ page, line, main, section, editor, hub, opened, left: () => left });
   } finally {
@@ -152,17 +152,18 @@ const rows = (line) => [...line.querySelectorAll(".hub-line__row")].map((row) =>
 
 test("hub page: shows only on a hub, a person or a meeting; labels the text box", () => withPage(({ page, line, main, section, hub }) => {
   hub.show({ tree: tree() }, 8);
-  assertTrue(section.hidden && line.hidden, "an Inbox note has no sections");
+  assertTrue(!section.hidden && line.hidden, "an Inbox note has no card, only its Tasks");
+  assertEqual(headings(section), "Tasks");
   assertEqual(page.dataset.page, "note");
   assertEqual(main.textContent, "Notes");
   hub.show({ tree: tree() }, 3);
-  assertTrue(section.hidden, "a nested note has no sections");
+  assertTrue(!section.hidden && line.hidden, "a nested note: its Tasks, no card");
   assertTrue(main.textContent.startsWith("Notes"), "a note in a hub hints at the menu");
   hub.show({ tree: tree(), today: TODAY }, 2);
   assertTrue(!section.hidden && !line.hidden);
   assertEqual(page.dataset.page, "project");
   assertEqual(main.querySelector(".field-label__name").textContent, "Outcome");
-  assertEqual(headings(section), "Questions,Tasks,Decisions,Notes,Meetings,People");
+  assertEqual(headings(section), "Tasks,Questions,Decisions,Meetings,Notes,People");
   assertEqual(rows(line)[0], "Project▾·Active▾·Set due date·Area: Operations✎·Set time code");
   assertEqual(rows(line)[1], "People:no one yet+ Add person");
   hub.show({ tree: tree() }, 1);
@@ -186,7 +187,8 @@ test("hub page: j k g G move over headings and rows, Enter opens, Escape leaves"
   hub.show({ tree: tree() }, 2);
   hub.focus();
   assertEqual(rowTitles(section), "Budget,Kickoff,Minutes");
-  assertEqual(active(section), "Questions");
+  assertEqual(active(section), "Tasks");
+  press("}");
   press("}");
   press("}");
   press("}");
@@ -196,7 +198,7 @@ test("hub page: j k g G move over headings and rows, Enter opens, Escape leaves"
   press("j");
   press("j");
   press("j");
-  assertEqual(active(section), "Meetings", "j goes on to the next heading");
+  assertEqual(active(section), "People", "j goes on to the next heading");
   press("k");
   assertEqual(active(section), "Minutes");
   press("{");
@@ -204,7 +206,8 @@ test("hub page: j k g G move over headings and rows, Enter opens, Escape leaves"
   press("G");
   assertEqual(active(section), "People");
   press("g");
-  assertEqual(active(section), "Questions");
+  assertEqual(active(section), "Tasks");
+  press("}");
   press("}");
   press("}");
   press("}");
@@ -221,16 +224,17 @@ test("hub page: Enter or z on a heading folds it; folds are remembered per kind"
   press("}");
   press("}");
   press("}");
+  press("}");
   press("Enter");
-  assertEqual(headings(section), "Questions,Tasks,Decisions,Notes+,Meetings,People");
+  assertEqual(headings(section), "Tasks,Questions,Decisions,Meetings,Notes+,People");
   assertEqual(rowTitles(section), "", "a folded section shows no rows");
   assertEqual(active(section), "Notes", "the heading stays active");
   hub.show({ tree: tree() }, 9);
-  assertEqual(headings(section), "Questions,Tasks,Decisions,Notes+,Meetings,People", "another project too");
+  assertEqual(headings(section), "Tasks,Questions,Decisions,Meetings,Notes+,People", "another project too");
   hub.focus();
   assertEqual(active(section), "Notes", "the same heading stays active");
   press("z");
-  assertEqual(headings(section), "Questions,Tasks,Decisions,Notes,Meetings,People");
+  assertEqual(headings(section), "Tasks,Questions,Decisions,Meetings,Notes,People");
   assertEqual(JSON.parse(localStorage.getItem("paradigm.hub.folds"))["project:notes"], false);
 }));
 
@@ -250,6 +254,7 @@ test("hub page: a section past its limit shows Show all", () => withPage(({ sect
 test("hub page: a redraw of the same hub keeps the active row; a click on a row opens it", () => withPage(({ section, hub, opened }) => {
   hub.show({ tree: tree() }, 2);
   hub.focus();
+  press("}");
   press("}");
   press("}");
   press("}");
@@ -310,7 +315,7 @@ test("hub card: its buttons call the controls with the hub", () => {
 
 test("hub sections: add buttons; link rows can be changed", () => {
   const withAdd = HUB_SECTIONS.filter((each) => each.add).map((each) => each.key).join();
-  assertEqual(withAdd, "projects,questions,tasks,decisions,notes,meetings,people,active");
+  assertEqual(withAdd, "projects,questions,plan,milestones,tasks,files,templates,decisions,notes,meetings,people,active");
   const projectRows = section("projects").rows({ tree: tree(), today: TODAY }, tree().get(1));
   assertEqual(projectRows.map((row) => row.actions.map((action) => action.key).join("+")).join(), "remove,remove");
 });

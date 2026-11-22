@@ -1,0 +1,256 @@
+/* A Gantt chart (static/js/gantt/gantt-view.js): tools, then a label column and a track per
+   row, scrolling sideways when the plan is long. Bars are phases (projects on an area), the
+   ghost behind a bar is its baseline, diamonds are milestones, the line is today. The view
+   sets --gantt-track (the track's width) and --gantt-label; bars and marks are placed with
+   left/width from the script (CSSOM, never style="" in markup). */
+.gantt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.5rem 0.6rem 0.6rem;
+  border: 1px solid var(--nord2);
+  border-radius: 6px;
+}
+
+.gantt__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.gantt__tools:empty {
+  display: none;
+}
+
+.gantt__tool,
+.plan-template__button {
+  padding: 0.1rem 0.6rem;
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  background: var(--nord1);
+  color: var(--nord5);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.gantt__tool:hover,
+.gantt__tool:focus-visible,
+.plan-template__button:hover,
+.plan-template__button:focus-visible {
+  border-color: var(--nord8);
+}
+
+.gantt__note {
+  color: var(--nord4);
+  opacity: 0.7;
+  font-size: 0.85rem;
+}
+
+.gantt__scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.6rem; /* room for the last milestone's name */
+}
+
+.gantt__grid {
+  display: grid;
+  grid-template-columns: var(--gantt-label, 220px) var(--gantt-track, 800px);
+  row-gap: 2px;
+  outline: none;
+  border-radius: 3px;
+}
+
+.gantt__grid:focus {
+  box-shadow: 0 0 0 1px var(--nord9);
+}
+
+.gantt__corner,
+.gantt__label {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--nord0);
+}
+
+.gantt__axis {
+  position: relative;
+  height: 1.4rem;
+  border-bottom: 1px solid var(--nord2);
+}
+
+.gantt__tick {
+  position: absolute;
+  top: 0;
+  padding-left: 3px;
+  border-left: 1px solid var(--nord2);
+  font-size: 0.72rem;
+  color: var(--nord4);
+  opacity: 0.65;
+  white-space: nowrap;
+}
+
+.gantt__tick--major {
+  opacity: 1;
+  border-left-color: var(--nord3);
+}
+
+.gantt__label {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.15;
+  min-width: 0;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.gantt__label[aria-selected="true"] {
+  background: var(--nord2);
+  color: var(--nord6);
+}
+
+.gantt__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gantt__label--muted .gantt__name {
+  opacity: 0.55;
+}
+
+.gantt__badge {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  color: var(--nord13);
+}
+
+.gantt__badge--late {
+  color: var(--nord11);
+}
+
+.gantt__track {
+  position: relative;
+  height: 2.4rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--nord2) 50%, transparent);
+}
+
+.gantt__bar,
+.gantt__ghost {
+  position: absolute;
+  top: 0.35rem;
+  height: 1.3rem;
+  border-radius: 4px;
+}
+
+/* The baseline: a dashed line under the bar, where the first dates set put it. */
+.gantt__ghost {
+  top: 1.8rem;
+  height: 0.35rem;
+  border: 1px dashed var(--nord4);
+  border-top: none;
+  opacity: 0.6;
+}
+
+.gantt__bar {
+  overflow: hidden;
+  padding: 0 0.4rem;
+  background: var(--nord10);
+  color: var(--nord6);
+  font-size: 0.75rem;
+  line-height: 1.3rem;
+  white-space: nowrap;
+  cursor: grab;
+  touch-action: none;
+}
+
+.gantt__bar--project {
+  background: var(--nord9);
+  cursor: pointer;
+}
+
+.gantt__bar--muted {
+  opacity: 0.5;
+}
+
+.gantt__bar--late {
+  box-shadow: inset 0 -3px 0 var(--nord11);
+}
+
+.gantt__edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+}
+
+.gantt__edge--start {
+  left: 0;
+}
+
+.gantt__edge--end {
+  right: 0;
+}
+
+.gantt--dragging {
+  opacity: 0.85;
+  cursor: grabbing;
+}
+
+/* A milestone: a diamond on its day, its name beside it. */
+.gantt__mark {
+  position: absolute;
+  top: 0.55rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  margin-left: -0.425rem;
+  transform: rotate(45deg);
+  border: 2px solid var(--nord13);
+  background: var(--nord0);
+  cursor: grab;
+  touch-action: none;
+  z-index: 1;
+}
+
+.gantt__mark--done {
+  background: var(--nord14);
+  border-color: var(--nord14);
+}
+
+.gantt__mark--late {
+  border-color: var(--nord11);
+}
+
+.gantt__mark-label {
+  position: absolute;
+  left: 1.1rem;
+  top: -0.25rem;
+  transform: rotate(-45deg);
+  transform-origin: left top;
+  font-size: 0.72rem;
+  color: var(--nord5);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.gantt__today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 2px solid var(--nord12);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.gantt__empty {
+  grid-column: 1 / -1;
+  padding: 0.6rem 0.5rem;
+  color: var(--nord3);
+}

@@ -260,3 +260,13 @@ def _clean_note(note: object) -> str:
     if not isinstance(note, str) or len(note) > MAX_NAME_LENGTH:
         raise BadSetting("A note must be text of at most {} characters".format(MAX_NAME_LENGTH))
     return " ".join(note.split())
+
+
+def holiday_dates(conn: sqlite3.Connection, first: date, last: date) -> Dict[date, str]:
+    """{day: name} of the holidays between first and last, as the timesheet counts them (the
+    plan templates skip them too). Seeds the US list the first time, as Settings does."""
+    _seed(conn)
+    observed = conn.execute("SELECT value FROM time_settings WHERE key = 'observed'").fetchone()
+    days, _ = holiday_days([(row["name"], row["rule"]) for row in conn.execute("SELECT name, rule FROM holidays")],
+                           first, last, (observed[0] if observed else DEFAULTS["observed"]) == "1")
+    return days

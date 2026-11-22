@@ -27,7 +27,7 @@ export async function makePerson(app, name, { strict = false, open = true } = {}
     : await app.peopleApi.createNamed(name.first, name.last);
   await app.refreshTree();
   if (open) await app.open(note.id);
-  app.editor.showMessage(`"${note.title}" added to People`);
+  app.say(`"${note.title}" added to People`);
   return note;
 }
 
@@ -53,7 +53,7 @@ export async function linkPerson(app, hub, person, role, made = 0) {
   const { created } = await app.peopleApi.link(hub.id, person.id, role);
   await app.refreshTree();
   const as = role ? ` as ${role}` : "";
-  app.editor.showMessage(created
+  app.say(created
     ? `${person.title} is on ${hub.title}${as}${made ? " (new in People)" : ""}`
     : `${person.title}'s role on ${hub.title} is now ${role || "none"}`);
 }
@@ -72,7 +72,7 @@ export async function dropPersonCommand(app, arg) {
 export async function unlinkPerson(app, hub, person) {
   await app.peopleApi.unlink(hub.id, person.id);
   await app.refreshTree();
-  app.editor.showMessage(`${person.title} is off ${hub.title}`);
+  app.say(`${person.title} is off ${hub.title}`);
 }
 
 /** :org / :job / :email / :phone {text}: on a person's note; with no text, clears it. */
@@ -82,7 +82,7 @@ export async function fieldCommand(app, field, arg) {
   const value = arg.trim();
   await app.peopleApi.update(id, field, value);
   await app.refreshTree();
-  app.editor.showMessage(value ? `${FIELD_NAMES[field]}: ${value}` : `${FIELD_NAMES[field]} cleared`);
+  app.say(value ? `${FIELD_NAMES[field]}: ${value}` : `${FIELD_NAMES[field]} cleared`);
 }
 
 /**

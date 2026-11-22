@@ -7,9 +7,11 @@
 //   const records = new Records(await recordsApi.list());
 //   records.get(id)                         { id, kind, day, people: [person ids], answered,
 //                                           source_id, quote, quote_found }
-//   recordsOn(tree, records, owner, kind)   [entry] for a hub (an area: its projects' too), a
-//                                           meeting (the ones under it) or a person (the
-//                                           ones they're on); entry: { note, record, hub,
+//   recordsOn(tree, records, owner, kind)   [entry] for a hub (its own: an area never lists
+//                                           its projects', they roll up to the project only),
+//                                           a meeting (the ones from it), a phase or a note
+//                                           (the ones made from text inside it) or a person
+//                                           (the ones they're on); entry: { note, record, hub,
 //                                           meeting, source, archived }
 //   recordsFrom(tree, records, sourceId)    the records made from a note, for its highlights
 //   peopleOf(tree, records, id)             their notes, by name
@@ -19,7 +21,6 @@
 // then answered ones (newest answer first). Those in archived hubs come last.
 import { hubOf, isArchived, isMeeting, isPerson, meetingOf } from "../notes/hub-groups.js";
 import { titleKey } from "../notes/titles.js";
-import { hubScope } from "../people/people-model.js";
 
 const NO_RECORD = Object.freeze({ kind: "", day: "", people: [], answered: "", source_id: null, quote: "", quote_found: false });
 
@@ -74,8 +75,9 @@ export function recordsOn(tree, records, owner, kind) {
 function belongsTo(tree, owner) {
   if (owner.kind === "person") return (entry) => entry.record.people.includes(owner.id);
   if (owner.kind === "meeting") return (entry) => entry.meeting?.id === owner.id;
-  const scope = hubScope(tree, owner.id);
-  return (entry) => scope.includes(entry.hub.id);
+  if (tree.parentId(owner.id) === null) return (entry) => entry.hub.id === owner.id;
+  const inside = new Set([owner.id, ...tree.inOrder(owner.id).map((note) => note.id)]);
+  return (entry) => Boolean(entry.source && inside.has(entry.source.id));
 }
 
 export function peopleOf(tree, records, id) {

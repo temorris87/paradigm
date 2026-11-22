@@ -1,83 +1,73 @@
-import { Connection } from "./connection/connection.js";
-import { mountBanner } from "./connection/banner.js";
-import { tabId } from "./connection/tab-id.js";
-import "./editor/pd-editor.js";
-import "./images/viewer.js";
-import { Navigator } from "./layout/navigator.js";
-import { meetingsApi } from "./meetings/api.js";
-import { recordsApi } from "./records/api.js";
-import { trashApi } from "./trash/api.js";
-import { imagesApi, linksApi, notesApi } from "./notes/api.js";
-import { NotesApp } from "./notes/app.js";
-import { peopleApi } from "./people/api.js";
-import { tasksApi } from "./tasks/api.js";
+// The main window (/): dashboards, Home, People, Meetings, the calendar, the timesheet and
+// plan templates, wide. A note opens in the note window (windows/note-window.js).
+import { boot } from "./boot.js";
+import { CalendarPage } from "./calendar/calendar-page.js";
+import { Changes } from "./connection/changes.js";
+import { Dashboard } from "./hubs/dashboard.js";
+import { setNotePath } from "./notes/app.js";
+import { TemplatePage } from "./plan/template-page.js";
+import { timeApi } from "./timesheet/api.js";
+import { TimePage } from "./timesheet/time-page.js";
+import { openMenu } from "./ui/menu.js";
+import { MAIN_WINDOW, WINDOW_MODES, setWindowMode, windowMode } from "./windows/note-window.js";
 import { calendarApi } from "./calendar/api.js";
+import { meetingsApi } from "./meetings/api.js";
+import { notesApi } from "./notes/api.js";
+import { tasksApi } from "./tasks/api.js";
 
-const connection = new Connection({ tabId: tabId() });
-mountBanner(connection);
-window.addEventListener("pagehide", () => connection.sendClosing());
-connection.start();
+// The note window finds this one by name (its Dashboard button).
+window.name = MAIN_WINDOW;
+setNotePath("/");
 
-const editor = document.querySelector(".app__editor");
-const viewer = document.querySelector("pd-image-viewer");
-for (const box of document.querySelectorAll("pd-editor")) box.addEventListener("image", (event) => viewer.open(event.detail));
+const $ = (selector) => document.querySelector(selector);
 
-const notesNavigator = new Navigator({
-  panel: document.querySelector(".app__sidebar"),
-  button: document.querySelector(".topbar__nav"),
-  backdrop: document.querySelector(".navigator__backdrop"),
-  onShow: () => app.focusTree(),
-  onHide: () => editor.focus(),
+boot({
+  role: "main",
+  kind: "",
+  options: (app) => {
+    const shown = (key) => () => app()?.views.shown === key;
+    const calendarRoot = $(".cal-view");
+    const calendar = new CalendarPage({
+      root: calendarRoot,
+      bar: $(".cal-bar"),
+      side: $(".cal-side"),
+      week: $(".cal-week"),
+      api: { notes: notesApi, meetings: meetingsApi, tasks: tasksApi, calendar: calendarApi },
+      changes: new Changes(),
+      openNote: (id) => app().guard(app().open(id)),
+      isShown: shown("calendar"),
+    });
+    const timeRoot = $(".time-view");
+    const time = new TimePage({ root: timeRoot, bar: $(".time-bar"), main: $(".time-main"), api: timeApi, changes: new Changes(),
+      isShown: shown("time") });
+    const template = new TemplatePage($(".plan-template-view"), { app, onLeave: () => app().leaveView() });
+    const pageOf = (section, page) => ({ section, show() {}, enter: () => page.show(), focus: () => page.focus() });
+    const windowButton = $(".topbar__window");
+    windowButton.addEventListener("click", () => openMenu(windowButton, WINDOW_MODES.map((mode) => ({
+      label: mode.label,
+      hint: mode.help,
+      checked: windowMode() === mode.key,
+      run: () => {
+        setWindowMode(mode.key);
+        app().say(`${mode.label} (${mode.help}). Close the note window for it to open there next time.`);
+      },
+    })), { label: "Note window" }));
+    return {
+      home: { section: $(".home"), button: $(".topbar__home") },
+      people: { section: $(".people"), button: $(".topbar__people") },
+      meetings: { section: $(".meetings"), button: $(".topbar__meetings") },
+      trash: { section: $(".trash"), button: $(".navigator__trash") },
+      extraPages: {
+        calendar: pageOf(calendarRoot, calendar),
+        time: pageOf(timeRoot, time),
+        template: { section: $(".plan-template-view"), show: (ctx) => template.show(ctx), focus: () => template.focus() },
+      },
+      buttons: { calendar: $(".topbar__calendar"), time: $(".topbar__time") },
+      status: $(".status-line"),
+      dashboard: new Dashboard({
+        text: { box: $(".dash-text"), label: $(".dash-text__label"), body: $(".dash-text__body"), edit: $(".dash-text__edit") },
+        chart: $(".dash-chart"),
+      }),
+    };
+  },
 });
-
-const app = new NotesApp({
-  editor,
-  tree: document.querySelector(".tree"),
-  crumbs: document.querySelector(".crumbs"),
-  hub: {
-    page: document.querySelector(".app__note"),
-    line: document.querySelector(".hub-line"),
-    section: document.querySelector(".hub"),
-    labels: {
-      main: document.querySelector(".field-label--main"),
-      agenda: document.querySelector(".field-label--agenda"),
-      agendaField: document.querySelector(".app__agenda"),
-    },
-  },
-  agenda: {
-    editor: document.querySelector(".app__agenda-editor"),
-    field: document.querySelector(".app__agenda"),
-  },
-  home: {
-    section: document.querySelector(".home"),
-    button: document.querySelector(".topbar__home"),
-  },
-  people: {
-    section: document.querySelector(".people"),
-    button: document.querySelector(".topbar__people"),
-  },
-  meetings: {
-    section: document.querySelector(".meetings"),
-    button: document.querySelector(".topbar__meetings"),
-  },
-  trash: {
-    section: document.querySelector(".trash"),
-    button: document.querySelector(".navigator__trash"),
-  },
-  goTo: document.querySelector(".topbar__goto"),
-  popOuts: {
-    calendar: document.querySelector(".topbar__calendar"),
-    time: document.querySelector(".topbar__time"),
-  },
-  navigator: notesNavigator,
-  api: notesApi,
-  imagesApi,
-  peopleApi,
-  meetingsApi,
-  recordsApi,
-  trashApi,
-  linksApi,
-  tasksApi,
-  calendarApi,
-});
-app.start().catch((error) => app.fail(error));

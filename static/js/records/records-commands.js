@@ -45,7 +45,7 @@ export async function makeRecord(app, kind, parent, title, day, { peopleIds = []
   await app.open(note.id);
   const name = isMeeting(app.tree, parent.id) ? shortTitle(parent, app.meetings.get(parent.id)) : parent.title;
   const from = isHub(app.tree, parent.id) ? `in ${parent.title}` : `from ${name}`;
-  app.editor.showMessage(`${capital(WHAT[kind])} "${note.title}" made ${from}`);
+  app.say(`${capital(WHAT[kind])} "${note.title}" made ${from}`);
 }
 
 /**
@@ -58,7 +58,7 @@ export async function recordFromText(app, kind, sourceId, title, day, quote, peo
   if (peopleIds.length) await app.recordsApi.involve(note.id, peopleIds);
   await app.refreshTree();
   const hub = hubOf(app.tree, note.id);
-  app.editor.showMessage(`${capital(WHAT[kind])} "${note.title}" added to ${hub?.title ?? "its hub"}`);
+  app.say(`${capital(WHAT[kind])} "${note.title}" added to ${hub?.title ?? "its hub"}`);
   return note;
 }
 
@@ -75,7 +75,7 @@ export async function recordDateCommand(app, arg) {
 export async function setRecordDay(app, id, day) {
   await app.recordsApi.date(id, day);
   await app.refreshTree();
-  app.editor.showMessage(`"${app.tree.get(id).title}" is dated ${day}`);
+  app.say(`"${app.tree.get(id).title}" is dated ${day}`);
 }
 
 /** :answered [{date}]: the open question is answered (today if no date). */
@@ -95,7 +95,7 @@ export async function answerQuestion(app, id, day, text = "") {
   const record = await app.recordsApi.answer(id, day, text);
   await app.refreshTree();
   if (open) await app.open(id, { discard: true, history: "none" });
-  app.editor.showMessage(`"${app.tree.get(id).title}" answered ${record.answered}`);
+  app.say(`"${app.tree.get(id).title}" answered ${record.answered}`);
 }
 
 /** :reopen: the open question is open again. */
@@ -106,7 +106,7 @@ export async function reopenCommand(app) {
 export async function reopenQuestion(app, id) {
   await app.recordsApi.reopen(id);
   await app.refreshTree();
-  app.editor.showMessage(`"${app.tree.get(id).title}" is open again`);
+  app.say(`"${app.tree.get(id).title}" is open again`);
 }
 
 /** :with[!] {name}[, {name}...]: these people are on the open decision or question. */
@@ -124,7 +124,7 @@ export async function addPeopleTo(app, id, { people, made }) {
   await app.refreshTree();
   const title = (personId) => people.find((person) => person.id === personId).title;
   const news = made ? ` (${made} new in People)` : "";
-  app.editor.showMessage(added.length
+  app.say(added.length
     ? `${added.map(title).join(", ")} on ${app.tree.get(id).title}${news}`
     : "They are all on it already");
 }
@@ -143,7 +143,7 @@ export async function dropWithCommand(app, arg) {
 export async function dropPersonFrom(app, id, person) {
   await app.recordsApi.uninvolve(id, person.id);
   await app.refreshTree();
-  app.editor.showMessage(`${person.title} is off ${app.tree.get(id).title}`);
+  app.say(`${person.title} is off ${app.tree.get(id).title}`);
 }
 
 /** "2026-11-18 Freeze scope" -> { day: "2026-11-18", rest: "Freeze scope" }; day is null

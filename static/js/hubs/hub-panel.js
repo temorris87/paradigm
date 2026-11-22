@@ -16,7 +16,7 @@
 import { hubAction } from "./hub-keys.js";
 
 const MAX_DEPTH = 6;
-const KEYS_OF = { remove: "x", role: "r", answer: "r", done: "Space" };
+const KEYS_OF = { remove: "x", role: "r", answer: "r", done: "Space", edit: "e", delegate: "d", takeBack: "d", history: "h" };
 
 export class HubPanel {
   constructor(section, handlers) {
@@ -79,9 +79,14 @@ export class HubPanel {
   }
 
   row(section, row) {
-    const classes = ["hub__row", `hub__row--depth-${Math.min(row.depth ?? 0, MAX_DEPTH)}`, row.muted && "hub__row--muted"];
+    const classes = ["hub__row", `hub__row--depth-${Math.min(row.depth ?? 0, MAX_DEPTH)}`, row.muted && "hub__row--muted",
+      row.late && "hub__row--late", row.addSubtask && "hub__row--add"];
     const node = this.option(element("div", classes.filter(Boolean).join(" ")), { type: "row", section, row });
     const line = element("div", "hub__line");
+    if (row.task !== undefined && row.depth === 0 && !row.addSubtask) {
+      line.append(element("span", "hub__twisty hub__twisty--task", row.expanded ? "▾" : "▸"));
+    }
+    if (row.task !== undefined && !row.addSubtask) line.append(element("span", "hub__box", row.done ? "☑" : "☐"));
     line.append(element("span", "hub__title", row.title), element("span", "hub__detail", row.detail ?? ""));
     if (row.actions?.length) {
       const box = element("span", "hub__row-actions");
@@ -100,7 +105,7 @@ export class HubPanel {
 
   option(node, option) {
     const index = this.options.length;
-    const rowId = option.row ? `${option.row.id}:${option.row.at?.line ?? ""}` : "";
+    const rowId = option.row ? `${option.row.id}:${option.row.at?.line ?? ""}:${option.row.task ?? option.row.file ?? option.row.template ?? option.row.addSubtask ?? ""}` : "";
     this.options.push({ ...option, id: `${option.type}:${option.section.key}:${rowId}` });
     node.id = `hub-option-${index}`;
     node.dataset.index = String(index);
@@ -147,6 +152,9 @@ export class HubPanel {
       case "remove": return this.rowAction(option, ["remove"]);
       case "second": return this.rowAction(option, ["role", "answer"]);
       case "toggle": return this.rowAction(option, ["done"]);
+      case "edit": return this.rowAction(option, ["edit"]);
+      case "delegate": return this.rowAction(option, ["delegate", "takeBack"]);
+      case "history": return this.rowAction(option, ["history"]);
       case "editor": return this.handlers.onLeave();
       default: return undefined;
     }

@@ -14,42 +14,71 @@
   <link rel="stylesheet" href="/css/navigator.css">
   <link rel="stylesheet" href="/css/markdown.css">
   <link rel="stylesheet" href="/css/hub.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/gantt.css">
   <link rel="stylesheet" href="/css/list-page.css">
   <link rel="stylesheet" href="/css/home.css">
   <link rel="stylesheet" href="/css/people.css">
   <link rel="stylesheet" href="/css/meetings.css">
   <link rel="stylesheet" href="/css/trash.css">
+  <link rel="stylesheet" href="/css/calendar.css">
+  <link rel="stylesheet" href="/css/timesheet.css">
+  <link rel="stylesheet" href="/css/plan-template.css">
   <link rel="stylesheet" href="/css/image-viewer.css">
   <link rel="stylesheet" href="/css/ui.css">
   <script type="module" src="/js/main.js"></script>
 </head>
 <body>
-  <div class="app">
-    <!-- The note comes first in the page, so Tab from the editor reaches the tree. -->
+  <!-- The main window: dashboards and pages, wide. Notes are written in the note window. -->
+  <div class="app" data-role="main">
     <main class="app__note">
       <header class="topbar">
         <button type="button" class="topbar__nav" aria-controls="navigator" aria-label="Notes" title="Notes">☰</button>
-        <nav class="crumbs" aria-label="Where this note is"></nav>
+        <nav class="crumbs" aria-label="Where this is"></nav>
         <button type="button" class="topbar__page topbar__goto" title="Find a note by its title and open it">Go to</button>
-        <button type="button" class="topbar__page topbar__home" title="Today, open questions, projects and the Inbox">Home</button>
+        <button type="button" class="topbar__page topbar__home" title="Today, open questions, waiting on, projects and the Inbox">Home</button>
         <button type="button" class="topbar__page topbar__people" title="Everyone in People">People</button>
         <button type="button" class="topbar__page topbar__meetings" title="Every meeting">Meetings</button>
-        <button type="button" class="topbar__page topbar__calendar" title="The week's meetings and tasks, in a window of its own">Calendar</button>
-        <button type="button" class="topbar__page topbar__time" title="The week's hours by time code, in a window of its own">Time</button>
+        <button type="button" class="topbar__page topbar__calendar" title="The week's meetings and task blocks">Calendar</button>
+        <button type="button" class="topbar__page topbar__time" title="The week's hours by time code">Time</button>
+        <button type="button" class="topbar__page topbar__window" aria-haspopup="menu" title="Where the note window opens">Window ▾</button>
       </header>
       <div class="hub-line" hidden></div>
-      <!-- A meeting's agenda: a second text box over the minutes (hidden on other notes). -->
-      <div class="app__agenda" hidden>
-        <div class="field-label field-label--agenda" id="agenda-label"></div>
-        <pd-editor class="app__agenda-editor" compact aria-labelledby="agenda-label" aria-label="Agenda"></pd-editor>
+      <section class="dash-chart" aria-label="Plan" hidden></section>
+      <section class="dash-text" aria-labelledby="dash-text-label" hidden>
+        <div class="dash-text__head">
+          <span class="field-label__name dash-text__label" id="dash-text-label"></span>
+          <button type="button" class="dash-text__edit" title="Write it in the note window">Edit ↗</button>
+        </div>
+        <div class="dash-text__body md-doc"></div>
+      </section>
+      <!-- Never shown here: the note window edits text. Kept for the app's note session. -->
+      <div class="app__editing" hidden>
+        <div class="app__agenda" hidden>
+          <div class="field-label field-label--agenda" id="agenda-label"></div>
+          <pd-editor class="app__agenda-editor" compact aria-label="Agenda"></pd-editor>
+        </div>
+        <div class="field-label field-label--main" id="note-label"></div>
+        <pd-editor class="app__editor" aria-label="Note"></pd-editor>
       </div>
-      <div class="field-label field-label--main" id="note-label"></div>
-      <pd-editor class="app__editor" aria-label="Note"></pd-editor>
-      <section class="hub" aria-label="Hub sections" hidden></section>
+      <section class="hub" aria-label="Sections" hidden></section>
       <section class="home" aria-label="Home" hidden></section>
       <section class="people" aria-label="People" hidden></section>
       <section class="meetings" aria-label="Meetings" hidden></section>
       <section class="trash" aria-label="Trash" hidden></section>
+      <section class="cal-view" aria-label="Calendar" tabindex="-1" hidden>
+        <header class="cal-bar"></header>
+        <div class="cal">
+          <aside class="cal-side" aria-label="Tasks and imported meetings"></aside>
+          <section class="cal-week" aria-label="The week"></section>
+        </div>
+      </section>
+      <section class="time-view" aria-label="Timesheet" tabindex="-1" hidden>
+        <header class="time-bar"></header>
+        <div class="time-main"></div>
+      </section>
+      <section class="plan-template-view" aria-label="Plan template" hidden></section>
+      <div class="status-line" role="status"></div>
     </main>
     <div class="navigator__backdrop" hidden></div>
     <nav class="app__sidebar" id="navigator" aria-label="Notes">

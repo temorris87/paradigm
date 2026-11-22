@@ -6,7 +6,7 @@
 //                                (onChange once some were stored)
 //   index.links                  the Links (links.js) for the hub page
 //   index.mentions               [{ id, field, line, name, context }] (mentions.js)
-//   index.saver(save, textsOf)   a save that sends the note's links, mentions and tasks along and
+//   index.saver(save, textsOf)   a save that sends the note's links and mentions along and
 //                                remembers them; textsOf(note) -> { body, agenda? }: every
 //                                text field of the note (a meeting has an agenda too)
 //
@@ -15,17 +15,15 @@
 // here), so the page does, in batches, once per load.
 import { Links, wikiTargets } from "./links.js";
 import { mentionsIn } from "./mentions.js";
-import { tasksIn } from "./tasks.js";
 
 export const CATCH_UP_BATCH = 50;
 
-/** The index entries of a note's text fields: { links, mentions, tasks }. */
+/** The index entries of a note's text fields: { links, mentions }. */
 export function indexTexts(texts) {
   const fields = Object.entries(texts).filter(([, text]) => typeof text === "string");
   const links = [...new Set(fields.flatMap(([, text]) => wikiTargets(text)))];
   const mentions = fields.flatMap(([field, text]) => mentionsIn(text, field));
-  const tasks = fields.flatMap(([field, text]) => tasksIn(text, field));
-  return { links, mentions, tasks };
+  return { links, mentions };
 }
 
 export class LinkIndex {
@@ -37,8 +35,6 @@ export class LinkIndex {
     this.catching = null;
     // What a running catch-up stored: a list fetched before that still lacks it.
     this.caught = new Map();
-    // Notes saved with tasks: saving one without them changes the tasks too.
-    this.hadTasks = new Set();
   }
 
   async refresh() {
@@ -81,9 +77,7 @@ export class LinkIndex {
       const saving = save({ ...note, ...entry }, options);
       saving.then(() => {
         this.remember(note.id, entry);
-        if (entry.mentions.length || entry.tasks.length || this.hadTasks.has(note.id)) this.onChange();
-        if (entry.tasks.length) this.hadTasks.add(note.id);
-        else this.hadTasks.delete(note.id);
+        if (entry.mentions.length) this.onChange();
       }, () => {});
       return saving;
     };

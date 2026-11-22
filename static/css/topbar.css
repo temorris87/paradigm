@@ -53,7 +53,9 @@
 .topbar__page:hover,
 .app__note[data-view="home"] .topbar__home,
 .app__note[data-view="people"] .topbar__people,
-.app__note[data-view="meetings"] .topbar__meetings {
+.app__note[data-view="meetings"] .topbar__meetings,
+.app__note[data-view="calendar"] .topbar__calendar,
+.app__note[data-view="time"] .topbar__time {
   background: var(--nord2);
   color: var(--nord6);
 }

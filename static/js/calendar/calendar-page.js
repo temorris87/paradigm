@@ -1,10 +1,12 @@
-// The calendar window: a week of meetings and task blocks, the open tasks to drag onto it, and
-// the Outlook import. It loads what it shows from the server and tells the other windows what
-// it changed (connection/changes.js); a note opens in the notes window.
+// The calendar page, in the main window (&calendar): a week of meetings and task blocks, the
+// open tasks to drag onto it, and the Outlook import. It loads what it shows from the server
+// and tells the other windows what it changed (connection/changes.js); a note opens in the
+// note window (openNote).
 //
-//   const page = new CalendarPage({ bar, side, week, api: { notes, meetings, tasks, calendar },
-//                                   changes, today: () => new Date() });
-//   await page.start();
+//   const page = new CalendarPage({ root, bar, side, week, api: { notes, meetings, tasks, calendar },
+//                                   changes, openNote(id), isShown(), today: () => new Date() });
+//   page.show() / page.focus()      when its page comes into view (loads it the first time)
+// Its keys work while the focus is inside root (calendar-keys.js).
 //
 // What the pointer does (week-model.js, grid-view.js, drag.js):
 //   drag a task from the list     a block of it there, 30 minutes (another each time)
@@ -29,7 +31,12 @@ const START_HOUR = 7;
 const SHORTEST = STEP;
 
 export class CalendarPage {
-  constructor({ bar, side, week, api, changes, today = () => new Date(), location = window.location }) {
+  constructor({ root, bar, side, week, api, changes, openNote = () => {}, isShown = () => true, today = () => new Date(),
+                location = window.location }) {
+    this.root = root;
+    this.openNoteIn = openNote;
+    this.isShown = isShown;
+    this.started = false;
     this.api = api;
     this.changes = changes;
     this.today = today;
@@ -44,7 +51,7 @@ export class CalendarPage {
     this.side = new TaskSidebar(side, {
       onTaskDown: (entry, event) => this.dragTask(entry, event),
       onToggle: (entry) => this.run(this.setDone(entry.task.id, !entry.task.done)),
-      onOpen: (entry) => this.run(this.openNote(entry.note.id, { field: entry.task.field, line: entry.task.line })),
+      onOpen: (entry) => this.run(this.openNote(entry.note.id)),
       onFile: (ids, hubId) => this.run(this.file(ids, hubId)),
       onIgnore: (ids) => this.run(this.ignore(ids)),
       onFilter: () => this.drawSide(),
@@ -54,14 +61,16 @@ export class CalendarPage {
       onSlotClick: (day, minute) => this.run(this.newMeetingAt(day, snap(minute - STEP / 2))),
       onBlockMenu: (block, node) => this.blockMenu(block, node),
     });
-    document.addEventListener("keydown", (event) => this.onKey(event));
+    root.addEventListener("keydown", (event) => this.onKey(event));
     // Coming back to the window: the import folder may hold today's export by now.
-    window.addEventListener("focus", () => this.run(this.importAndLoad({ quiet: true })));
+    window.addEventListener("focus", () => {
+      if (this.started && this.isShown()) this.run(this.importAndLoad({ quiet: true }));
+    });
     changes.listen((message) => {
-      if (message.type === "changed") this.run(this.load());
+      if (message.type === "changed" && this.started) this.run(this.load());
     });
     for (const type of ["dragover", "drop"]) {
-      window.addEventListener(type, (event) => {
+      root.addEventListener(type, (event) => {
         if (![...(event.dataTransfer?.types ?? [])].includes("Files")) return;
         event.preventDefault();
         if (type === "drop") this.run(this.uploadFiles(event.dataTransfer.files));
@@ -70,8 +79,19 @@ export class CalendarPage {
   }
 
   async start() {
+    this.started = true;
     await this.importAndLoad({ quiet: true });
     this.grid.scrollToMinute(START_HOUR * 60);
+  }
+
+  /** Its page came into view: loaded the first time, read again after. */
+  show() {
+    if (!this.started) this.run(this.start());
+    else this.run(this.importAndLoad({ quiet: true }));
+  }
+
+  focus() {
+    this.root.focus({ preventScroll: true });
   }
 
   // ---- loading and drawing ----------------------------------------------------------
@@ -100,7 +120,6 @@ export class CalendarPage {
     this.bar.weekend.textContent = this.weekend ? "Hide weekend" : "Show weekend";
     this.drawStatus();
     this.drawSide();
-    document.title = `Calendar · ${weekLabel(days)} - Paradigm`;
   }
 
   drawSide() {
@@ -182,7 +201,7 @@ export class CalendarPage {
         this.grid.hideGhost();
         if (target) this.run(this.addBlock(entry.task.id, target));
       },
-      onClick: () => this.run(this.openNote(entry.note.id, { field: entry.task.field, line: entry.task.line })),
+      onClick: () => this.run(this.openNote(entry.note.id)),
       onCancel: () => this.grid.hideGhost(),
     });
   }
@@ -234,7 +253,7 @@ export class CalendarPage {
     if (!node) return;
     this.select(block.key);
     const entries = block.kind === "task" ? [
-      { label: "Open its note", run: () => this.run(this.openNote(block.noteId, block.at)) },
+      { label: "Open its note", run: () => this.run(this.openNote(block.noteId)) },
       { label: block.done ? "Open it again" : "Mark done", run: () => this.run(this.setDone(block.taskId, !block.done)) },
       { label: "Edit time…", run: () => this.run(this.editTime(block)) },
       "separator",
@@ -358,11 +377,9 @@ export class CalendarPage {
 
   // ---- notes, keys, errors ----------------------------------------------------------------
 
-  /** Opens a note in the notes window (a new tab when none answers). */
-  async openNote(id, at = null) {
-    if (id === null) return;
-    const answered = await this.changes.ask({ type: "open", id, at }, "opened");
-    if (!answered) window.open(`/?note=${encodeURIComponent(id)}`, "_blank", "noopener");
+  /** Opens a note in the note window. */
+  async openNote(id) {
+    if (id !== null) this.openNoteIn(id);
   }
 
   async changed(what) {
@@ -381,7 +398,7 @@ export class CalendarPage {
       case "today": return this.goToday();
       case "weekend": return this.toggleWeekend();
       case "import": return this.run(this.importAndLoad({ quiet: false }));
-      case "open": return block && block.noteId !== null ? this.run(this.openNote(block.noteId, block.at ?? null)) : undefined;
+      case "open": return block && block.noteId !== null ? this.run(this.openNote(block.noteId)) : undefined;
       case "remove": return block?.kind === "task" ? this.run(this.removeBlock(block)) : undefined;
       case "deselect": return this.select(null);
       default: return undefined;

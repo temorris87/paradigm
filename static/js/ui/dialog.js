@@ -4,6 +4,7 @@
 //   const result = await formDialog({
 //     title: "Rename",
 //     text: "optional words under the title",
+//     lines: ["a list under the words"],  // optional (a date history...)
 //     fields: [
 //       { key: "title", label: "Title", value: "Kickoff" },                 // text (default)
 //       { key: "day", label: "Date", type: "date", value: "2026-11-24" },
@@ -25,7 +26,7 @@
 import { element, restoreFocus, uniqueId } from "./dom.js";
 import { uiAction } from "./ui-keys.js";
 
-export function formDialog({ title, text = "", fields = [], submit = "OK", danger = false, run = async (values) => values,
+export function formDialog({ title, text = "", lines = [], fields = [], submit = "OK", danger = false, run = async (values) => values,
   returnFocus = null, fallbackFocus = () => {} }) {
   return new Promise((resolve) => {
     const before = document.activeElement;
@@ -37,6 +38,11 @@ export function formDialog({ title, text = "", fields = [], submit = "OK", dange
     dialog.setAttribute("aria-labelledby", heading.id);
     form.append(heading);
     if (text) form.append(element("p", "dialog__text", text));
+    if (lines.length) {
+      const list = element("ul", "dialog__lines");
+      for (const line of lines) list.append(element("li", "dialog__line", line));
+      form.append(list);
+    }
     const inputs = new Map(fields.map((field) => [field.key, fieldInput(field)]));
     for (const field of fields) form.append(labelled(field, inputs.get(field.key)));
     const error = element("p", "dialog__error");
@@ -105,8 +111,8 @@ export function formDialog({ title, text = "", fields = [], submit = "OK", dange
   });
 }
 
-export function confirmDialog({ title, text, confirm = "OK", danger = false, run = async () => true, ...focus }) {
-  return formDialog({ title, text, submit: confirm, danger, run, ...focus });
+export function confirmDialog({ title, text, lines = [], confirm = "OK", danger = false, run = async () => true, ...focus }) {
+  return formDialog({ title, text, lines, submit: confirm, danger, run, ...focus });
 }
 
 function fieldInput(field) {

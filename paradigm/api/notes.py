@@ -2,12 +2,11 @@
 
 GET  /api/notes            the tree: every note without its body
 GET  /api/note?id=N        one note with its body
-POST /api/note/create      {parent_id|null, title, body?, links?, mentions?, tasks?}
-POST /api/note/save        {id, body, version, force?, links?, mentions?, tasks?}  409 {error, version}
+POST /api/note/create      {parent_id|null, title, body?, links?, mentions?}
+POST /api/note/save        {id, body, version, force?, links?, mentions?}  409 {error, version}
                            if stale. links: the [[wiki link]] texts in body, mentions its
                            @mentions [{field, line, name, context}], as the page reads them
-                           (paradigm/api/links.py); links left out, the note's index goes stale;
-                           tasks: its boxes [{field, line, parent, title, done}] (012_tasks.sql)
+                           (paradigm/api/links.py); links left out, the note's index goes stale
 POST /api/note/rename      {id, title}
 POST /api/note/move        {id, parent_id|null}           a hub moved under a note stops being one;
                                                           a person stays at the top level;
@@ -31,7 +30,6 @@ from paradigm.db.notes_repo import (AreaArchived, BadKind, BadProjectField, BadT
                                     WouldCycle)
 from paradigm.notes.links import BadLinks, clean_links
 from paradigm.notes.mentions import BadMentions, Mention, clean_mentions
-from paradigm.notes.tasks import BadTasks, Task, clean_tasks
 from paradigm.web.requests import (BadRequest, bool_field, int_field, optional_int_field,
                                    read_json, str_field)
 from paradigm.web.responses import send_error_json, send_json
@@ -40,7 +38,7 @@ from paradigm.web.router import Router
 _STATUS = {NotFound: 404, Conflict: 409, TitleTaken: 409, HasChildren: 409, LastNote: 409,
            WouldCycle: 400, NotAProject: 400, NotAnArea: 400, AreaArchived: 400, NotTopLevel: 400,
            NotArchived: 400, IsAPerson: 400, StaysInAHub: 400, NoNotesUnder: 400, BadTitle: 400, BadKind: 400,
-           BadProjectField: 400, BadLinks: 400, BadMentions: 400, BadTasks: 400, BadRequest: 400}
+           BadProjectField: 400, BadLinks: 400, BadMentions: 400, BadRequest: 400}
 
 
 class NotesApi:
@@ -77,13 +75,13 @@ class NotesApi:
         if not isinstance(body, str):
             raise BadRequest("body must be text")
         return self._notes.create(optional_int_field(payload, "parent_id"), payload.get("title"), body,
-                                  _links(payload), _mentions(payload), _tasks(payload))
+                                  _links(payload), _mentions(payload))
 
     def save(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)
         return self._notes.save(int_field(payload, "id"), str_field(payload, "body"),
                                 int_field(payload, "version"), bool_field(payload, "force"), _links(payload),
-                                _mentions(payload), _tasks(payload))
+                                _mentions(payload))
 
     def rename(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)
@@ -132,7 +130,7 @@ class NotesApi:
         def route(req: BaseHTTPRequestHandler) -> None:
             try:
                 result = handler(req)
-            except (NoteError, BadTitle, BadKind, BadProjectField, BadLinks, BadMentions, BadTasks, BadRequest) as error:
+            except (NoteError, BadTitle, BadKind, BadProjectField, BadLinks, BadMentions, BadRequest) as error:
                 _send_failure(req, error)
                 return
             send_json(req, 200, result)
@@ -145,10 +143,6 @@ def _links(payload: Dict) -> Optional[List[str]]:
 
 def _mentions(payload: Dict) -> Optional[List[Mention]]:
     return clean_mentions(payload.get("mentions"))
-
-
-def _tasks(payload: Dict) -> Optional[List[Task]]:
-    return None if payload.get("tasks") is None else clean_tasks(payload["tasks"])
 
 
 def _send_failure(req: BaseHTTPRequestHandler, error: Exception) -> None:

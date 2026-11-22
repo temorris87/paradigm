@@ -3,14 +3,13 @@ import { importSummary } from "../../static/js/calendar/calendar-page.js";
 import { calendarBlocks, clock, layoutDay, minutes, shownDays, snap, weekDays, weekOf } from "../../static/js/calendar/week-model.js";
 import { renderMarkdown } from "../../static/js/markdown/index.js";
 import { Meetings } from "../../static/js/meetings/meetings-model.js";
-import { indexTexts } from "../../static/js/notes/link-index.js";
-import { boxState, setBox, tasksIn, withTaskAdded } from "../../static/js/notes/tasks.js";
+import { boxState, setBox, tasksIn } from "../../static/js/notes/tasks.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
 import { HUB_SECTIONS } from "../../static/js/hubs/hub-sections.js";
-import { Tasks, hubChoices, openTasks, tasksOn, todayTasks } from "../../static/js/tasks/tasks-model.js";
+import { Tasks, hubChoices, openCount, openTasks, subtaskText, tasksOn, todayTasks, waitingOn } from "../../static/js/tasks/tasks-model.js";
 import { gridHtml, gridText } from "../../static/js/timesheet/copy.js";
 import { homeSections } from "../../static/js/home/home-sections.js";
-import { popOutBox } from "../../static/js/windows/popout.js";
+import { isWideScreen, noteWindowBox, noteWindowUrl } from "../../static/js/windows/note-window.js";
 import { assertEqual as same, assertTrue, test } from "./harness.js";
 
 // Values compared as JSON: arrays and objects by what they hold.
@@ -23,19 +22,25 @@ const NOTES = [
   { id: 3, parent_id: 2, title: "Packing", updated_at: T },
   { id: 4, parent_id: null, title: "Old", kind: "project", archived_at: T, updated_at: T },
   { id: 5, parent_id: 2, title: "Sync", kind: "meeting", updated_at: T },
+  { id: 6, parent_id: null, title: "Priya Shah", kind: "person", updated_at: T },
 ];
+const task = (id, noteId, title, more = {}) => ({ id, note_id: noteId, parent_id: null, title, notes: "", due: "", delegate_id: null,
+  follow_up: "", done: false, done_day: "", position: id, ...more });
 const TASKS = [
-  { id: 10, note_id: 2, field: "body", line: 0, parent_id: null, title: "Book van", done: false, done_day: "" },
-  { id: 11, note_id: 2, field: "body", line: 1, parent_id: 10, title: "Get quotes", done: true, done_day: "2026-11-20" },
-  { id: 12, note_id: 3, field: "body", line: 4, parent_id: null, title: "Label boxes", done: false, done_day: "" },
-  { id: 13, note_id: 4, field: "body", line: 0, parent_id: null, title: "Archived one", done: false, done_day: "" },
-  { id: 14, note_id: 2, field: "body", line: 5, parent_id: null, title: "Finished", done: true, done_day: "2026-11-19" },
-  { id: 15, note_id: 5, field: "agenda", line: 0, parent_id: null, title: "Bring keys", done: false, done_day: "" },
+  task(10, 2, "Book van"),
+  task(11, 2, "Get quotes", { parent_id: 10, done: true, done_day: "2026-11-20" }),
+  task(16, 2, "Pick a date", { parent_id: 10 }),
+  task(12, 3, "Label boxes"),
+  task(13, 4, "Archived one"),
+  task(14, 2, "Finished", { done: true, done_day: "2026-11-19" }),
+  task(15, 5, "Bring keys"),
+  task(17, 2, "Order boxes", { delegate_id: 6, follow_up: "2026-11-20" }),
+  task(18, 1, "Area budget"),
 ];
 const tree = () => new NoteTree(NOTES);
 const tasks = () => new Tasks(TASKS);
 
-test("tasks: boxes, their lines, their parents (never in code)", () => {
+test("checkboxes: boxes in text, their lines, their parents (never in code)", () => {
   const text = "Intro\n- [ ] Draft **budget**\n  - [x] Get [[Q3]] numbers\n- plain\n  - [ ] Under a bullet\n```\n- [ ] code\n```\n> - [ ] quoted";
   assertEqual(tasksIn(text), [
     { field: "body", line: 1, parent: null, title: "Draft budget", done: false },
@@ -43,42 +48,46 @@ test("tasks: boxes, their lines, their parents (never in code)", () => {
     { field: "body", line: 4, parent: null, title: "Under a bullet", done: false },
     { field: "body", line: 8, parent: null, title: "quoted", done: false },
   ]);
-  assertEqual(indexTexts({ body: "- [ ] a", agenda: "- [x] b" }).tasks.map((task) => [task.field, task.done]),
-    [["body", false], ["agenda", true]]);
-});
-
-test("tasks: ticking a line, adding one", () => {
   assertEqual(boxState("  - [ ] a"), false);
   assertEqual(boxState("1. [X] a"), true);
   assertEqual(boxState("- a"), null);
   assertEqual(setBox("  - [ ] a [ ]", true), "  - [x] a [ ]");
-  assertEqual(withTaskAdded("Notes", "Call  Jo"), "Notes\n- [ ] Call Jo");
-  assertEqual(withTaskAdded("", "Call"), "- [ ] Call");
-  assertEqual(withTaskAdded("a\n", "Call"), "a\n- [ ] Call");
 });
 
-test("tasks: the preview's boxes carry their line", () => {
+test("checkboxes: the preview's boxes carry their line", () => {
   const html = renderMarkdown("x\n\n- [ ] a\n  - [x] b", { taskLines: true });
   assertTrue(html.includes('data-line="2"') && html.includes('data-line="3"') && !html.includes("disabled"), html);
   assertTrue(renderMarkdown("- [ ] a").includes("disabled"));
 });
 
-test("tasks: a hub's, an area's with its projects', a meeting's", () => {
-  const onMove = tasksOn(tree(), tasks(), tree().get(2)).map((entry) => [entry.task.id, entry.depth]);
-  // Open first with the done subtask kept under its open parent; done ones last.
-  assertEqual(onMove, [[10, 0], [11, 1], [12, 0], [15, 0], [14, 0]]);
-  assertEqual(tasksOn(tree(), tasks(), tree().get(1)).length, 5);
+test("tasks: a project's list hides subtasks behind a count; done ones last", () => {
+  const onMove = tasksOn(tree(), tasks(), tree().get(2));
+  assertEqual(onMove.map((entry) => entry.task.id), [10, 17, 12, 15, 14]);
+  assertEqual(subtaskText(onMove[0]), "1/2 subtasks");
+  assertEqual(openCount(tree(), tasks(), tree().get(2)), 4);
+  // Roll-up: the area lists its own task only, never its project's.
+  assertEqual(tasksOn(tree(), tasks(), tree().get(1)).map((entry) => entry.task.id), [18]);
   assertEqual(tasksOn(tree(), tasks(), tree().get(5)).map((entry) => entry.task.id), [15]);
-  const rows = HUB_SECTIONS.find((section) => section.key === "tasks").rows({ tree: tree(), tasks: tasks(), sessions: [] }, tree().get(2));
-  assertEqual(rows[2].detail, "Packing");
-  assertEqual(rows[0].at, { field: "body", line: 0 });
+  const section = HUB_SECTIONS.find((each) => each.key === "tasks");
+  const ctx = { tree: tree(), tasks: tasks(), sessions: [], today: new Date(2026, 10, 24), expanded: new Set() };
+  const rows = section.rows(ctx, tree().get(2));
+  assertEqual(rows.length, 5);
+  assertEqual(rows[0].detail, "1/2 subtasks");
+  assertTrue(rows[1].detail.startsWith("→ Priya Shah") && rows[1].late, rows[1].detail);
+  assertEqual(rows[2].detail, "in Packing");
   assertEqual(rows[4].actions[0].label, "Reopen");
+  // Opened, a task shows its subtasks and + Add subtask under it.
+  const open = section.rows({ ...ctx, expanded: new Set([10]) }, tree().get(2));
+  assertEqual(open.slice(0, 4).map((row) => [row.title, row.depth]), [["Book van", 0], ["Get quotes", 1], ["Pick a date", 1], ["+ Add subtask", 1]]);
 });
 
-test("tasks: the calendar's list and its filter", () => {
-  assertEqual(openTasks(tree(), tasks()).map((entry) => entry.task.id), [10, 12, 15]);
+test("tasks: waiting on a person, and the calendar's list", () => {
+  assertEqual(waitingOn(tree(), tasks()).map((entry) => entry.task.id), [17]);
+  assertEqual(waitingOn(tree(), tasks(), 6).length, 1);
+  // Mine only: the delegated task is left out; a task heads its open subtasks.
+  assertEqual(openTasks(tree(), tasks()).map((entry) => entry.task.id), [10, 16, 12, 15, 18]);
   assertEqual(openTasks(tree(), tasks(), { text: "label" }).map((entry) => entry.task.id), [12]);
-  assertEqual(openTasks(tree(), tasks(), { hubId: 1 }).length, 3);
+  assertEqual(openTasks(tree(), tasks(), { hubId: 1 }).length, 5);
   assertEqual(hubChoices(tree(), tasks()).map((hub) => hub.title), ["Move", "Ops"]);
   const today = todayTasks(tree(), tasks(), [{ id: 1, task_id: 12, day: "2026-11-23", start: "13:00", end: "14:00" },
     { id: 2, task_id: 10, day: "2026-11-23", start: "09:00", end: "10:00" }, { id: 3, task_id: 10, day: "2026-11-24", start: "09:00", end: "10:00" }], "2026-11-23");
@@ -121,8 +130,18 @@ test("calendar: keys and the import summary", () => {
   assertTrue(importSummary({ files: 0, errors: [] }).startsWith("No calendar file"));
 });
 
-test("pop-out: the left two thirds, full height", () => {
-  assertEqual(popOutBox({ availLeft: 0, availTop: 0, availWidth: 3840, availHeight: 1560 }), { left: 0, top: 0, width: 2560, height: 1560 });
+test("note window: the right third on a wide screen, the whole screen on a laptop", () => {
+  const ultrawide = { availLeft: 0, availTop: 0, availWidth: 3840, availHeight: 1560 };
+  const scaled = { availLeft: 0, availTop: 0, availWidth: 2560, availHeight: 1040 };        // 3840x1600 at 150%
+  const laptop = { availLeft: 0, availTop: 0, availWidth: 1280, availHeight: 690 };          // 1920x1080 at 150%
+  const monitor = { availLeft: 0, availTop: 0, availWidth: 2560, availHeight: 1400 };        // 16:9 QHD
+  assertEqual([isWideScreen(ultrawide), isWideScreen(scaled), isWideScreen(laptop), isWideScreen(monitor)], [true, true, false, false]);
+  assertEqual(noteWindowBox(ultrawide), { left: 2560, top: 0, width: 1280, height: 1560 });
+  assertEqual(noteWindowBox(laptop), { left: 0, top: 0, width: 1280, height: 690 });
+  assertEqual(noteWindowBox(laptop, "split").width, 427);
+  assertEqual(noteWindowBox(ultrawide, "full").width, 3840);
+  assertEqual(noteWindowBox({ ...ultrawide, availLeft: -3840 }).left, -1280);
+  assertEqual(noteWindowUrl(5, { field: "agenda", line: 3 }), "/note.html?note=5&line=3&field=agenda");
 });
 
 test("timesheet: the grid copies as text and HTML", () => {
@@ -141,5 +160,8 @@ test("home: Today holds the day's task blocks by time, and the import reminder",
   const today = homeSections(ctx, new Date(2026, 10, 24))[0];
   assertEqual(today.rows.map((row) => row.cells.map(([, text]) => text)[1] ?? row.cells[0][1]),
     ["Calendar not imported today (1 file waiting: open the calendar to import)", "☐ Label boxes", "Sync", "☐ Book van"]);
+  const waiting = homeSections(ctx, new Date(2026, 10, 24)).find((section) => section.key === "waiting");
+  assertEqual(waiting.rows.map((row) => row.cells[0][1]), ["Order boxes"]);
+  assertTrue(waiting.rows[0].late);
   assertEqual(today.rows[2].cells[0][1], "10:00–11:00");
 });

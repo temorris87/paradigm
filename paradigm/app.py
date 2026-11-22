@@ -6,18 +6,22 @@ import webbrowser
 from typing import Callable, List, Optional
 
 from paradigm.api.calendar import CalendarApi
+from paradigm.api.files import FilesApi
 from paradigm.api.images import ImagesApi
 from paradigm.api.links import LinksApi
 from paradigm.api.meetings import MeetingsApi
 from paradigm.api.notes import NotesApi
 from paradigm.api.people import PeopleApi
+from paradigm.api.plans import PlansApi
 from paradigm.api.records import RecordsApi
 from paradigm.api.session import SessionApi
 from paradigm.api.tasks import TasksApi
+from paradigm.api.templates import TemplatesApi
 from paradigm.api.timesheet import TimesheetApi
 from paradigm.api.trash import TrashApi
 from paradigm.config import Config, parse_args
 from paradigm.db.connection import Database
+from paradigm.db.files_repo import FileRepository
 from paradigm.db.images_repo import ImageRepository
 from paradigm.db.import_repo import ImportRepository
 from paradigm.db.links_repo import LinkRepository
@@ -25,8 +29,11 @@ from paradigm.db.migrate import SchemaTooNew, migrate
 from paradigm.db.meetings_repo import MeetingRepository
 from paradigm.db.notes_repo import NoteRepository
 from paradigm.db.people_repo import PeopleRepository
+from paradigm.db.plan_repo import PlanRepository
+from paradigm.db.plan_templates_repo import PlanTemplateRepository
 from paradigm.db.records_repo import RecordRepository
 from paradigm.db.tasks_repo import TaskRepository
+from paradigm.db.templates_repo import TemplateRepository
 from paradigm.db.time_repo import TimeRepository
 from paradigm.db.trash_repo import TrashRepository
 from paradigm.instance import PortState, probe
@@ -155,7 +162,11 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
     ImagesApi(images).register(server.router)
     LinksApi(LinkRepository(db)).register(server.router)
     TrashApi(trash, notes).register(server.router)
-    TasksApi(TaskRepository(db)).register(server.router)
+    tasks = TaskRepository(db)
+    TasksApi(tasks).register(server.router)
+    PlansApi(PlanRepository(db), PlanTemplateRepository(db, tasks), notes).register(server.router)
+    TemplatesApi(TemplateRepository(db), notes).register(server.router)
+    FilesApi(FileRepository(db)).register(server.router)
     CalendarApi(imports).register(server.router)
     TimesheetApi(TimeRepository(db)).register(server.router)
 

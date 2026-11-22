@@ -34,8 +34,8 @@ export const notesApi = {
   // keepalive: a save sent as the tab closes still arrives (bodies up to 64 KB). links: the
   // [[wiki link]] texts in body (links.js wikiTargets), mentions its @mentions (mentions.js);
   // links left out, the server marks the note stale.
-  save: ({ id, body, version, force = false, links, mentions, tasks }, { keepalive = false } = {}) =>
-    call("/api/note/save", { payload: { id, body, version, force, links, mentions, tasks }, keepalive }),
+  save: ({ id, body, version, force = false, links, mentions }, { keepalive = false } = {}) =>
+    call("/api/note/save", { payload: { id, body, version, force, links, mentions }, keepalive }),
   rename: (id, title) => call("/api/note/rename", { payload: { id, title } }),
   // kind: "project" | "area" | "resource" | null (the Inbox)
   setKind: (id, kind) => call("/api/note/kind", { payload: { id, kind } }),

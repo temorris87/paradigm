@@ -7,6 +7,8 @@ import { attendeeCommand, dateCommand, dropAttendeeCommand, newMeetingCommand } 
 import { answeredCommand, dropWithCommand, newRecordCommand, recordDateCommand, reopenCommand,
   withCommand } from "../records/records-commands.js";
 import { addPersonCommand, dropPersonCommand, fieldCommand, newPersonCommand } from "../people/people-commands.js";
+import { taskCommand } from "../tasks/task-commands.js";
+import { insertTemplateDialog } from "../templates/template-commands.js";
 
 // :project :area :resource :inbox, typed in full (:res is Vim's :resize, :ar is :args).
 const FILING_COMMANDS = HUB_GROUPS.map((group) => ({
@@ -80,13 +82,17 @@ export const NOTE_COMMANDS = [
     run: (app, { arg, bang }) => withCommand(app, arg, bang) },
   { name: "dropwith", min: 8, usage: ":dropwith {name}", help: "take a person off this decision or question",
     run: (app, { arg }) => dropWithCommand(app, arg) },
-  { name: "task", min: 4, usage: ":task {text}", help: "add a task (a - [ ] line) at the end of this note",
-    run: (app, { arg }) => app.addTask(app.currentId, arg.trim()) },
+  { name: "task", min: 4, usage: ":task [!]{text}", help: "add a task to this note's Tasks (! in front: due today)",
+    run: (app, { arg }) => taskCommand(app, arg) },
+  { name: "template", min: 8, usage: ":template [{name}]", help: "put a template's text in below the cursor (its - [ ] lines become tasks)",
+    run: (app, { arg }) => insertTemplateDialog(app, arg.trim()) },
+  { name: "dashboard", min: 4, usage: ":dash[board]", help: "show this note's hub on the dashboard (the main window)",
+    run: (app) => app.dashboardCommand() },
   { name: "timecode", min: 8, usage: ":timecode [{code}]", help: "set this project's or area's timesheet code (with nothing: clear it)",
     run: (app, { arg }) => app.setTimeCode(app.currentId, arg.trim()) },
-  { name: "calendar", min: 3, usage: ":cal[endar]", help: "open the calendar in its own window",
+  { name: "calendar", min: 3, usage: ":cal[endar]", help: "show the calendar in the main window",
     run: (app) => app.calendarCommand() },
-  { name: "time", min: 4, usage: ":time", help: "open the weekly timesheet in its own window",
+  { name: "time", min: 4, usage: ":time", help: "show the weekly timesheet in the main window",
     run: (app) => app.timeCommand() },
   { name: "hub", min: 3, usage: ":hub", help: "go to the hub's section panel (opens it if collapsed)",
     run: (app) => app.hubCommand() },

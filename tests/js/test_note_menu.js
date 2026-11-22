@@ -17,15 +17,15 @@ const tree = () => new NoteTree(NOTES);
 const keys = (id) => noteMenuItems(tree(), id).map((item) => (item === "separator" ? "|" : item.key ?? `[${item.group}]`)).join(" ");
 
 test("note menu: a hub can be renamed, moved, filed, archived, exported and trashed", () => {
-  assertEqual(keys(1), "rename move newBeside newUnder | [File as] file file file file | archive export | trash");
+  assertEqual(keys(1), "rename move newBeside newUnder insertTemplate dashboard | [File as] file file file file | archive export | trash");
   const checked = noteMenuItems(tree(), 1).filter((item) => item.checked).map((item) => item.label);
   assertEqual(checked.join(), "Project");
   assertEqual(noteMenuItems(tree(), 1).find((item) => item.key === "trash").inside, 3);
 });
 
 test("note menu: a person is never moved or filed; a meeting is never filed; nested notes are not archived", () => {
-  assertEqual(keys(5), "rename newBeside newUnder | archive export | trash");
-  assertEqual(keys(2), "rename move newBeside | export | trash", "a meeting has no notes under it");
+  assertEqual(keys(5), "rename newBeside newUnder insertTemplate dashboard | archive export | trash");
+  assertEqual(keys(2), "rename move newBeside insertTemplate dashboard | export | trash", "a meeting has no notes under it");
   assertEqual(keys(3).includes("archive"), false);
   const file = noteMenuItems(tree(), 3).filter((item) => item.key === "file");
   assertEqual(file.some((item) => item.checked), false, "a nested note is in no group itself");

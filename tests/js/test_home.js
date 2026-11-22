@@ -86,19 +86,19 @@ test("home: the Inbox, newest change first, archived left out", () => {
 
 test("home: the section table's headings, details and rows", () => {
   const sections = homeSections(ctx(), TODAY);
-  assertEqual(sections.map((s) => `${s.heading} · ${s.detail}`).join("|"), "Today · Sat 2026-11-21|Open questions · 2|Projects · 4|Inbox · 2");
+  assertEqual(sections.map((s) => `${s.heading} · ${s.detail}`).join("|"), "Today · Sat 2026-11-21|Open questions · 2|Waiting on · 0|Projects · 4|Inbox · 2");
   const cells = (row) => row.cells.map(([, text]) => text).join("|");
   assertEqual(cells(sections[0].rows[0]), "08:00|Sync|Billing · 1 attendee");
   assertEqual(cells(sections[0].rows[2]), "|Review|Rollout · no attendees");
   assertEqual(cells(sections[1].rows[0]), "Which region?|Rollout · asked 2026-11-02 (19 days)");
   assertEqual(cells(sections[1].rows[1]), "Budget?|Rollout · asked 2026-11-20 (1 day) · from Standup");
-  const projects = sections[2].rows;
+  const projects = sections.find((each) => each.key === "projects").rows;
   assertEqual(projects.map(cells).join(";"),
     "Operations;Billing|next Sat 2026-11-21 08:00;Rollout|2 open questions · next Sat 2026-11-21 09:30;No area;Orphan|;Solo|");
   assertTrue(projects[0].group && projects[3].group && projects[3].id === null && projects[1].indent);
   const empty = homeSections({ tree: new NoteTree([]), meetings: new Meetings(), records: new Records() }, TODAY);
   assertEqual(empty.map((s) => `${s.detail}:${s.rows.length}:${s.empty}`).join("|"),
-    "Sat 2026-11-21:0:Nothing on the calendar today|0:0:No open questions|0:0:No active projects|0:0:Inbox is empty");
+    "Sat 2026-11-21:0:Nothing on the calendar today|0:0:No open questions|0:0:Nothing delegated|0:0:No active projects|0:0:Inbox is empty");
 });
 
 test("home: the key table and :home", () => {

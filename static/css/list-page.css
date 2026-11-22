@@ -5,7 +5,9 @@
 .app__note[data-view] .app__agenda,
 .app__note[data-view] .field-label,
 .app__note[data-view] .hub-line,
-.app__note[data-view] .hub {
+.app__note[data-view] .hub,
+.app__note[data-view] .dash-chart,
+.app__note[data-view] .dash-text {
   display: none;
 }
 

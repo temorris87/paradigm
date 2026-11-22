@@ -1,15 +1,18 @@
 // The page around the open note's text: the card under the breadcrumb (hub-line.js), the
-// label over each text box (fields.js), and the sections under the text (hub-sections.js)
-// on a hub, a person or a meeting. A decision or question gets the card and its label; any
-// other note just its label. It knows the tree, the people, the meetings, the records and the
-// section table, and tells the page which note to open; it never opens notes itself.
+// label over each text box (fields.js), and the sections under the text (hub-sections.js).
+// A hub, a person, a meeting, a phase or a milestone gets the card and its sections; a
+// decision or question the card; any other note its Tasks and Files. It knows the tree, the
+// people, the meetings, the records, the plan and the section table, and tells the page which
+// note to open; it never opens notes itself.
 //
 //   const hub = new HubPage({ page: mainElement, line, section, labels, onOpen(id, at?),
-//                             onLeave(), controls, tabActions, renderSnippet(markdown) });
+//                             onLeave(), controls, tabActions, renderSnippet(markdown),
+//                             hideSections: ["plan"] });   (the dashboard draws the plan as a chart)
 //     labels: { main, agenda, agendaField }: the label elements over the text boxes, and the
 //             agenda's wrapper (shown on a meeting only)
 //     controls: the card's buttons (hub-actions.js hubLineControls)
-//     tabActions: { add(sectionKey, owner), row(key, sectionKey, owner, row) } (hub-actions.js)
+//     tabActions: { add(sectionKey, owner), row(key, sectionKey, owner, row) } (hub-actions.js);
+//             row keys besides the row's buttons: "addSubtask", "openFile", "openTemplate"
 //     at: { field, line } when a row points into the text (a mention)
 //   hub.show(ctx, currentId)    after every redraw; ctx: { tree, people, meetings, records, tasks, sessions,
 //                               links, mentions, today }
@@ -21,7 +24,7 @@
 // note) for the CSS: how tall each text box is.
 import { Tasks } from "../tasks/tasks-model.js";
 import { Meetings } from "../meetings/meetings-model.js";
-import { hubOf, isDecisionOrQuestion, isHub, isMeeting, isPerson } from "../notes/hub-groups.js";
+import { hubOf, isDecisionOrQuestion, isHub, isMeeting, isMilestone, isPerson, isPhase } from "../notes/hub-groups.js";
 import { Links } from "../notes/links.js";
 import { People } from "../people/people-model.js";
 import { Records } from "../records/records-model.js";
@@ -36,7 +39,9 @@ const NO_LABELS = { main: null, agenda: null, agendaField: null };
 
 export class HubPage {
   constructor({ page, line, section, labels = NO_LABELS, onOpen, onLeave, controls = NO_CONTROLS,
-                tabActions = { add() {}, row() {} }, renderSnippet = () => "" }) {
+                tabActions = { add() {}, row() {} }, renderSnippet = () => "", hideSections = [] }) {
+    this.hideSections = new Set(hideSections);
+    this.expanded = new Set(); // tasks shown with their subtasks
     this.page = page;
     this.line = line;
     this.section = section;
@@ -52,7 +57,7 @@ export class HubPage {
     this.folds = loadFolds();
     this.showingAll = new Set(); // "hubId:section" while its "Show all" is on
     this.panel = new HubPanel(section, {
-      onRow: (sectionDef, row) => this.onOpen(row.id, row.at),
+      onRow: (sectionDef, row) => this.onRow(sectionDef, row),
       onToggle: (sectionDef) => this.toggle(sectionDef),
       onMore: (sectionDef) => this.showAll(sectionDef),
       onAdd: (sectionDef) => this.tabActions.add(sectionDef.key, this.hub),
@@ -73,16 +78,20 @@ export class HubPage {
 
   show(ctx, currentId) {
     this.ctx = { people: new People(), meetings: new Meetings(), records: new Records(), links: new Links(), mentions: [],
-      tasks: new Tasks(), sessions: [], ...ctx };
+      tasks: new Tasks(), sessions: [], ...ctx, expanded: this.expanded };
     const { tree } = this.ctx;
-    const shown = [isHub, isPerson, isMeeting, isDecisionOrQuestion].some((is) => is(tree, currentId));
+    const carded = [isHub, isPerson, isMeeting, isDecisionOrQuestion, isPhase, isMilestone].some((is) => is(tree, currentId));
     const note = tree.get(currentId) ?? null;
-    if (this.hub?.id !== (shown ? note?.id : null)) this.showingAll.clear();
-    this.hub = shown ? note : null;
-    this.sections = sectionsFor(this.hub).filter(Boolean);
+    if (this.hub?.id !== note?.id) {
+      this.showingAll.clear();
+      this.expanded.clear();
+    }
+    // hub: the page's owner, whose sections these are (any note but a template).
+    this.hub = note && note.kind !== "template" ? note : null;
+    this.sections = sectionsFor(this.hub).filter((section) => section && !this.hideSections.has(section.key));
     this.page.dataset.page = this.hub?.kind ?? "note";
     this.showLabels(note);
-    showHubLine(this.line, this.ctx, this.hub, (id) => this.onOpen(id), this.controls);
+    showHubLine(this.line, this.ctx, carded ? note : null, (id) => this.onOpen(id), this.controls);
     this.section.hidden = !this.hasPanel;
     if (this.hasPanel) this.panel.draw(this.sections.map((section) => this.drawn(section)));
   }
@@ -113,6 +122,19 @@ export class HubPage {
 
   redraw() {
     if (this.hasPanel) this.panel.draw(this.sections.map((section) => this.drawn(section)));
+  }
+
+  onRow(sectionDef, row) {
+    if (row.addSubtask !== undefined) return this.tabActions.row("addSubtask", sectionDef.key, this.hub, row);
+    if (row.file !== undefined) return this.tabActions.row("openFile", sectionDef.key, this.hub, row);
+    if (row.template !== undefined) return this.tabActions.row("openTemplate", sectionDef.key, this.hub, row);
+    // A task opens in place: its subtasks, notes and + Add subtask (Waiting on opens the note).
+    if (row.task !== undefined && sectionDef.key === "tasks" && row.depth === 0) {
+      if (this.expanded.has(row.task)) this.expanded.delete(row.task);
+      else this.expanded.add(row.task);
+      return this.redraw();
+    }
+    return this.onOpen(row.id, row.at);
   }
 
   toggle(sectionDef) {

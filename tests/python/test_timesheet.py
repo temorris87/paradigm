@@ -9,7 +9,6 @@ from paradigm.db.migrate import migrate
 from paradigm.db.notes_repo import NoteRepository
 from paradigm.db.tasks_repo import TaskRepository
 from paradigm.db.time_repo import BadSetting, TimeRepository
-from paradigm.notes.tasks import Task
 from paradigm.timesheet.holidays import BadRule, holiday_days, parse_rule
 from paradigm.timesheet.report import Item, Off, Settings, scale, split_day, week_report, working_spans
 
@@ -116,10 +115,8 @@ class TimeRepositoryTest(unittest.TestCase):
         meetings.create(own, "Quick", "2026-11-23", "15:00")                      # 30 min
         cancelled, _ = meetings.create(own, "Gone", "2026-11-23", "13:00", "14:00")
         meetings.set_cancelled(cancelled, True)
-        latest = self.notes.get(project)
-        self.notes.save(project, "- [ ] Pack", latest["version"], links=[], tasks=[Task("body", 0, None, "Pack", False)])
         tasks = TaskRepository(self.db)
-        tasks.add_session(tasks.list()[0]["id"], "2026-11-24", "13:00", "15:00")
+        tasks.add_session(tasks.create(project, "Pack")["id"], "2026-11-24", "13:00", "15:00")
         report = self.time.week(date(2026, 11, 25))
         hours = {row["code"]: row["hours"] for row in report["rows"]}
         self.assertEqual(hours["BUD"][0], 1.5)

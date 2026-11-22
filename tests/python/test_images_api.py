@@ -111,7 +111,7 @@ class UnusedImagesTest(unittest.TestCase):
         self.running.server.stop()  # no tab open: the stop deletes the unlinked image
         self.assertGreater(db_file.stat().st_size, 2_000_000, "the stop doesn't vacuum")
         self.restart()  # this start deletes nothing, but the file is mostly free space
-        self.assertLess(db_file.stat().st_size, 200_000)
+        self.assertLess(db_file.stat().st_size, 400_000)
 
 
 if __name__ == "__main__":

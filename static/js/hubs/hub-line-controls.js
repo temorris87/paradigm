@@ -5,12 +5,13 @@
 //   { file(button, hub), area(project), status(button, project), due(project),
 //     addPerson(hub), details(person), when(meeting), addAttendee(meeting),
 //     dropAttendee(meeting, person), day(record), answer(button, question), addWith(record),
-//     dropWith(record, person) }
+//     dropWith(record, person), dates(phase or milestone), history(phase or milestone),
+//     milestoneState(button, milestone) }
 //
 // Tests and pages without actions get NO_CONTROLS: the buttons are drawn and do nothing.
 export const NO_CONTROLS = Object.freeze({
   file() {}, area() {}, status() {}, due() {}, addPerson() {}, details() {}, when() {}, addAttendee() {},
-  dropAttendee() {}, day() {}, answer() {}, addWith() {}, dropWith() {},
+  dropAttendee() {}, day() {}, answer() {}, addWith() {}, dropWith() {}, dates() {}, history() {}, milestoneState() {},
 });
 
 /** A fact drawn as a button: "Project ▾", "Tue 2026-11-24 14:00". */

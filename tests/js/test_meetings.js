@@ -103,7 +103,7 @@ test("meetings: the page's filters combine", () => {
 
 test("meeting sections: Meetings on hubs (upcoming first), what a person attended", () => {
   const c = { ...ctx(), records: { all: () => [], get: () => ({ people: [] }) } };
-  assertEqual(sectionsFor(c.tree.get(20)).map((t) => t.key).join(), "tasks,questions,decisions");
+  assertEqual(sectionsFor(c.tree.get(20)).map((t) => t.key).join(), "tasks,questions,decisions,files");
   const rows = (key, id) => tab(key).rows(c, c.tree.get(id)).map((r) => `${r.title}|${r.detail}${r.muted ? "~" : ""}`).join(",");
   assertEqual(rows("meetings", 1), "Review|Sat 2026-11-21 09:30 · no attendees,"
     + "Kickoff|Tue 2026-11-24 14:00 · on Rollout · 2 attendees,Planning|Tue 2026-11-17 · on Rollout · 1 attendee");
@@ -127,7 +127,7 @@ test("meeting page: the card and its sections", () => {
     assertEqual(rows.join("|"), "Meeting·Tue 2026-11-24 14:00·in Rollout|Attendees:Bob Lee×, Jane Doe×+ Add attendee");
     line.querySelector(".hub-line__link").click();
     assertEqual(opened.join(), "2");
-    assertEqual([...section.querySelectorAll(".hub__label")].map((t) => t.textContent).join(), "Tasks,Questions,Decisions");
+    assertEqual([...section.querySelectorAll(".hub__label")].map((t) => t.textContent).join(), "Tasks,Questions,Decisions,Files");
     assertEqual(page.dataset.page, "meeting");
   } finally {
     page.remove();
@@ -173,6 +173,7 @@ function fakeApp(currentId) {
     today: () => TODAY,
     messages: [],
     editor: { showMessage: (text) => app.messages.push(text) },
+    say: (text) => app.messages.push(text),
     session: { updateMeta: (note) => calls.push(`meta ${note.title}`) },
     refreshTree: async () => calls.push("refresh"),
     saveBeforeSwitching: async () => true,

@@ -1,25 +1,41 @@
-// Tasks read together with the notes tree. A task is a box in a note's text: its note (and so
-// its hub) is in the tree; its title, state and place in the text come from /api/tasks, its
-// blocks of time from /api/sessions. A box nested under another is its subtask. Pure.
+// Tasks read together with the notes tree. A task is a record of its own (/api/tasks): it
+// belongs to one note (a project, an area, a phase, a meeting, any note in a hub), and a
+// subtask belongs to a task on the same note, one level deep. A task may be delegated to a
+// person (delegate_id), with a day to follow it up. Its blocks of time come from
+// /api/sessions. Pure.
 //
 //   const tasks = new Tasks(await tasksApi.list());
-//   tasks.get(id) / tasks.all()
-//   taskEntries(tree, tasks)              [entry]: entry { task, note, hub, depth, archived }
-//                                         in note and line order, each subtask after its parent
-//   tasksOn(tree, tasks, owner)           a hub's (an area: its projects' too) or a meeting's:
-//                                         open ones first (as in the text), then done ones
-//   openTasks(tree, tasks, { hubId, text })   the calendar's list: open tasks in live hubs
-//                                         (hubId: only that hub, an area with its projects),
-//                                         a done parent's open subtasks too; text: words in
-//                                         the title, note or hub
+//   tasks.get(id) / tasks.all() / tasks.subtasksOf(id)
+//   taskEntries(tree, tasks)              [entry] of every task, subtasks too:
+//                                         entry { task, note, hub, depth, archived, parent }
+//   tasksOn(tree, tasks, owner)           a page's Tasks: the tasks (no subtasks) on the owner
+//                                         and the notes inside it; an area's are its own only
+//                                         (a project's tasks roll up to the project, never
+//                                         further). [entry + { subtasks, openSubtasks }]: open
+//                                         ones first, in their order, then done ones
+//   openCount(tree, tasks, owner)         how many tasksOn are open
+//   waitingOn(tree, tasks, personId?)     open delegated tasks (to one person, or anyone),
+//                                         soonest follow-up first
+//   openTasks(tree, tasks, { hubId, text })   the calendar's list: open tasks of mine in live
+//                                         hubs (hubId: only that hub, an area with its projects),
+//                                         each followed by its open subtasks; text: words in the
+//                                         title, note or hub
 //   todayTasks(tree, tasks, sessions, day)    [{ entry, session }] of the blocks that day
 //   hubChoices(tree, tasks)               the hubs with open tasks: the calendar's filter
+//   subtaskText(entry)                    "2/5 subtasks" (done of all), "" for none
 import { hubOf, isArchived } from "../notes/hub-groups.js";
 import { hubScope } from "../people/people-model.js";
 
 export class Tasks {
   constructor(list = []) {
     this.byId = new Map(list.map((task) => [task.id, task]));
+    this.children = new Map();
+    for (const task of this.byId.values()) {
+      if (task.parent_id === null || !this.byId.has(task.parent_id)) continue;
+      if (!this.children.has(task.parent_id)) this.children.set(task.parent_id, []);
+      this.children.get(task.parent_id).push(task);
+    }
+    for (const list of this.children.values()) list.sort(byPosition);
   }
 
   get(id) {
@@ -29,56 +45,83 @@ export class Tasks {
   all() {
     return [...this.byId.values()];
   }
+
+  subtasksOf(id) {
+    return this.children.get(id) ?? [];
+  }
+
+  isTop(task) {
+    return task.parent_id === null || !this.byId.has(task.parent_id);
+  }
+}
+
+function byPosition(a, b) {
+  return a.position - b.position || a.id - b.id;
+}
+
+function entryOf(tree, task, depth, parent = null) {
+  return { task, note: tree.get(task.note_id), hub: hubOf(tree, task.note_id), depth, parent,
+    archived: isArchived(tree, task.note_id) };
 }
 
 export function taskEntries(tree, tasks) {
-  const all = tasks.all().filter((task) => tree.has(task.note_id));
-  const children = new Map();
-  for (const task of all) {
-    const key = tasks.get(task.parent_id) ? task.parent_id : null;
-    if (!children.has(key)) children.set(key, []);
-    children.get(key).push(task);
-  }
-  const order = (a, b) => a.note_id - b.note_id || a.field.localeCompare(b.field) || a.line - b.line;
-  const found = [];
-  const walk = (parentId, depth) => {
-    for (const task of (children.get(parentId) ?? []).sort(order)) {
-      found.push({ task, note: tree.get(task.note_id), hub: hubOf(tree, task.note_id), depth,
-        archived: isArchived(tree, task.note_id) });
-      walk(task.id, depth + 1);
-    }
-  };
-  walk(null, 0);
-  return found;
+  const order = new Map(tree.inOrder().map((note, index) => [note.id, index]));
+  const tops = tasks.all().filter((task) => tree.has(task.note_id) && tasks.isTop(task))
+    .sort((a, b) => (order.get(a.note_id) ?? 0) - (order.get(b.note_id) ?? 0) || byPosition(a, b));
+  return tops.flatMap((task) => {
+    const entry = entryOf(tree, task, 0);
+    return [entry, ...tasks.subtasksOf(task.id).map((sub) => entryOf(tree, sub, 1, task))];
+  });
+}
+
+/** The notes whose tasks a page lists: the owner and everything inside it. */
+function ownedNotes(tree, owner) {
+  return new Set([owner.id, ...tree.inOrder(owner.id).map((note) => note.id)]);
 }
 
 export function tasksOn(tree, tasks, owner) {
-  const belongs = owner.kind === "meeting"
-    ? (entry) => entry.note.id === owner.id
-    : ((scope) => (entry) => entry.hub !== null && scope.includes(entry.hub.id))(hubScope(tree, owner.id));
-  const entries = taskEntries(tree, tasks).filter(belongs);
-  // Open work first, as in the text: a done task stays there while a subtask under it is open,
-  // and a done subtask stays under its open task. Done ones with nothing open go last.
-  const kept = new Set();
-  for (const entry of entries) {
-    if (!entry.task.done || hasOpenBelow(entries, entry) || kept.has(entry.task.parent_id)) kept.add(entry.task.id);
-  }
-  const open = entries.filter((entry) => kept.has(entry.task.id));
-  return [...open, ...entries.filter((entry) => !kept.has(entry.task.id)).map((entry) => ({ ...entry, depth: 0 }))];
+  const notes = ownedNotes(tree, owner);
+  const entries = taskEntries(tree, tasks).filter((entry) => entry.depth === 0 && notes.has(entry.task.note_id))
+    .map((entry) => withSubtasks(tasks, entry));
+  return [...entries.filter((entry) => !entry.task.done), ...entries.filter((entry) => entry.task.done)];
 }
 
-function hasOpenBelow(entries, entry) {
-  const below = entries.filter((each) => each.task.parent_id === entry.task.id);
-  return below.some((each) => !each.task.done || hasOpenBelow(entries, each));
+function withSubtasks(tasks, entry) {
+  const subtasks = tasks.subtasksOf(entry.task.id);
+  return { ...entry, subtasks, openSubtasks: subtasks.filter((task) => !task.done).length };
+}
+
+export function openCount(tree, tasks, owner) {
+  return tasksOn(tree, tasks, owner).filter((entry) => !entry.task.done).length;
+}
+
+export function subtaskText(entry) {
+  const all = entry.subtasks?.length ?? 0;
+  if (!all) return "";
+  return `${all - entry.openSubtasks}/${all} subtask${all === 1 ? "" : "s"}`;
+}
+
+export function waitingOn(tree, tasks, personId = null) {
+  const follow = (entry) => entry.task.follow_up || "9999-12-31";
+  return taskEntries(tree, tasks)
+    .filter((entry) => entry.task.delegate_id !== null && !entry.task.done && !entry.archived
+      && (personId === null || entry.task.delegate_id === personId))
+    .map((entry) => withSubtasks(tasks, entry))
+    .sort((a, b) => follow(a).localeCompare(follow(b)));
 }
 
 export function openTasks(tree, tasks, { hubId = null, text = "" } = {}) {
   const scope = hubId === null ? null : hubScope(tree, hubId);
   const words = String(text).toLowerCase().split(/\s+/).filter(Boolean);
-  const entries = taskEntries(tree, tasks).filter((entry) => !entry.archived && (scope === null || (entry.hub && scope.includes(entry.hub.id))));
+  const mine = (task) => !task.done && task.delegate_id === null;
+  const entries = taskEntries(tree, tasks).filter((entry) => !entry.archived
+    && (scope === null || (entry.hub && scope.includes(entry.hub.id))));
   return entries.filter((entry) => {
-    if (entry.task.done && !hasOpenBelow(entries, entry)) return false;
-    const haystack = `${entry.task.title} ${entry.note.title} ${entry.hub?.title ?? ""}`.toLowerCase();
+    // A task stays while a subtask of mine under it is open (it heads them); a subtask only
+    // when it is open and mine.
+    if (entry.depth === 0 && !mine(entry.task) && !tasks.subtasksOf(entry.task.id).some(mine)) return false;
+    if (entry.depth > 0 && !mine(entry.task)) return false;
+    const haystack = `${entry.task.title} ${entry.parent?.title ?? ""} ${entry.note.title} ${entry.hub?.title ?? ""}`.toLowerCase();
     return words.every((word) => haystack.includes(word));
   });
 }
@@ -93,10 +136,11 @@ export function todayTasks(tree, tasks, sessions, day) {
 export function hubChoices(tree, tasks) {
   const hubs = new Map();
   for (const entry of taskEntries(tree, tasks)) {
-    if (entry.hub && !entry.archived && !entry.task.done) hubs.set(entry.hub.id, entry.hub);
+    if (entry.archived || entry.task.done || entry.task.delegate_id !== null || !entry.hub) continue;
+    hubs.set(entry.hub.id, entry.hub);
     // An area offers its projects' tasks too, so it is a choice once one of them has some.
-    const area = entry.hub?.area_id ? tree.get(entry.hub.area_id) : null;
-    if (area && !entry.archived && !entry.task.done) hubs.set(area.id, area);
+    const area = entry.hub.area_id ? tree.get(entry.hub.area_id) : null;
+    if (area) hubs.set(area.id, area);
   }
   return [...hubs.values()].sort((a, b) => a.title.localeCompare(b.title));
 }

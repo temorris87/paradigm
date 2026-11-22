@@ -13,7 +13,6 @@ from paradigm.notes.hubs import HUB_KINDS
 from paradigm.notes.meetings import BadWhen, clean_day, clean_time
 from paradigm.notes.sessions import DAY_END, clean_end, minutes
 from paradigm.notes.mentions import Mention
-from paradigm.notes.tasks import Task
 from paradigm.notes.titles import BadTitle, clean_title
 
 Clock = Callable[[], str]
@@ -95,8 +94,7 @@ class MeetingRepository:
         return self.get(meeting_id)
 
     def save_agenda(self, meeting_id: int, agenda: str, base_version: int, force: bool = False,
-                    links: Optional[List[str]] = None, mentions: Optional[List[Mention]] = None,
-                    tasks: Optional[List[Task]] = None) -> Dict:
+                    links: Optional[List[str]] = None, mentions: Optional[List[Mention]] = None) -> Dict:
         """Saves the agenda, as NoteRepository.save does a body (its own version, Conflict if
         another tab saved it meanwhile). links and mentions are the whole meeting's (minutes
         and agenda), stored with the note's version. Returns {id, agenda, agenda_version}."""
@@ -112,7 +110,7 @@ class MeetingRepository:
                 conn.execute("UPDATE notes SET updated_at = ? WHERE id = ?", (self._clock(), meeting_id))
             if links is not None:
                 note = live_note_row(conn, meeting_id)
-                store_links(conn, meeting_id, note["version"], links, mentions or [], tasks)
+                store_links(conn, meeting_id, note["version"], links, mentions or [])
         return {"id": meeting_id, "agenda": agenda, "version": version}
 
     def attend(self, meeting_id: int, person_ids: Iterable[int]) -> Tuple[Dict, List[int]]:

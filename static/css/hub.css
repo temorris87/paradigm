@@ -386,3 +386,31 @@
   font-family: var(--mono, monospace);
   color: var(--nord8);
 }
+
+/* Late: an overdue task or milestone, a follow-up past its day, a plan that keeps slipping. */
+.hub__row--late .hub__detail {
+  color: var(--nord11);
+  opacity: 1;
+}
+
+/* A task's box and its ▸ (Enter shows its subtasks). */
+.hub__box {
+  flex: none;
+  color: var(--nord4);
+  opacity: 0.8;
+}
+
+.hub__twisty--task {
+  flex: none;
+  width: 0.8rem;
+}
+
+.hub__row--add .hub__title {
+  color: var(--nord9);
+  font-size: 0.85rem;
+}
+
+/* A phase's or milestone's slip on its card: red once it keeps slipping. */
+.hub-line__slip--late {
+  color: var(--nord11);
+}

@@ -18,7 +18,7 @@ from paradigm.calendar.ics import BadCalendar, Calendar, Event, read_calendar, s
 from paradigm.db.connection import Database
 from paradigm.db.notes_repo import NoteError, NotFound, TitleTaken, check_title_free, live_note_row, utc_now
 from paradigm.db.people_repo import NotAHub
-from paradigm.db.task_index import local_today
+from paradigm.notes.days import local_today
 from paradigm.notes.hubs import HUB_KINDS
 from paradigm.notes.people import full_name
 from paradigm.notes.titles import BadTitle, clean_title

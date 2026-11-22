@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Note - Paradigm</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/css/nord.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/connection-banner.css">
+  <link rel="stylesheet" href="/css/tree.css">
+  <link rel="stylesheet" href="/css/breadcrumb.css">
+  <link rel="stylesheet" href="/css/topbar.css">
+  <link rel="stylesheet" href="/css/navigator.css">
+  <link rel="stylesheet" href="/css/markdown.css">
+  <link rel="stylesheet" href="/css/hub.css">
+  <link rel="stylesheet" href="/css/image-viewer.css">
+  <link rel="stylesheet" href="/css/ui.css">
+  <script type="module" src="/js/note-main.js"></script>
+</head>
+<body>
+  <!-- The note window: one note at a time, written here. Pages show in the main window. -->
+  <div class="app" data-role="note">
+    <main class="app__note">
+      <header class="topbar">
+        <button type="button" class="topbar__nav" aria-controls="navigator" aria-label="Notes" title="Notes">☰</button>
+        <nav class="crumbs" aria-label="Where this note is"></nav>
+        <button type="button" class="topbar__page topbar__goto" title="Find a note by its title and open it">Go to</button>
+        <button type="button" class="topbar__page topbar__dashboard" title="This note's hub on the dashboard (the main window)">Dashboard</button>
+        <button type="button" class="topbar__page topbar__home" title="Home, in the main window">Home</button>
+      </header>
+      <div class="hub-line" hidden></div>
+      <!-- A meeting's agenda: a second text box over the minutes (hidden on other notes). -->
+      <div class="app__agenda" hidden>
+        <div class="field-label field-label--agenda" id="agenda-label"></div>
+        <pd-editor class="app__agenda-editor" compact aria-labelledby="agenda-label" aria-label="Agenda"></pd-editor>
+      </div>
+      <div class="field-label field-label--main" id="note-label"></div>
+      <pd-editor class="app__editor" aria-label="Note"></pd-editor>
+      <section class="hub" aria-label="Sections" hidden></section>
+    </main>
+    <div class="navigator__backdrop" hidden></div>
+    <nav class="app__sidebar" id="navigator" aria-label="Notes">
+      <h1 class="app__title">Paradigm</h1>
+      <ul class="tree" aria-label="Notes"></ul>
+    </nav>
+  </div>
+  <pd-image-viewer></pd-image-viewer>
+</body>
+</html>

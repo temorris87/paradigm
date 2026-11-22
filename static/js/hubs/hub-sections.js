@@ -1,17 +1,25 @@
-// THE table of the sections on a hub's page (and a person's or a meeting's): which sections
-// each kind has, in order, and the rows each one lists. New record types become new rows
-// here, and their key goes in SECTION_ORDER. Decisions and questions have none. Pure.
+// THE table of the sections on a page: which sections each kind of note has, in order, and
+// the rows each one lists. New record types become new rows here, and their key goes in
+// SECTION_ORDER. Decisions, questions and templates have none; a plain note has Tasks and
+// Files. Pure.
+//
+// Roll-up: a task, question or decision shows on the project (or note) it belongs to, and on
+// nothing above it: an area lists its own, and one line per project with that project's
+// counts (the Projects section).
 //
 //   sectionsFor(note)          the sections for a hub, person or meeting note, in page order
-//   section.rows(ctx, note)    [{ id, title, depth, detail, muted?, actions?, snippet?, at? }]
+//   section.rows(ctx, note)    [{ id, title, depth, detail, muted?, late?, actions?, snippet?, at?,
+//                              task?, file?, template?, addSubtask? }]
 //                              ctx: { tree, people, meetings, records, links, mentions, tasks,
-//                              sessions, today }
+//                              sessions, plan, files, planTemplates, expanded: Set of task ids
+//                              shown with their subtasks, today }
 //                              (static/js/people/people-model.js, static/js/meetings/
 //                              meetings-model.js, static/js/records/records-model.js,
 //                              static/js/notes/links.js, static/js/notes/mentions.js)
-//                              actions: [{ key, label }]: "role", "remove", "answer", "done"
-//                              (hub-actions.js runs them); snippet: Markdown shown under the
-//                              row (a mention's context); at: { field, line } to open it at
+//                              actions: [{ key, label }]: "role", "remove", "answer", "done",
+//                              "edit", "delegate", "takeBack", "history" (hub-actions.js runs
+//                              them); snippet: Markdown shown under the row (a mention's
+//                              context, a task's notes); at: { field, line } to open it at
 //   section.detail(rows)       beside the heading ("3 open")
 //   section.empty(note)        what it says when it has no rows
 //   section.add                { label } of its add button (hub-actions.js), or null
@@ -20,12 +28,14 @@
 import { archivedProjectsIn, projectsIn } from "./hub-areas.js";
 import { attendeesOf, attendeesText, meetingsOn, meetingsWith, shortTitle } from "../meetings/meetings-model.js";
 import { localDay, whenText } from "../meetings/meeting-days.js";
-import { groupForKind, hubOf, inRecordBelow } from "../notes/hub-groups.js";
+import { groupForKind, hubOf, inRecordBelow, phaseOf } from "../notes/hub-groups.js";
 import { Links, linksInto } from "../notes/links.js";
 import { mentionsOf } from "../notes/mentions.js";
 import { hubLinks, peopleOn, rolesText, workText } from "../people/people-model.js";
 import { isOpen, peopleOf, recordsOn } from "../records/records-model.js";
-import { tasksOn } from "../tasks/tasks-model.js";
+import { openCount, subtaskText, tasksOn, waitingOn } from "../tasks/tasks-model.js";
+import { Files, fileDir, filesOn } from "../files/files-model.js";
+import { Plan, milestonesOf, nextMilestone, phasesOf, shortDay, slipOf, slipText } from "../plan/plan-model.js";
 import { projectFactsText, statusText } from "./project-facts.js";
 
 const REMOVE = Object.freeze({ key: "remove", label: "Remove" });
@@ -33,15 +43,23 @@ const ROLE = Object.freeze({ key: "role", label: "Role…" });
 const ANSWER = Object.freeze({ key: "answer", label: "Answer…" });
 const DONE = Object.freeze({ key: "done", label: "Done" });
 const UNDONE = Object.freeze({ key: "done", label: "Reopen" });
+const EDIT = Object.freeze({ key: "edit", label: "Edit…" });
+const DELEGATE = Object.freeze({ key: "delegate", label: "Delegate…" });
+const TAKE_BACK = Object.freeze({ key: "takeBack", label: "Take back" });
+const DELETE = Object.freeze({ key: "remove", label: "Delete" });
+const HISTORY = Object.freeze({ key: "history", label: "History" });
 const LIMIT = 5;
 
-// Which sections each kind shows, top to bottom.
+// Which sections each kind shows, top to bottom ("note": a plain note).
 export const SECTION_ORDER = {
-  project: ["questions", "tasks", "decisions", "notes", "meetings", "people"],
-  area: ["projects", "tasks", "questions", "decisions", "notes", "meetings", "people"],
-  resource: ["notes", "tasks", "questions", "decisions", "meetings", "people", "linked"],
-  meeting: ["tasks", "questions", "decisions"],
-  person: ["active", "archived", "backlinks"],
+  project: ["plan", "tasks", "questions", "decisions", "meetings", "files", "notes", "people"],
+  area: ["projects", "tasks", "questions", "decisions", "meetings", "files", "templates", "notes", "people"],
+  resource: ["notes", "files", "tasks", "questions", "decisions", "meetings", "people", "linked"],
+  meeting: ["tasks", "questions", "decisions", "files"],
+  phase: ["tasks", "milestones", "files", "notes"],
+  milestone: ["tasks", "files"],
+  note: ["tasks", "files"],
+  person: ["waiting", "active", "archived", "backlinks"],
 };
 
 export const HUB_SECTIONS = [
@@ -52,8 +70,9 @@ export const HUB_SECTIONS = [
     rows: (ctx, area) => [
       ...projectsIn(ctx.tree, area.id).map((project) => ({
         id: project.id, title: project.title, depth: 0,
-        detail: [statusText(project), projectFactsText(ctx, project)].filter(Boolean).join(" · "),
+        detail: [statusText(project), projectCounts(ctx, project), projectFactsText(ctx, project)].filter(Boolean).join(" · "),
         muted: project.status === "on_hold",
+        late: projectLate(ctx, project),
         actions: [{ key: "remove", label: "Take out" }],
       })),
       ...archivedProjectsIn(ctx.tree, area.id).map((project) => ({
@@ -88,30 +107,79 @@ export const HUB_SECTIONS = [
     limit: LIMIT,
   },
   {
+    key: "plan",
+    label: "Plan",
+    // The project's phases by start day, then its milestones by day; the dashboard's Gantt
+    // chart shows the same.
+    rows: (ctx, project) => planRows(ctx, project),
+    detail: (rows) => counted(rows.filter((row) => row.kind === "phase").length, "phases"),
+    empty: () => "No phases yet. Add one, or apply a plan template on the dashboard.",
+    add: { label: "New phase" },
+  },
+  {
+    key: "milestones",
+    label: "Milestones",
+    rows: (ctx, phase) => milestonesOf(ctx.tree, plan(ctx), phase.id).map((entry) => milestoneRow(ctx, entry)),
+    detail: (rows) => counted(rows.filter((row) => !row.done).length, "to come"),
+    empty: () => "No milestones in this phase yet",
+    add: { label: "New milestone" },
+  },
+  {
     key: "tasks",
     label: "Tasks",
-    // The "- [ ]" boxes in its notes (an area: its projects' too), each subtask under its task;
-    // open ones first, as they are in the text, then done ones, muted. A row opens the note at
-    // the box's line.
-    rows: (ctx, owner) => tasksOn(ctx.tree, ctx.tasks, owner).map(({ task, note, hub, depth, archived }) => ({
-      id: note.id,
-      title: task.title || "(no text)",
-      depth,
-      detail: [note.id !== owner.id ? note.title : "", hub && hub.id !== owner.id && owner.kind !== "meeting" ? `on ${hub.title}` : "",
-        nextBlockText(ctx, task.id), task.done ? `done ${task.done_day}`.trim() : "", archived ? "archived" : ""]
-        .filter(Boolean).join(" · "),
-      muted: task.done || archived,
-      at: { field: task.field, line: task.line },
-      task: task.id,
-      done: task.done,
-      actions: archived ? [] : [task.done ? UNDONE : DONE],
-    })),
-    detail: (rows) => counted(rows.filter((row) => !row.done).length, "open"),
-    empty: (owner) => owner.kind === "meeting"
-      ? "No tasks from this meeting yet. Write - [ ] in its notes, or add one here."
-      : "No tasks yet. Write - [ ] in any of its notes, or add one here.",
+    // Its tasks and those of the notes inside it (never a project's on its area); subtasks
+    // show as a count until the row is opened (Enter), then under it with + Add subtask.
+    rows: (ctx, owner) => tasksOn(ctx.tree, ctx.tasks, owner).flatMap((entry) => taskRows(ctx, owner, entry)),
+    detail: (rows) => counted(rows.filter((row) => row.depth === 0 && row.task && !row.done).length, "open"),
+    empty: (owner) => owner.kind === "meeting" ? "No action items from this meeting yet" : "No tasks yet",
     add: { label: "New task" },
+    limit: 12,
+  },
+  {
+    key: "waiting",
+    label: "Waiting on",
+    // What they are doing for me: open tasks delegated to them, soonest follow-up first.
+    rows: (ctx, person) => waitingOn(ctx.tree, ctx.tasks, person.id).map((entry) => waitingRow(ctx, entry, false)),
+    detail: (rows) => String(rows.length),
+    empty: (person) => `Nothing delegated to ${person.title}`,
+    add: null,
+  },
+  {
+    key: "files",
+    label: "Files",
+    // OneDrive files on it (and on the notes inside it). Enter opens one on this computer.
+    rows: (ctx, owner) => filesOn(ctx.tree, ctx.files ?? new Files(), owner).map(({ file, folder, own, via, others }) => ({
+      id: owner.id,
+      title: file.name,
+      depth: 0,
+      detail: [folder?.name, fileDir(file), via ? `on ${via.title}` : "", others.length ? `also on ${others.map((note) => note.title).join(", ")}` : "",
+        file.missing ? "⚠ not in the folder any more" : ""].filter(Boolean).join(" · "),
+      muted: file.missing,
+      late: file.missing,
+      file: file.id,
+      owner: own ? owner.id : via.id,
+      actions: [{ key: "remove", label: "Remove" }],
+    })),
+    detail: (rows) => String(rows.length),
+    empty: () => "No files yet. Link a OneDrive folder, then add its files here.",
+    add: { label: "Add file" },
     limit: 8,
+  },
+  {
+    key: "templates",
+    label: "Plan templates",
+    // Plans to start a project from: phases, milestones and tasks in working days.
+    rows: (ctx, area) => (ctx.planTemplates ?? []).filter((template) => template.area_id === area.id).map((template) => ({
+      id: area.id,
+      title: template.title,
+      depth: 0,
+      detail: templateSummary(template),
+      template: template.id,
+      actions: [DELETE],
+    })),
+    detail: (rows) => String(rows.length),
+    empty: () => "No plan templates yet. Make one here, or save a project's plan as one.",
+    add: { label: "New plan template" },
   },
   {
     key: "decisions",
@@ -134,8 +202,10 @@ export const HUB_SECTIONS = [
   {
     key: "notes",
     label: "Notes",
-    // The whole subtree, nested; meetings and records have their own sections.
-    rows: ({ tree }, hub) => tree.inOrder(hub.id).filter((note) => !inRecordBelow(tree, note.id, hub.id)).map((note) => ({
+    // The whole subtree, nested; meetings and records have their own sections, and so do a
+    // project's phases (the Plan) with the notes in them.
+    rows: ({ tree }, hub) => tree.inOrder(hub.id).filter((note) => !inRecordBelow(tree, note.id, hub.id)
+      && !(hub.kind === "project" && phaseOf(tree, note.id))).map((note) => ({
       id: note.id,
       title: note.title,
       depth: tree.ancestors(note.id).length - 1,
@@ -239,7 +309,8 @@ export const HUB_SECTIONS = [
 const BY_KEY = new Map(HUB_SECTIONS.map((section) => [section.key, section]));
 
 export function sectionsFor(note) {
-  return (SECTION_ORDER[note?.kind] ?? []).map((key) => BY_KEY.get(key));
+  if (!note) return [];
+  return (SECTION_ORDER[note.kind ?? "note"] ?? []).map((key) => BY_KEY.get(key));
 }
 
 /** Where a decision or question is, as seen from the section's owner, and who is on it. */
@@ -320,6 +391,139 @@ function nextBlockText(ctx, taskId) {
   const next = (ctx.sessions ?? []).filter((session) => session.task_id === taskId && session.day >= today)
     .sort((a, b) => `${a.day} ${a.start}`.localeCompare(`${b.day} ${b.start}`))[0];
   return next ? `next ${whenText({ day: next.day, time: next.start })}` : "";
+}
+
+function plan(ctx) {
+  return ctx.plan ?? new Plan();
+}
+
+function planRows(ctx, project) {
+  const today = localDay(ctx.today ?? new Date());
+  const phases = phasesOf(ctx.tree, plan(ctx), project.id).map(({ note, phase }) => {
+    const slip = slipOf(plan(ctx), note.id);
+    return {
+      id: note.id, title: note.title, depth: 0, kind: "phase",
+      detail: [`${shortDay(phase.start, today)} → ${shortDay(phase.end, today)}`, slipText(slip),
+        phase.end < today ? "ended" : phase.start <= today ? "now" : "", ctx.tasks && openCount(ctx.tree, ctx.tasks, note) ? `${openCount(ctx.tree, ctx.tasks, note)} open tasks` : ""]
+        .filter(Boolean).join(" · "),
+      late: slip.keepsSlipping,
+      actions: slip.moves ? [HISTORY] : [],
+    };
+  });
+  const milestones = milestonesOf(ctx.tree, plan(ctx), project.id).map((entry) => milestoneRow(ctx, entry));
+  return [...phases, ...milestones];
+}
+
+function milestoneRow(ctx, { note, milestone, phase }) {
+  const today = localDay(ctx.today ?? new Date());
+  const slip = slipOf(plan(ctx), note.id);
+  const done = Boolean(milestone.done_day);
+  return {
+    id: note.id, title: `◆ ${note.title}`, depth: 0, kind: "milestone",
+    detail: [shortDay(milestone.day, today), phase ? `in ${phase.title}` : "", slipText(slip),
+      done ? `reached ${milestone.done_day}` : milestone.day < today ? "overdue" : ""].filter(Boolean).join(" · "),
+    muted: done,
+    late: !done && (milestone.day < today || slip.keepsSlipping),
+    done,
+    milestone: note.id,
+    actions: [done ? UNDONE : DONE, ...(slip.moves ? [HISTORY] : [])],
+  };
+}
+
+function taskRows(ctx, owner, entry) {
+  const { task, note, archived } = entry;
+  const open = ctx.expanded?.has(task.id) ?? false;
+  const subtasks = entry.subtasks ?? [];
+  const row = {
+    id: note.id,
+    title: task.title || "(no text)",
+    depth: 0,
+    detail: [subtaskText(entry), delegateText(ctx, task), dueText(ctx, task), note.id !== owner.id ? `in ${note.title}` : "",
+      nextBlockText(ctx, task.id), task.done ? `done ${task.done_day}`.trim() : "", archived ? "archived" : ""]
+      .filter(Boolean).join(" · "),
+    muted: task.done || archived,
+    late: isLate(ctx, task),
+    task: task.id,
+    done: task.done,
+    expanded: open,
+    snippet: open && task.notes ? task.notes : "",
+    actions: archived ? [] : [task.done ? UNDONE : DONE, EDIT, task.delegate_id === null ? DELEGATE : TAKE_BACK, DELETE],
+  };
+  if (!open) return [row];
+  const subs = subtasks.map((sub) => ({
+    id: note.id,
+    title: sub.title,
+    depth: 1,
+    detail: [delegateText(ctx, sub), dueText(ctx, sub), sub.done ? `done ${sub.done_day}` : ""].filter(Boolean).join(" · "),
+    muted: sub.done || archived,
+    late: isLate(ctx, sub),
+    task: sub.id,
+    done: sub.done,
+    actions: archived ? [] : [sub.done ? UNDONE : DONE, EDIT, sub.delegate_id === null ? DELEGATE : TAKE_BACK, DELETE],
+  }));
+  const add = archived ? [] : [{ id: note.id, title: "+ Add subtask", depth: 1, detail: "", addSubtask: task.id, muted: true }];
+  return [row, ...subs, ...add];
+}
+
+/** A row of Waiting on (a person's page, Home): the task, where it is, when to chase it. */
+export function waitingRow(ctx, entry, withPerson = true) {
+  const { task, note, hub } = entry;
+  const today = localDay(ctx.today ?? new Date());
+  const person = ctx.tree.get(task.delegate_id);
+  return {
+    id: note.id,
+    title: task.title,
+    depth: 0,
+    detail: [withPerson && person ? `→ ${person.title}` : "", hub && hub.id !== note.id ? hub.title : "", note.title,
+      task.follow_up ? `follow up ${shortDay(task.follow_up, today)}` : "", subtaskText(entry)].filter(Boolean).join(" · "),
+    late: Boolean(task.follow_up && task.follow_up < today),
+    task: task.id,
+    done: task.done,
+    actions: [DONE, TAKE_BACK],
+  };
+}
+
+function delegateText(ctx, task) {
+  if (task.delegate_id === null) return "";
+  const person = ctx.tree.get(task.delegate_id);
+  const follow = task.follow_up ? `, follow up ${shortDay(task.follow_up, localDay(ctx.today ?? new Date()))}` : "";
+  return person ? `→ ${person.title}${follow}` : "";
+}
+
+function dueText(ctx, task) {
+  return task.due ? `due ${shortDay(task.due, localDay(ctx.today ?? new Date()))}` : "";
+}
+
+function isLate(ctx, task) {
+  if (task.done) return false;
+  const today = localDay(ctx.today ?? new Date());
+  return Boolean((task.due && task.due < today) || (task.delegate_id !== null && task.follow_up && task.follow_up < today));
+}
+
+/** "4 open tasks · 1 decision · ◆ Go-live 17 Jan": a project's own, for its area (its open
+ * questions and next meeting follow, from projectFactsText). */
+function projectCounts(ctx, project) {
+  const tasks = ctx.tasks ? openCount(ctx.tree, ctx.tasks, project) : 0;
+  const decisions = ctx.records ? recordsOn(ctx.tree, ctx.records, project, "decision").length : 0;
+  const parts = [];
+  if (tasks) parts.push(`${tasks} open task${tasks === 1 ? "" : "s"}`);
+  if (decisions) parts.push(`${decisions} decision${decisions === 1 ? "" : "s"}`);
+  const next = nextMilestone(ctx.tree, plan(ctx), project.id);
+  if (next) parts.push(`◆ ${next.note.title} ${shortDay(next.milestone.day, localDay(ctx.today ?? new Date()))}`);
+  return parts.join(" · ");
+}
+
+function projectLate(ctx, project) {
+  return phasesOf(ctx.tree, plan(ctx), project.id).some(({ note }) => slipOf(plan(ctx), note.id).keepsSlipping);
+}
+
+function templateSummary(template) {
+  const phases = template.items.filter((item) => item.kind === "phase").length;
+  const milestones = template.items.length - phases;
+  const days = template.items.length ? Math.max(...template.items.map((item) => item.end)) + 1 : 0;
+  const tasks = template.items.reduce((sum, item) => sum + item.tasks.length, 0);
+  return [`${phases} phase${phases === 1 ? "" : "s"}`, `${milestones} milestone${milestones === 1 ? "" : "s"}`,
+    tasks ? `${tasks} tasks` : "", days ? `${days} working days` : ""].filter(Boolean).join(" · ");
 }
 
 function counted(n, word) {

@@ -1,6 +1,7 @@
 // The notes tree in the sidebar: an ARIA tree with one focusable item (roving tabindex).
 // The top level is the hub groups and the Archive (hub-groups.js); the notes sit under them.
-// Meetings, decisions and questions are not in it: their hub's page lists them.
+// Meetings, decisions, questions and milestones are not in it: their hub's page lists them.
+// A project's phases are, tagged "Phase".
 //
 //   const view = new TreeView(ulElement, { onOpen(id), onLeave(), onAdd(group), onAddUnder(id) });
 //   view.show(tree, currentId)     draw (the open note's group and ancestors are expanded)
@@ -113,10 +114,10 @@ export class TreeView {
     li.dataset.id = String(note.id);
     if (kids.length) li.setAttribute("aria-expanded", String(open));
     let kind = null;
-    if (withKind) {
+    if (withKind || note.kind === "phase") {
       kind = document.createElement("span");
       kind.className = "tree__kind";
-      kind.textContent = groupForKind(note.kind).label;
+      kind.textContent = note.kind === "phase" ? "Phase" : groupForKind(note.kind).label;
     }
     li.append(this.row(kids.length ? (open ? "▾" : "▸") : "", note.title, "tree__title", kind));
     if (open) li.append(this.group(kids, level + 1));

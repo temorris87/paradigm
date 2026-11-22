@@ -73,9 +73,10 @@ export function calendarBlocks({ tree, meetings, tasks, sessions = [], pending =
     if (!entry || !inWeek.has(session.day)) continue;
     blocks.push({
       key: `task:${session.id}`, kind: "task", id: session.id, taskId: entry.task.id, noteId: entry.note.id,
-      at: { field: entry.task.field, line: entry.task.line }, day: session.day, timed: true,
+      day: session.day, timed: true,
       start: minutes(session.start), end: minutes(session.end) ?? DAY_MINUTES, title: entry.task.title,
-      sub: [entry.hub?.title, entry.note.id !== entry.hub?.id ? entry.note.title : ""].filter(Boolean).join(" · "),
+      sub: [entry.hub?.title, entry.note.id !== entry.hub?.id ? entry.note.title : "", entry.parent ? `in ${entry.parent.title}` : ""]
+        .filter(Boolean).join(" · "),
       cancelled: false, muted: entry.task.done || entry.archived, done: entry.task.done,
     });
   }

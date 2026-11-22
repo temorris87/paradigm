@@ -66,7 +66,42 @@ a {
   min-height: 12rem;
 }
 
-/* Narrow (the right third of a wide screen): one column; the sidebar becomes a drawer
+/* The main window (data-role="main", the left 2/3 of a wide screen): as wide as it is, its
+   dashboards in columns (dashboard.css). It never edits: the note window does. */
+[data-role="main"] .app__note {
+  max-width: none;
+  overflow: auto;
+}
+
+[data-role="main"] .app__editing {
+  display: none;
+}
+
+/* The main window's messages (the note window has its editor's status line). */
+.status-line {
+  position: fixed;
+  right: 1rem;
+  bottom: 0.75rem;
+  z-index: 15;
+  max-width: min(40rem, 80vw);
+  padding: 0.3rem 0.75rem;
+  border-radius: 4px;
+  background: var(--nord1);
+  color: var(--nord5);
+  font-size: 0.85rem;
+  box-shadow: 0 0 0 1px var(--nord3);
+}
+
+.status-line:empty {
+  display: none;
+}
+
+.status-line--error {
+  color: var(--nord11);
+  box-shadow: 0 0 0 1px var(--nord11);
+}
+
+/* Narrow (the note window, the laptop): one column; the sidebar becomes a drawer
    (navigator.css). Keep the width in step with NARROW_QUERY in static/js/layout/navigator.js. */
 @media (max-width: 1399.98px) {
   .app {

@@ -71,15 +71,15 @@ test("records: a selection becomes a one-line title", () => {
 test("records: decisions newest first; a hub's, an area's, a meeting's, a person's", () => {
   const c = ctx();
   assertEqual(titles(recordsOn(c.tree, c.records, c.tree.get(2), "decision")), "Ship in March,Use Postgres");
-  assertEqual(titles(recordsOn(c.tree, c.records, c.tree.get(1), "decision")), "Ship in March,Use Postgres,One budget",
-    "an area: its own and its live projects'");
+  assertEqual(titles(recordsOn(c.tree, c.records, c.tree.get(1), "decision")), "One budget",
+    "an area: its own only (a project's roll up to the project, never further)");
   assertEqual(titles(recordsOn(c.tree, c.records, c.tree.get(20), "decision")), "Ship in March", "a meeting's: made from it");
   assertEqual(titles(recordsOn(c.tree, c.records, c.tree.get(10), "decision")), "Use Postgres,One budget,Old call",
     "a person's: archived last");
   assertEqual(peopleOf(c.tree, c.records, 30).map((p) => p.title).join(), "Bob Lee,Jane Doe", "by name, missing skipped");
   const rows = tab("decisions").rows(c, c.tree.get(1));
   assertEqual(rows.map((r) => r.detail).join("|"),
-    "2026-11-24 · on Rollout · from Kickoff|2026-11-20 · on Rollout · Bob Lee, Jane Doe|2026-11-18 · Jane Doe");
+    "2026-11-18 · Jane Doe", "an area's own only");
   const mine = tab("decisions").rows(c, c.tree.get(10));
   assertEqual(mine[2].detail, "2025-01-01 · Old plan · Jane Doe · archived");
   assertTrue(mine[2].muted && !mine[0].muted);
@@ -108,6 +108,7 @@ function fakeApp(currentId) {
     today: () => TODAY,
     messages: [],
     editor: { showMessage: (text) => app.messages.push(text) },
+    say: (text) => app.messages.push(text),
     refreshTree: async () => calls.push("refresh"),
     saveBeforeSwitching: async () => true,
     open: async (id) => calls.push(`open ${id}`),

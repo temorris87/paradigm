@@ -8,6 +8,8 @@
 //   Meeting · Tue 2026-11-24 14:00–15:00 ✎ · in Rollout · Room 4 · Join ↗ (Cancelled first)
 //     Attendees: Jane Doe ×, Bob Lee × + Add attendee
 //   Person · Jane Doe · jane@example.com · +1 555 0100 · Northwind · Data engineer ✎
+//   Phase · in Pilot · 3 Nov → 12 Dec ✎ · +9 d, moved 3× (its history) · 4 open tasks
+//   Milestone · to come ▾ · 17 Jan ✎ · in Design · +5 d, moved 1×
 //   Question ▾ open · asked 2026-11-24 · in Rollout · with Jane Doe × + Add person
 //     From: Kickoff "Who owns the feed?"
 // "Archived ·" comes first when archived. Empty when no such note is open.
@@ -18,6 +20,9 @@ import { peopleOn } from "../people/people-model.js";
 import { isOpen, peopleOf } from "../records/records-model.js";
 import { projectFacts } from "../home/home-model.js";
 import { areaOf, projectsIn } from "./hub-areas.js";
+import { Plan, nextMilestone, shortDay, slipOf, slipText } from "../plan/plan-model.js";
+import { openCount } from "../tasks/tasks-model.js";
+import { localDay } from "../meetings/meeting-days.js";
 import { NO_CONTROLS, factButton, miniButton } from "./hub-line-controls.js";
 import { dueText, isOverdue, statusLabel } from "./project-facts.js";
 
@@ -28,8 +33,8 @@ export function showHubLine(line, ctx, hub, onOpen, controls = NO_CONTROLS) {
     return;
   }
   const { tree } = ctx;
-  const label = isRecordKind(hub.kind) ? RECORD_LABELS[hub.kind] : groupForKind(hub.kind).label;
-  const filable = !isRecordKind(hub.kind) && hub.kind !== "person";
+  const label = isRecordKind(hub.kind) ? RECORD_LABELS[hub.kind] : hub.kind === "phase" ? "Phase" : groupForKind(hub.kind).label;
+  const filable = !isRecordKind(hub.kind) && hub.kind !== "person" && hub.kind !== "phase";
   const first = [filable
     ? factButton("hub-line__kind", label, "File it as a project, an area, a resource or in the Inbox",
       (button) => controls.file(button, hub), { caret: true })
@@ -43,6 +48,7 @@ export function showHubLine(line, ctx, hub, onOpen, controls = NO_CONTROLS) {
 function detailsOf(ctx, hub, onOpen, controls) {
   if (hub.kind === "person") return [personDetails(ctx.people.get(hub.id), hub, controls), []];
   if (hub.kind === "meeting") return meetingDetails(ctx, hub, onOpen, controls);
+  if (hub.kind === "phase" || hub.kind === "milestone") return planDetails(ctx, hub, onOpen, controls);
   if (isRecordKind(hub.kind)) return recordDetails(ctx, hub, onOpen, controls);
   if (hub.kind === "project") return projectDetails(ctx, hub, onOpen, controls);
   if (hub.kind === "area") return areaDetails(ctx, hub, controls);
@@ -77,6 +83,14 @@ function projectDetails(ctx, project, onOpen, controls) {
     second.push(separator(), span("hub-line__label", "Next:"), linkTo(tree.get(next.id), false, onOpen,
       `${tree.get(next.id).title}, ${whenText(next)}`));
   }
+  const plan = ctx.plan ?? new Plan();
+  const milestone = nextMilestone(tree, plan, project.id);
+  if (milestone) {
+    second.push(separator(), span("hub-line__label", "Milestone:"), linkTo(milestone.note, false, onOpen,
+      `${milestone.note.title}, ${shortDay(milestone.milestone.day, localDay(today))}`));
+  }
+  const applied = plan.appliedTo(project.id);
+  if (applied) second.push(separator(), span("hub-line__text hub-line__text--none", `plan from “${applied.title}”`));
   return [first, second];
 }
 
@@ -93,6 +107,41 @@ function timeCodeParts(tree, hub, controls) {
       span("hub-line__text hub-line__text--none", " (from area)"), miniButton("✎", "Give it a time code of its own", edit)];
   }
   return [factButton("hub-line__set", "Set time code", "The timesheet code its time is booked to", edit)];
+}
+
+function planDetails(ctx, note, onOpen, controls) {
+  const { tree } = ctx;
+  const plan = ctx.plan ?? new Plan();
+  const today = localDay(ctx.today ?? new Date());
+  const parent = tree.get(tree.parentId(note.id));
+  const parts = [];
+  if (note.kind === "milestone") {
+    const milestone = plan.milestone(note.id);
+    if (!milestone) return [[], []];
+    const done = Boolean(milestone.done_day);
+    parts.push(factButton("hub-line__state", done ? `reached ${shortDay(milestone.done_day, today)}` : "to come",
+      done ? "Not reached after all" : "Mark it reached", (button) => controls.milestoneState(button, note), { caret: true }), separator(),
+    factButton(`hub-line__when${!done && milestone.day < today ? " hub-line__when--late" : ""}`, shortDay(milestone.day, today),
+      "Move its day (the move is kept in its history)", () => controls.dates(note)));
+  } else {
+    const phase = plan.phase(note.id);
+    if (!phase) return [[], []];
+    parts.push(factButton("hub-line__when", `${shortDay(phase.start, today)} → ${shortDay(phase.end, today)}`,
+      "Move its dates (each move is kept in its history)", () => controls.dates(note)));
+  }
+  if (parent) parts.push(separator(), span("hub-line__text", "in "), linkTo(parent, isArchived(tree, parent.id), onOpen));
+  const slip = slipOf(plan, note.id);
+  if (slip.moves) {
+    parts.push(separator(), factButton(`hub-line__slip${slip.keepsSlipping ? " hub-line__slip--late" : ""}`,
+      `${slipText(slip)}${slip.keepsSlipping ? " · keeps slipping" : ""}`, "Its date history", () => controls.history(note)));
+  } else {
+    parts.push(separator(), span("hub-line__text hub-line__text--none", "on its first dates"));
+  }
+  if (ctx.tasks) {
+    const open = openCount(tree, ctx.tasks, note);
+    if (open) parts.push(separator(), span("hub-line__text", `${open} open task${open === 1 ? "" : "s"}`));
+  }
+  return [parts, []];
 }
 
 function areaDetails(ctx, area, controls) {

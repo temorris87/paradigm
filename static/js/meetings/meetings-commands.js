@@ -29,7 +29,7 @@ export async function makeMeeting(app, hub, title, day, time, { attendeeIds = []
   if (attendeeIds.length) await app.meetingsApi.attend(note.id, attendeeIds);
   await app.refreshTree();
   await app.open(note.id);
-  app.editor.showMessage(`"${note.title}" made in ${hub.title}`);
+  app.say(`"${note.title}" made in ${hub.title}`);
 }
 
 /** :date {date} [{time}]: sets the open meeting's date and time (no time: none). */
@@ -48,7 +48,7 @@ export async function setMeetingWhen(app, id, day, time, endTime = undefined) {
   app.changes?.send({ type: "changed", what: ["meetings"] });
   if (note.id === app.currentId) app.session.updateMeta(note);
   await app.refreshTree();
-  app.editor.showMessage(`"${note.title}" is on ${whenText(meeting)}`);
+  app.say(`"${note.title}" is on ${whenText(meeting)}`);
 }
 
 /** :attendee[!] {name}[, {name}...]: they attend the open meeting; ! adds new people. */
@@ -65,7 +65,7 @@ export async function addAttendees(app, id, { people, made }) {
   await app.refreshTree();
   const title = (personId) => people.find((person) => person.id === personId).title;
   const news = made ? ` (${made} new in People)` : "";
-  app.editor.showMessage(added.length
+  app.say(added.length
     ? `${added.map(title).join(", ")} attending ${app.tree.get(id).title}${news}`
     : "They are all attending already");
 }
@@ -84,7 +84,7 @@ export async function dropAttendeeCommand(app, arg) {
 export async function dropAttendee(app, id, person) {
   await app.meetingsApi.unattend(id, person.id);
   await app.refreshTree();
-  app.editor.showMessage(`${person.title} is off ${app.tree.get(id).title}`);
+  app.say(`${person.title} is off ${app.tree.get(id).title}`);
 }
 
 /** "tomorrow 9:30 Kickoff" -> { day, time: "09:30", rest: "Kickoff" }: a leading date, then a

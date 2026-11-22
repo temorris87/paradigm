@@ -15,6 +15,9 @@ export const FIELDS = {
     agenda: { label: "Agenda", hint: "what to cover" },
     main: { label: "Notes", hint: `the minutes; ${FROM_TEXT}` },
   },
+  phase: { main: { label: "Notes", hint: "what this phase covers, and what done looks like for it" } },
+  milestone: { main: { label: "Notes", hint: "what has to be true on this day" } },
+  template: { main: { label: "Template", hint: "{{date}}, {{time}}, {{title}} are filled in; {{cursor}} is where the cursor goes; - [ ] lines become tasks" } },
   decision: { main: { label: "Why", hint: "why it was decided, and what else was weighed" } },
   question: { main: { label: "Answer", hint: "the discussion, and the answer once there is one" } },
 };

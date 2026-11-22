@@ -1,26 +1,33 @@
-"""Every read and write of tasks and their sessions, outside a note save (which stores the
-tasks read from its text: db/task_index.py). The only code besides task_index that knows the
-tasks and task_sessions tables."""
+"""Every read and write of tasks and their blocks of time (017_task_records.sql). The only
+code that knows the tasks and task_sessions tables.
+
+A task belongs to one note; a subtask to a task on the same note (one level). A task can be
+delegated to a person, with a day to follow it up. Deleting a task that has blocks of time
+keeps its row (removed_at), since those blocks are time worked."""
 import sqlite3
 from typing import Callable, Dict, List, Optional
 
 from paradigm.db.connection import Database
 from paradigm.db.notes_repo import NoteError, NotFound, live_note_row, utc_now
-from paradigm.db.task_index import field_texts, local_today
+from paradigm.db.people_repo import NotAPerson, person_row
+from paradigm.notes.days import local_today
 from paradigm.notes.meetings import BadWhen
 from paradigm.notes.sessions import clean_span
-from paradigm.notes.tasks import box_state, set_box
+from paradigm.notes.tasks import BadTask, clean_optional_day, clean_task_notes, clean_task_title
 
 Clock = Callable[[], str]
 
-__all__ = ["TaskRepository", "TaskMoved", "NotFound", "BadWhen"]
+__all__ = ["TaskRepository", "NotFound", "BadWhen", "BadTask", "NotAPerson", "NoTasksHere"]
 
-# A task is live while its line is in a live note.
+# A task is live while it isn't deleted and its note isn't trashed.
 _LIVE_TASK = "tasks.removed_at IS NULL AND notes.deleted_at IS NULL"
+# The fields update() may change, and how each is cleaned.
+_FIELDS = {"title": clean_task_title, "notes": clean_task_notes, "due": clean_optional_day,
+           "follow_up": clean_optional_day}
 
 
-class TaskMoved(NoteError):
-    """The task's line no longer holds its box (the note changed and was not read again yet)."""
+class NoTasksHere(NoteError):
+    """A person's note or a template holds no tasks; a subtask has no subtasks."""
 
 
 class TaskRepository:
@@ -30,11 +37,11 @@ class TaskRepository:
         self._today = today
 
     def list(self) -> List[Dict]:
-        """Every live task, in note and line order."""
+        """Every live task, by note, then in their order."""
         with self._db.reading() as conn:
             rows = conn.execute(
                 "SELECT tasks.* FROM tasks JOIN notes ON notes.id = tasks.note_id WHERE " + _LIVE_TASK +
-                " ORDER BY tasks.note_id, tasks.field, tasks.line"
+                " ORDER BY tasks.note_id, tasks.position, tasks.id"
             ).fetchall()
         return [_task(row) for row in rows]
 
@@ -42,40 +49,94 @@ class TaskRepository:
         with self._db.reading() as conn:
             return _task(_task_row(conn, task_id))
 
+    def create(self, note_id: int, title: object, parent_id: Optional[int] = None, due: object = "",
+               notes: object = "") -> Dict:
+        title, due, notes = clean_task_title(title), clean_optional_day(due), clean_task_notes(notes)
+        with self._db.transaction() as conn:
+            task_id = self.insert(conn, note_id, title, parent_id, due, notes)
+            return _task(_task_row(conn, task_id))
+
+    def insert(self, conn: sqlite3.Connection, note_id: int, title: str, parent_id: Optional[int] = None,
+               due: str = "", notes: str = "") -> int:
+        """Adds a task inside a caller's transaction (a template or plan bringing its tasks);
+        the values are clean already. Returns its id."""
+        _check_owner(conn, note_id)
+        if parent_id is not None:
+            parent = _task_row(conn, parent_id)
+            if parent["note_id"] != note_id:
+                raise NoTasksHere("A subtask goes on the same note as its task")
+            if parent["parent_id"] is not None:
+                raise NoTasksHere('"{}" is a subtask: subtasks go one level deep'.format(parent["title"]))
+        position = conn.execute(
+            "SELECT ifnull(max(position), 0) + 1 FROM tasks WHERE note_id = ? AND parent_id IS ?",
+            (note_id, parent_id)).fetchone()[0]
+        return conn.execute(
+            "INSERT INTO tasks (note_id, parent_id, title, notes, due, position, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (note_id, parent_id, title, notes, due, position, self._clock()),
+        ).lastrowid
+
+    def update(self, task_id: int, values: Dict[str, object]) -> Dict:
+        """Changes any of title, notes, due, follow_up."""
+        clean = {key: _FIELDS[key](value) for key, value in values.items() if key in _FIELDS}
+        with self._db.transaction() as conn:
+            _task_row(conn, task_id)
+            for key, value in clean.items():
+                # key comes from _FIELDS, never from input.
+                conn.execute("UPDATE tasks SET {} = ? WHERE id = ?".format(key), (value, task_id))
+            return _task(_task_row(conn, task_id))
+
+    def delegate(self, task_id: int, person_id: Optional[int], follow_up: object = "") -> Dict:
+        """Hands a task to a person (None: back to me), with a day to follow it up."""
+        follow_up = clean_optional_day(follow_up) if person_id is not None else ""
+        with self._db.transaction() as conn:
+            _task_row(conn, task_id)
+            if person_id is not None:
+                person_row(conn, person_id)
+            conn.execute("UPDATE tasks SET delegate_id = ?, follow_up = ? WHERE id = ?",
+                         (person_id, follow_up, task_id))
+            return _task(_task_row(conn, task_id))
+
     def set_done(self, task_id: int, done: bool) -> Dict:
-        """Ticks or clears the task's box in its note's text (the note's version goes up).
-        Returns {task, note_id, field, version}: the field's new version."""
         with self._db.transaction() as conn:
             row = _task_row(conn, task_id)
-            texts = field_texts(conn, row["note_id"])
-            lines = texts[row["field"]].split("\n")
-            if row["line"] >= len(lines) or box_state(lines[row["line"]]) is None:
-                raise TaskMoved('"{}" is no longer where it was: open its note and tick it there'.format(row["title"]))
-            lines[row["line"]] = set_box(lines[row["line"]], done)
-            text = "\n".join(lines)
-            version = self._write_field(conn, row["note_id"], row["field"], text)
-            conn.execute("UPDATE task_texts SET text = ? WHERE note_id = ? AND field = ?",
-                         (text, row["note_id"], row["field"]))
             done_day = (row["done_day"] or self._today()) if done else ""
             conn.execute("UPDATE tasks SET done = ?, done_day = ? WHERE id = ?", (int(done), done_day, task_id))
-            task = _task(_task_row(conn, task_id))
-        return {"task": task, "note_id": row["note_id"], "field": row["field"], "version": version}
+            return _task(_task_row(conn, task_id))
 
-    def _write_field(self, conn: sqlite3.Connection, note_id: int, field: str, text: str) -> int:
-        """Stores a field's text with its version one up; the link index, read from the text
-        before (only a box changed), moves up with it."""
-        now = self._clock()
-        if field == "body":
-            old = conn.execute("SELECT version FROM notes WHERE id = ?", (note_id,)).fetchone()[0]
-            conn.execute("UPDATE notes SET body = ?, version = version + 1, updated_at = ? WHERE id = ?",
-                         (text, now, note_id))
-            conn.execute("UPDATE link_index SET version = ? WHERE note_id = ? AND version = ?",
-                         (old + 1, note_id, old))
-            return old + 1
-        conn.execute("UPDATE meetings SET agenda = ?, agenda_version = agenda_version + 1 WHERE note_id = ?",
-                     (text, note_id))
-        conn.execute("UPDATE notes SET updated_at = ? WHERE id = ?", (now, note_id))
-        return conn.execute("SELECT agenda_version FROM meetings WHERE note_id = ?", (note_id,)).fetchone()[0]
+    def move(self, task_id: int, before_id: Optional[int]) -> Dict:
+        """Puts a task just before another of its siblings (None: last)."""
+        with self._db.transaction() as conn:
+            row = _task_row(conn, task_id)
+            siblings = [each[0] for each in conn.execute(
+                "SELECT id FROM tasks WHERE note_id = ? AND parent_id IS ? AND removed_at IS NULL AND id != ? "
+                "ORDER BY position, id", (row["note_id"], row["parent_id"], task_id))]
+            index = siblings.index(before_id) if before_id in siblings else len(siblings)
+            siblings.insert(index, task_id)
+            conn.executemany("UPDATE tasks SET position = ? WHERE id = ?",
+                             [(place, each) for place, each in enumerate(siblings, 1)])
+            return _task(_task_row(conn, task_id))
+
+    def remove(self, task_id: int) -> List[int]:
+        """Deletes a task and its subtasks. One with blocks of time is only marked removed (the
+        blocks are time worked). Returns the ids gone."""
+        with self._db.transaction() as conn:
+            _task_row(conn, task_id)
+            ids = [task_id] + [each[0] for each in conn.execute(
+                "SELECT id FROM tasks WHERE parent_id = ? AND removed_at IS NULL", (task_id,))]
+            now = self._clock()
+            for each in ids:
+                logged = conn.execute("SELECT 1 FROM task_sessions WHERE task_id = ? LIMIT 1", (each,)).fetchone()
+                if logged:
+                    conn.execute("UPDATE tasks SET removed_at = ? WHERE id = ?", (now, each))
+            # Subtasks first: the parent may still be pointed at.
+            for each in reversed(ids):
+                if not conn.execute("SELECT 1 FROM task_sessions WHERE task_id = ? LIMIT 1", (each,)).fetchone():
+                    conn.execute("UPDATE tasks SET parent_id = NULL WHERE parent_id = ?", (each,))
+                    conn.execute("DELETE FROM tasks WHERE id = ?", (each,))
+        return ids
+
+    # ---- blocks of time ----
 
     def sessions(self, first: Optional[str] = None, last: Optional[str] = None) -> List[Dict]:
         """The sessions of live tasks, between two days (inclusive) when given."""
@@ -111,13 +172,23 @@ class TaskRepository:
 
 
 def _task(row: sqlite3.Row) -> Dict:
-    return {"id": row["id"], "note_id": row["note_id"], "field": row["field"], "line": row["line"],
-            "parent_id": row["parent_id"], "title": row["title"], "done": bool(row["done"]),
-            "done_day": row["done_day"]}
+    return {"id": row["id"], "note_id": row["note_id"], "parent_id": row["parent_id"], "title": row["title"],
+            "notes": row["notes"], "due": row["due"], "delegate_id": row["delegate_id"],
+            "follow_up": row["follow_up"], "done": bool(row["done"]), "done_day": row["done_day"],
+            "position": row["position"]}
 
 
 def _session(row: sqlite3.Row) -> Dict:
     return {"id": row["id"], "task_id": row["task_id"], "day": row["day"], "start": row["start"], "end": row["end"]}
+
+
+def _check_owner(conn: sqlite3.Connection, note_id: int) -> None:
+    row = live_note_row(conn, note_id)
+    if row["is_person"]:
+        raise NoTasksHere('"{}" is a person: put the task on a hub or a note, and delegate it to them'.format(
+            row["title"]))
+    if row["is_template"]:
+        raise NoTasksHere('"{}" is a template: write "- [ ]" lines in it instead'.format(row["title"]))
 
 
 def _task_row(conn: sqlite3.Connection, task_id: int) -> sqlite3.Row:
@@ -127,7 +198,6 @@ def _task_row(conn: sqlite3.Connection, task_id: int) -> sqlite3.Row:
     ).fetchone()
     if row is None:
         raise NotFound("No such task: {}".format(task_id))
-    live_note_row(conn, row["note_id"])
     return row
 
 

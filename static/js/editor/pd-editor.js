@@ -11,6 +11,7 @@
 //   editor.goToLine(12);              // cursor to a line (0-based)
 //   editor.insertText("text");        // at the cursor, as if pasted (see "files" below)
 //   editor.insertText("a\nb", { asLines: true, line: 4 })  // whole lines below line 4
+//   editor.insertLines("a\nb", { cursorAt: 1 })   // below the cursor's line; the cursor on "b"
 //   editor.replaceLine(4, "- [x] Done")  // one line's text from the host: one undo step, the
 //                                     // cursor stays; resolves false in insert mode (not done)
 //   editor.selectedText                // the visual selection's text, or null
@@ -329,6 +330,17 @@ export class PdEditor extends HTMLElement {
     const clean = String(text).replace(/\r\n?/g, "\n");
     if (!asLines && this.vim.isInsertLike()) this.enqueue({ paste: clean });
     else this.enqueue(() => this.vim.putFromOutside(clean, { asLines, line }));
+  }
+
+  /** Whole lines from the host below the cursor's line (one undo step); cursorAt (a line of
+   * text, 0-based) puts the cursor there afterwards, else it stays on the first new line. */
+  insertLines(text, { cursorAt = null } = {}) {
+    const clean = String(text).replace(/\r\n?/g, "\n");
+    this.enqueue(() => {
+      const at = this.vim.cursor.line;
+      this.vim.putFromOutside(clean, { asLines: true, line: at });
+      if (cursorAt !== null) this.vim.click({ line: Math.min(at + 1 + cursorAt, this.vim.buf.lastLine), col: 0 });
+    });
   }
 
   replaceLine(line, text) {

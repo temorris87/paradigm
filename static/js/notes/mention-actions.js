@@ -91,7 +91,7 @@ async function rewriteIn(app, ids, names, newName) {
     changed += body.changed + (agenda?.changed ?? 0);
   }
   await app.refreshTree();
-  app.editor.showMessage(`${changed} mention${changed === 1 ? "" : "s"} now say @${newName}`);
+  app.say(`${changed} mention${changed === 1 ? "" : "s"} now say @${newName}`);
 }
 
 function squash(text) {

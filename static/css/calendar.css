@@ -1,30 +1,28 @@
-/* The calendar window (calendar.html): a bar, the task sidebar and the week grid. Landscape:
-   it opens on the left 2/3 of the screen. */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  margin: 0;
-  height: 100%;
-}
-
-.cal-page {
+/* The calendar page in the main window (.cal-view, &calendar): a bar, the task sidebar and
+   the week grid, as tall as the window. */
+.cal-view {
   --cal-hour: 48px; /* keep in step with HOUR_PX in grid-view.js */
   --cal-gutter: 3.5rem;
   display: flex;
   flex-direction: column;
-  background: var(--nord0);
-  color: var(--nord4);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  height: calc(100vh - 4.5rem);
+  min-height: 30rem;
+  border: 1px solid var(--nord2);
+  border-radius: 6px;
+  overflow: hidden;
   line-height: 1.4;
 }
 
-.cal-page.is-dragging,
-.cal-page.is-dragging * {
+.cal-view[hidden] {
+  display: none;
+}
+
+.cal-view:focus {
+  outline: none;
+}
+
+body.is-dragging,
+body.is-dragging * {
   cursor: grabbing !important;
   user-select: none;
 }

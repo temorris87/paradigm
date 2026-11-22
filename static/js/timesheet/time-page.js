@@ -1,9 +1,9 @@
-// The timesheet window: the week's hours by time code (Monday to Friday, each day exactly the
+// The timesheet page, in the main window (&time): the week's hours by time code (Monday to Friday, each day exactly the
 // working day), how they were made, and the settings (codes, hours, holidays, time off). The
 // sums are the server's (paradigm/timesheet/report.py); this page shows them and copies them.
 //
-//   const page = new TimePage({ bar, main, api: timeApi, changes, today: () => new Date() });
-//   await page.start();
+//   const page = new TimePage({ root, bar, main, api: timeApi, changes, isShown(), today: () => new Date() });
+//   page.show() / page.focus()      when its page comes into view (loads it the first time)
 import { addDays, dateOf, localDay, whenText } from "../meetings/meeting-days.js";
 import { confirmDialog } from "../ui/dialog.js";
 import { copyGrid, dayHeading, hoursText } from "./copy.js";
@@ -16,7 +16,10 @@ const HOUR_FIELDS = [["day_start", "Working day starts"], ["day_end", "Working d
   ["lunch_start", "Lunch starts"], ["lunch_end", "Lunch ends"]];
 
 export class TimePage {
-  constructor({ bar, main, api, changes, today = () => new Date() }) {
+  constructor({ root, bar, main, api, changes, isShown = () => true, today = () => new Date() }) {
+    this.root = root;
+    this.isShown = isShown;
+    this.started = false;
     this.api = api;
     this.today = today;
     this.monday = mondayOf(localDay(today()));
@@ -28,14 +31,27 @@ export class TimePage {
     this.settingsView = element("section", "time-settings");
     main.replaceChildren(this.weekView, this.settingsView);
     changes.listen((message) => {
-      if (message.type === "changed") this.run(this.load());
+      if (message.type === "changed" && this.started) this.run(this.load());
     });
-    window.addEventListener("focus", () => this.run(this.load()));
-    document.addEventListener("keydown", (event) => this.onKey(event));
+    window.addEventListener("focus", () => {
+      if (this.started && this.isShown()) this.run(this.load());
+    });
+    root.addEventListener("keydown", (event) => this.onKey(event));
   }
 
   async start() {
+    this.started = true;
     await this.load();
+  }
+
+  /** Its page came into view: loaded the first time, read again after. */
+  show() {
+    if (!this.started) this.run(this.start());
+    else this.run(this.load());
+  }
+
+  focus() {
+    this.root.focus({ preventScroll: true });
   }
 
   makeBar(bar) {
@@ -80,7 +96,6 @@ export class TimePage {
   async load() {
     this.report = await this.api.week(this.monday);
     this.bar.week.textContent = `Week of ${whenText({ day: this.monday })}`;
-    document.title = `Time · week of ${this.monday} - Paradigm`;
     this.drawWeek();
     this.show(this.tab);
   }

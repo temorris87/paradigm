@@ -8,7 +8,6 @@ from paradigm.db.links_repo import store_links
 from paradigm.notes.hubs import (HUB_KINDS, BadKind, BadProjectField, clean_due, clean_kind, clean_status,
                                  clean_time_code)
 from paradigm.notes.mentions import Mention
-from paradigm.notes.tasks import Task
 from paradigm.notes.people import split_name
 from paradigm.notes.titles import BadTitle, clean_title
 
@@ -92,15 +91,23 @@ def utc_now() -> str:
 _LIVE = "deleted_at IS NULL"
 # A note with a people row is a person (006_people.sql), one with a meetings row a meeting
 # (007_meetings.sql), one with a decisions or questions row a decision or a question
-# (008_decisions.sql): the is_* columns say so.
+# (008_decisions.sql), one with a phases or milestones row a phase or a milestone
+# (018_phases.sql), one with a note_templates row a template (019_templates.sql): the is_*
+# columns say so.
 _WITH_PERSON = ("SELECT notes.*, people.note_id IS NOT NULL AS is_person, "
                 "meetings.note_id IS NOT NULL AS is_meeting, meetings.agenda, meetings.agenda_version, "
                 "decisions.note_id IS NOT NULL AS is_decision, "
-                "questions.note_id IS NOT NULL AS is_question FROM notes "
+                "questions.note_id IS NOT NULL AS is_question, "
+                "phases.note_id IS NOT NULL AS is_phase, "
+                "milestones.note_id IS NOT NULL AS is_milestone, "
+                "note_templates.note_id IS NOT NULL AS is_template FROM notes "
                 "LEFT JOIN people ON people.note_id = notes.id "
                 "LEFT JOIN meetings ON meetings.note_id = notes.id "
                 "LEFT JOIN decisions ON decisions.note_id = notes.id "
-                "LEFT JOIN questions ON questions.note_id = notes.id")
+                "LEFT JOIN questions ON questions.note_id = notes.id "
+                "LEFT JOIN phases ON phases.note_id = notes.id "
+                "LEFT JOIN milestones ON milestones.note_id = notes.id "
+                "LEFT JOIN note_templates ON note_templates.note_id = notes.id")
 
 
 class NoteRepository:
@@ -136,8 +143,7 @@ class NoteRepository:
         return note
 
     def create(self, parent_id: Optional[int], title: object, body: str = "",
-               links: Optional[List[str]] = None, mentions: Optional[List[Mention]] = None,
-               tasks: Optional[List[Task]] = None) -> Dict:
+               links: Optional[List[str]] = None, mentions: Optional[List[Mention]] = None) -> Dict:
         """links: the wiki-link texts in body (009_links.sql), mentions its @mentions
         (011_pages.sql); links None leaves both to be read later (the note is stale until
         then)."""
@@ -153,13 +159,12 @@ class NoteRepository:
             )
             note_id = cursor.lastrowid
             if links is not None:
-                store_links(conn, note_id, 1, links, mentions or [], tasks)
+                store_links(conn, note_id, 1, links, mentions or [])
         return self.get(note_id)
 
     def save(self, note_id: int, body: str, base_version: int, force: bool = False,
-             links: Optional[List[str]] = None, mentions: Optional[List[Mention]] = None,
-             tasks: Optional[List[Task]] = None) -> Dict:
-        """links, mentions, tasks: as for create, stored with the version the note ends on. On
+             links: Optional[List[str]] = None, mentions: Optional[List[Mention]] = None) -> Dict:
+        """links, mentions: as for create, stored with the version the note ends on. On
         a meeting they are its whole text's: the agenda's too."""
         with self._db.transaction() as conn:
             row = _live_row(conn, note_id)
@@ -170,7 +175,7 @@ class NoteRepository:
                 self._change(conn, note_id, "body = ?, version = version + 1", (body,))
                 version += 1
             if links is not None:
-                store_links(conn, note_id, version, links, mentions or [], tasks)
+                store_links(conn, note_id, version, links, mentions or [])
         return self.get(note_id)
 
     def rename(self, note_id: int, title: object) -> Dict:
@@ -191,6 +196,8 @@ class NoteRepository:
             row = _live_row(conn, note_id)
             if parent_id is not None and row["is_person"]:
                 raise IsAPerson('"{}" is a person: a person stays at the top level'.format(row["title"]))
+            if parent_id is not None and row["is_template"]:
+                raise IsAPerson('"{}" is a template: a template stays in Templates'.format(row["title"]))
             if _in_hub_only(row):
                 _check_hub_place(conn, row, parent_id)
             if parent_id is not None:
@@ -214,8 +221,8 @@ class NoteRepository:
         kind = clean_kind(kind)
         with self._db.transaction() as conn:
             row = _live_row(conn, note_id)
-            if row["is_person"]:
-                raise IsAPerson('"{}" is a person, not a note to file'.format(row["title"]))
+            if row["is_person"] or row["is_template"]:
+                raise IsAPerson('"{}" is a {}, not a note to file'.format(row["title"], _kind(row)))
             if _in_hub_only(row):
                 raise StaysInAHub('"{}" is a {}: it stays inside its hub'.format(row["title"], _kind(row)))
             if row["parent_id"] is not None:
@@ -319,13 +326,18 @@ def _summary(row: sqlite3.Row) -> Dict:
             "updated_at": row["updated_at"]}
 
 
-# The record kinds a note can carry, besides being a person.
-_RECORD_KINDS = ("meeting", "decision", "question")
+# The record kinds a note can carry, besides being a person or a template. Each lives inside
+# a hub only (a phase in a project; a milestone in a project or one of its phases).
+_RECORD_KINDS = ("meeting", "decision", "question", "phase", "milestone")
+# The kinds that hold no notes under them: their page holds their text.
+_LEAF_KINDS = ("meeting", "decision", "question", "milestone", "template")
 
 
 def _kind(row: sqlite3.Row) -> Optional[str]:
     if row["is_person"]:
         return "person"
+    if row["is_template"]:
+        return "template"
     return next((kind for kind in _RECORD_KINDS if row["is_" + kind]), row["kind"])
 
 
@@ -334,16 +346,30 @@ def _in_hub_only(row: sqlite3.Row) -> bool:
 
 
 def _check_hub_place(conn: sqlite3.Connection, row: sqlite3.Row, parent_id: Optional[int]) -> None:
-    """A meeting, decision or question may move to another hub (directly under it), nowhere
-    else."""
+    """A meeting, decision or question may move to another hub (directly under it), a phase
+    to another project, a milestone to a project or a phase; nowhere else."""
     parent = None if parent_id is None else _live_row(conn, parent_id)
-    if parent is None or parent["parent_id"] is not None or parent["is_person"] or parent["kind"] not in HUB_KINDS:
+    kind = _kind(row)
+    if kind == "phase":
+        if parent is None or not _is_project(parent):
+            raise StaysInAHub('"{}" is a phase: it goes directly in a project'.format(row["title"]))
+        return
+    if kind == "milestone":
+        if parent is None or not (_is_project(parent) or parent["is_phase"]):
+            raise StaysInAHub('"{}" is a milestone: it goes in a project or one of its phases'.format(row["title"]))
+        return
+    if parent is None or parent["parent_id"] is not None or parent["is_person"] or parent["is_template"] \
+            or parent["kind"] not in HUB_KINDS:
         raise StaysInAHub('"{}" is a {}: it goes directly in a project, an area or a resource'.format(
-            row["title"], _kind(row)))
+            row["title"], kind))
+
+
+def _is_project(row: sqlite3.Row) -> bool:
+    return row["parent_id"] is None and row["kind"] == "project" and not row["is_person"] and not row["is_template"]
 
 
 def _refuse_notes_under(parent: sqlite3.Row) -> None:
-    if _in_hub_only(parent):
+    if _kind(parent) in _LEAF_KINDS:
         raise NoNotesUnder('"{}" is a {}: it has no notes under it (write in its page instead)'.format(
             parent["title"], _kind(parent)))
 

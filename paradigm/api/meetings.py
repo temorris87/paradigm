@@ -24,14 +24,13 @@ from paradigm.db.meetings_repo import (BadTitle, BadWhen, Conflict, HubArchived,
 from paradigm.db.notes_repo import NoteRepository, TitleTaken
 from paradigm.notes.links import BadLinks, clean_links
 from paradigm.notes.mentions import BadMentions, clean_mentions
-from paradigm.notes.tasks import BadTasks, clean_tasks
 from paradigm.web.requests import BadRequest, bool_field, int_field, int_list_field, read_json, str_field
 from paradigm.web.responses import send_json
 from paradigm.web.router import Router
 
 _STATUS = {NotFound: 404, NotAttending: 404, TitleTaken: 409, NotAMeeting: 400, NotAPerson: 400,
            NotAHub: 400, HubArchived: 400, BadWhen: 400, BadTitle: 400, BadLinks: 400, BadMentions: 400,
-           BadTasks: 400, BadRequest: 400}
+           BadRequest: 400}
 _answer = answering(_STATUS)
 
 
@@ -82,8 +81,7 @@ class MeetingsApi:
         links = None if payload.get("links") is None else clean_links(payload["links"])
         return self._meetings.save_agenda(int_field(payload, "id"), str_field(payload, "agenda"),
                                           int_field(payload, "version"), bool_field(payload, "force"),
-                                          links, clean_mentions(payload.get("mentions")),
-                                          None if payload.get("tasks") is None else clean_tasks(payload["tasks"]))
+                                          links, clean_mentions(payload.get("mentions")))
 
     def attend(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)

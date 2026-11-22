@@ -164,7 +164,7 @@ test("hub groups: four in order, notes grouped by their top-level note", () => {
 
 test("tree view: groups with counts, hubs under them, empty ones marked", () => withTree(({ ul, view }) => {
   view.show(new NoteTree(FILED), 3);
-  assertEqual(headings(ul), "▾Inbox+1,▾Projects+2,▾Areas+1,Resources+0,People+0,Archive0");
+  assertEqual(headings(ul), "▾Inbox+1,▾Projects+2,▾Areas+1,Resources+0,People+0,Templates+0,Archive0");
   assertEqual(titles(ul), "Welcome,Acme,Beta,Health");
   assertTrue(ul.querySelector('[data-group="resource"]').classList.contains("tree__item--empty"));
   assertEqual(ul.querySelector('[data-id="1"]').getAttribute("aria-level"), "2");
@@ -246,7 +246,7 @@ test("hub groups: an archived hub and its notes are in the Archive, not their gr
 test("tree view: the Archive is last, folded by default, its hubs labelled with their kind", () => withTree(({ ul, view }) => {
   const tree = new NoteTree(ARCHIVED);
   view.show(tree, 3);
-  assertEqual(headings(ul), "▾Inbox+1,▾Projects+2,▾Areas+1,Resources+0,People+0,▸Archive2");
+  assertEqual(headings(ul), "▾Inbox+1,▾Projects+2,▾Areas+1,Resources+0,People+0,Templates+0,▸Archive2");
   assertEqual(titles(ul), "Welcome,Acme,Beta,Health", "folded");
   view.setOpen("group:archive", true);
   assertEqual(titles(ul), "Welcome,Acme,Beta,Health,Gamma,Scratch");

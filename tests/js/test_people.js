@@ -40,7 +40,7 @@ test("people: a person is a top-level note in the People group, not a hub", () =
   assertTrue(!isHub(tree, 10), "a person is not a hub");
   assertEqual(groupOf(tree, 10), PEOPLE_GROUP);
   assertEqual(groupOf(tree, 14), PEOPLE_GROUP, "a note under a person is in People too");
-  assertEqual(NAV_GROUPS.map((g) => g.key).join(), "inbox,project,area,resource,people,archive");
+  assertEqual(NAV_GROUPS.map((g) => g.key).join(), "inbox,project,area,resource,people,templates,archive");
   assertEqual(hubsIn(tree, PEOPLE_GROUP).map((n) => n.title).join(), "Bob Smith,Cy Young,Jane Doe", "the archived one is in the Archive");
   assertTrue(PEOPLE_GROUP.foldedByDefault);
 });
@@ -122,6 +122,7 @@ function fakeApp(currentId, { people = PEOPLE } = {}) {
     currentId,
     messages: [],
     editor: { showMessage: (text) => app.messages.push(text) },
+    say: (text) => app.messages.push(text),
     refreshTree: async () => calls.push("refresh"),
     saveBeforeSwitching: async () => true,
     open: async (id) => calls.push(`open ${id}`),
@@ -259,13 +260,13 @@ test("person page: the card and the Active, Archived and Backlinks sections", ()
     const hub = new HubPage({ page, line, section, onOpen: () => {}, onLeave: () => {} });
     hub.show(ctx(), 10);
     assertEqual(line.textContent, "Person·jane@example.com·Northwind·Data engineer✎");
-    assertEqual([...section.querySelectorAll(".hub__label")].map((t) => t.textContent).join(), "Active,Archived,Backlinks");
+    assertEqual([...section.querySelectorAll(".hub__label")].map((t) => t.textContent).join(), "Waiting on,Active,Archived,Backlinks");
     hub.show(ctx(), 13);
     assertEqual(line.textContent, "Person·Add details");
     hub.show(ctx(), 12);
     assertTrue(line.textContent.startsWith("Archived·Person"), line.textContent);
     hub.show(ctx(), 14);
-    assertTrue(section.hidden, "a note under a person has no sections");
+    assertEqual([...section.querySelectorAll(".hub__label")].map((t) => t.textContent).join(), "Tasks,Files", "a note under a person: its tasks and files");
   } finally {
     page.remove();
     localStorage.removeItem("paradigm.hub.folds");

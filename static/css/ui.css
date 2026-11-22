@@ -268,3 +268,16 @@
   color: var(--nord6);
   opacity: 1;
 }
+
+/* A list under a dialog's words (a date history). */
+.dialog__lines {
+  margin: 0 0 0.75rem;
+  padding-left: 1.2rem;
+  max-height: 50vh;
+  overflow: auto;
+  font-size: 0.9rem;
+}
+
+.dialog__line + .dialog__line {
+  margin-top: 0.2rem;
+}

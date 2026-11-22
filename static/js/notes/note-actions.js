@@ -12,10 +12,12 @@ import { pickFrom } from "../ui/picker.js";
 import { groupOf, isHub, isRecordKind, RECORD_LABELS } from "./hub-groups.js";
 import { whenText } from "../meetings/meeting-days.js";
 import { noteMenuItems } from "./note-menu.js";
+import { makePhaseDialog, unmakePhase } from "../plan/plan-commands.js";
+import { createFromTemplate, insertTemplateDialog, templateChoices } from "../templates/template-commands.js";
 
 export function openNoteMenu(app, anchor) {
   const id = app.currentId;
-  const entries = noteMenuItems(app.tree, id).map((item) => {
+  const entries = noteMenuItems(app.tree, id, { window: app.role }).map((item) => {
     if (item === "separator" || item.group && !item.key) return item;
     return { ...item, run: () => app.guard(runItem(app, id, item)) };
   });
@@ -40,6 +42,10 @@ function runItem(app, id, item) {
     case "restore": return app.restoreCommand().then(() => app.focusNote());
     case "export": return app.exportCommand().then(() => app.focusNote());
     case "trash": return trashDialog(app, note, item.inside);
+    case "insertTemplate": return insertTemplateDialog(app);
+    case "makePhase": return makePhaseDialog(app, note);
+    case "unmakePhase": return unmakePhase(app, note);
+    case "dashboard": return app.dashboardCommand();
   }
   return undefined;
 }
@@ -47,14 +53,21 @@ function runItem(app, id, item) {
 export function newNoteDialog(app, parentId, { heading = "New note", kind = null, label = "Title", submit = "Make it" } = {}) {
   // A project or an area books time to a code (the timesheet); a project with none uses its area's.
   const coded = kind === "project" || kind === "area";
+  // A plain note can start from a template (its text, and its - [ ] lines as tasks).
+  const templates = kind ? [] : templateChoices(app.tree);
   return formDialog({
     title: heading,
     fields: [{ key: "title", label },
       ...(coded ? [{ key: "code", label: kind === "project" ? "Time code (optional: else its area's)" : "Time code (optional)",
-        optional: true, placeholder: "the code on the timesheet" }] : [])],
+        optional: true, placeholder: "the code on the timesheet" }] : []),
+      ...(templates.length ? [{ key: "template", label: "Start from a template", type: "select", value: "",
+        options: [["", "No template: an empty note"], ...templates] }] : [])],
     submit,
-    run: ({ title, code = "" }) => (kind ? app.createFiled(kind, title, { timeCode: code.trim() })
-      : app.createAndOpen(parentId, title, { strict: true })),
+    run: ({ title, code = "", template = "" }) => {
+      if (kind) return app.createFiled(kind, title, { timeCode: code.trim() });
+      if (template) return app.createAndOpen(parentId, title, { strict: true, make: () => createFromTemplate(app, parentId, title, Number(template)) });
+      return app.createAndOpen(parentId, title, { strict: true });
+    },
     ...focusNote(app),
   });
 }

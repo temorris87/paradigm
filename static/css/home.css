@@ -119,3 +119,8 @@
   color: var(--nord13);
   font-size: 0.9rem;
 }
+
+/* A delegated task past its follow-up day. */
+.home__row--late .home__meta {
+  color: var(--nord11);
+}

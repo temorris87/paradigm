@@ -10,7 +10,12 @@
 // after Resources, folded by default. They are not hubs and have no filing command.
 //
 // Meetings (kind "meeting", static/js/meetings/), decisions and questions (kinds "decision"
-// and "question", static/js/records/) are notes inside a hub, never at the top.
+// and "question", static/js/records/) are notes inside a hub, never at the top. So are a
+// project's phases (kind "phase", directly under it; they hold notes, and show in the tree)
+// and milestones (kind "milestone", under the project or a phase; static/js/plan/).
+//
+// Templates (kind "template", static/js/templates/) are top-level notes in a group of their
+// own after People, folded by default: text to put into other notes.
 export const HUB_GROUPS = [
   { key: "inbox", label: "Inbox", kind: null, heading: "Inbox", command: "inbox", asWhat: "in the Inbox" },
   { key: "project", label: "Project", kind: "project", heading: "Projects", command: "project", asWhat: "a project" },
@@ -18,21 +23,25 @@ export const HUB_GROUPS = [
   { key: "resource", label: "Resource", kind: "resource", heading: "Resources", command: "resource", asWhat: "a resource" },
 ];
 
-// Not groups: the kinds of note that live inside a hub, and what the tree tags their rows with.
-export const RECORD_LABELS = Object.freeze({ meeting: "Meeting", decision: "Decision", question: "Question" });
+// Not groups: the kinds of note that live inside a hub with no notes under them (the tree
+// leaves them out: they are on their hub's page), and what their rows are tagged with.
+export const RECORD_LABELS = Object.freeze({ meeting: "Meeting", decision: "Decision", question: "Question",
+  milestone: "Milestone" });
 
 export function isRecordKind(kind) {
   return typeof kind === "string" && Object.hasOwn(RECORD_LABELS, kind);
 }
 
 export const PEOPLE_GROUP = { key: "people", label: "Person", kind: "person", heading: "People", foldedByDefault: true };
+export const TEMPLATES_GROUP = { key: "templates", label: "Template", kind: "template", heading: "Templates", foldedByDefault: true };
 // showsKind: its hubs say what they were ("Project"), since their group no longer does.
 export const ARCHIVE_GROUP = { key: "archive", heading: "Archive", foldedByDefault: true, showsKind: true };
 
 /** Every group the navigator shows, in order. */
-export const NAV_GROUPS = [...HUB_GROUPS, PEOPLE_GROUP, ARCHIVE_GROUP];
+export const NAV_GROUPS = [...HUB_GROUPS, PEOPLE_GROUP, TEMPLATES_GROUP, ARCHIVE_GROUP];
 
-const KIND_GROUPS = [...HUB_GROUPS, PEOPLE_GROUP];
+const KIND_GROUPS = [...HUB_GROUPS, PEOPLE_GROUP, TEMPLATES_GROUP];
+const HUB_KINDS = new Set(["project", "area", "resource"]);
 
 export function groupForKind(kind) {
   return KIND_GROUPS.find((group) => group.kind === (kind ?? null)) ?? HUB_GROUPS[0];
@@ -65,7 +74,26 @@ export function isArchived(tree, id) {
 /** Whether a note is a hub: a top-level note filed as a project, an area or a resource. */
 export function isHub(tree, id) {
   const note = tree.get(id);
-  return Boolean(note?.kind) && note.kind !== "person" && !isRecordKind(note.kind) && tree.parentId(id) === null;
+  return HUB_KINDS.has(note?.kind) && tree.parentId(id) === null;
+}
+
+/** Whether a note is a project's phase, or a milestone. */
+export function isPhase(tree, id) {
+  return tree.get(id)?.kind === "phase";
+}
+
+export function isMilestone(tree, id) {
+  return tree.get(id)?.kind === "milestone";
+}
+
+export function isTemplate(tree, id) {
+  return tree.get(id)?.kind === "template";
+}
+
+/** The phase a note is in (itself when it is one), or null. */
+export function phaseOf(tree, id) {
+  if (!tree.has(id)) return null;
+  return [...tree.path(id)].reverse().find((note) => note.kind === "phase") ?? null;
 }
 
 /** Whether a note is a person's own note (always a top-level note). */

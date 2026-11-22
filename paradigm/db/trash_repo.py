@@ -19,19 +19,27 @@ _ROWS = ("SELECT notes.id, notes.parent_id, notes.title, notes.kind, notes.delet
          "people.note_id IS NOT NULL AS is_person, "
          "meetings.note_id IS NOT NULL AS is_meeting, "
          "decisions.note_id IS NOT NULL AS is_decision, "
-         "questions.note_id IS NOT NULL AS is_question FROM notes "
+         "questions.note_id IS NOT NULL AS is_question, "
+         "phases.note_id IS NOT NULL AS is_phase, "
+         "milestones.note_id IS NOT NULL AS is_milestone, "
+         "note_templates.note_id IS NOT NULL AS is_template FROM notes "
          "LEFT JOIN people ON people.note_id = notes.id "
          "LEFT JOIN meetings ON meetings.note_id = notes.id "
          "LEFT JOIN decisions ON decisions.note_id = notes.id "
-         "LEFT JOIN questions ON questions.note_id = notes.id ")
-_RECORD_KINDS = ("meeting", "decision", "question")
+         "LEFT JOIN questions ON questions.note_id = notes.id "
+         "LEFT JOIN phases ON phases.note_id = notes.id "
+         "LEFT JOIN milestones ON milestones.note_id = notes.id "
+         "LEFT JOIN note_templates ON note_templates.note_id = notes.id ")
+_RECORD_KINDS = ("meeting", "decision", "question", "phase", "milestone")
 
 # The tables holding a note's own rows, deleted with it for good: (table, column).
 _OWN_ROWS = [("meeting_sources", "meeting_id"), ("hub_people", "hub_id"), ("hub_people", "person_id"), ("meeting_people", "meeting_id"),
              ("meeting_people", "person_id"), ("record_people", "note_id"), ("record_people", "person_id"),
              ("meetings", "note_id"), ("decisions", "note_id"), ("questions", "note_id"), ("people", "note_id"),
              ("note_links", "note_id"), ("note_mentions", "note_id"), ("link_index", "note_id"),
-             ("record_sources", "note_id"), ("task_texts", "note_id")]
+             ("record_sources", "note_id"), ("phases", "note_id"), ("milestones", "note_id"),
+             ("schedule_changes", "note_id"), ("note_templates", "note_id"), ("file_links", "note_id"),
+             ("project_plans", "project_id")]
 
 
 class TrashRepository:
@@ -91,7 +99,13 @@ class TrashRepository:
                 return 0
             # A note's tasks go with it, and their sessions (its logged time with them).
             conn.executemany("DELETE FROM task_sessions WHERE task_id IN (SELECT id FROM tasks WHERE note_id = ?)", ids)
+            conn.executemany("UPDATE tasks SET parent_id = NULL WHERE note_id = ?", ids)
             conn.executemany("DELETE FROM tasks WHERE note_id = ?", ids)
+            conn.executemany("UPDATE tasks SET delegate_id = NULL, follow_up = '' WHERE delegate_id = ?", ids)
+            # A hub's linked folders go (the files stay in OneDrive), and an area's plan templates.
+            for (note_id,) in ids:
+                _purge_folders(conn, note_id)
+                _purge_plan_templates(conn, note_id)
             for table, column in _OWN_ROWS:
                 # table and column come from the fixed list above, never from input.
                 conn.executemany("DELETE FROM {} WHERE {} = ?".format(table, column), ids)
@@ -126,9 +140,30 @@ class TrashRepository:
         }
 
 
+def _purge_folders(conn: sqlite3.Connection, note_id: int) -> None:
+    folders = "SELECT id FROM file_folders WHERE note_id = ?"
+    conn.execute("DELETE FROM file_links WHERE file_id IN (SELECT id FROM files WHERE folder_id IN ({}))".format(folders),
+                 (note_id,))
+    conn.execute("DELETE FROM files WHERE folder_id IN ({})".format(folders), (note_id,))
+    conn.execute("DELETE FROM file_folders WHERE note_id = ?", (note_id,))
+
+
+def _purge_plan_templates(conn: sqlite3.Connection, area_id: int) -> None:
+    templates = "SELECT id FROM plan_templates WHERE area_id = ?"
+    items = "SELECT id FROM plan_items WHERE template_id IN ({})".format(templates)
+    conn.execute("UPDATE plan_item_tasks SET parent_id = NULL WHERE item_id IN ({})".format(items), (area_id,))
+    conn.execute("DELETE FROM plan_item_tasks WHERE item_id IN ({})".format(items), (area_id,))
+    conn.execute("UPDATE plan_items SET phase_id = NULL WHERE template_id IN ({})".format(templates), (area_id,))
+    conn.execute("DELETE FROM plan_items WHERE template_id IN ({})".format(templates), (area_id,))
+    conn.execute("UPDATE project_plans SET template_id = NULL WHERE template_id IN ({})".format(templates), (area_id,))
+    conn.execute("DELETE FROM plan_templates WHERE area_id = ?", (area_id,))
+
+
 def _kind(row: sqlite3.Row) -> Optional[str]:
     if row["is_person"]:
         return "person"
+    if row["is_template"]:
+        return "template"
     return next((kind for kind in _RECORD_KINDS if row["is_" + kind]), row["kind"])
 
 

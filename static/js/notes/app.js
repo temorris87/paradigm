@@ -1,4 +1,11 @@
-// The notes page: the tree, the breadcrumb and the editor on the open note, kept in step.
+// The notes app, in either of its two windows (static/js/windows/note-window.js):
+//   role "main"   the main window: the tree, Home, People, Meetings, the calendar, the
+//                 timesheet, and the dashboards of hubs and people (their card, text, plan
+//                 chart and sections). It never edits text: any other note it opens goes to
+//                 the note window.
+//   role "note"   the note window: the tree (a drawer), the breadcrumb and the editor on the
+//                 open note, its card and sections. Pages it asks for (Home, a dashboard...)
+//                 show in the main window.
 // It owns what the editor's events mean here: saving, following [[links]], note commands.
 //
 //   const app = new NotesApp({ editor, tree: ulElement, crumbs: navElement, navigator,
@@ -23,7 +30,7 @@ import { HubPage } from "../hubs/hub-page.js";
 import { showBreadcrumb } from "./breadcrumb.js";
 import { registerNoteCommands, runNoteCommand } from "./commands.js";
 import { headingLine } from "./headings.js";
-import { groupOf, isArchived, topNoteOf } from "./hub-groups.js";
+import { groupOf, hubOf, isArchived, isHub, isPerson, topNoteOf } from "./hub-groups.js";
 import { AgendaField } from "./agenda.js";
 import { mentionCompletions, openMention, rewriteMentionsOf } from "./mention-actions.js";
 import { personForMention } from "./mentions.js";
@@ -48,9 +55,13 @@ import { trashPage } from "../trash/trash-page.js";
 import { newPersonDialog } from "../people/people-page.js";
 import { Changes } from "../connection/changes.js";
 import { Tasks } from "../tasks/tasks-model.js";
-import { boxState, setBox, withTaskAdded } from "./tasks.js";
+import { boxState, setBox } from "./tasks.js";
 import { addDays, localDay } from "../meetings/meeting-days.js";
-import { popOut } from "../windows/popout.js";
+import { openNoteWindow, showMainWindow } from "../windows/note-window.js";
+import { Plan } from "../plan/plan-model.js";
+import { Files } from "../files/files-model.js";
+import { scanFolders } from "../files/file-commands.js";
+import { newTemplateDialog } from "../templates/template-commands.js";
 
 // The blocks of time loaded for the pages (a task's next block, Home's Today).
 const SESSIONS_BACK_DAYS = 7;
@@ -59,10 +70,22 @@ const SESSIONS_AHEAD_DAYS = 120;
 const UNSAVED = "E37: No write since last change (:w to save, or ! to drop the changes)";
 
 export class NotesApp {
-  constructor({ editor, tree, crumbs, navigator, hub, agenda = {}, home, people, meetings, trash, goTo, api, trashApi, imagesApi, peopleApi,
-                meetingsApi, recordsApi, linksApi, tasksApi = null, calendarApi = null, popOuts = {},
-                location = window.location, history = window.history, today = () => new Date(),
-                changes = new Changes() }) {
+  constructor({ role = "note", editor, tree, crumbs, navigator, hub, agenda = {}, home, people, meetings, trash, goTo, api, trashApi,
+                imagesApi, peopleApi, meetingsApi, recordsApi, linksApi, tasksApi = null, calendarApi = null,
+                planApi = null, planTemplatesApi = null, filesApi = null, templatesApi = null, extraPages = {},
+                buttons = {}, status = null, dashboard = null, location = window.location, history = window.history,
+                today = () => new Date(), changes = new Changes() }) {
+    this.role = role;
+    this.status = status;
+    this.dashboard = dashboard;
+    this.planApi = planApi;
+    this.planTemplatesApi = planTemplatesApi;
+    this.filesApi = filesApi;
+    this.templatesApi = templatesApi;
+    this.plan = new Plan();
+    this.planTemplates = [];
+    this.files = new Files();
+    this.templateId = null;
     this.editor = editor;
     this.tasksApi = tasksApi;
     this.calendarApi = calendarApi;
@@ -75,7 +98,7 @@ export class NotesApp {
     this.recordsApi = recordsApi;
     this.trashApi = trashApi;
     this.trash = NO_TRASH;
-    this.trashButton = trash.button;
+    this.trashButton = trash?.button ?? null;
     this.records = new Records();
     this.people = new People();
     this.meetings = new Meetings();
@@ -114,6 +137,8 @@ export class NotesApp {
       onAdd: (group) => this.guard(this.newInGroup(group)),
       onAddUnder: (id) => this.guard(newNoteDialog(this, id, { heading: `New note under "${this.tree.get(id).title}"` })),
     });
+    // The main window draws a project's plan as a chart over its sections, not as a list.
+    this.dashboard?.attach(this);
     this.hubPage = new HubPage({
       ...hub,
       onOpen: (id, at) => this.guard(this.openFromHub(id, at)),
@@ -121,20 +146,20 @@ export class NotesApp {
       controls: hubLineControls(this),
       tabActions: hubTabActions(this),
       renderSnippet: (markdown) => renderMarkdown(markdown, this.markdownOptions()),
+      hideSections: role === "main" ? ["plan"] : [],
     });
     const onPage = { onOpen: (id) => this.guard(this.open(id)), onLeave: () => this.leaveView() };
-    this.views = new PageViews({
-      main: hub.page,
-      pages: {
-        home: new HomePage(home.section, { ...onPage, today }),
-        people: peoplePage(people.section, { ...onPage, onAdd: () => this.guard(newPersonDialog(this)) }),
-        meetings: meetingsPage(meetings.section, { ...onPage, today, onAdd: () => this.guard(newMeetingDialog(this)) }),
-        trash: trashPage(trash.section, { onRestore: (id) => this.restoreFromTrash(id), onLeave: onPage.onLeave }),
-      },
-      history,
-      noteUrl: () => noteUrl(this.currentId),
-    });
-    for (const [key, { button }] of Object.entries({ home, people, meetings, trash })) {
+    // The pages drawn in place of a dashboard live in the main window only.
+    const pages = role === "main" ? {
+      home: new HomePage(home.section, { ...onPage, today }),
+      people: peoplePage(people.section, { ...onPage, onAdd: () => this.guard(newPersonDialog(this)) }),
+      meetings: meetingsPage(meetings.section, { ...onPage, today, onAdd: () => this.guard(newMeetingDialog(this)) }),
+      trash: trashPage(trash.section, { onRestore: (id) => this.restoreFromTrash(id), onLeave: onPage.onLeave }),
+      ...extraPages,
+    } : {};
+    this.views = new PageViews({ main: hub.page, pages, history, noteUrl: () => noteUrl(this.currentId) });
+    for (const [key, button] of Object.entries({ home: home?.button, people: people?.button, meetings: meetings?.button,
+      trash: trash?.button })) {
       button?.addEventListener("click", () => {
         this.navigator.hide({ refocus: false });
         if (this.views.shown === key) this.leaveView();
@@ -142,8 +167,9 @@ export class NotesApp {
       });
     }
     goTo?.addEventListener("click", () => this.guard(goToNote(this)));
-    popOuts.calendar?.addEventListener("click", () => this.calendarCommand());
-    popOuts.time?.addEventListener("click", () => this.timeCommand());
+    buttons.calendar?.addEventListener("click", () => this.calendarCommand());
+    buttons.time?.addEventListener("click", () => this.timeCommand());
+    buttons.dashboard?.addEventListener("click", () => this.dashboardCommand());
     this.images = new NoteImages({ editor, api: imagesApi, currentId: () => this.currentId });
     registerNoteCommands(editor);
     if (this.agendaEditor) registerNoteCommands(this.agendaEditor);
@@ -197,14 +223,19 @@ export class NotesApp {
     this.changes.listen((message) => this.guard(this.onMessage(message)));
   }
 
-  /** A message from the calendar or timesheet window (connection/changes.js). */
+  /** A message from the app's other window (connection/changes.js): the main window asks the
+   * note window to open a note; the note window asks the main window for a dashboard or a page. */
   async onMessage(message) {
-    if (message.type === "open" && this.tree) {
-      this.changes.send({ type: "opened" });
+    if (message.type === "open" && message.to === "note" && this.role === "note") {
       await this.refreshTree();
       if (!this.tree.has(message.id)) return;
       await this.openFromHub(message.id, message.at ?? null);
       window.focus();
+    } else if (message.type === "show" && message.to === "main" && this.role === "main") {
+      await this.refreshTree();
+      if (this.tree.has(message.id)) await this.open(message.id);
+    } else if (message.type === "view" && message.to === "main" && this.role === "main") {
+      if (this.views.pages[message.key]) this.showView(message.key, "push");
     } else if (message.type === "changed") {
       await this.refreshTree();
       await this.reloadIfChanged();
@@ -235,29 +266,65 @@ export class NotesApp {
   async start() {
     await this.refreshTree();
     await this.openFromUrl("replace");
-    this.editor.focus();
+    this.focusNote();
   }
 
   async openFromUrl(history) {
     const params = new URLSearchParams(this.location.search);
     const wanted = Number(params.get("note"));
+    if (this.role === "main") return this.mainFromUrl(params, wanted, history);
     const id = this.tree.has(wanted) ? wanted : this.tree.children(null)[0]?.id;
     if (id === undefined) return;
-    const view = this.views.fromUrl(params) ?? (params.has("note") ? null : "home");
-    const opened = await this.open(id, { history: view ? "none" : history });
-    // Back/Forward to another note while this one could not be saved: stay, and say so.
+    const opened = await this.open(id, { history });
     if (!opened && history === "none") this.history.pushState({}, "", noteUrl(this.currentId));
-    else if (view) this.showView(view, history === "replace" ? "replace" : "none");
+    // Opened at a line (a mention, from the main window): the cursor goes there.
+    const line = params.get("line");
+    if (opened && line !== null && history === "replace") {
+      const box = params.get("field") === "agenda" && this.agendaEditor && this.agenda.id === id ? this.agendaEditor : this.editor;
+      box.goToLine(Number(line));
+    }
+  }
+
+  /** The main window shows a dashboard (a hub's, a person's) or a page; any other note asked
+   * for shows its hub. With nothing asked, Home. */
+  async mainFromUrl(params, wanted, history) {
+    const asked = this.tree.has(wanted) ? wanted : null;
+    const id = asked !== null && this.isDashboard(asked) ? asked
+      : asked !== null && hubOf(this.tree, asked) ? hubOf(this.tree, asked).id
+        : this.tree.children(null).find((note) => this.isDashboard(note.id))?.id ?? this.tree.children(null)[0]?.id;
+    if (id === undefined) return;
+    if (params.has("template")) this.templateId = Number(params.get("template"));
+    const view = this.views.fromUrl(params) ?? (asked !== null && this.isDashboard(id) ? null : "home");
+    await this.open(id, { history: view ? "none" : history });
+    if (view) this.showView(view, history === "replace" ? "replace" : "none");
+  }
+
+  /** Whether the main window shows a note itself (a dashboard): a hub or a person. */
+  isDashboard(id) {
+    return isHub(this.tree, id) || isPerson(this.tree, id);
+  }
+
+  /** The main window: a note in the note window (placed by the screen, see note-window.js). */
+  openInNoteWindow(id, at = null) {
+    if (!openNoteWindow(id, { at, changes: this.changes })) {
+      throw new Error("E: the browser blocked the note window: allow popups for Paradigm (127.0.0.1)");
+    }
+    this.say(`"${this.tree.get(id)?.title ?? ""}" is open in the note window`);
+    return true;
   }
 
   async refreshTree() {
     const today = this.today();
-    const [notes, people, meetings, records, trash, , tasks, sessions, importStatus] = await Promise.all([
+    const [notes, people, meetings, records, trash, , tasks, sessions, importStatus, plan, planTemplates, files] = await Promise.all([
       this.api.list(), this.peopleApi.list(), this.meetingsApi.list(), this.recordsApi.list(),
       this.trashApi.list(), this.linkIndex.refresh(), this.tasksApi?.list() ?? [],
       this.tasksApi?.sessions(localDay(addDays(today, -SESSIONS_BACK_DAYS)), localDay(addDays(today, SESSIONS_AHEAD_DAYS))) ?? [],
       this.calendarApi?.status().catch(() => null) ?? null,
+      this.planApi?.list() ?? undefined, this.planTemplatesApi?.list() ?? [], this.filesApi?.list() ?? undefined,
     ]);
+    this.plan = new Plan(plan);
+    this.planTemplates = planTemplates;
+    this.files = new Files(files);
     this.tasks = new Tasks(tasks);
     this.sessions = sessions;
     this.importStatus = importStatus;
@@ -269,8 +336,11 @@ export class NotesApp {
     this.redraw();
   }
 
-  /** Opens a note. Returns false (and says why) when the open note's changes can't be saved. */
-  async open(id, { history = "push", discard = false, heading = "" } = {}) {
+  /** Opens a note. Returns false (and says why) when the open note's changes can't be saved.
+   * In the main window, a note that isn't a dashboard opens in the note window. */
+  async open(id, { history = "push", discard = false, heading = "", at = null } = {}) {
+    if (this.role === "main" && !this.isDashboard(id)) return this.openInNoteWindow(id, at);
+    const fresh = id !== this.currentId;
     // Opening a note (from the People page, Back, a link...) puts the note back in view.
     const leftView = Boolean(this.views.shown);
     if (leftView) {
@@ -284,6 +354,8 @@ export class NotesApp {
       this.redraw();
       this.focusNote();
     }
+    // A hub's linked folders are read again when its dashboard opens: new files show up.
+    if (result && fresh && this.role === "main" && this.filesApi && isHub(this.tree, id)) this.guard(scanFolders(this, id));
     return result;
   }
 
@@ -331,10 +403,12 @@ export class NotesApp {
       (button) => openNoteMenu(this, button));
     const ctx = { tree: this.tree, people: this.people, meetings: this.meetings, records: this.records,
       links: this.linkIndex.links, mentions: this.linkIndex.mentions, trash: this.trash, tasks: this.tasks,
-      sessions: this.sessions, importStatus: this.importStatus, today: this.today() };
+      sessions: this.sessions, importStatus: this.importStatus, plan: this.plan, planTemplates: this.planTemplates,
+      files: this.files, templateId: this.templateId, today: this.today() };
     const trashed = this.trash.entries.length;
     if (this.trashButton) this.trashButton.textContent = trashed ? `Trash · ${trashed}` : "Trash";
     this.hubPage.show(ctx, id);
+    this.dashboard?.show(ctx, this.tree.get(id) ?? null, this.session.note?.body ?? "", Boolean(this.views.shown));
     this.views.draw(ctx, this.crumbs);
     const title = this.tree.get(id)?.title ?? this.session.note?.title;
     document.title = title ? `${title} - Paradigm` : "Paradigm";
@@ -416,7 +490,7 @@ export class NotesApp {
   async saveCommand(force) {
     try {
       await this.session.save({ force });
-      this.editor.showMessage(`"${this.session.note?.title ?? ""}" saved`);
+      this.say(`"${this.session.note?.title ?? ""}" saved`);
     } catch (error) {
       this.fail(error);
     }
@@ -426,7 +500,7 @@ export class NotesApp {
     if (!arg.trim()) {
       if (this.session.dirty && !bang) throw new Error(UNSAVED);
       await this.open(this.currentId, { discard: true, history: "none" });
-      this.editor.showMessage(`"${this.session.note.title}" loaded from the database`);
+      this.say(`"${this.session.note.title}" loaded from the database`);
       return;
     }
     const found = resolveLink(this.tree, this.currentId, arg);
@@ -442,15 +516,15 @@ export class NotesApp {
   }
 
   /** strict (from a dialog): an open note that can't be saved first is an error to show there. */
-  async createAndOpen(parentId, title, { strict = false } = {}) {
+  async createAndOpen(parentId, title, { strict = false, make = null } = {}) {
     if (!(await this.saveBeforeSwitching())) {
       if (strict) throw new Error("This note's changes could not be saved first");
       return;
     }
-    const note = await this.api.create(parentId, title);
+    const note = make ? await make() : await this.api.create(parentId, title);
     await this.refreshTree();
     await this.open(note.id);
-    this.editor.showMessage(`"${note.title}" made at ${this.tree.pathText(note.id)}`);
+    this.say(`"${note.title}" made at ${this.tree.pathText(note.id)}`);
   }
 
   /** Makes a top-level note filed as kind (a project, area or resource) and opens it; areaId
@@ -465,12 +539,13 @@ export class NotesApp {
     await this.refreshTree();
     await this.open(made.id);
     const where = areaId === null ? groupLabel(this.tree, made.id) : `${groupLabel(this.tree, made.id)}, in ${this.tree.get(areaId).title}`;
-    this.editor.showMessage(`"${made.title}" made in ${where}`);
+    this.say(`"${made.title}" made in ${where}`);
   }
 
   /** The + on a tree group: a new note there (a person in People). */
   newInGroup(group) {
     if (group.kind === "person") return newPersonDialog(this);
+    if (group.kind === "template") return newTemplateDialog(this);
     return newNoteDialog(this, null, { heading: addLabel(group), kind: group.kind,
       label: "Title" });
   }
@@ -480,7 +555,7 @@ export class NotesApp {
     const note = await this.api.rename(this.currentId, title);
     this.session.updateMeta(note);
     await this.refreshTree();
-    this.editor.showMessage(`Renamed to "${note.title}"`);
+    this.say(`Renamed to "${note.title}"`);
   }
 
   async parentCommand(arg) {
@@ -500,7 +575,7 @@ export class NotesApp {
     const note = await this.api.move(this.currentId, parentId);
     this.session.updateMeta(note);
     await this.refreshTree();
-    this.editor.showMessage(`Now at ${this.tree.pathText(note.id)}`);
+    this.say(`Now at ${this.tree.pathText(note.id)}`);
   }
 
   async kindCommand(group) {
@@ -511,11 +586,12 @@ export class NotesApp {
     this.session.updateMeta(note);
     await this.refreshTree();
     const moved = wasNested ? " moved to the top level and" : "";
-    this.editor.showMessage(`"${note.title}"${moved} is now ${group.asWhat}`);
+    this.say(`"${note.title}"${moved} is now ${group.asWhat}`);
   }
 
   /** Opens a note from a section row; at: { field, line } puts the cursor there (a mention). */
   async openFromHub(id, at = null) {
+    if (this.role === "main" && !this.isDashboard(id)) return this.openInNoteWindow(id, at);
     const opened = await this.open(id);
     if (!opened) return;
     const box = at?.field === "agenda" && this.agendaEditor && this.agenda.id === id ? this.agendaEditor : this.editor;
@@ -531,13 +607,13 @@ export class NotesApp {
   async setProjectStatus(id, status) {
     const note = await this.api.setStatus(id, status);
     await this.refreshTree();
-    this.editor.showMessage(`"${note.title}" is ${status === "on_hold" ? "on hold" : "active"}`);
+    this.say(`"${note.title}" is ${status === "on_hold" ? "on hold" : "active"}`);
   }
 
   async setProjectDue(id, due) {
     const note = await this.api.setDue(id, due);
     await this.refreshTree();
-    this.editor.showMessage(due ? `"${note.title}" is due ${due}` : `"${note.title}" has no due date`);
+    this.say(due ? `"${note.title}" is due ${due}` : `"${note.title}" has no due date`);
   }
 
   /** A project's or an area's timesheet code ("" for none). */
@@ -545,33 +621,11 @@ export class NotesApp {
     const note = await this.api.setTimeCode(id, code);
     await this.refreshTree();
     this.changes.send({ type: "changed", what: ["notes"] });
-    this.editor.showMessage(note.time_code ? `"${note.title}" books time to ${note.time_code}` : `"${note.title}" has no time code`);
+    this.say(note.time_code ? `"${note.title}" books time to ${note.time_code}` : `"${note.title}" has no time code`);
   }
 
-  /** Ticks a task's box (or clears it). In the open note it is an edit there (one undo step,
-   * saved at once); in any other note the server changes the line. */
-  async setTaskDone(taskId, done) {
-    const task = this.tasks.get(taskId);
-    if (!task) throw new Error("E: that task is gone (its note changed): reload the page");
-    const open = this.openBoxFor(task);
-    if (open) {
-      // Saved first, so the task's line is the line in the editor.
-      await open.session.save();
-      const line = open.box.value.split("\n")[task.line];
-      if (boxState(line) === null) throw new Error(`E: "${task.title}" is no longer on its line: tick it in the text`);
-      if (!(await open.box.replaceLine(task.line, setBox(line, done)))) {
-        throw new Error("E: leave insert mode first (Escape), then tick it");
-      }
-      await open.session.save();
-    } else {
-      await this.tasksApi.setDone(taskId, done);
-      this.changes.send({ type: "changed", what: ["tasks", "notes"] });
-    }
-    await this.refreshTree();
-    this.editor.showMessage(`"${task.title}" ${done ? "done" : "open again"}`);
-  }
-
-  /** A rendered box was clicked: tick (or clear) it in the text, as an edit. */
+  /** A rendered box was clicked: tick (or clear) it in the text, as an edit (a checkbox in the
+   * text is only Markdown: tasks are records of their own). */
   async tickLine(box, line) {
     const text = box.value.split("\n")[line];
     const state = boxState(text);
@@ -579,39 +633,38 @@ export class NotesApp {
     if (!(await box.replaceLine(line, setBox(text, !state)))) throw new Error("E: leave insert mode first (Escape), then tick it");
   }
 
-  /** The editor and session holding a task's line, when its note is open. */
-  openBoxFor(task) {
-    if (task.note_id !== this.currentId) return null;
-    if (task.field === "agenda") {
-      return this.agendaEditor && this.agenda.id === task.note_id ? { box: this.agendaEditor, session: this.agenda.session } : null;
-    }
-    return { box: this.editor, session: this.session };
-  }
-
-  /** New task: a "- [ ] title" line at the end of a note's text. */
-  async addTask(noteId, title) {
-    if (!title) throw new Error("A task needs some text");
-    if (noteId === this.currentId) {
-      const body = withTaskAdded(this.editor.value, title);
-      this.rewriteOpenText((text) => (text === this.editor.value ? { text: body, changed: 1 } : { text, changed: 0 }));
-      await this.session.save();
-    } else {
-      const note = await this.api.get(noteId);
-      await this.saveOther(note, withTaskAdded(note.body, title));
-      this.changes.send({ type: "changed", what: ["tasks", "notes"] });
-    }
-    await this.refreshTree();
-    this.editor.showMessage(`Task "${title}" added to "${this.tree.get(noteId)?.title ?? ""}"`);
-  }
-
-  /** :calendar, the Calendar button: the calendar in its own window. */
+  /** :calendar, the Calendar button: the calendar page in the main window. */
   calendarCommand() {
-    if (!popOut("/calendar.html", "paradigm-calendar")) this.fail(new Error("E: the browser blocked the calendar window: allow popups for Paradigm"));
+    this.showView("calendar", "push");
   }
 
-  /** :time, the Time button: the weekly timesheet in its own window. */
+  /** :time, the Time button: the weekly timesheet page in the main window. */
   timeCommand() {
-    if (!popOut("/time.html", "paradigm-time")) this.fail(new Error("E: the browser blocked the timesheet window: allow popups for Paradigm"));
+    this.showView("time", "push");
+  }
+
+  /** :dashboard, the Dashboard button (the note window): the open note's hub (or person) on
+   * the main window. */
+  dashboardCommand() {
+    const id = this.currentId;
+    const target = id === null ? null : this.isDashboard(id) ? id : hubOf(this.tree, id)?.id ?? null;
+    if (this.role === "main") {
+      if (target !== null) this.guard(this.open(target));
+      return;
+    }
+    if (target === null) showMainWindow({ type: "view", key: "home" }, this.changes);
+    else showMainWindow({ type: "show", id: target }, this.changes);
+  }
+
+  /** A plan template's page (the main window). */
+  showTemplate(templateId) {
+    if (this.role !== "main") {
+      showMainWindow({ type: "view", key: "template" }, this.changes);
+      return;
+    }
+    this.templateId = templateId;
+    this.views.show("template", "push", `template=${templateId}`);
+    this.redraw();
   }
 
   /** A person's name changed: offer to make their @mentions follow. */
@@ -664,7 +717,7 @@ export class NotesApp {
     if (note.id === this.currentId) this.session.updateMeta(note);
     await this.refreshTree();
     const where = areaId === null ? "in no area now" : `now in ${this.tree.get(areaId).title}`;
-    this.editor.showMessage(`"${note.title}" is ${where}`);
+    this.say(`"${note.title}" is ${where}`);
   }
 
   async archiveCommand() {
@@ -677,7 +730,7 @@ export class NotesApp {
     this.session.updateMeta(note);
     await this.refreshTree();
     const notes = inside === 0 ? "" : ` with ${inside} note${inside === 1 ? "" : "s"}`;
-    this.editor.showMessage(`"${note.title}" archived${notes} (Restore is on its menu)`);
+    this.say(`"${note.title}" archived${notes} (Restore is on its menu)`);
   }
 
   async restoreCommand() {
@@ -688,16 +741,26 @@ export class NotesApp {
     const { note } = await this.api.archive(top.id, false);
     if (note.id === id) this.session.updateMeta(note);
     await this.refreshTree();
-    this.editor.showMessage(`"${note.title}" restored to ${groupLabel(this.tree, note.id)}`);
+    this.say(`"${note.title}" restored to ${groupLabel(this.tree, note.id)}`);
   }
 
   /** :home, :people, :meetings (history "push"), or a URL with the flag ("replace", "none"). */
   showView(key, history) {
+    // The note window has no pages: they show in the main window.
+    if (this.role === "note") {
+      showMainWindow({ type: "view", key }, this.changes);
+      return;
+    }
     this.views.show(key, history);
     this.redraw();
   }
 
   leaveView() {
+    // A main window with no dashboard to go back to stays on Home.
+    if (this.role === "main" && !this.isDashboard(this.currentId)) {
+      if (this.views.shown !== "home") this.showView("home", "push");
+      return;
+    }
     if (this.views.leave()) return;
     this.redraw();
     this.focusNote();
@@ -705,7 +768,11 @@ export class NotesApp {
 
   /** The note, or the hub panel when it is expanded over the note. */
   focusNote() {
-    if (this.hubPage.editorHidden) this.hubPage.focus();
+    if (this.role === "main") {
+      if (this.views.shown) this.views.pages[this.views.shown].focus();
+      else if (this.dashboard?.hasChart) this.dashboard.focus();
+      else this.hubPage.focus();
+    } else if (this.hubPage.editorHidden) this.hubPage.focus();
     else this.editor.focus();
   }
 
@@ -720,10 +787,10 @@ export class NotesApp {
   async exportCommand() {
     const id = this.currentId;
     if (id === null) throw new Error("E: no note is open");
-    this.editor.showMessage("Exporting…");
+    this.say("Exporting…");
     const { file, count } = await exportNote({ tree: this.tree, rootId: id, rootBody: this.editor.value, notesApi: this.api });
     const others = count === 0 ? "" : ` with ${count} linked note${count === 1 ? "" : "s"}`;
-    this.editor.showMessage(`"${this.session.note.title}" exported${others} as ${file}`);
+    this.say(`"${this.session.note.title}" exported${others} as ${file}`);
   }
 
   async trashCommand(recursive) {
@@ -734,7 +801,7 @@ export class NotesApp {
     this.session.close();
     await this.refreshTree();
     if (next !== null) await this.open(next, { history: "replace", discard: true });
-    this.editor.showMessage(`"${title}" moved to the Trash (kept for ${this.trash.days} days)`);
+    this.say(`"${title}" moved to the Trash (kept for ${this.trash.days} days)`);
   }
 
   /** From the Trash page: brings a note back (with the notes trashed with it) and opens it. */
@@ -750,7 +817,7 @@ export class NotesApp {
     await this.refreshTree();
     await this.open(note.id);
     const where = this.tree.parentId(note.id) === null ? groupLabel(this.tree, note.id) : whereText(this.tree, note.id);
-    this.editor.showMessage(`"${note.title}" restored to ${where}${renamed ? " (its title was taken there)" : ""}`);
+    this.say(`"${note.title}" restored to ${where}${renamed ? " (its title was taken there)" : ""}`);
   }
 
   /** Where to go once a note is gone: its parent, else a sibling, else any other top note. */
@@ -769,7 +836,21 @@ export class NotesApp {
 
   fail(error) {
     const text = error?.message ?? String(error);
-    this.editor.showMessage(/^E\d*:/.test(text) ? text : `E: ${text}`, { error: true });
+    this.say(/^E\d*:/.test(text) ? text : `E: ${text}`, { error: true });
+  }
+
+  /** A message for the user: the editor's status line, or the main window's. */
+  say(text, { error = false } = {}) {
+    if (this.role === "main" && this.status) {
+      this.status.textContent = text;
+      this.status.classList.toggle("status-line--error", error);
+      clearTimeout(this.statusTimer);
+      this.statusTimer = setTimeout(() => {
+        this.status.textContent = "";
+      }, error ? 12000 : 6000);
+    } else {
+      this.editor.showMessage(text, { error });
+    }
   }
 }
 
@@ -778,8 +859,15 @@ function groupLabel(tree, id) {
   return group.kind ? group.heading : "the Inbox";
 }
 
+// The page a note's URL points at: the main window's (/) or the note window's (/note.html).
+let notePath = "/";
+
+export function setNotePath(path) {
+  notePath = path;
+}
+
 export function noteUrl(id) {
-  return `/?note=${encodeURIComponent(id)}`;
+  return `${notePath}?note=${encodeURIComponent(id)}`;
 }
 
 function explainMissing(link, found) {

@@ -73,3 +73,19 @@ Features in build order. "build feature" takes the first unchecked item.
 - [x] Decisions and questions from selected text: select, right-click, Add question… / Add
   decision…; the record rolls up to the hub, its area, the meeting and Home; the source text
   gets a badge; Answer… writes the answer into the question (done 2026-11-22)
+- [x] Two windows: notes open in their own window (right 1/3 on a wide screen, full screen on
+  the laptop, one reused window); the main window is wide; Calendar and Time become pages in
+  the main window instead of popups (done 2026-11-22)
+- [x] Tasks as records: a Tasks section instead of `- [ ]` lines, one level of subtasks shown
+  as counts, delegation to a person with a follow-up date and a Waiting on list; tasks,
+  questions and decisions roll up to their project only, areas show per-project counts (done 2026-11-22)
+- [x] Phases and milestones: phases are notes with start/end days (Tasks + Notes), milestones
+  are dated points; every date change is audited (baseline, slip, history, reason) (done 2026-11-22)
+- [x] Wide project and area dashboards with a Gantt chart (drag to move/resize phases;
+  an area's Gantt has one bar per project) and a projects table on areas (done 2026-11-22)
+- [x] Note templates: a Templates group, Insert template… with {{date}} {{title}} {{cursor}},
+  New note from template (done 2026-11-22)
+- [x] Plan templates on areas: phases, milestones and tasks in days from the start, applied to
+  a project from a start day; Save as plan template… from a project's Gantt (done 2026-11-22)
+- [x] OneDrive files: a file record whose OneDrive link is the truth, attached to many notes
+  and meetings; names filled from a linked, synced OneDrive folder (done 2026-11-22)
