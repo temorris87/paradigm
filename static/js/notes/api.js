@@ -10,7 +10,7 @@ export class ApiError extends Error {
 }
 
 // payload is sent as JSON; blob (an image) is sent as its raw bytes.
-async function call(path, { payload, blob, keepalive = false } = {}) {
+export async function call(path, { payload, blob, keepalive = false } = {}) {
   const init = blob !== undefined
     ? { method: "POST", headers: { "Content-Type": blob.type || "application/octet-stream" }, body: blob }
     : payload === undefined

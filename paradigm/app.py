@@ -7,12 +7,14 @@ from typing import Callable, List, Optional
 
 from paradigm.api.images import ImagesApi
 from paradigm.api.notes import NotesApi
+from paradigm.api.people import PeopleApi
 from paradigm.api.session import SessionApi
 from paradigm.config import Config, parse_args
 from paradigm.db.connection import Database
 from paradigm.db.images_repo import ImageRepository
 from paradigm.db.migrate import SchemaTooNew, migrate
 from paradigm.db.notes_repo import NoteRepository
+from paradigm.db.people_repo import PeopleRepository
 from paradigm.instance import PortState, probe
 from paradigm.logging_setup import setup_logging
 from paradigm.notes.seed import seed_if_empty
@@ -124,6 +126,7 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
     server.on_close.insert(0, lambda: presence.tab_count == 0 and sweep_images(images, notes))
     SessionApi(presence, config.keepalive_seconds, config.max_streams).register(server.router)
     NotesApi(notes).register(server.router)
+    PeopleApi(PeopleRepository(db), notes).register(server.router)
     ImagesApi(images).register(server.router)
 
 

@@ -47,18 +47,23 @@ paradigm/                Python package
   web/                   server.py (ThreadingHTTPServer), handler.py, router.py,
                          static.py (serves static/), responses.py, security.py
   api/                   JSON endpoints; session.py = /api/ping, /api/events, /api/closing;
-                         notes.py; images.py (raw-bytes upload, GET /api/image?id=N cached)
+                         notes.py; images.py (raw-bytes upload, GET /api/image?id=N cached);
+                         people.py (/api/people, /api/person/create|update|link|unlink)
   db/                    (migrations: 001 notes, 002 images, 003 notes.kind for PARA hubs,
                          004 notes.area_id: a project's area, 005 notes.archived_at:
-                         archived hubs)
+                         archived hubs, 006 people + hub_people: a person's fields and
+                         their hub links with a role)
                          connection.py (one locked connection, transactions, VACUUM at start
                          when worth it), migrate.py
                          (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py,
+                         people_repo.py (people and hub links; a people row is what
+                         makes a note a person, reported as kind "person"),
                          images_repo.py (image bytes in SQLite, deduped per note by sha256;
                          sweep_unused deletes images no note links to, at start and stop only)
   images/                formats.py: PNG/JPEG/GIF/WebP from magic bytes + size (SVG refused)
   notes/                 titles.py (title rules), hubs.py (HUB_KINDS: project, area,
-                         resource), seed.py + welcome.md (first-run note)
+                         resource), people.py (person fields, roles), seed.py + welcome.md
+                         (first-run note)
 static/
   index.html
   vendor/katex-0.19.1/   KaTeX exactly as audited (package paths kept; checked against
@@ -78,16 +83,23 @@ static/
                          links, nearest note wins), tree-model.js, tree-view.js, tree-keys.js
                          (THE tree key table), breadcrumb.js, commands.js (THE note ex
                          commands: :e :new :child :rename :parent :nav :project :area
-                         :resource :inbox :inarea :archive :restore :hub :export :trash),
+                         :resource :inbox :inarea :archive :restore :people :newperson
+                         :addperson :dropperson :org :job :email :hub :export :trash),
                          hub-groups.js (THE PARA group table: Inbox, Projects, Areas,
-                         Resources; then the Archive, folded by default), headings.js,
+                         Resources; then People and the Archive, folded by default),
+                         headings.js,
                          images.js (editor "files" event -> shrink, upload, insert links)
-  js/hubs/               the hub page (shown only while a hub is open): hub-page.js (wiring;
-                         data-hub-size on .app__note), hub-line.js ("Project · Area: X"),
-                         hub-panel.js (tabs + one-focus-stop listbox), hub-tabs.js (THE hub
-                         tab table: Notes, an area's Projects; pure), hub-areas.js (project
+  js/hubs/               the hub page (shown while a hub or a person is open): hub-page.js
+                         (wiring; data-hub-size on .app__note), hub-line.js ("Project · Area:
+                         X", "Person · Northwind · ..."), hub-panel.js (tabs + one-focus-stop
+                         listbox), hub-tabs.js (THE hub tab table: Notes, People, an area's
+                         Projects, a person's Hubs; pure), hub-areas.js (project
                          <-> area; pure), hub-size.js (collapsed/open/expanded, remembered),
                          hub-keys.js (THE section panel key table)
+  js/people/             api.js, people-model.js (who is on a hub, an area with its projects;
+                         the People page filters; pure), people-page.js (the People page,
+                         in place of the note while the URL has &people), people-keys.js
+                         (THE People page key table), people-commands.js
   js/images/             downscale.js: shrinks images wider than 1600 px on a canvas (GIFs
                          never); viewer.js: <pd-image-viewer>, a click on an image opens it
                          with its own zoom and pan; viewer-math.js (pure), viewer-keys.js
@@ -189,6 +201,14 @@ Update this section when the structure changes.
 - The notes tree is reached with `:nav` or the ☰ button in the top bar. Under 1400 px wide it
   is a drawer: it opens over the note and closes on Enter (opening a note), Escape, a click on
   the backdrop, or the focus leaving it.
+- People: a person is a top-level note (free text, notes under it) plus a `people` row with
+  organisation, job title and email (`:org`, `:job`, `:email`), never written into the note.
+  `:newperson {name}` adds one. On a hub, `:addperson[!] {name}[, {role}]` puts them on it
+  (again: changes the role; `!` adds someone new) and `:dropperson {name}` takes them off. A
+  person can't be filed or nested. Hubs have a People tab (an area's includes its projects'
+  people); a person has a Hubs tab. `:people` or the People button opens the People page
+  (filters: hub, role, organisation, name); its keys live in `static/js/people/people-keys.js`.
+  Archived people leave the People page and are muted in tabs; links survive trash and archive.
 - Clicking a rendered image opens `<pd-image-viewer>` (its keys live in
   `static/js/images/viewer-keys.js`).
 - An image is deleted from the database once no note (trashed ones included) links to it any

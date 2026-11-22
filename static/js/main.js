@@ -6,6 +6,7 @@ import "./images/viewer.js";
 import { Navigator } from "./layout/navigator.js";
 import { imagesApi, notesApi } from "./notes/api.js";
 import { NotesApp } from "./notes/app.js";
+import { peopleApi } from "./people/api.js";
 
 const connection = new Connection({ tabId: tabId() });
 mountBanner(connection);
@@ -33,8 +34,13 @@ const app = new NotesApp({
     line: document.querySelector(".hub-line"),
     section: document.querySelector(".hub"),
   },
+  people: {
+    section: document.querySelector(".people"),
+    button: document.querySelector(".topbar__people"),
+  },
   navigator: notesNavigator,
   api: notesApi,
   imagesApi,
+  peopleApi,
 });
 app.start().catch((error) => app.fail(error));

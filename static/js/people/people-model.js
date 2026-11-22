@@ -1,0 +1,130 @@
+// People read together with the notes tree. A person's name and archived state are their
+// note's (in the tree); their fields and hub links come from /api/people. A link counts only
+// while its hub is a hub (the server keeps the rest), and a trashed person is in neither.
+// Pure.
+//
+//   const people = new People(await peopleApi.list());
+//   people.get(id)                           { id, org, job, email, hubs: [{ hub_id, role }] }
+//   hubLinks(tree, people, personId)         the hubs a person is on, with roles
+//   peopleOn(tree, people, hub)              who is on a hub (an area: its projects too)
+//   filterPeople(tree, people, filters)      the People page's list
+//   filterOptions(tree, people)              what its dropdowns offer
+import { projectsIn } from "../hubs/hub-areas.js";
+import { isArchived, isHub, isPerson } from "../notes/hub-groups.js";
+import { NoteTree } from "../notes/tree-model.js";
+import { titleKey } from "../notes/titles.js";
+
+const NO_PERSON = Object.freeze({ org: "", job: "", email: "", hubs: [] });
+
+export class People {
+  constructor(list = []) {
+    this.byId = new Map(list.map((person) => [person.id, person]));
+  }
+
+  /** The person's record ({ id, org, ... }); empty fields when the list hasn't caught up. */
+  get(id) {
+    return this.byId.get(id) ?? { ...NO_PERSON, id };
+  }
+}
+
+/** Every person in the tree (their notes), sorted by name. */
+export function allPeople(tree) {
+  return tree.children(null).filter((note) => isPerson(tree, note.id));
+}
+
+/** The person called name (ignoring case), or null. */
+export function findPerson(tree, name) {
+  return NoteTree.pick(allPeople(tree), String(name ?? "").trim());
+}
+
+/** [{ hub, role }] for each hub the person is on: live hubs by title, then archived ones. */
+export function hubLinks(tree, people, personId) {
+  const links = people.get(personId).hubs
+    .filter((link) => isHub(tree, link.hub_id))
+    .map((link) => ({ hub: tree.get(link.hub_id), role: link.role, archived: isArchived(tree, link.hub_id) }));
+  const byTitle = (a, b) => titleKey(a.hub.title).localeCompare(titleKey(b.hub.title));
+  return [...links.filter((l) => !l.archived).sort(byTitle), ...links.filter((l) => l.archived).sort(byTitle)];
+}
+
+/** The hubs that count as "on this hub": the hub, and an area's active projects. */
+export function hubScope(tree, hubId) {
+  const hub = tree.get(hubId);
+  if (!hub) return [];
+  return hub.kind === "area" ? [hubId, ...projectsIn(tree, hubId).map((project) => project.id)] : [hubId];
+}
+
+/**
+ * Who is on a hub, one entry per person, by name (archived people last):
+ * [{ person: note, roles: [{ role, via: project note | null }], archived }].
+ * via names the project an area's person is on (null: on the hub itself).
+ */
+export function peopleOn(tree, people, hub) {
+  const scope = hubScope(tree, hub.id);
+  const found = [];
+  for (const person of allPeople(tree)) {
+    const roles = people.get(person.id).hubs
+      .filter((link) => scope.includes(link.hub_id))
+      .map((link) => ({ role: link.role, via: link.hub_id === hub.id ? null : tree.get(link.hub_id) }))
+      .sort((a, b) => (a.via ? 1 : 0) - (b.via ? 1 : 0) || titleKey(a.via?.title ?? "").localeCompare(titleKey(b.via?.title ?? "")));
+    if (roles.length) found.push({ person, roles, archived: isArchived(tree, person.id) });
+  }
+  return [...found.filter((each) => !each.archived), ...found.filter((each) => each.archived)];
+}
+
+/** "Sponsor · Lead on Rollout · on Pilot": a person's roles on a hub, as one line. */
+export function rolesText(roles) {
+  return roles.map(({ role, via }) => {
+    if (!via) return role;
+    return role ? `${role} on ${via.title}` : `on ${via.title}`;
+  }).filter(Boolean).join(" · ");
+}
+
+/** "Northwind · Data engineer": the fields that are set, without the email. */
+export function workText(person) {
+  return [person.org, person.job].filter(Boolean).join(" · ");
+}
+
+/**
+ * The People page's list: people who match every filter that is set.
+ * filters: { hubId: number | null, role: string, org: string, name: string }
+ * With a hub and a role, the role must be on that hub (an area: on it or its projects).
+ * Archived people are left out.
+ */
+export function filterPeople(tree, people, { hubId = null, role = "", org = "", name = "" } = {}) {
+  const scope = hubId === null ? null : hubScope(tree, hubId);
+  const wanted = titleKey(name.trim());
+  return allPeople(tree).filter((note) => {
+    if (isArchived(tree, note.id)) return false;
+    const person = people.get(note.id);
+    if (org && person.org !== org) return false;
+    if (wanted && !titleKey(note.title).includes(wanted)) return false;
+    const links = person.hubs.filter((link) => isHub(tree, link.hub_id) && (!scope || scope.includes(link.hub_id)));
+    if (scope && !links.length) return false;
+    if (role && !links.some((link) => link.role === role)) return false;
+    return true;
+  });
+}
+
+/**
+ * What the dropdowns offer: { hubs: [hub notes], roles: [text], orgs: [text] }. Hubs are the
+ * live hubs anyone is on (an area also when only its projects have people); roles and
+ * organisations are the ones in use. All sorted.
+ */
+export function filterOptions(tree, people) {
+  const linked = new Set();
+  const roles = new Set();
+  const orgs = new Set();
+  for (const note of allPeople(tree)) {
+    const person = people.get(note.id);
+    if (person.org) orgs.add(person.org);
+    for (const link of person.hubs) {
+      if (!isHub(tree, link.hub_id)) continue;
+      linked.add(link.hub_id);
+      if (link.role) roles.add(link.role);
+    }
+  }
+  const hubs = tree.children(null).filter((note) => isHub(tree, note.id) && !isArchived(tree, note.id)
+    && hubScope(tree, note.id).some((id) => linked.has(id)));
+  const sorted = (set) => [...set].sort((a, b) => titleKey(a).localeCompare(titleKey(b)));
+  return { hubs, roles: sorted(roles), orgs: sorted(orgs) };
+}

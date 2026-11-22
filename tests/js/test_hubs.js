@@ -21,6 +21,7 @@ const NOTES = [
   { id: 9, parent_id: null, title: "Solo", kind: "project", area_id: 7, updated_at: T },
 ];
 const tree = () => new NoteTree(NOTES);
+const tab = (key) => HUB_TABS.find((each) => each.key === key);
 
 test("hubs: only top-level notes with a kind are hubs", () => {
   const t = tree();
@@ -37,17 +38,18 @@ test("hubs: a project's area, an area's projects; a non-area target counts as no
   assertEqual(areaOf(new NoteTree(NOTES.filter((n) => n.id !== 1)), 2), null);
 });
 
-test("hub tabs: Notes first for every kind; Projects only on areas", () => {
+test("hub tabs: Notes first for every kind; People on hubs; Projects only on areas; Hubs on people", () => {
   assertEqual(HUB_TABS[0].key, "notes");
-  assertEqual(tabsFor({ kind: "area" }).map((t) => t.label).join(), "Notes,Projects");
-  assertEqual(tabsFor({ kind: "project" }).map((t) => t.label).join(), "Notes");
-  assertEqual(tabsFor({ kind: "resource" }).map((t) => t.label).join(), "Notes");
+  assertEqual(tabsFor({ kind: "area" }).map((t) => t.label).join(), "Notes,People,Projects");
+  assertEqual(tabsFor({ kind: "project" }).map((t) => t.label).join(), "Notes,People");
+  assertEqual(tabsFor({ kind: "resource" }).map((t) => t.label).join(), "Notes,People");
+  assertEqual(tabsFor({ kind: "person" }).map((t) => t.label).join(), "Notes,Hubs");
   assertEqual(tabsFor({ kind: null }).length, 0);
 });
 
 test("hub tabs: Notes lists the whole subtree in tree order with depths", () => {
   const t = tree();
-  const rows = HUB_TABS[0].rows(t, t.get(2));
+  const rows = HUB_TABS[0].rows({ tree: t }, t.get(2));
   assertEqual(rows.map((r) => `${r.title}:${r.depth}`).join(), "Budget:0,Kickoff:0,Minutes:1");
   assertEqual(rows[0].detail, dayOf(T));
   assertEqual(HUB_TABS[0].empty(t.get(7)), "No notes in this resource yet (:child {title} makes one)");
@@ -55,7 +57,7 @@ test("hub tabs: Notes lists the whole subtree in tree order with depths", () => 
 
 test("hub tabs: Projects counts notes and takes the latest change inside", () => {
   const t = tree();
-  const rows = HUB_TABS[1].rows(t, t.get(1));
+  const rows = tab("projects").rows({ tree: t }, t.get(1));
   assertEqual(rows.map((r) => r.title).join(), "Acme,Northwind");
   assertEqual(rows[0].detail, `3 notes · ${dayOf(T)}`);
   assertEqual(rows[1].detail, `0 notes · ${dayOf(T)}`);
@@ -120,31 +122,31 @@ const activeTitle = (section) => section.querySelector("[role=option][aria-selec
 const tabLabels = (section) => [...section.querySelectorAll("[role=tab]")].map((n) => n.textContent + (n.getAttribute("aria-selected") === "true" ? "*" : "")).join(",");
 
 test("hub page: shows only on a hub, with its line", () => withPage(({ page, line, section, hub }) => {
-  hub.show(tree(), 8);
+  hub.show({ tree: tree() }, 8);
   assertTrue(section.hidden && line.hidden, "an Inbox note has no hub page");
   assertEqual(page.dataset.hubSize, undefined);
-  hub.show(tree(), 3);
+  hub.show({ tree: tree() }, 3);
   assertTrue(section.hidden, "a nested note has no hub page");
-  hub.show(tree(), 2);
+  hub.show({ tree: tree() }, 2);
   assertTrue(!section.hidden && !line.hidden);
   assertEqual(page.dataset.hubSize, "open");
   assertEqual(line.textContent, "Project·Area: Operations");
-  hub.show(tree(), 1);
+  hub.show({ tree: tree() }, 1);
   assertEqual(line.textContent, "Area·2 projects");
-  hub.show(tree(), 7);
+  hub.show({ tree: tree() }, 7);
   assertEqual(line.textContent, "Resource");
-  hub.show(tree(), 9);
+  hub.show({ tree: tree() }, 9);
   assertEqual(line.textContent, "Project·no area (:inarea {area})");
 }));
 
 test("hub page: the area on the hub line opens it", () => withPage(({ line, hub, opened }) => {
-  hub.show(tree(), 2);
+  hub.show({ tree: tree() }, 2);
   line.querySelector("button").click();
   assertEqual(opened.join(), "1");
 }));
 
 test("hub page: j k g G move, Enter opens, Escape leaves", () => withPage(({ section, hub, opened, left }) => {
-  hub.show(tree(), 2);
+  hub.show({ tree: tree() }, 2);
   hub.focus();
   assertEqual(rowTitles(section), "Budget,Kickoff,Minutes");
   assertEqual(activeTitle(section), "Budget");
@@ -164,28 +166,30 @@ test("hub page: j k g G move, Enter opens, Escape leaves", () => withPage(({ sec
 }));
 
 test("hub page: tabs by h l and number, remembered per hub", () => withPage(({ section, hub }) => {
-  hub.show(tree(), 1);
+  hub.show({ tree: tree() }, 1);
   hub.focus();
-  assertEqual(tabLabels(section), "Notes*,Projects");
+  assertEqual(tabLabels(section), "Notes*,People,Projects");
   assertEqual(section.querySelector(".hub__empty").textContent, "No notes in this area yet (:child {title} makes one)");
   press("l");
-  assertEqual(tabLabels(section), "Notes,Projects*");
+  assertEqual(tabLabels(section), "Notes,People*,Projects");
+  press("l");
+  assertEqual(tabLabels(section), "Notes,People,Projects*");
   assertEqual(rowTitles(section), "Acme,Northwind");
   press("l");
-  assertEqual(tabLabels(section), "Notes,Projects*", "l stops at the last tab");
+  assertEqual(tabLabels(section), "Notes,People,Projects*", "l stops at the last tab");
   press("1");
-  assertEqual(tabLabels(section), "Notes*,Projects");
-  press("2");
-  hub.show(tree(), 2);
-  assertEqual(tabLabels(section), "Notes*");
-  hub.show(tree(), 1);
-  assertEqual(tabLabels(section), "Notes,Projects*", "the area's tab came back");
+  assertEqual(tabLabels(section), "Notes*,People,Projects");
+  press("3");
+  hub.show({ tree: tree() }, 2);
+  assertEqual(tabLabels(section), "Notes*,People");
+  hub.show({ tree: tree() }, 1);
+  assertEqual(tabLabels(section), "Notes,People,Projects*", "the area's tab came back");
   section.querySelector("[role=tab]").click();
-  assertEqual(tabLabels(section), "Notes*,Projects", "a click picks a tab");
+  assertEqual(tabLabels(section), "Notes*,People,Projects", "a click picks a tab");
 }));
 
 test("hub page: - and + step the size; expanded hides the editor; Escape reopens", () => withPage(({ page, section, hub, left }) => {
-  hub.show(tree(), 2);
+  hub.show({ tree: tree() }, 2);
   hub.focus();
   press("-");
   assertEqual(page.dataset.hubSize, "collapsed");
@@ -202,7 +206,7 @@ test("hub page: - and + step the size; expanded hides the editor; Escape reopens
 }));
 
 test("hub page: :hub on a collapsed panel opens it; size buttons pick a size", () => withPage(({ page, section, hub }) => {
-  hub.show(tree(), 2);
+  hub.show({ tree: tree() }, 2);
   section.querySelector('.hub__size[data-size="collapsed"]').click();
   assertEqual(page.dataset.hubSize, "collapsed");
   hub.focus();
@@ -214,10 +218,10 @@ test("hub page: :hub on a collapsed panel opens it; size buttons pick a size", (
 }));
 
 test("hub page: a redraw of the same hub keeps the row; a click on a row opens it", () => withPage(({ section, hub, opened }) => {
-  hub.show(tree(), 2);
+  hub.show({ tree: tree() }, 2);
   hub.focus();
   press("j");
-  hub.show(tree(), 2);
+  hub.show({ tree: tree() }, 2);
   assertEqual(activeTitle(section), "Kickoff");
   section.querySelectorAll("[role=option]")[2].click();
   assertEqual(opened.join(), "4");
@@ -241,22 +245,22 @@ test("hubs: an area's archived projects are apart from its active ones", () => {
 
 test("hub tabs: archived projects come last, muted", () => {
   const t = new NoteTree(WITH_ARCHIVED);
-  const rows = HUB_TABS[1].rows(t, t.get(1));
+  const rows = tab("projects").rows({ tree: t }, t.get(1));
   assertEqual(rows.map((r) => `${r.title}${r.muted ? "~" : ""}`).join(), "Acme,Northwind,Zeta~");
   assertEqual(rows[2].detail, `archived ${dayOf(A)}`);
 });
 
 test("hub page: an archived hub says so; an archived area is muted on its projects", () => withPage(({ line, section, hub }) => {
   const t = new NoteTree(WITH_ARCHIVED);
-  hub.show(t, 10);
+  hub.show({ tree: t }, 10);
   assertEqual(line.textContent, "Archived·Project·Area: Operations");
-  hub.show(t, 1);
+  hub.show({ tree: t }, 1);
   assertEqual(line.textContent, "Area·2 projects", "the count leaves archived projects out");
   const archivedArea = new NoteTree(NOTES.map((n) => (n.id === 1 ? { ...n, archived_at: A } : n)));
-  hub.show(archivedArea, 2);
+  hub.show({ tree: archivedArea }, 2);
   assertEqual(line.textContent, "Project·Area: Operations(archived)");
   assertTrue(line.querySelector(".hub-line__link--archived") !== null);
-  hub.show(t, 1);
-  hub.selectTab(1);
+  hub.show({ tree: t }, 1);
+  hub.selectTab(2);
   assertTrue(section.querySelector(".hub__row--muted .hub__title").textContent === "Zeta");
 }));

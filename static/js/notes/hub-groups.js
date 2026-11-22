@@ -5,6 +5,9 @@
 // Archived hubs (archived_at set on the top-level note) leave their group for the Archive,
 // which the navigator shows last and folded until it is opened. A hub keeps its kind there,
 // so restoring it puts it back in its group.
+//
+// People (kind "person", static/js/people/) are top-level notes too, in their own group
+// after Resources, folded by default. They are not hubs and have no filing command.
 export const HUB_GROUPS = [
   { key: "inbox", label: "Inbox", kind: null, heading: "Inbox", command: "inbox", asWhat: "in the Inbox" },
   { key: "project", label: "Project", kind: "project", heading: "Projects", command: "project", asWhat: "a project" },
@@ -12,13 +15,17 @@ export const HUB_GROUPS = [
   { key: "resource", label: "Resource", kind: "resource", heading: "Resources", command: "resource", asWhat: "a resource" },
 ];
 
-export const ARCHIVE_GROUP = { key: "archive", heading: "Archive", foldedByDefault: true };
+export const PEOPLE_GROUP = { key: "people", label: "Person", kind: "person", heading: "People", foldedByDefault: true };
+// showsKind: its hubs say what they were ("Project"), since their group no longer does.
+export const ARCHIVE_GROUP = { key: "archive", heading: "Archive", foldedByDefault: true, showsKind: true };
 
 /** Every group the navigator shows, in order. */
-export const NAV_GROUPS = [...HUB_GROUPS, ARCHIVE_GROUP];
+export const NAV_GROUPS = [...HUB_GROUPS, PEOPLE_GROUP, ARCHIVE_GROUP];
+
+const KIND_GROUPS = [...HUB_GROUPS, PEOPLE_GROUP];
 
 export function groupForKind(kind) {
-  return HUB_GROUPS.find((group) => group.kind === (kind ?? null)) ?? HUB_GROUPS[0];
+  return KIND_GROUPS.find((group) => group.kind === (kind ?? null)) ?? HUB_GROUPS[0];
 }
 
 /** The group a note is in: its top-level ancestor's (or its own, at the top). */
@@ -48,5 +55,10 @@ export function isArchived(tree, id) {
 /** Whether a note is a hub: a top-level note filed as a project, an area or a resource. */
 export function isHub(tree, id) {
   const note = tree.get(id);
-  return Boolean(note?.kind) && tree.parentId(id) === null;
+  return Boolean(note?.kind) && note.kind !== "person" && tree.parentId(id) === null;
+}
+
+/** Whether a note is a person's own note (always a top-level note). */
+export function isPerson(tree, id) {
+  return tree.get(id)?.kind === "person" && tree.parentId(id) === null;
 }

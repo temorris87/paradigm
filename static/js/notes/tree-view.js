@@ -77,7 +77,7 @@ export class TreeView {
     count.className = "tree__count";
     count.textContent = String(hubs.length);
     li.append(this.row(hubs.length ? (open ? "▾" : "▸") : "", group.heading, "tree__heading", count));
-    if (open && hubs.length) li.append(this.group(hubs, 2, group.foldedByDefault));
+    if (open && hubs.length) li.append(this.group(hubs, 2, Boolean(group.showsKind)));
     return li;
   }
 

@@ -11,7 +11,8 @@ Clock = Callable[[], str]
 
 __all__ = ["NoteRepository", "NoteError", "NotFound", "Conflict", "TitleTaken", "BadTitle",
            "HasChildren", "WouldCycle", "LastNote", "BadKind", "NotAProject", "NotAnArea",
-           "NotTopLevel", "NotArchived", "AreaArchived"]
+           "NotTopLevel", "NotArchived", "AreaArchived", "IsAPerson", "live_note_row",
+           "check_title_free"]
 
 
 class NoteError(Exception):
@@ -66,12 +67,18 @@ class AreaArchived(NoteError):
     """A project is never put in an archived area."""
 
 
+class IsAPerson(NoteError):
+    """A person's note stays at the top level and is never filed as a hub."""
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 _LIVE = "deleted_at IS NULL"
-_SUMMARY = "id, parent_id, title, kind, area_id, archived_at, version, updated_at"
+# A note with a people row is a person (006_people.sql): is_person says so.
+_WITH_PERSON = ("SELECT notes.*, people.note_id IS NOT NULL AS is_person FROM notes "
+                "LEFT JOIN people ON people.note_id = notes.id")
 
 
 class NoteRepository:
@@ -83,7 +90,7 @@ class NoteRepository:
         """Every live note without its body: enough to draw the tree and resolve links."""
         with self._db.reading() as conn:
             rows = conn.execute(
-                "SELECT {} FROM notes WHERE {} ORDER BY title COLLATE NOCASE, id".format(_SUMMARY, _LIVE)
+                _WITH_PERSON + " WHERE " + _LIVE + " ORDER BY title COLLATE NOCASE, id"
             ).fetchall()
         return [_summary(row) for row in rows]
 
@@ -135,6 +142,8 @@ class NoteRepository:
     def move(self, note_id: int, parent_id: Optional[int]) -> Dict:
         with self._db.transaction() as conn:
             row = _live_row(conn, note_id)
+            if parent_id is not None and row["is_person"]:
+                raise IsAPerson('"{}" is a person: a person stays at the top level'.format(row["title"]))
             if parent_id is not None:
                 _live_row(conn, parent_id)
                 if parent_id == note_id or note_id in _ancestors(conn, parent_id):
@@ -155,6 +164,8 @@ class NoteRepository:
         kind = clean_kind(kind)
         with self._db.transaction() as conn:
             row = _live_row(conn, note_id)
+            if row["is_person"]:
+                raise IsAPerson('"{}" is a person, not a note to file'.format(row["title"]))
             if row["parent_id"] is not None:
                 _check_free(conn, None, row["title"], note_id)
                 self._change(conn, note_id, "parent_id = NULL", ())
@@ -174,7 +185,7 @@ class NoteRepository:
             if area_id is not None:
                 area = _live_row(conn, area_id)
                 if area["kind"] != "area" or area["parent_id"] is not None:
-                    what = "a " + area["kind"] if area["kind"] else "in the Inbox"
+                    what = _what_it_is(area)
                     raise NotAnArea('"{}" is {}, not an area'.format(area["title"], what))
                 if area["archived_at"] is not None:
                     raise AreaArchived('"{}" is archived (:restore it first)'.format(area["title"]))
@@ -224,9 +235,15 @@ class NoteRepository:
 
 def _summary(row: sqlite3.Row) -> Dict:
     return {"id": row["id"], "parent_id": row["parent_id"], "title": row["title"],
-            "kind": row["kind"], "area_id": row["area_id"], "archived_at": row["archived_at"],
+            "kind": "person" if row["is_person"] else row["kind"], "area_id": row["area_id"], "archived_at": row["archived_at"],
             "version": row["version"],
             "updated_at": row["updated_at"]}
+
+
+def _what_it_is(row: sqlite3.Row) -> str:
+    if row["is_person"]:
+        return "a person"
+    return "a " + row["kind"] if row["kind"] else "in the Inbox"
 
 
 def _drop_area_links(conn: sqlite3.Connection, note_id: int) -> None:
@@ -235,7 +252,7 @@ def _drop_area_links(conn: sqlite3.Connection, note_id: int) -> None:
 
 
 def _live_row(conn: sqlite3.Connection, note_id: int) -> sqlite3.Row:
-    row = conn.execute("SELECT * FROM notes WHERE id = ? AND " + _LIVE, (note_id,)).fetchone()
+    row = conn.execute(_WITH_PERSON + " WHERE id = ? AND " + _LIVE, (note_id,)).fetchone()
     if row is None:
         raise NotFound("No such note: {}".format(note_id))
     return row
@@ -269,3 +286,8 @@ def _subtree(conn: sqlite3.Connection, note_id: int) -> List[int]:
         (note_id,),
     ).fetchall()
     return [row[0] for row in rows]
+
+
+# For the other repositories that make or check notes inside their own transactions.
+live_note_row = _live_row
+check_title_free = _check_free

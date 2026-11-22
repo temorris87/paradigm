@@ -1,30 +1,52 @@
-// THE table of the hub page's tabs: which tabs each kind of hub has, in order, and the rows
-// each one lists. Later sections (people, meetings...) are new rows here. Pure.
+// THE table of the panel's tabs on a hub page (and on a person's page): which tabs each kind
+// has, in order, and the rows each one lists. Later sections (meetings...) are new rows
+// here. Pure.
 //
-//   tabsFor(hub)              the tabs for a hub note (Notes is always first)
-//   tab.rows(tree, hub)       [{ id, title, depth, detail, muted? }] in the order shown
-//   tab.empty(hub)            what the tab says when it has no rows
+//   tabsFor(note)             the tabs for a hub or person note (Notes is always first)
+//   tab.rows(ctx, note)       [{ id, title, depth, detail, muted? }] in the order shown;
+//                             ctx: { tree, people } (people: static/js/people/people-model.js)
+//   tab.empty(note)           what the tab says when it has no rows
 import { archivedProjectsIn, projectsIn } from "./hub-areas.js";
+import { groupForKind } from "../notes/hub-groups.js";
+import { hubLinks, peopleOn, rolesText, workText } from "../people/people-model.js";
+
+const PARA = ["project", "area", "resource"];
 
 export const HUB_TABS = [
   {
     key: "notes",
     label: "Notes",
-    kinds: ["project", "area", "resource"],
-    rows: (tree, hub) => tree.inOrder(hub.id).map((note) => ({
+    kinds: [...PARA, "person"],
+    rows: ({ tree }, hub) => tree.inOrder(hub.id).map((note) => ({
       id: note.id,
       title: note.title,
       depth: tree.ancestors(note.id).length - 1,
       detail: dayOf(note.updated_at),
     })),
-    empty: (hub) => `No notes in this ${hub.kind} yet (:child {title} makes one)`,
+    empty: (hub) => hub.kind === "person"
+      ? `No notes under ${hub.title} yet (:child {title} makes one)`
+      : `No notes in this ${hub.kind} yet (:child {title} makes one)`,
+  },
+  {
+    key: "people",
+    label: "People",
+    kinds: PARA,
+    // An area lists the people on its projects too. Archived people come last, muted.
+    rows: ({ tree, people }, hub) => peopleOn(tree, people, hub).map(({ person, roles, archived }) => ({
+      id: person.id,
+      title: person.title,
+      depth: 0,
+      detail: [rolesText(roles), workText(people.get(person.id))].filter(Boolean).join(" · "),
+      muted: archived,
+    })),
+    empty: (hub) => `No people on this ${hub.kind} yet (:addperson {name}, {role})`,
   },
   {
     key: "projects",
     label: "Projects",
     kinds: ["area"],
     // Archived projects come last, muted.
-    rows: (tree, hub) => [
+    rows: ({ tree }, hub) => [
       ...projectsIn(tree, hub.id).map((project) => {
         const inside = tree.inOrder(project.id);
         const latest = [project, ...inside].map((note) => note.updated_at ?? "").sort().pop();
@@ -35,6 +57,20 @@ export const HUB_TABS = [
       })),
     ],
     empty: () => "No projects in this area yet (:inarea {area} on a project puts it here)",
+  },
+  {
+    key: "hubs",
+    label: "Hubs",
+    kinds: ["person"],
+    // Archived hubs come last, muted.
+    rows: ({ tree, people }, person) => hubLinks(tree, people, person.id).map(({ hub, role, archived }) => ({
+      id: hub.id,
+      title: hub.title,
+      depth: 0,
+      detail: [role, groupForKind(hub.kind).label, archived ? "archived" : ""].filter(Boolean).join(" · "),
+      muted: archived,
+    })),
+    empty: (person) => `${person.title} is on no hubs yet (:addperson ${person.title} on a hub)`,
   },
 ];
 

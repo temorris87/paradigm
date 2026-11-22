@@ -5,7 +5,8 @@ GET  /api/note?id=N        one note with its body
 POST /api/note/create      {parent_id|null, title, body?}
 POST /api/note/save        {id, body, version, force?}   409 {error, version} if stale
 POST /api/note/rename      {id, title}
-POST /api/note/move        {id, parent_id|null}           a hub moved under a note stops being one
+POST /api/note/move        {id, parent_id|null}           a hub moved under a note stops being one;
+                                                          a person stays at the top level
 POST /api/note/kind        {id, kind}   kind: project | area | resource | null (the Inbox);
                                         a nested note moves to the top level first
 POST /api/note/area        {id, area_id|null}   put a project in an area (null: in none)
@@ -16,7 +17,7 @@ POST /api/note/delete      {id, recursive?}              -> {deleted: [ids]}
 from http.server import BaseHTTPRequestHandler
 from typing import Callable, Dict
 
-from paradigm.db.notes_repo import (AreaArchived, BadKind, BadTitle, Conflict, HasChildren, LastNote,
+from paradigm.db.notes_repo import (AreaArchived, BadKind, BadTitle, Conflict, HasChildren, IsAPerson, LastNote,
                                     NoteError, NoteRepository, NotAnArea, NotAProject, NotArchived,
                                     NotFound, NotTopLevel, TitleTaken, WouldCycle)
 from paradigm.web.requests import (BadRequest, bool_field, int_field, optional_int_field,
@@ -26,7 +27,7 @@ from paradigm.web.router import Router
 
 _STATUS = {NotFound: 404, Conflict: 409, TitleTaken: 409, HasChildren: 409, LastNote: 409,
            WouldCycle: 400, NotAProject: 400, NotAnArea: 400, AreaArchived: 400, NotTopLevel: 400,
-           NotArchived: 400, BadTitle: 400, BadKind: 400, BadRequest: 400}
+           NotArchived: 400, IsAPerson: 400, BadTitle: 400, BadKind: 400, BadRequest: 400}
 
 
 class NotesApi:

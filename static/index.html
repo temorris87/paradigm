@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="/css/topbar.css">
   <link rel="stylesheet" href="/css/navigator.css">
   <link rel="stylesheet" href="/css/hub.css">
+  <link rel="stylesheet" href="/css/people.css">
   <link rel="stylesheet" href="/css/image-viewer.css">
   <script type="module" src="/js/main.js"></script>
 </head>
@@ -23,10 +24,12 @@
       <header class="topbar">
         <button type="button" class="topbar__nav" aria-controls="navigator" aria-label="Notes" title="Notes (:nav)">☰</button>
         <nav class="crumbs" aria-label="Where this note is"></nav>
+        <button type="button" class="topbar__people" title="People (:people)">People</button>
       </header>
       <div class="hub-line" hidden></div>
       <pd-editor class="app__editor" aria-label="Note"></pd-editor>
       <section class="hub" aria-label="Hub sections" hidden></section>
+      <section class="people" aria-label="People" hidden></section>
     </main>
     <div class="navigator__backdrop" hidden></div>
     <nav class="app__sidebar" id="navigator" aria-label="Notes">

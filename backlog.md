@@ -39,8 +39,8 @@ Features in build order. "build feature" takes the first unchecked item.
   project's area on the hub line), collapsible and expandable, with its own key table (done 2026-11-21)
 - [x] Archive and restore a hub with everything in it; collapsed Archive section; links to
   archived notes look muted (done 2026-11-21)
-- [ ] People: a shared directory with their own notes, linked to hubs with a role; a People tab
-  on hubs and a People page with filters
+- [x] People: a shared directory with their own notes, linked to hubs with a role; a People tab
+  on hubs and a People page with filters (done 2026-11-21)
 - [ ] Meetings: dated meetings in one hub with attendees and a note for minutes; a Meetings tab on
   hubs and people, a Meetings page, filter dropdowns (hub, period; an area includes its projects)
 - [ ] Decisions and open questions: records in a hub (optionally from a meeting, with people); a

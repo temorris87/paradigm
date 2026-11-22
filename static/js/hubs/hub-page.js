@@ -1,15 +1,16 @@
-// The hub page: when the open note is a hub, the hub line above the note and the section
-// panel under it; for any other note, neither. It knows the tree and the tab table, and
-// tells the page which note to open; it never opens notes itself.
+// The hub page: when the open note is a hub (or a person), the hub line above the note and
+// the section panel under it; for any other note, neither. It knows the tree, the people
+// and the tab table, and tells the page which note to open; it never opens notes itself.
 //
 //   const hub = new HubPage({ page: mainElement, line, section, onOpen(id), onLeave() });
-//   hub.show(tree, currentId)    after every redraw of the notes page
+//   hub.show({ tree, people }, currentId)    after every redraw of the notes page
 //   hub.focus()                  :hub (opens a collapsed panel first)
-//   hub.hub                      the open hub note, or null
+//   hub.hub                      the open hub (or person) note, or null
 //   hub.editorHidden             the panel is expanded over the note
 //
 // page carries data-hub-size (collapsed | open | expanded) while a hub is open, for the CSS.
-import { isHub } from "../notes/hub-groups.js";
+import { isHub, isPerson } from "../notes/hub-groups.js";
+import { People } from "../people/people-model.js";
 import { showHubLine } from "./hub-line.js";
 import { HubPanel } from "./hub-panel.js";
 import { loadSize, loadTabs, saveSize, saveTabs, stepSize } from "./hub-size.js";
@@ -23,6 +24,7 @@ export class HubPage {
     this.onOpen = onOpen;
     this.onLeave = onLeave;
     this.tree = null;
+    this.people = new People();
     this.hub = null;
     this.size = loadSize();
     this.tabKeys = loadTabs();
@@ -39,13 +41,18 @@ export class HubPage {
     this.apply();
   }
 
+  context() {
+    return { tree: this.tree, people: this.people };
+  }
+
   get editorHidden() {
     return Boolean(this.hub) && this.size === "expanded";
   }
 
-  show(tree, currentId) {
+  show({ tree, people = new People() }, currentId) {
     this.tree = tree;
-    const hub = isHub(tree, currentId) ? tree.get(currentId) : null;
+    this.people = people;
+    const hub = isHub(tree, currentId) || isPerson(tree, currentId) ? tree.get(currentId) : null;
     const sameHub = hub && hub.id === this.hub?.id;
     const activeId = sameHub ? this.rows[this.active]?.id : undefined;
     this.hub = hub;
@@ -57,7 +64,7 @@ export class HubPage {
     const remembered = this.tabs.findIndex((tab) => tab.key === this.tabKeys[hub.id]);
     if (!sameHub) this.tabIndex = Math.max(0, remembered);
     this.tabIndex = Math.min(this.tabIndex, this.tabs.length - 1);
-    this.rows = this.tabs[this.tabIndex].rows(tree, hub);
+    this.rows = this.tabs[this.tabIndex].rows(this.context(), hub);
     // Redrawn with the same hub open (a note renamed, another tab's change): keep the row.
     this.active = Math.max(0, this.rows.findIndex((row) => row.id === activeId));
     this.apply();
@@ -66,7 +73,7 @@ export class HubPage {
   apply() {
     const hub = this.hub;
     this.section.hidden = !hub;
-    showHubLine(this.line, this.tree, hub, (id) => this.onOpen(id));
+    showHubLine(this.line, this.context(), hub, (id) => this.onOpen(id));
     if (!hub) {
       delete this.page.dataset.hubSize;
       return;
@@ -125,7 +132,7 @@ export class HubPage {
     this.tabIndex = index;
     this.tabKeys[this.hub.id] = this.tabs[index].key;
     saveTabs(this.tabKeys);
-    this.rows = this.tabs[index].rows(this.tree, this.hub);
+    this.rows = this.tabs[index].rows(this.context(), this.hub);
     this.active = 0;
     this.apply();
   }
