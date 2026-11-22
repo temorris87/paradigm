@@ -3,12 +3,14 @@
 //
 //   const app = new NotesApp({ editor, tree: ulElement, crumbs: navElement, navigator,
 //                              hub: { page, line, section }, people: { section, button },
-//                              api: notesApi, imagesApi, peopleApi });
+//                              meetings: { section, button },
+//                              api: notesApi, imagesApi, peopleApi, meetingsApi });
 //
 // navigator (static/js/layout/navigator.js) holds the tree: a drawer on narrow windows.
 // hub (static/js/hubs/hub-page.js) is the hub line and section panel shown on a hub.
-// people (static/js/people/people-page.js) is the People page, drawn in place of the note
-// while the URL has ?people (the note stays open under it: /?note=N&people).
+// people and meetings are the People and Meetings pages (static/js/people/people-page.js,
+// static/js/meetings/meetings-page.js), drawn in place of the note while the URL has
+// &people or &meetings (page-views.js; the note stays open under them).
 //   await app.start();
 import { exportNote } from "../export/export.js";
 import { HubPage } from "../hubs/hub-page.js";
@@ -20,20 +22,25 @@ import { NoteImages } from "./images.js";
 import { NoteSession } from "./note-session.js";
 import { resolveLink, splitTarget } from "./resolve.js";
 import { NoteTree } from "./tree-model.js";
+import { PageViews } from "./page-views.js";
+import { Meetings } from "../meetings/meetings-model.js";
+import { meetingsPage } from "../meetings/meetings-page.js";
 import { People } from "../people/people-model.js";
-import { PeoplePage } from "../people/people-page.js";
+import { peoplePage } from "../people/people-page.js";
 import { TreeView } from "./tree-view.js";
 
 const UNSAVED = "E37: No write since last change (:w to save, or ! to drop the changes)";
 
 export class NotesApp {
-  constructor({ editor, tree, crumbs, navigator, hub, people, api, imagesApi, peopleApi,
-                location = window.location, history = window.history }) {
+  constructor({ editor, tree, crumbs, navigator, hub, people, meetings, api, imagesApi, peopleApi,
+                meetingsApi, location = window.location, history = window.history,
+                today = () => new Date() }) {
     this.editor = editor;
-    this.page = hub.page;
     this.peopleApi = peopleApi;
+    this.meetingsApi = meetingsApi;
     this.people = new People();
-    this.peopleShown = false;
+    this.meetings = new Meetings();
+    this.today = today;
     this.crumbs = crumbs;
     this.navigator = navigator;
     this.api = api;
@@ -55,11 +62,16 @@ export class NotesApp {
       onOpen: (id) => this.guard(this.openFromHub(id)),
       onLeave: () => this.editor.focus(),
     });
-    this.peoplePage = new PeoplePage(people.section, {
-      onOpen: (id) => this.guard(this.open(id)),
-      onLeave: () => this.guard(this.leavePeople()),
+    const onPage = { onOpen: (id) => this.guard(this.open(id)), onLeave: () => this.leaveView() };
+    this.views = new PageViews({
+      main: hub.page,
+      pages: { people: peoplePage(people.section, onPage), meetings: meetingsPage(meetings.section, { ...onPage, today }) },
+      history,
+      noteUrl: () => noteUrl(this.currentId),
     });
-    people.button?.addEventListener("click", () => this.guard(this.peopleShown ? this.leavePeople() : this.peopleCommand()));
+    for (const [key, { button }] of Object.entries({ people, meetings })) {
+      button?.addEventListener("click", () => (this.views.shown === key ? this.leaveView() : this.showView(key, "push")));
+    }
     this.images = new NoteImages({ editor, api: imagesApi, currentId: () => this.currentId });
     registerNoteCommands(editor);
     this.listen();
@@ -104,31 +116,33 @@ export class NotesApp {
     const wanted = Number(params.get("note"));
     const id = this.tree.has(wanted) ? wanted : this.tree.children(null)[0]?.id;
     if (id === undefined) return;
-    const opened = await this.open(id, { history: params.has("people") ? "none" : history });
+    const view = this.views.fromUrl(params);
+    const opened = await this.open(id, { history: view ? "none" : history });
     // Back/Forward to another note while this one could not be saved: stay, and say so.
     if (!opened && history === "none") this.history.pushState({}, "", noteUrl(this.currentId));
-    else if (params.has("people")) this.showPeople(history === "replace" ? "replace" : "none");
+    else if (view) this.showView(view, history === "replace" ? "replace" : "none");
   }
 
   async refreshTree() {
-    const [notes, people] = await Promise.all([this.api.list(), this.peopleApi.list()]);
+    const [notes, people, meetings] = await Promise.all([this.api.list(), this.peopleApi.list(), this.meetingsApi.list()]);
     this.tree = new NoteTree(notes);
     this.people = new People(people);
+    this.meetings = new Meetings(meetings);
     this.redraw();
   }
 
   /** Opens a note. Returns false (and says why) when the open note's changes can't be saved. */
   async open(id, { history = "push", discard = false, heading = "" } = {}) {
     // Opening a note (from the People page, Back, a link...) puts the note back in view.
-    const leftPeople = this.peopleShown;
-    if (leftPeople) {
-      this.setPeopleShown(false);
+    const leftView = Boolean(this.views.shown);
+    if (leftView) {
+      this.views.hide();
       if (history === "push" && id === this.currentId) this.history.pushState({}, "", noteUrl(id));
     }
     const result = await this.switchTo(id, { history, discard, heading });
-    // The open note's changes couldn't be saved: it stays, but the URL must leave ?people.
-    if (leftPeople && !result && history === "push") this.history.pushState({}, "", noteUrl(this.currentId));
-    if (leftPeople) {
+    // The open note's changes couldn't be saved: it stays, but the URL must leave the view.
+    if (leftView && !result && history === "push") this.history.pushState({}, "", noteUrl(this.currentId));
+    if (leftView) {
       this.redraw();
       this.focusNote();
     }
@@ -174,11 +188,9 @@ export class NotesApp {
     const id = this.currentId;
     this.treeView.show(this.tree, id);
     showBreadcrumb(this.crumbs, this.tree, id, (target) => this.guard(this.open(target)));
-    this.hubPage.show({ tree: this.tree, people: this.people }, id);
-    if (this.peopleShown) {
-      this.peoplePage.show({ tree: this.tree, people: this.people });
-      showPeopleCrumb(this.crumbs);
-    }
+    const ctx = { tree: this.tree, people: this.people, meetings: this.meetings };
+    this.hubPage.show(ctx, id);
+    this.views.draw(ctx, this.crumbs);
     const title = this.tree.get(id)?.title ?? this.session.note?.title;
     document.title = title ? `${title} - Paradigm` : "Paradigm";
     // Links resolve against the tree and the open note, so both changing means new links.
@@ -328,39 +340,16 @@ export class NotesApp {
     this.editor.showMessage(`"${note.title}" restored to ${groupLabel(this.tree, note.id)}`);
   }
 
-  peopleCommand() {
-    this.showPeople("push");
-  }
-
-  /** history: "push" (from :people), "replace" or "none" (the URL already says ?people). */
-  showPeople(history) {
-    const url = `${noteUrl(this.currentId)}&people`;
-    if (history === "push" && !this.peopleShown) this.history.pushState({ people: true }, "", url);
-    // Only a push is marked: leaving a page that was loaded as ?people must not go Back
-    // out of Paradigm.
-    if (history === "replace") this.history.replaceState({}, "", url);
-    this.setPeopleShown(true);
+  /** :people, :meetings (history "push"), or a URL with the flag ("replace", "none"). */
+  showView(key, history) {
+    this.views.show(key, history);
     this.redraw();
-    this.peoplePage.focus();
   }
 
-  async leavePeople() {
-    if (!this.peopleShown) return;
-    // Came here with :people in this tab: Back is the same step, so the history stays short.
-    if (this.history.state?.people) this.history.back();
-    else {
-      this.history.pushState({}, "", noteUrl(this.currentId));
-      this.setPeopleShown(false);
-      this.redraw();
-      this.focusNote();
-    }
-  }
-
-  setPeopleShown(shown) {
-    this.peopleShown = shown;
-    if (shown) this.page.dataset.view = "people";
-    else delete this.page.dataset.view;
-    this.peoplePage.section.hidden = !shown;
+  leaveView() {
+    if (this.views.leave()) return;
+    this.redraw();
+    this.focusNote();
   }
 
   /** The note, or the hub panel when it is expanded over the note. */
@@ -415,14 +404,6 @@ export class NotesApp {
     const text = error?.message ?? String(error);
     this.editor.showMessage(/^E\d*:/.test(text) ? text : `E: ${text}`, { error: true });
   }
-}
-
-function showPeopleCrumb(nav) {
-  const here = document.createElement("span");
-  here.className = "crumbs__here";
-  here.textContent = "People";
-  here.setAttribute("aria-current", "page");
-  nav.replaceChildren(here);
 }
 
 function groupLabel(tree, id) {

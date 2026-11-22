@@ -4,15 +4,15 @@ from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional, Tuple
 
 from paradigm.db.connection import Database
-from paradigm.notes.hubs import BadKind, clean_kind
+from paradigm.notes.hubs import HUB_KINDS, BadKind, clean_kind
 from paradigm.notes.titles import BadTitle, clean_title
 
 Clock = Callable[[], str]
 
 __all__ = ["NoteRepository", "NoteError", "NotFound", "Conflict", "TitleTaken", "BadTitle",
            "HasChildren", "WouldCycle", "LastNote", "BadKind", "NotAProject", "NotAnArea",
-           "NotTopLevel", "NotArchived", "AreaArchived", "IsAPerson", "live_note_row",
-           "check_title_free"]
+           "NotTopLevel", "NotArchived", "AreaArchived", "IsAPerson", "IsAMeeting",
+           "live_note_row", "check_title_free", "top_note_row"]
 
 
 class NoteError(Exception):
@@ -71,14 +71,21 @@ class IsAPerson(NoteError):
     """A person's note stays at the top level and is never filed as a hub."""
 
 
+class IsAMeeting(NoteError):
+    """A meeting's note stays inside a hub: never at the top level, never filed."""
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 _LIVE = "deleted_at IS NULL"
-# A note with a people row is a person (006_people.sql): is_person says so.
-_WITH_PERSON = ("SELECT notes.*, people.note_id IS NOT NULL AS is_person FROM notes "
-                "LEFT JOIN people ON people.note_id = notes.id")
+# A note with a people row is a person (006_people.sql), one with a meetings row a meeting
+# (007_meetings.sql): is_person and is_meeting say so.
+_WITH_PERSON = ("SELECT notes.*, people.note_id IS NOT NULL AS is_person, "
+                "meetings.note_id IS NOT NULL AS is_meeting FROM notes "
+                "LEFT JOIN people ON people.note_id = notes.id "
+                "LEFT JOIN meetings ON meetings.note_id = notes.id")
 
 
 class NoteRepository:
@@ -144,6 +151,8 @@ class NoteRepository:
             row = _live_row(conn, note_id)
             if parent_id is not None and row["is_person"]:
                 raise IsAPerson('"{}" is a person: a person stays at the top level'.format(row["title"]))
+            if row["is_meeting"]:
+                _check_meeting_place(conn, row, parent_id)
             if parent_id is not None:
                 _live_row(conn, parent_id)
                 if parent_id == note_id or note_id in _ancestors(conn, parent_id):
@@ -166,6 +175,8 @@ class NoteRepository:
             row = _live_row(conn, note_id)
             if row["is_person"]:
                 raise IsAPerson('"{}" is a person, not a note to file'.format(row["title"]))
+            if row["is_meeting"]:
+                raise IsAMeeting('"{}" is a meeting: it stays inside its hub'.format(row["title"]))
             if row["parent_id"] is not None:
                 _check_free(conn, None, row["title"], note_id)
                 self._change(conn, note_id, "parent_id = NULL", ())
@@ -235,14 +246,35 @@ class NoteRepository:
 
 def _summary(row: sqlite3.Row) -> Dict:
     return {"id": row["id"], "parent_id": row["parent_id"], "title": row["title"],
-            "kind": "person" if row["is_person"] else row["kind"], "area_id": row["area_id"], "archived_at": row["archived_at"],
+            "kind": _kind(row), "area_id": row["area_id"], "archived_at": row["archived_at"],
             "version": row["version"],
             "updated_at": row["updated_at"]}
 
 
-def _what_it_is(row: sqlite3.Row) -> str:
+def _kind(row: sqlite3.Row) -> Optional[str]:
     if row["is_person"]:
-        return "a person"
+        return "person"
+    return "meeting" if row["is_meeting"] else row["kind"]
+
+
+def _check_meeting_place(conn: sqlite3.Connection, row: sqlite3.Row, parent_id: Optional[int]) -> None:
+    """A meeting may move anywhere inside a hub (its hub then changes), nowhere else."""
+    top = None if parent_id is None else _top_row(conn, parent_id)
+    if top is None or top["is_person"] or top["kind"] not in HUB_KINDS:
+        raise IsAMeeting('"{}" is a meeting: it goes inside a project, an area or a resource'.format(row["title"]))
+
+
+def _top_row(conn: sqlite3.Connection, note_id: int) -> sqlite3.Row:
+    """The top-level note holding a note (the note itself at the top)."""
+    row = _live_row(conn, note_id)
+    while row["parent_id"] is not None:
+        row = _live_row(conn, row["parent_id"])
+    return row
+
+
+def _what_it_is(row: sqlite3.Row) -> str:
+    if row["is_person"] or row["is_meeting"]:
+        return "a " + _kind(row)
     return "a " + row["kind"] if row["kind"] else "in the Inbox"
 
 
@@ -291,3 +323,4 @@ def _subtree(conn: sqlite3.Connection, note_id: int) -> List[int]:
 # For the other repositories that make or check notes inside their own transactions.
 live_note_row = _live_row
 check_title_free = _check_free
+top_note_row = _top_row

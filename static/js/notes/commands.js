@@ -2,6 +2,7 @@
 // names (addExCommand); running one sends an "ex" event, and the page runs it here. Names
 // that Vim already uses for something else (:delete, :move, :sub...) are avoided.
 import { HUB_GROUPS } from "./hub-groups.js";
+import { attendeeCommand, dateCommand, dropAttendeeCommand, newMeetingCommand } from "../meetings/meetings-commands.js";
 import { addPersonCommand, dropPersonCommand, fieldCommand, newPersonCommand } from "../people/people-commands.js";
 
 // :project :area :resource :inbox, typed in full (:res is Vim's :resize, :ar is :args).
@@ -35,7 +36,7 @@ export const NOTE_COMMANDS = [
   { name: "restore", min: 5, usage: ":resto[re]", help: "bring this archived hub back to its group",
     run: (app) => app.restoreCommand() },
   { name: "people", min: 6, usage: ":people", help: "open the People page (Escape comes back to the note)",
-    run: (app) => app.peopleCommand() },
+    run: (app) => app.showView("people", "push") },
   { name: "newperson", min: 9, usage: ":newperson {name}", help: "add a person to People and open their note",
     run: (app, { arg }) => newPersonCommand(app, arg) },
   { name: "addperson", min: 9, usage: ":addperson[!] {name}[, {role}]", help: "put a person on this hub with a role, or change the role (! adds someone new to People)",
@@ -48,6 +49,16 @@ export const NOTE_COMMANDS = [
     run: (app, { arg }) => fieldCommand(app, "job", arg) },
   { name: "email", min: 5, usage: ":email [{address}]", help: "set this person's email (with nothing: clear it)",
     run: (app, { arg }) => fieldCommand(app, "email", arg) },
+  { name: "meetings", min: 8, usage: ":meetings", help: "open the Meetings page (Escape comes back to the note)",
+    run: (app) => app.showView("meetings", "push") },
+  { name: "meeting", min: 7, usage: ":meeting [{date}] [{time}] {title}", help: "make a meeting in this hub, titled \"{date} {title}\" (date: 2026-11-24, today, tomorrow, yesterday; today if left out)",
+    run: (app, { arg }) => newMeetingCommand(app, arg) },
+  { name: "date", min: 4, usage: ":date {date} [{time}]", help: "set this meeting's date and time (no time: none); a title starting with the old date gets the new one",
+    run: (app, { arg }) => dateCommand(app, arg) },
+  { name: "attendee", min: 8, usage: ":attendee[!] {name}[, {name}...]", help: "these people attended this meeting (! adds someone new to People)",
+    run: (app, { arg, bang }) => attendeeCommand(app, arg, bang) },
+  { name: "dropattendee", min: 12, usage: ":dropattendee {name}", help: "this person did not attend this meeting after all",
+    run: (app, { arg }) => dropAttendeeCommand(app, arg) },
   { name: "hub", min: 3, usage: ":hub", help: "go to the hub's section panel (opens it if collapsed)",
     run: (app) => app.hubCommand() },
   { name: "export", min: 3, usage: ":exp[ort]", help: "download this note, and the linked notes beside or under it, as one .html file",

@@ -1,7 +1,7 @@
 // What the people commands in static/js/notes/commands.js do. Each takes the NotesApp
 // (static/js/notes/app.js) and what was typed after the command; errors are thrown for
 // the app to show.
-import { isHub, isPerson } from "../notes/hub-groups.js";
+import { isHub, isMeeting, isPerson } from "../notes/hub-groups.js";
 import { titleKey } from "../notes/titles.js";
 import { findPerson } from "./people-model.js";
 
@@ -72,6 +72,7 @@ export function splitNameRole(arg) {
 
 function currentHub(app) {
   const id = app.currentId;
+  if (isMeeting(app.tree, id)) throw new Error("E: on a meeting, :attendee {name} says who attended");
   if (!isHub(app.tree, id)) throw new Error("E: people go on a hub: open a project, an area or a resource");
   return app.tree.get(id);
 }

@@ -38,21 +38,21 @@ test("hubs: a project's area, an area's projects; a non-area target counts as no
   assertEqual(areaOf(new NoteTree(NOTES.filter((n) => n.id !== 1)), 2), null);
 });
 
-test("hub tabs: Notes first for every kind; People on hubs; Projects only on areas; Hubs on people", () => {
-  assertEqual(HUB_TABS[0].key, "notes");
-  assertEqual(tabsFor({ kind: "area" }).map((t) => t.label).join(), "Notes,People,Projects");
-  assertEqual(tabsFor({ kind: "project" }).map((t) => t.label).join(), "Notes,People");
-  assertEqual(tabsFor({ kind: "resource" }).map((t) => t.label).join(), "Notes,People");
-  assertEqual(tabsFor({ kind: "person" }).map((t) => t.label).join(), "Notes,Hubs");
+test("hub tabs: Notes first on hubs and people; People on hubs; Projects only on areas; Hubs on people", () => {
+  assertEqual(tabsFor({ kind: "area" }).map((t) => t.label).join(), "Notes,People,Projects,Meetings");
+  assertEqual(tabsFor({ kind: "project" }).map((t) => t.label).join(), "Notes,People,Meetings");
+  assertEqual(tabsFor({ kind: "resource" }).map((t) => t.label).join(), "Notes,People,Meetings");
+  assertEqual(tabsFor({ kind: "person" }).map((t) => t.label).join(), "Notes,Hubs,Meetings");
+  assertEqual(tabsFor({ kind: "meeting" }).map((t) => t.label).join(), "Attendees,Notes");
   assertEqual(tabsFor({ kind: null }).length, 0);
 });
 
 test("hub tabs: Notes lists the whole subtree in tree order with depths", () => {
   const t = tree();
-  const rows = HUB_TABS[0].rows({ tree: t }, t.get(2));
+  const rows = tab("notes").rows({ tree: t }, t.get(2));
   assertEqual(rows.map((r) => `${r.title}:${r.depth}`).join(), "Budget:0,Kickoff:0,Minutes:1");
   assertEqual(rows[0].detail, dayOf(T));
-  assertEqual(HUB_TABS[0].empty(t.get(7)), "No notes in this resource yet (:child {title} makes one)");
+  assertEqual(tab("notes").empty(t.get(7)), "No notes in this resource yet (:child {title} makes one)");
 });
 
 test("hub tabs: Projects counts notes and takes the latest change inside", () => {
@@ -168,24 +168,25 @@ test("hub page: j k g G move, Enter opens, Escape leaves", () => withPage(({ sec
 test("hub page: tabs by h l and number, remembered per hub", () => withPage(({ section, hub }) => {
   hub.show({ tree: tree() }, 1);
   hub.focus();
-  assertEqual(tabLabels(section), "Notes*,People,Projects");
+  assertEqual(tabLabels(section), "Notes*,People,Projects,Meetings");
   assertEqual(section.querySelector(".hub__empty").textContent, "No notes in this area yet (:child {title} makes one)");
   press("l");
-  assertEqual(tabLabels(section), "Notes,People*,Projects");
+  assertEqual(tabLabels(section), "Notes,People*,Projects,Meetings");
   press("l");
-  assertEqual(tabLabels(section), "Notes,People,Projects*");
+  assertEqual(tabLabels(section), "Notes,People,Projects*,Meetings");
   assertEqual(rowTitles(section), "Acme,Northwind");
   press("l");
-  assertEqual(tabLabels(section), "Notes,People,Projects*", "l stops at the last tab");
+  press("l");
+  assertEqual(tabLabels(section), "Notes,People,Projects,Meetings*", "l stops at the last tab");
   press("1");
-  assertEqual(tabLabels(section), "Notes*,People,Projects");
+  assertEqual(tabLabels(section), "Notes*,People,Projects,Meetings");
   press("3");
   hub.show({ tree: tree() }, 2);
-  assertEqual(tabLabels(section), "Notes*,People");
+  assertEqual(tabLabels(section), "Notes*,People,Meetings");
   hub.show({ tree: tree() }, 1);
-  assertEqual(tabLabels(section), "Notes,People,Projects*", "the area's tab came back");
+  assertEqual(tabLabels(section), "Notes,People,Projects*,Meetings", "the area's tab came back");
   section.querySelector("[role=tab]").click();
-  assertEqual(tabLabels(section), "Notes*,People,Projects", "a click picks a tab");
+  assertEqual(tabLabels(section), "Notes*,People,Projects,Meetings", "a click picks a tab");
 }));
 
 test("hub page: - and + step the size; expanded hides the editor; Escape reopens", () => withPage(({ page, section, hub, left }) => {

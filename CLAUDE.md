@@ -48,22 +48,27 @@ paradigm/                Python package
                          static.py (serves static/), responses.py, security.py
   api/                   JSON endpoints; session.py = /api/ping, /api/events, /api/closing;
                          notes.py; images.py (raw-bytes upload, GET /api/image?id=N cached);
-                         people.py (/api/people, /api/person/create|update|link|unlink)
+                         people.py (/api/people, /api/person/create|update|link|unlink);
+                         meetings.py (/api/meetings, /api/meeting/create|update|attend|
+                         unattend); answers.py (result or expected error -> response)
   db/                    (migrations: 001 notes, 002 images, 003 notes.kind for PARA hubs,
                          004 notes.area_id: a project's area, 005 notes.archived_at:
                          archived hubs, 006 people + hub_people: a person's fields and
-                         their hub links with a role)
+                         their hub links with a role, 007 meetings + meeting_people: a
+                         meeting's day, time and attendees)
                          connection.py (one locked connection, transactions, VACUUM at start
                          when worth it), migrate.py
                          (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py,
                          people_repo.py (people and hub links; a people row is what
                          makes a note a person, reported as kind "person"),
+                         meetings_repo.py (a meetings row makes a note a meeting, kind
+                         "meeting"; created directly under its hub as "{day} {name}"),
                          images_repo.py (image bytes in SQLite, deduped per note by sha256;
                          sweep_unused deletes images no note links to, at start and stop only)
   images/                formats.py: PNG/JPEG/GIF/WebP from magic bytes + size (SVG refused)
   notes/                 titles.py (title rules), hubs.py (HUB_KINDS: project, area,
                          resource), people.py (person fields, roles), seed.py + welcome.md
-                         (first-run note)
+                         (first-run note), meetings.py (day, time, title rules)
 static/
   index.html
   vendor/katex-0.19.1/   KaTeX exactly as audited (package paths kept; checked against
@@ -84,7 +89,10 @@ static/
                          (THE tree key table), breadcrumb.js, commands.js (THE note ex
                          commands: :e :new :child :rename :parent :nav :project :area
                          :resource :inbox :inarea :archive :restore :people :newperson
-                         :addperson :dropperson :org :job :email :hub :export :trash),
+                         :addperson :dropperson :org :job :email :meetings :meeting :date
+                         :attendee :dropattendee :hub :export :trash),
+                         page-views.js (which list page replaces the note: &people,
+                         &meetings; the URL flag and Back),
                          hub-groups.js (THE PARA group table: Inbox, Projects, Areas,
                          Resources; then People and the Archive, folded by default),
                          headings.js,
@@ -93,13 +101,19 @@ static/
                          (wiring; data-hub-size on .app__note), hub-line.js ("Project · Area:
                          X", "Person · Northwind · ..."), hub-panel.js (tabs + one-focus-stop
                          listbox), hub-tabs.js (THE hub tab table: Notes, People, an area's
-                         Projects, a person's Hubs; pure), hub-areas.js (project
+                         Projects, a person's Hubs, Meetings; a meeting's Attendees; pure), hub-areas.js (project
                          <-> area; pure), hub-size.js (collapsed/open/expanded, remembered),
                          hub-keys.js (THE section panel key table)
+  js/pages/              list-page.js (a list page in place of the note: filters, search
+                         box, one-focus-stop listbox), page-keys.js (THE key table of the
+                         People and Meetings pages)
   js/people/             api.js, people-model.js (who is on a hub, an area with its projects;
                          the People page filters; pure), people-page.js (the People page,
-                         in place of the note while the URL has &people), people-keys.js
-                         (THE People page key table), people-commands.js
+                         a ListPage), people-commands.js
+  js/meetings/           api.js, meeting-days.js (local days, today/tomorrow, times, the
+                         Period filter; pure), meetings-model.js (a hub's meetings, an area
+                         with its projects', a person's; the page filters; pure),
+                         meetings-page.js (a ListPage), meetings-commands.js
   js/images/             downscale.js: shrinks images wider than 1600 px on a canvas (GIFs
                          never); viewer.js: <pd-image-viewer>, a click on an image opens it
                          with its own zoom and pan; viewer-math.js (pure), viewer-keys.js
@@ -196,7 +210,8 @@ Update this section when the structure changes.
 - Hub page: a hub shows a hub line under the breadcrumb and a tabbed section panel under the
   note (Notes: the whole subtree; Projects on areas). `:hub` or Tab reaches the panel; its keys
   live in `static/js/hubs/hub-keys.js`. `-`/`+` size it (collapsed, open, expanded; expanded
-  hides the editor). New record types become new rows in `hub-tabs.js`. `:inarea {area}` puts
+  hides the editor). New record types become new rows in `hub-tabs.js` (at the end, so the
+  number keys of the others stay). `:inarea {area}` puts
   a project in an area; a note that stops being a project or area loses the link.
 - The notes tree is reached with `:nav` or the ☰ button in the top bar. Under 1400 px wide it
   is a drawer: it opens over the note and closes on Enter (opening a note), Escape, a click on
@@ -207,8 +222,18 @@ Update this section when the structure changes.
   (again: changes the role; `!` adds someone new) and `:dropperson {name}` takes them off. A
   person can't be filed or nested. Hubs have a People tab (an area's includes its projects'
   people); a person has a Hubs tab. `:people` or the People button opens the People page
-  (filters: hub, role, organisation, name); its keys live in `static/js/people/people-keys.js`.
+  (filters: hub, role, organisation, name); its keys live in `static/js/pages/page-keys.js`.
   Archived people leave the People page and are muted in tabs; links survive trash and archive.
+- Meetings: a meeting is a note inside a hub (its text is the minutes) plus a `meetings` row
+  (day, optional time) and attendees. `:meeting [{date}] [{time}] {title}` on a hub or any
+  note in it makes `"{date} {title}"` directly under the hub (today if no date; dates also
+  `today`, `tomorrow`, `yesterday`). `:date {date} [{time}]` changes it (a title starting
+  with the old date gets the new one); `:attendee[!] {name}, {name}...` and `:dropattendee`.
+  Its hub is its top-level note: it can't go to the top, into the Inbox or under a person.
+  A meeting shows a meeting line and Attendees / Notes tabs; hubs (an area: its projects'
+  too) and people have a Meetings tab, newest first; a hub's Notes tab leaves meetings out.
+  `:meetings` or the Meetings button opens the Meetings page (filters: hub, period, title),
+  with the same keys as the People page (`static/js/pages/page-keys.js`).
 - Clicking a rendered image opens `<pd-image-viewer>` (its keys live in
   `static/js/images/viewer-keys.js`).
 - An image is deleted from the database once no note (trashed ones included) links to it any
@@ -255,7 +280,10 @@ Update this section when the structure changes.
    `python -m http.server 8766 --bind 127.0.0.1`, then open `http://127.0.0.1:8766/tests/js/`.
    The page title becomes `PASS n` or `FAIL n/m`. Headless on Linux:
    `firefox --headless -no-remote -profile <fresh dir> --screenshot out.png <url>`. Use a fresh
-   profile every time, because a reused one serves cached JS.
+   profile every time, because a reused one serves cached JS. The screenshot can fire before
+   async tests end: instead put `user_pref("devtools.console.stdout.content", true);` in the
+   profile's `user.js`, run `firefox --headless -no-remote -profile <dir> <url>` under a
+   timeout, and read the `TESTS PASS n` / `FAIL ...` lines the harness logs.
 3. Check the behaviour in a real browser on sample data, including the keys.
 4. Report what was tested and what wasn't, such as Windows-specific behaviour Tyson must check
    at work.

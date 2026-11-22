@@ -8,12 +8,17 @@
 //
 // People (kind "person", static/js/people/) are top-level notes too, in their own group
 // after Resources, folded by default. They are not hubs and have no filing command.
+//
+// Meetings (kind "meeting", static/js/meetings/) are notes inside a hub, never at the top.
 export const HUB_GROUPS = [
   { key: "inbox", label: "Inbox", kind: null, heading: "Inbox", command: "inbox", asWhat: "in the Inbox" },
   { key: "project", label: "Project", kind: "project", heading: "Projects", command: "project", asWhat: "a project" },
   { key: "area", label: "Area", kind: "area", heading: "Areas", command: "area", asWhat: "an area" },
   { key: "resource", label: "Resource", kind: "resource", heading: "Resources", command: "resource", asWhat: "a resource" },
 ];
+
+// Not a group: what the tree tags a meeting's row with.
+export const MEETING_LABEL = "Meeting";
 
 export const PEOPLE_GROUP = { key: "people", label: "Person", kind: "person", heading: "People", foldedByDefault: true };
 // showsKind: its hubs say what they were ("Project"), since their group no longer does.
@@ -55,10 +60,30 @@ export function isArchived(tree, id) {
 /** Whether a note is a hub: a top-level note filed as a project, an area or a resource. */
 export function isHub(tree, id) {
   const note = tree.get(id);
-  return Boolean(note?.kind) && note.kind !== "person" && tree.parentId(id) === null;
+  return Boolean(note?.kind) && note.kind !== "person" && note.kind !== "meeting" && tree.parentId(id) === null;
 }
 
 /** Whether a note is a person's own note (always a top-level note). */
 export function isPerson(tree, id) {
   return tree.get(id)?.kind === "person" && tree.parentId(id) === null;
+}
+
+/** Whether a note is a meeting (a note inside a hub with a meeting record). */
+export function isMeeting(tree, id) {
+  return tree.get(id)?.kind === "meeting";
+}
+
+/** The hub holding a note (its top-level note, when that is a hub), or null. */
+export function hubOf(tree, id) {
+  const top = topNoteOf(tree, id);
+  return top && isHub(tree, top.id) ? top : null;
+}
+
+/** Whether a note is a meeting or inside one, counting from below a note (exclusive). */
+export function inMeetingBelow(tree, id, fromId) {
+  for (const note of [...tree.path(id)].reverse()) {
+    if (note.id === fromId) return false;
+    if (note.kind === "meeting") return true;
+  }
+  return false;
 }

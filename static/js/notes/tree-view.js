@@ -8,7 +8,7 @@
 // Each row has a key: a note's id (a number) or "group:<key>" for a group heading. Which
 // branches are open and which groups are folded are remembered in localStorage, per browser.
 // A group folded by default (the Archive) is remembered the other way round: when unfolded.
-import { NAV_GROUPS, groupForKind, groupOf, hubsIn } from "./hub-groups.js";
+import { MEETING_LABEL, NAV_GROUPS, groupForKind, groupOf, hubsIn } from "./hub-groups.js";
 import { treeAction } from "./tree-keys.js";
 
 const STORE_KEY = "paradigm.tree.expanded";
@@ -90,10 +90,10 @@ export class TreeView {
     li.dataset.id = String(note.id);
     if (kids.length) li.setAttribute("aria-expanded", String(open));
     let kind = null;
-    if (withKind) {
+    if (withKind || note.kind === "meeting") {
       kind = document.createElement("span");
       kind.className = "tree__kind";
-      kind.textContent = groupForKind(note.kind).label;
+      kind.textContent = note.kind === "meeting" ? MEETING_LABEL : groupForKind(note.kind).label;
     }
     li.append(this.row(kids.length ? (open ? "▾" : "▸") : "", note.title, "tree__title", kind));
     if (open) li.append(this.group(kids, level + 1));

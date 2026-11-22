@@ -1,15 +1,17 @@
-// The hub page: when the open note is a hub (or a person), the hub line above the note and
-// the section panel under it; for any other note, neither. It knows the tree, the people
-// and the tab table, and tells the page which note to open; it never opens notes itself.
+// The hub page: when the open note is a hub (or a person, or a meeting), the hub line above
+// the note and the section panel under it; for any other note, neither. It knows the tree,
+// the people, the meetings and the tab table, and tells the page which note to open; it
+// never opens notes itself.
 //
 //   const hub = new HubPage({ page: mainElement, line, section, onOpen(id), onLeave() });
-//   hub.show({ tree, people }, currentId)    after every redraw of the notes page
+//   hub.show({ tree, people, meetings }, currentId)    after every redraw of the notes page
 //   hub.focus()                  :hub (opens a collapsed panel first)
-//   hub.hub                      the open hub (or person) note, or null
+//   hub.hub                      the open hub (person, meeting) note, or null
 //   hub.editorHidden             the panel is expanded over the note
 //
 // page carries data-hub-size (collapsed | open | expanded) while a hub is open, for the CSS.
-import { isHub, isPerson } from "../notes/hub-groups.js";
+import { Meetings } from "../meetings/meetings-model.js";
+import { isHub, isMeeting, isPerson } from "../notes/hub-groups.js";
 import { People } from "../people/people-model.js";
 import { showHubLine } from "./hub-line.js";
 import { HubPanel } from "./hub-panel.js";
@@ -25,6 +27,7 @@ export class HubPage {
     this.onLeave = onLeave;
     this.tree = null;
     this.people = new People();
+    this.meetings = new Meetings();
     this.hub = null;
     this.size = loadSize();
     this.tabKeys = loadTabs();
@@ -42,17 +45,19 @@ export class HubPage {
   }
 
   context() {
-    return { tree: this.tree, people: this.people };
+    return { tree: this.tree, people: this.people, meetings: this.meetings };
   }
 
   get editorHidden() {
     return Boolean(this.hub) && this.size === "expanded";
   }
 
-  show({ tree, people = new People() }, currentId) {
+  show({ tree, people = new People(), meetings = new Meetings() }, currentId) {
     this.tree = tree;
     this.people = people;
-    const hub = isHub(tree, currentId) || isPerson(tree, currentId) ? tree.get(currentId) : null;
+    this.meetings = meetings;
+    const shown = [isHub, isPerson, isMeeting].some((is) => is(tree, currentId));
+    const hub = shown ? tree.get(currentId) : null;
     const sameHub = hub && hub.id === this.hub?.id;
     const activeId = sameHub ? this.rows[this.active]?.id : undefined;
     this.hub = hub;

@@ -4,9 +4,9 @@ import { NOTE_COMMANDS, runNoteCommand } from "../../static/js/notes/commands.js
 import { NAV_GROUPS, groupOf, hubsIn, isHub, isPerson, PEOPLE_GROUP } from "../../static/js/notes/hub-groups.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
 import { splitNameRole } from "../../static/js/people/people-commands.js";
-import { PEOPLE_KEYS, peopleAction } from "../../static/js/people/people-keys.js";
+import { PAGE_KEYS, pageAction } from "../../static/js/pages/page-keys.js";
 import { People, filterOptions, filterPeople, findPerson, hubLinks, peopleOn, rolesText } from "../../static/js/people/people-model.js";
-import { PeoplePage } from "../../static/js/people/people-page.js";
+import { peoplePage } from "../../static/js/people/people-page.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
 const T = "2026-11-21T12:00:00.000Z";
@@ -180,15 +180,15 @@ test("people commands: :dropperson, :newperson, fields only on a person", async 
   assertEqual(await rejects(runNoteCommand(app, { name: "newperson", arg: " " })), "E471: Argument required: the person's name");
 });
 
-test("people keys: list and name-box scopes; modifiers are the browser's", () => {
-  assertEqual(peopleAction({ key: "j" }, "list"), "next");
-  assertEqual(peopleAction({ key: "/" }, "list"), "name");
-  assertEqual(peopleAction({ key: "Escape" }, "list"), "leave");
-  assertEqual(peopleAction({ key: "j" }, "name"), null, "j types in the name box");
-  assertEqual(peopleAction({ key: "Enter" }, "name"), "list");
-  assertEqual(peopleAction({ key: "j", ctrlKey: true }, "list"), null);
-  assertEqual(peopleAction({ key: "Tab" }, "list"), null, "Tab moves the focus on");
-  assertTrue(PEOPLE_KEYS.every((row) => row.help), "every row has help text");
+test("page keys: list and search-box scopes; modifiers are the browser's", () => {
+  assertEqual(pageAction({ key: "j" }, "list"), "next");
+  assertEqual(pageAction({ key: "/" }, "list"), "search");
+  assertEqual(pageAction({ key: "Escape" }, "list"), "leave");
+  assertEqual(pageAction({ key: "j" }, "search"), null, "j types in the search box");
+  assertEqual(pageAction({ key: "Enter" }, "search"), "list");
+  assertEqual(pageAction({ key: "j", ctrlKey: true }, "list"), null);
+  assertEqual(pageAction({ key: "Tab" }, "list"), null, "Tab moves the focus on");
+  assertTrue(PAGE_KEYS.every((row) => row.help), "every row has help text");
 });
 
 function withPeoplePage(body) {
@@ -196,7 +196,7 @@ function withPeoplePage(body) {
   document.body.append(section);
   const opened = [];
   let left = 0;
-  const page = new PeoplePage(section, { onOpen: (id) => opened.push(id), onLeave: () => { left += 1; } });
+  const page = peoplePage(section, { onOpen: (id) => opened.push(id), onLeave: () => { left += 1; } });
   try {
     page.show(ctx());
     body({ section, page, opened, left: () => left });
@@ -210,7 +210,7 @@ const titles = (section) => [...section.querySelectorAll(".people__title")].map(
 
 test("people page: lists, filters by the dropdowns and the name box", () => withPeoplePage(({ section }) => {
   assertEqual(titles(section), "Bob Smith,Cy Young,Jane Doe");
-  assertEqual(section.querySelector(".people__count").textContent, "· 3");
+  assertEqual(section.querySelector(".list-page__count").textContent, "· 3");
   const row = section.querySelector("[role=option]:last-child");
   assertEqual(row.querySelector(".people__work").textContent, "Northwind · Data engineer");
   assertEqual(row.querySelector(".people__hubs").textContent, "Operations (Sponsor), Rollout (Lead)");
@@ -219,13 +219,13 @@ test("people page: lists, filters by the dropdowns and the name box", () => with
   hubSelect.value = "1";
   hubSelect.dispatchEvent(new Event("change"));
   assertEqual(titles(section), "Bob Smith,Jane Doe");
-  const name = section.querySelector(".people__name");
+  const name = section.querySelector(".list-page__search");
   name.value = "jan";
   name.dispatchEvent(new Event("input"));
   assertEqual(titles(section), "Jane Doe");
   name.value = "zzz";
   name.dispatchEvent(new Event("input"));
-  assertEqual(section.querySelector(".people__empty").textContent, "No one matches (:newperson {name} adds someone)");
+  assertEqual(section.querySelector(".list-page__empty").textContent, "No one matches (:newperson {name} adds someone)");
 }));
 
 test("people page: keys move, open, reach the name box and leave", () => withPeoplePage(({ section, page, opened, left }) => {
@@ -237,9 +237,9 @@ test("people page: keys move, open, reach the name box and leave", () => withPeo
   press("Enter");
   assertEqual(opened.join(), "10");
   press("/");
-  assertEqual(document.activeElement, section.querySelector(".people__name"));
+  assertEqual(document.activeElement, section.querySelector(".list-page__search"));
   press("Escape");
-  assertEqual(document.activeElement, section.querySelector(".people__list"), "Escape in the box goes back to the list");
+  assertEqual(document.activeElement, section.querySelector(".list-page__list"), "Escape in the box goes back to the list");
   press("Escape");
   assertEqual(left(), 1);
   section.querySelector("[role=option]").click();
@@ -256,7 +256,7 @@ test("person page: the person line and the Hubs tab", () => {
     const hub = new HubPage({ page, line, section, onOpen: () => {}, onLeave: () => {} });
     hub.show(ctx(), 10);
     assertEqual(line.textContent, "Person·Northwind·Data engineer·jane@example.com");
-    assertEqual([...section.querySelectorAll("[role=tab]")].map((t) => t.textContent).join(), "Notes,Hubs");
+    assertEqual([...section.querySelectorAll("[role=tab]")].map((t) => t.textContent).join(), "Notes,Hubs,Meetings");
     hub.show(ctx(), 13);
     assertEqual(line.textContent, "Person·no organisation (:org)");
     hub.show(ctx(), 12);

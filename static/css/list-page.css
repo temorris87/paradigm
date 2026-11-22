@@ -1,0 +1,119 @@
+/* The list pages (static/js/pages/list-page.js: People, Meetings), drawn in place of the
+   note while .app__note carries data-view. Each page's own columns are in its file
+   (people.css, meetings.css). */
+.app__note[data-view] .app__editor,
+.app__note[data-view] .hub-line,
+.app__note[data-view] .hub {
+  display: none;
+}
+
+.list-page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+}
+
+.list-page[hidden] {
+  display: none;
+}
+
+.list-page__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 1rem;
+}
+
+.list-page__heading {
+  margin: 0;
+  flex: 1 0 auto;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--nord13);
+}
+
+.list-page__count {
+  color: var(--nord4);
+  font-weight: normal;
+}
+
+.list-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.list-page__label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-size: 0.8rem;
+  color: var(--nord4);
+}
+
+.list-page__filter,
+.list-page__search {
+  min-width: 8rem;
+  max-width: 14rem;
+  padding: 0.15rem 0.35rem;
+  border: 1px solid var(--nord3);
+  border-radius: 3px;
+  background: var(--nord1);
+  color: var(--nord6);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.list-page__filter:focus-visible,
+.list-page__search:focus-visible {
+  outline: 1px solid var(--nord9);
+  outline-offset: 0;
+}
+
+.list-page__list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: auto;
+  outline: none;
+  border-top: 1px solid var(--nord2);
+  padding-top: 0.25rem;
+}
+
+.list-page__row {
+  display: grid;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.list-page__row:hover {
+  background: var(--nord1);
+}
+
+.list-page__row[aria-selected="true"] {
+  background: var(--nord2);
+  color: var(--nord6);
+}
+
+.list-page__list:focus .list-page__row[aria-selected="true"] {
+  box-shadow: inset 0 0 0 1px var(--nord9);
+}
+
+.list-page__cell {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-page__empty {
+  padding: 0.5rem;
+  color: var(--nord3);
+}

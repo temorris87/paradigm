@@ -4,6 +4,7 @@ import { tabId } from "./connection/tab-id.js";
 import "./editor/pd-editor.js";
 import "./images/viewer.js";
 import { Navigator } from "./layout/navigator.js";
+import { meetingsApi } from "./meetings/api.js";
 import { imagesApi, notesApi } from "./notes/api.js";
 import { NotesApp } from "./notes/app.js";
 import { peopleApi } from "./people/api.js";
@@ -38,9 +39,14 @@ const app = new NotesApp({
     section: document.querySelector(".people"),
     button: document.querySelector(".topbar__people"),
   },
+  meetings: {
+    section: document.querySelector(".meetings"),
+    button: document.querySelector(".topbar__meetings"),
+  },
   navigator: notesNavigator,
   api: notesApi,
   imagesApi,
   peopleApi,
+  meetingsApi,
 });
 app.start().catch((error) => app.fail(error));

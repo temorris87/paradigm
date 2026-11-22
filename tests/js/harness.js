@@ -1,5 +1,7 @@
 // A tiny test harness: register tests, run them, show the results on the page.
-// document.title becomes "PASS n" or "FAIL n/m" so a headless run can read the outcome.
+// document.title becomes "PASS n" or "FAIL n/m" so a headless run can read the outcome; the
+// summary and each failure are logged too (Firefox prints them with the pref
+// devtools.console.stdout.content set to true).
 
 const tests = [];
 
@@ -29,10 +31,12 @@ export async function run(output) {
       failed += 1;
       row.className = "fail";
       row.textContent = `FAIL ${name}: ${error.message}`;
+      console.log(row.textContent);
     }
     output.append(row);
   }
   const summary = failed ? `FAIL ${failed}/${tests.length}` : `PASS ${tests.length}`;
   document.title = summary;
+  console.log(`TESTS ${summary}`);
   output.before(Object.assign(document.createElement("h2"), { textContent: summary }));
 }

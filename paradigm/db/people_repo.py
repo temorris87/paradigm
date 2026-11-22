@@ -129,3 +129,7 @@ def _hub_row(conn: sqlite3.Connection, hub_id: int) -> sqlite3.Row:
 
 def _title(conn: sqlite3.Connection, note_id: int) -> str:
     return conn.execute("SELECT title FROM notes WHERE id = ?", (note_id,)).fetchone()[0]
+
+
+# For the other repositories that check people and hubs inside their own transactions.
+person_row = _person_row

@@ -1,0 +1,27 @@
+/* The Meetings page's columns (the page itself: list-page.css). When, title, hub, then who
+   attended; on a narrow window the attendees go under the title. */
+.meetings .list-page__row {
+  grid-template-columns: 9.5rem minmax(8rem, 1.5fr) minmax(0, 1fr) minmax(0, 1.5fr);
+}
+
+.meetings__when {
+  font-variant-numeric: tabular-nums;
+}
+
+.meetings__when,
+.meetings__hub,
+.meetings__attendees {
+  color: var(--nord4);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 1000px) {
+  .meetings .list-page__row {
+    grid-template-columns: 9.5rem minmax(0, 1fr) minmax(0, 0.6fr);
+    row-gap: 0.05rem;
+  }
+
+  .meetings__attendees {
+    grid-column: 2 / -1;
+  }
+}

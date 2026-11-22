@@ -37,8 +37,8 @@
   outline-offset: 1px;
 }
 
-/* The People button (:people), at the right end of the bar. */
-.topbar__people {
+/* The People and Meetings buttons (:people, :meetings), at the right end of the bar. */
+.topbar__page {
   flex: none;
   padding: 0.15rem 0.6rem;
   border: none;
@@ -50,13 +50,14 @@
   cursor: pointer;
 }
 
-.topbar__people:hover,
-.app__note[data-view="people"] .topbar__people {
+.topbar__page:hover,
+.app__note[data-view="people"] .topbar__people,
+.app__note[data-view="meetings"] .topbar__meetings {
   background: var(--nord2);
   color: var(--nord6);
 }
 
-.topbar__people:focus-visible {
+.topbar__page:focus-visible {
   outline: 1px solid var(--nord9);
   outline-offset: 1px;
 }
