@@ -118,7 +118,10 @@ static/
   js/hubs/               the hub page (shown while a hub, person or meeting is open; a
                          decision or question gets the line alone): hub-page.js
                          (wiring; data-hub-size on .app__note), hub-line.js ("Project · Area:
-                         X", "Person · Northwind · ...", "Decision · ... · from Kickoff"), hub-panel.js (tabs + one-focus-stop
+                         X", "Person · Northwind · ...", "Decision · ... · from Kickoff"),
+                         hub-line-controls.js (the line's buttons: ▾ ✎ + ×, they only report),
+                         hub-actions.js (what the line's buttons do: menus, pickers, dialogs,
+                         then the same code as the ex commands; personDialog), hub-panel.js (tabs + one-focus-stop
                          listbox), hub-tabs.js (THE hub tab table: Notes, People, an area's
                          Projects, a person's Hubs, Meetings, Decisions, Questions, a resource's
                          Linked from; a meeting's Attendees; pure), hub-areas.js (project
@@ -295,6 +298,11 @@ Update this section when the structure changes.
   button (or `:find [text]`) opens a picker over every note: each typed word must appear in
   the title or the path. Menus, pickers and dialogs share `static/js/ui/` and its keys
   (`ui-keys.js`).
+- Hub line controls: what the line shows can be changed there: a hub's kind (▾), a project's
+  area (✎, a picker), a person's details (✎), a meeting's date and time, a record's date, a
+  question's state (▾: answered today / on a day, reopen), and the people on a record (× and
+  + Add person). The person dialog adds someone new to People only when its button says
+  "Add new person".
 - Clicking a rendered image opens `<pd-image-viewer>` (its keys live in
   `static/js/images/viewer-keys.js`).
 - An image is deleted from the database once no note (trashed ones included) links to it any

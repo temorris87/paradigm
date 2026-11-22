@@ -3,7 +3,8 @@
 // any other note, neither. It knows the tree, the people, the meetings, the records and the
 // tab table, and tells the page which note to open; it never opens notes itself.
 //
-//   const hub = new HubPage({ page: mainElement, line, section, onOpen(id), onLeave() });
+//   const hub = new HubPage({ page: mainElement, line, section, onOpen(id), onLeave(),
+//                             controls });   the hub line's buttons (hub-actions.js)
 //   hub.show({ tree, people, meetings, records, links }, currentId)   after every redraw
 //   hub.focus()                  :hub (opens a collapsed panel first)
 //   hub.hub                      the open hub (person, meeting, decision, question), or null
@@ -17,13 +18,15 @@ import { Links } from "../notes/links.js";
 import { People } from "../people/people-model.js";
 import { Records } from "../records/records-model.js";
 import { showHubLine } from "./hub-line.js";
+import { NO_CONTROLS } from "./hub-line-controls.js";
 import { HubPanel } from "./hub-panel.js";
 import { loadSize, loadTabs, saveSize, saveTabs, stepSize } from "./hub-size.js";
 import { tabsFor } from "./hub-tabs.js";
 
 export class HubPage {
-  constructor({ page, line, section, onOpen, onLeave }) {
+  constructor({ page, line, section, onOpen, onLeave, controls = NO_CONTROLS }) {
     this.page = page;
+    this.controls = controls;
     this.line = line;
     this.section = section;
     this.onOpen = onOpen;
@@ -90,7 +93,7 @@ export class HubPage {
   apply() {
     const hub = this.hub;
     this.section.hidden = !this.hasPanel;
-    showHubLine(this.line, this.context(), hub, (id) => this.onOpen(id));
+    showHubLine(this.line, this.context(), hub, (id) => this.onOpen(id), this.controls);
     if (!this.hasPanel) {
       delete this.page.dataset.hubSize;
       return;

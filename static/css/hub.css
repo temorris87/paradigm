@@ -216,3 +216,49 @@
   color: var(--nord4);
   opacity: 0.75;
 }
+
+/* A fact on the hub line that can be changed (static/js/hubs/hub-line-controls.js). */
+.hub-line__control {
+  padding: 0 0.3rem;
+  margin: 0 -0.3rem;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.hub-line__control:hover,
+.hub-line__control:focus-visible,
+.hub-line__control[aria-expanded="true"] {
+  outline: none;
+  background: var(--nord2);
+  color: var(--nord6);
+}
+
+.hub-line__control.hub-line__kind {
+  color: var(--nord7);
+}
+
+.hub-line__when,
+.hub-line__state {
+  color: var(--nord4);
+  text-decoration: underline dotted var(--nord3);
+  text-underline-offset: 3px;
+}
+
+.hub-line__caret {
+  margin-left: 0.25rem;
+  font-size: 0.8em;
+  font-weight: normal;
+  color: var(--nord4);
+}
+
+.hub-line__set {
+  color: var(--nord9);
+}
+
+.hub-line__mini {
+  margin-left: -0.2rem;
+}

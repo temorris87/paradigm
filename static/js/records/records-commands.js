@@ -28,7 +28,7 @@ export async function newRecordCommand(app, kind, arg) {
   await app.refreshTree();
   await app.open(note.id);
   const from = meeting ? `from ${shortTitle(meeting, app.meetings.get(meeting.id))}` : `in ${hub.title}`;
-  app.editor.showMessage(`${capital(WHAT[kind])} "${note.title}" made ${from} (:with {name}, {name}... adds people)`);
+  app.editor.showMessage(`${capital(WHAT[kind])} "${note.title}" made ${from}`);
 }
 
 /** :date {date} on a decision or question. */
@@ -37,6 +37,11 @@ export async function recordDateCommand(app, arg) {
   const { day, rest } = splitDay(arg, app.today());
   if (!day) throw new Error("E471: Argument required: :date {date}, like :date 2026-11-24");
   if (rest) throw new Error(`E: a ${app.tree.get(id).kind} has a date but no time ("${rest}")`);
+  await setRecordDay(app, id, day);
+}
+
+/** Sets a decision's or question's day ("YYYY-MM-DD"). */
+export async function setRecordDay(app, id, day) {
   await app.recordsApi.date(id, day);
   await app.refreshTree();
   app.editor.showMessage(`"${app.tree.get(id).title}" is dated ${day}`);
@@ -47,14 +52,22 @@ export async function answeredCommand(app, arg) {
   const id = currentQuestion(app);
   const { day, rest } = splitDay(arg, app.today());
   if (rest) throw new Error(`E: "${rest}" is not a date like 2026-11-24 (the answer goes in the note)`);
-  const record = await app.recordsApi.answer(id, day ?? localDay(app.today()));
+  await answerQuestion(app, id, day ?? localDay(app.today()));
+}
+
+/** Marks a question answered on a day ("YYYY-MM-DD"). */
+export async function answerQuestion(app, id, day) {
+  const record = await app.recordsApi.answer(id, day);
   await app.refreshTree();
-  app.editor.showMessage(`"${app.tree.get(id).title}" answered ${record.answered} (:reopen opens it again)`);
+  app.editor.showMessage(`"${app.tree.get(id).title}" answered ${record.answered}`);
 }
 
 /** :reopen: the open question is open again. */
 export async function reopenCommand(app) {
-  const id = currentQuestion(app);
+  await reopenQuestion(app, currentQuestion(app));
+}
+
+export async function reopenQuestion(app, id) {
   await app.recordsApi.reopen(id);
   await app.refreshTree();
   app.editor.showMessage(`"${app.tree.get(id).title}" is open again`);
@@ -65,7 +78,12 @@ export async function withCommand(app, arg, bang) {
   const id = currentRecord(app);
   const names = splitNames(arg);
   if (!names.length) throw new Error("E471: Argument required: :with {name}, {name}...");
-  const { people, made } = await peopleNamed(app, names, bang, ":with");
+  await addPeopleTo(app, id, await peopleNamed(app, names, bang, ":with"));
+}
+
+/** Puts people ({ people: [notes], made: how many are new }, as peopleNamed gives them) on a
+ * decision or question. */
+export async function addPeopleTo(app, id, { people, made }) {
   const { added } = await app.recordsApi.involve(id, people.map((person) => person.id));
   await app.refreshTree();
   const title = (personId) => people.find((person) => person.id === personId).title;
@@ -83,6 +101,10 @@ export async function dropWithCommand(app, arg) {
   const person = peopleOf(app.tree, app.records, id).find((each) => titleKey(each.title) === titleKey(name))
     ?? findPerson(app.tree, name);
   if (!person) throw new Error(`E: no person "${name}"`);
+  await dropPersonFrom(app, id, person);
+}
+
+export async function dropPersonFrom(app, id, person) {
   await app.recordsApi.uninvolve(id, person.id);
   await app.refreshTree();
   app.editor.showMessage(`${person.title} is off ${app.tree.get(id).title}`);

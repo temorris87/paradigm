@@ -52,9 +52,9 @@ Features in build order. "build feature" takes the first unchecked item.
   move, new note beside / under, file as project / area / resource / Inbox, archive or
   restore, export, trash with a confirm); a Go to note picker in the top bar; shared menu,
   picker and form dialogs for the items after it (done 2026-11-21)
-- [ ] Hub line controls: change a hub's kind and a project's area; edit a person's
+- [x] Hub line controls: change a hub's kind and a project's area; edit a person's
   organisation, job title and email; a meeting's or record's date and time; mark a question
-  answered or reopen it; add and remove the people on a decision or question
+  answered or reopen it; add and remove the people on a decision or question (done 2026-11-21)
 - [ ] Hub tab actions: an add button on every tab (note, person with a role, meeting,
   attendee, decision, question), remove and change role on rows, empty tabs offer the
   button; a + on each tree group; New person and New meeting on their pages

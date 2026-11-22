@@ -16,6 +16,7 @@
 //   await app.start();
 import { exportNote } from "../export/export.js";
 import { HomePage } from "../home/home-page.js";
+import { hubLineControls } from "../hubs/hub-actions.js";
 import { HubPage } from "../hubs/hub-page.js";
 import { showBreadcrumb } from "./breadcrumb.js";
 import { registerNoteCommands, runNoteCommand } from "./commands.js";
@@ -71,6 +72,7 @@ export class NotesApp {
       ...hub,
       onOpen: (id) => this.guard(this.openFromHub(id)),
       onLeave: () => this.editor.focus(),
+      controls: hubLineControls(this),
     });
     const onPage = { onOpen: (id) => this.guard(this.open(id)), onLeave: () => this.leaveView() };
     this.views = new PageViews({
@@ -339,8 +341,13 @@ export class NotesApp {
       if (!found.note) throw new Error(explainMissing(text, found));
       areaId = found.note.id;
     }
-    const note = await this.api.setArea(this.currentId, areaId);
-    this.session.updateMeta(note);
+    await this.setAreaOf(this.currentId, areaId);
+  }
+
+  /** Puts a project in an area (null: in none). */
+  async setAreaOf(id, areaId) {
+    const note = await this.api.setArea(id, areaId);
+    if (note.id === this.currentId) this.session.updateMeta(note);
     await this.refreshTree();
     const where = areaId === null ? "in no area now" : `now in ${this.tree.get(areaId).title}`;
     this.editor.showMessage(`"${note.title}" is ${where}`);

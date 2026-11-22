@@ -15,7 +15,7 @@ export async function newPersonCommand(app, arg) {
   const { note } = await app.peopleApi.create(name);
   await app.refreshTree();
   await app.open(note.id);
-  app.editor.showMessage(`"${note.title}" added to People (:org, :job, :email fill in the details)`);
+  app.editor.showMessage(`"${note.title}" added to People`);
 }
 
 /** :addperson[!] {name}[, {role}]: on a hub; again changes the role; ! makes a new person. */

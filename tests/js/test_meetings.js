@@ -128,7 +128,7 @@ test("meeting page: the meeting line and its tabs", () => {
     const hub = new HubPage({ page, line, section, onOpen: (id) => opened.push(id), onLeave: () => {} });
     hub.show(ctx(), 20);
     assertEqual(line.textContent, "Meeting·Tue 2026-11-24 14:00·in Rollout·2 attendees");
-    line.querySelector("button").click();
+    line.querySelector(".hub-line__link").click();
     assertEqual(opened.join(), "2");
     assertEqual([...section.querySelectorAll("[role=tab]")].map((t) => t.textContent).join(), "Attendees,Notes,Decisions,Questions");
     hub.show(ctx(), 24);
@@ -205,7 +205,7 @@ test("meeting commands: :meeting goes in the open note's hub", async () => {
   let { app, calls } = fakeApp(25);
   await runNoteCommand(app, { name: "meeting", arg: "Weekly sync" });
   assertEqual(calls.join(";"), "create 2 Weekly sync 2026-11-21 ;refresh;open 40");
-  assertEqual(app.messages.pop(), '"2026-11-21 Weekly sync" made in Rollout (:attendee {name}, {name}... adds people)');
+  assertEqual(app.messages.pop(), '"2026-11-21 Weekly sync" made in Rollout');
   calls.length = 0;
   await runNoteCommand(app, { name: "meeting", arg: "2026-11-24 14:00 Kickoff two" });
   assertEqual(calls[0], "create 2 Kickoff two 2026-11-24 14:00");

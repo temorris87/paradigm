@@ -130,11 +130,11 @@ test("record commands: :decision and :question go under the hub or the meeting",
   let { app, calls } = fakeApp(25);
   await runNoteCommand(app, { name: "decision", arg: "Use Kafka" });
   assertEqual(calls.join(";"), "create 2 decision Use Kafka 2026-11-21;refresh;open 60");
-  assertEqual(app.messages.pop(), 'Decision "Use Kafka" made in Rollout (:with {name}, {name}... adds people)');
+  assertEqual(app.messages.pop(), 'Decision "Use Kafka" made in Rollout');
   ({ app, calls } = fakeApp(20));
   await runNoteCommand(app, { name: "question", arg: "Who signs off?" });
   assertEqual(calls[0], "create 20 question Who signs off? 2026-11-24", "from the meeting, on its day");
-  assertEqual(app.messages.pop(), 'Question "Who signs off?" made from Kickoff (:with {name}, {name}... adds people)');
+  assertEqual(app.messages.pop(), 'Question "Who signs off?" made from Kickoff');
   ({ app, calls } = fakeApp(31));
   await runNoteCommand(app, { name: "decision", arg: "2026-11-30 Later" });
   assertEqual(calls[0], "create 20 decision Later 2026-11-30", "a note in a meeting: from that meeting");
@@ -182,9 +182,9 @@ test("hub page: a decision has a line and no panel", () => {
     hub.show(ctx(), 30);
     assertTrue(!line.hidden && section.hidden && !hub.hasPanel && !hub.editorHidden);
     assertEqual(page.dataset.hubSize, undefined);
-    assertEqual(line.textContent, "Decision·2026-11-20·in Rollout·with Bob Lee, Jane Doe");
+    assertEqual(line.textContent, "Decision·2026-11-20·in Rollout·with Bob Lee×, Jane Doe×+ Add person");
     hub.show(ctx(), 42);
-    assertEqual(line.textContent, "Question·answered 2026-11-25·asked 2026-11-24·in Rollout·from Kickoff·no one yet (:with {name})");
+    assertEqual(line.textContent, "Question·answered 2026-11-25▾·asked 2026-11-24·in Rollout·from Kickoff·no one yet+ Add person");
     hub.show(ctx(), 2);
     assertTrue(!section.hidden && hub.hasPanel);
   } finally {

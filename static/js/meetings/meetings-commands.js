@@ -19,7 +19,7 @@ export async function newMeetingCommand(app, arg) {
   const { note } = await app.meetingsApi.create(hub.id, rest, day ?? localToday(app), time ?? "");
   await app.refreshTree();
   await app.open(note.id);
-  app.editor.showMessage(`"${note.title}" made in ${hub.title} (:attendee {name}, {name}... adds people)`);
+  app.editor.showMessage(`"${note.title}" made in ${hub.title}`);
 }
 
 /** :date {date} [{time}]: sets the open meeting's date and time (no time: none). */
@@ -28,8 +28,13 @@ export async function dateCommand(app, arg) {
   const { day, time, rest } = splitWhen(arg, app.today());
   if (!day) throw new Error("E471: Argument required: :date {date} [{time}], like :date 2026-11-24 14:00");
   if (rest) throw new Error(`E: "${rest}" is not a time like 14:30`);
-  const { note, meeting } = await app.meetingsApi.update(id, day, time ?? "");
-  app.session.updateMeta(note);
+  await setMeetingWhen(app, id, day, time ?? "");
+}
+
+/** Sets a meeting's day ("YYYY-MM-DD") and time ("HH:MM", "" for none). */
+export async function setMeetingWhen(app, id, day, time) {
+  const { note, meeting } = await app.meetingsApi.update(id, day, time);
+  if (note.id === app.currentId) app.session.updateMeta(note);
   await app.refreshTree();
   app.editor.showMessage(`"${note.title}" is on ${whenText(meeting)}`);
 }
