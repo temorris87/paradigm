@@ -12,6 +12,8 @@ export const NOTE_COMMANDS = [
     run: (app, { arg }) => app.renameCommand(arg) },
   { name: "parent", min: 6, usage: ":parent {note} | /", help: "put this note under another note (/ for the top level)",
     run: (app, { arg }) => app.parentCommand(arg) },
+  { name: "nav", min: 3, usage: ":nav", help: "go to the notes tree (on a narrow window it slides in)",
+    run: (app) => app.navCommand() },
   { name: "export", min: 3, usage: ":exp[ort]", help: "download this note, and the linked notes beside or under it, as one .html file",
     run: (app) => app.exportCommand() },
   { name: "trash", min: 5, usage: ":trash[!]", help: "delete this note (:trash! with the notes under it)",

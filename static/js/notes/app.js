@@ -1,8 +1,10 @@
 // The notes page: the tree, the breadcrumb and the editor on the open note, kept in step.
 // It owns what the editor's events mean here: saving, following [[links]], note commands.
 //
-//   const app = new NotesApp({ editor, tree: ulElement, crumbs: navElement, api: notesApi,
-//                              imagesApi });
+//   const app = new NotesApp({ editor, tree: ulElement, crumbs: navElement, navigator,
+//                              api: notesApi, imagesApi });
+//
+// navigator (static/js/layout/navigator.js) holds the tree: a drawer on narrow windows.
 //   await app.start();
 import { exportNote } from "../export/export.js";
 import { showBreadcrumb } from "./breadcrumb.js";
@@ -17,9 +19,10 @@ import { TreeView } from "./tree-view.js";
 const UNSAVED = "E37: No write since last change (:w to save, or ! to drop the changes)";
 
 export class NotesApp {
-  constructor({ editor, tree, crumbs, api, imagesApi, location = window.location, history = window.history }) {
+  constructor({ editor, tree, crumbs, navigator, api, imagesApi, location = window.location, history = window.history }) {
     this.editor = editor;
     this.crumbs = crumbs;
+    this.navigator = navigator;
     this.api = api;
     this.location = location;
     this.history = history;
@@ -30,8 +33,9 @@ export class NotesApp {
       onError: (error) => this.fail(error),
     });
     this.treeView = new TreeView(tree, {
-      onOpen: (id) => this.open(id).then((opened) => opened && this.editor.focus()),
-      onLeave: () => this.editor.focus(),
+      // The drawer closes even when the note can't be opened, so the editor's message shows.
+      onOpen: (id) => this.open(id).finally(() => this.navigator.hide()),
+      onLeave: () => this.navigator.hide(),
     });
     this.images = new NoteImages({ editor, api: imagesApi, currentId: () => this.currentId });
     registerNoteCommands(editor);
@@ -210,6 +214,14 @@ export class NotesApp {
     this.session.updateMeta(note);
     await this.refreshTree();
     this.editor.showMessage(`Now at ${this.tree.pathText(note.id)}`);
+  }
+
+  navCommand() {
+    this.navigator.show();
+  }
+
+  focusTree() {
+    this.treeView.focus();
   }
 
   async exportCommand() {

@@ -3,6 +3,7 @@ import { mountBanner } from "./connection/banner.js";
 import { tabId } from "./connection/tab-id.js";
 import "./editor/pd-editor.js";
 import "./images/viewer.js";
+import { Navigator } from "./layout/navigator.js";
 import { imagesApi, notesApi } from "./notes/api.js";
 import { NotesApp } from "./notes/app.js";
 
@@ -15,10 +16,19 @@ const editor = document.querySelector("pd-editor");
 const viewer = document.querySelector("pd-image-viewer");
 editor.addEventListener("image", (event) => viewer.open(event.detail));
 
+const notesNavigator = new Navigator({
+  panel: document.querySelector(".app__sidebar"),
+  button: document.querySelector(".topbar__nav"),
+  backdrop: document.querySelector(".navigator__backdrop"),
+  onShow: () => app.focusTree(),
+  onHide: () => editor.focus(),
+});
+
 const app = new NotesApp({
   editor,
   tree: document.querySelector(".tree"),
   crumbs: document.querySelector(".crumbs"),
+  navigator: notesNavigator,
   api: notesApi,
   imagesApi,
 });

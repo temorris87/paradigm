@@ -1,0 +1,38 @@
+/* The bar above the note: the navigator button, then the breadcrumb. */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2rem;
+}
+
+.topbar .crumbs {
+  flex: 1;
+  min-width: 0;
+}
+
+.topbar__nav {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--nord4);
+  font: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.topbar__nav:hover,
+.topbar__nav[aria-expanded="true"] {
+  background: var(--nord2);
+  color: var(--nord6);
+}
+
+.topbar__nav:focus-visible {
+  outline: 1px solid var(--nord9);
+  outline-offset: 1px;
+}

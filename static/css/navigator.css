@@ -1,0 +1,35 @@
+/* The notes navigator as a drawer on narrow windows (static/js/layout/navigator.js).
+   Keep the width in step with NARROW_QUERY there. On wide windows base.css docks it. */
+@media (max-width: 1399.98px) {
+  .app__sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 20;
+    width: min(20rem, 85vw);
+    box-shadow: 0 0 1.5rem color-mix(in srgb, var(--nord0) 70%, transparent);
+    transform: translateX(-100%);
+    visibility: hidden;
+    /* Hidden only once it has slid out. */
+    transition: transform 150ms ease-out, visibility 0s linear 150ms;
+  }
+
+  .app__sidebar[data-open="true"] {
+    transform: none;
+    visibility: visible;
+    transition: transform 150ms ease-out;
+  }
+
+  .navigator__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    background: color-mix(in srgb, var(--nord0) 60%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app__sidebar,
+  .app__sidebar[data-open="true"] {
+    transition: none;
+  }
+}

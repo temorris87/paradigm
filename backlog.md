@@ -29,3 +29,22 @@ Features in build order. "build feature" takes the first unchecked item.
   links higher up become plain text (needs notes in SQLite) (done 2026-11-21)
 - [x] Design heading colors to be uniform, size and underlines should give the
   heading away, not the color. (done 2026-11-21)
+- [ ] Narrow layout: one column for the right third of a wide screen; the notes tree becomes a
+  drawer under ~1400 px wide (docked when wider); a top bar with a navigator button and the
+  breadcrumb (done 2026-11-21)
+- [ ] PARA hubs: top-level notes are projects, areas or resources (`:project`, `:area`,
+  `:resource`); unfiled ones sit in an Inbox; the navigator is grouped Inbox / Projects / Areas
+  / Resources
+- [ ] Hub page: the hub's note above a tabbed section panel (Notes first, an area's Projects, a
+  project's area on the hub line), collapsible and expandable, with its own key table
+- [ ] Archive and restore a hub with everything in it; collapsed Archive section; links to
+  archived notes look muted
+- [ ] People: a shared directory with their own notes, linked to hubs with a role; a People tab
+  on hubs and a People page with filters
+- [ ] Meetings: dated meetings in one hub with attendees and a note for minutes; a Meetings tab on
+  hubs and people, a Meetings page, filter dropdowns (hub, period; an area includes its projects)
+- [ ] Decisions and open questions: records in a hub (optionally from a meeting, with people); a
+  Decisions tab and a Questions tab (open first) on hubs, meetings and people
+- [ ] Backlinks: an index of wiki links; a Linked from tab on resources (and any note later)
+- [ ] Home: active projects by area, the Inbox count, open questions, and room for today's tasks
+  and meetings

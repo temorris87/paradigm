@@ -65,3 +65,16 @@ a {
   flex: 1;
   min-height: 12rem;
 }
+
+/* Narrow (the right third of a wide screen): one column; the sidebar becomes a drawer
+   (navigator.css). Keep the width in step with NARROW_QUERY in static/js/layout/navigator.js. */
+@media (max-width: 1399.98px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "note";
+  }
+
+  .app__note {
+    padding: 0.75rem 1rem;
+  }
+}

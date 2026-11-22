@@ -60,16 +60,20 @@ static/
   vendor/katex-0.19.1/   KaTeX exactly as audited (package paths kept; checked against
                          docs/security/katex-0.19.1.sha256 by tests/python/test_vendor.py)
   vendor/mermaid-12.3.0/ Mermaid exactly as audited (same check, mermaid-12.3.0.sha256)
-  css/                   nord.css (palette variables), base.css, one file per component
+  css/                   nord.css (palette variables), base.css (the page grid; one column
+                         under 1400 px), one file per component (topbar.css, navigator.css...)
                          (export.css styles only the exported file, never the app)
                          (editor.css is loaded inside <pd-editor>'s shadow root;
                          markdown.css styles rendered notes under .md-doc)
   js/main.js             wires the page together
+  js/layout/navigator.js the panel holding the tree: docked at 1400 px and wider, a drawer
+                         over the note below that (inert while closed); NARROW_QUERY is the
+                         one breakpoint, kept in step with the CSS
   js/notes/              app.js (tree + breadcrumb + editor on the open note), api.js,
                          note-session.js (autosave, versions, conflicts), resolve.js (wiki
                          links, nearest note wins), tree-model.js, tree-view.js, tree-keys.js
                          (THE tree key table), breadcrumb.js, commands.js (THE note ex
-                         commands: :e :new :child :rename :parent :export :trash), headings.js,
+                         commands: :e :new :child :rename :parent :nav :export :trash), headings.js,
                          images.js (editor "files" event -> shrink, upload, insert links)
   js/images/             downscale.js: shrinks images wider than 1600 px on a canvas (GIFs
                          never); viewer.js: <pd-image-viewer>, a click on an image opens it
@@ -155,6 +159,9 @@ Update this section when the structure changes.
   unindent. In every other mode they leave the editor and move focus like on any web page**,
   so they are never bound there (Tyson's choice, 2026-11-21).
 - Keys the browser owns (Ctrl-W, Ctrl-T, Ctrl-N, Ctrl-Tab, ...) are given up. Don't fight the browser.
+- The notes tree is reached with `:nav` or the ☰ button in the top bar. Under 1400 px wide it
+  is a drawer: it opens over the note and closes on Enter (opening a note), Escape, a click on
+  the backdrop, or the focus leaving it.
 - Clicking a rendered image opens `<pd-image-viewer>` (its keys live in
   `static/js/images/viewer-keys.js`).
 - An image is deleted from the database once no note (trashed ones included) links to it any

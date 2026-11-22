@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="/css/connection-banner.css">
   <link rel="stylesheet" href="/css/tree.css">
   <link rel="stylesheet" href="/css/breadcrumb.css">
+  <link rel="stylesheet" href="/css/topbar.css">
+  <link rel="stylesheet" href="/css/navigator.css">
   <link rel="stylesheet" href="/css/image-viewer.css">
   <script type="module" src="/js/main.js"></script>
 </head>
@@ -17,10 +19,14 @@
   <div class="app">
     <!-- The note comes first in the page, so Tab from the editor reaches the tree. -->
     <main class="app__note">
-      <nav class="crumbs" aria-label="Where this note is"></nav>
+      <header class="topbar">
+        <button type="button" class="topbar__nav" aria-controls="navigator" aria-label="Notes" title="Notes (:nav)">☰</button>
+        <nav class="crumbs" aria-label="Where this note is"></nav>
+      </header>
       <pd-editor class="app__editor" aria-label="Note"></pd-editor>
     </main>
-    <nav class="app__sidebar" aria-label="Notes">
+    <div class="navigator__backdrop" hidden></div>
+    <nav class="app__sidebar" id="navigator" aria-label="Notes">
       <h1 class="app__title">Paradigm</h1>
       <ul class="tree" aria-label="Notes"></ul>
     </nav>
