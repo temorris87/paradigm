@@ -6,6 +6,7 @@ import webbrowser
 from typing import Callable, List, Optional
 
 from paradigm.api.images import ImagesApi
+from paradigm.api.links import LinksApi
 from paradigm.api.meetings import MeetingsApi
 from paradigm.api.notes import NotesApi
 from paradigm.api.people import PeopleApi
@@ -14,6 +15,7 @@ from paradigm.api.session import SessionApi
 from paradigm.config import Config, parse_args
 from paradigm.db.connection import Database
 from paradigm.db.images_repo import ImageRepository
+from paradigm.db.links_repo import LinkRepository
 from paradigm.db.migrate import SchemaTooNew, migrate
 from paradigm.db.meetings_repo import MeetingRepository
 from paradigm.db.notes_repo import NoteRepository
@@ -134,6 +136,7 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
     MeetingsApi(MeetingRepository(db), notes).register(server.router)
     RecordsApi(RecordRepository(db), notes).register(server.router)
     ImagesApi(images).register(server.router)
+    LinksApi(LinkRepository(db)).register(server.router)
 
 
 def sweep_images(images: ImageRepository, notes: NoteRepository) -> int:

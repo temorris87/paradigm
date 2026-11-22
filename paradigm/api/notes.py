@@ -2,8 +2,10 @@
 
 GET  /api/notes            the tree: every note without its body
 GET  /api/note?id=N        one note with its body
-POST /api/note/create      {parent_id|null, title, body?}
-POST /api/note/save        {id, body, version, force?}   409 {error, version} if stale
+POST /api/note/create      {parent_id|null, title, body?, links?}
+POST /api/note/save        {id, body, version, force?, links?}   409 {error, version} if stale
+                           links: the [[wiki link]] texts in body, as the page reads them
+                           (paradigm/api/links.py); left out, the note's links go stale
 POST /api/note/rename      {id, title}
 POST /api/note/move        {id, parent_id|null}           a hub moved under a note stops being one;
                                                           a person stays at the top level;
@@ -16,11 +18,12 @@ POST /api/note/archive     {id, archived}   archive a hub with everything under 
 POST /api/note/delete      {id, recursive?}              -> {deleted: [ids]}
 """
 from http.server import BaseHTTPRequestHandler
-from typing import Callable, Dict
+from typing import Callable, Dict, List, Optional
 
 from paradigm.db.notes_repo import (AreaArchived, BadKind, BadTitle, Conflict, HasChildren, StaysInAHub, IsAPerson, LastNote,
                                     NoteError, NoteRepository, NotAnArea, NotAProject, NotArchived,
                                     NotFound, NotTopLevel, TitleTaken, WouldCycle)
+from paradigm.notes.links import BadLinks, clean_links
 from paradigm.web.requests import (BadRequest, bool_field, int_field, optional_int_field,
                                    read_json, str_field)
 from paradigm.web.responses import send_error_json, send_json
@@ -28,7 +31,7 @@ from paradigm.web.router import Router
 
 _STATUS = {NotFound: 404, Conflict: 409, TitleTaken: 409, HasChildren: 409, LastNote: 409,
            WouldCycle: 400, NotAProject: 400, NotAnArea: 400, AreaArchived: 400, NotTopLevel: 400,
-           NotArchived: 400, IsAPerson: 400, StaysInAHub: 400, BadTitle: 400, BadKind: 400, BadRequest: 400}
+           NotArchived: 400, IsAPerson: 400, StaysInAHub: 400, BadTitle: 400, BadKind: 400, BadLinks: 400, BadRequest: 400}
 
 
 class NotesApi:
@@ -61,12 +64,13 @@ class NotesApi:
         body = payload.get("body", "")
         if not isinstance(body, str):
             raise BadRequest("body must be text")
-        return self._notes.create(optional_int_field(payload, "parent_id"), payload.get("title"), body)
+        return self._notes.create(optional_int_field(payload, "parent_id"), payload.get("title"), body,
+                                  _links(payload))
 
     def save(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)
         return self._notes.save(int_field(payload, "id"), str_field(payload, "body"),
-                                int_field(payload, "version"), bool_field(payload, "force"))
+                                int_field(payload, "version"), bool_field(payload, "force"), _links(payload))
 
     def rename(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)
@@ -103,11 +107,15 @@ class NotesApi:
         def route(req: BaseHTTPRequestHandler) -> None:
             try:
                 result = handler(req)
-            except (NoteError, BadTitle, BadKind, BadRequest) as error:
+            except (NoteError, BadTitle, BadKind, BadLinks, BadRequest) as error:
                 _send_failure(req, error)
                 return
             send_json(req, 200, result)
         return route
+
+
+def _links(payload: Dict) -> Optional[List[str]]:
+    return None if payload.get("links") is None else clean_links(payload["links"])
 
 
 def _send_failure(req: BaseHTTPRequestHandler, error: Exception) -> None:

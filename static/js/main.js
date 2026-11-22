@@ -6,7 +6,7 @@ import "./images/viewer.js";
 import { Navigator } from "./layout/navigator.js";
 import { meetingsApi } from "./meetings/api.js";
 import { recordsApi } from "./records/api.js";
-import { imagesApi, notesApi } from "./notes/api.js";
+import { imagesApi, linksApi, notesApi } from "./notes/api.js";
 import { NotesApp } from "./notes/app.js";
 import { peopleApi } from "./people/api.js";
 
@@ -50,5 +50,6 @@ const app = new NotesApp({
   peopleApi,
   meetingsApi,
   recordsApi,
+  linksApi,
 });
 app.start().catch((error) => app.fail(error));

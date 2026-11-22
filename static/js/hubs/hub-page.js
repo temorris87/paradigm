@@ -4,7 +4,7 @@
 // tab table, and tells the page which note to open; it never opens notes itself.
 //
 //   const hub = new HubPage({ page: mainElement, line, section, onOpen(id), onLeave() });
-//   hub.show({ tree, people, meetings, records }, currentId)   after every redraw of the page
+//   hub.show({ tree, people, meetings, records, links }, currentId)   after every redraw
 //   hub.focus()                  :hub (opens a collapsed panel first)
 //   hub.hub                      the open hub (person, meeting, decision, question), or null
 //   hub.hasPanel                 it has a section panel (a decision or question has none)
@@ -13,6 +13,7 @@
 // page carries data-hub-size (collapsed | open | expanded) while a hub is open, for the CSS.
 import { Meetings } from "../meetings/meetings-model.js";
 import { isDecisionOrQuestion, isHub, isMeeting, isPerson } from "../notes/hub-groups.js";
+import { Links } from "../notes/links.js";
 import { People } from "../people/people-model.js";
 import { Records } from "../records/records-model.js";
 import { showHubLine } from "./hub-line.js";
@@ -31,6 +32,7 @@ export class HubPage {
     this.people = new People();
     this.meetings = new Meetings();
     this.records = new Records();
+    this.links = new Links();
     this.hub = null;
     this.size = loadSize();
     this.tabKeys = loadTabs();
@@ -48,7 +50,7 @@ export class HubPage {
   }
 
   context() {
-    return { tree: this.tree, people: this.people, meetings: this.meetings, records: this.records };
+    return { tree: this.tree, people: this.people, meetings: this.meetings, records: this.records, links: this.links };
   }
 
   get hasPanel() {
@@ -59,8 +61,9 @@ export class HubPage {
     return this.hasPanel && this.size === "expanded";
   }
 
-  show({ tree, people = new People(), meetings = new Meetings(), records = new Records() }, currentId) {
+  show({ tree, people = new People(), meetings = new Meetings(), records = new Records(), links = new Links() }, currentId) {
     this.tree = tree;
+    this.links = links;
     this.people = people;
     this.meetings = meetings;
     this.records = records;

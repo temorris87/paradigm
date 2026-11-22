@@ -4,7 +4,8 @@
 //   const app = new NotesApp({ editor, tree: ulElement, crumbs: navElement, navigator,
 //                              hub: { page, line, section }, people: { section, button },
 //                              meetings: { section, button },
-//                              api: notesApi, imagesApi, peopleApi, meetingsApi, recordsApi });
+//                              api: notesApi, imagesApi, peopleApi, meetingsApi, recordsApi,
+//                              linksApi });
 //
 // navigator (static/js/layout/navigator.js) holds the tree: a drawer on narrow windows.
 // hub (static/js/hubs/hub-page.js) is the hub line and section panel shown on a hub.
@@ -19,6 +20,7 @@ import { registerNoteCommands, runNoteCommand } from "./commands.js";
 import { headingLine } from "./headings.js";
 import { groupOf, isArchived, topNoteOf } from "./hub-groups.js";
 import { NoteImages } from "./images.js";
+import { LinkIndex } from "./link-index.js";
 import { NoteSession } from "./note-session.js";
 import { resolveLink, splitTarget } from "./resolve.js";
 import { NoteTree } from "./tree-model.js";
@@ -34,7 +36,7 @@ const UNSAVED = "E37: No write since last change (:w to save, or ! to drop the c
 
 export class NotesApp {
   constructor({ editor, tree, crumbs, navigator, hub, people, meetings, api, imagesApi, peopleApi,
-                meetingsApi, recordsApi, location = window.location, history = window.history,
+                meetingsApi, recordsApi, linksApi, location = window.location, history = window.history,
                 today = () => new Date() }) {
     this.editor = editor;
     this.peopleApi = peopleApi;
@@ -50,8 +52,10 @@ export class NotesApp {
     this.location = location;
     this.history = history;
     this.tree = new NoteTree();
+    // Each save sends the note's [[wiki links]] along, for the Linked from tabs.
+    this.linkIndex = new LinkIndex({ api: linksApi, onChange: () => this.redraw() });
     this.session = new NoteSession({
-      api,
+      api: { ...api, save: this.linkIndex.saver(api.save) },
       onChange: () => { this.editor.modified = this.session.dirty; },
       onError: (error) => this.fail(error),
     });
@@ -129,6 +133,7 @@ export class NotesApp {
   async refreshTree() {
     const [notes, people, meetings, records] = await Promise.all([
       this.api.list(), this.peopleApi.list(), this.meetingsApi.list(), this.recordsApi.list(),
+      this.linkIndex.refresh(),
     ]);
     this.tree = new NoteTree(notes);
     this.people = new People(people);
@@ -194,7 +199,8 @@ export class NotesApp {
     const id = this.currentId;
     this.treeView.show(this.tree, id);
     showBreadcrumb(this.crumbs, this.tree, id, (target) => this.guard(this.open(target)));
-    const ctx = { tree: this.tree, people: this.people, meetings: this.meetings, records: this.records };
+    const ctx = { tree: this.tree, people: this.people, meetings: this.meetings, records: this.records,
+      links: this.linkIndex.links };
     this.hubPage.show(ctx, id);
     this.views.draw(ctx, this.crumbs);
     const title = this.tree.get(id)?.title ?? this.session.note?.title;

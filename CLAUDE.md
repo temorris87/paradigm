@@ -51,14 +51,17 @@ paradigm/                Python package
                          people.py (/api/people, /api/person/create|update|link|unlink);
                          meetings.py (/api/meetings, /api/meeting/create|update|attend|
                          unattend); records.py (/api/records, /api/record/create|date|
-                         answer|reopen|with|unwith); answers.py (result or expected error
-                         -> response)
+                         answer|reopen|with|unwith); links.py (/api/links: the wiki-link
+                         index and stale notes; /api/links/index: the page's catch-up);
+                         answers.py (result or expected error -> response)
   db/                    (migrations: 001 notes, 002 images, 003 notes.kind for PARA hubs,
                          004 notes.area_id: a project's area, 005 notes.archived_at:
                          archived hubs, 006 people + hub_people: a person's fields and
                          their hub links with a role, 007 meetings + meeting_people: a
                          meeting's day, time and attendees, 008 decisions + questions +
-                         record_people: their days, an answer day, the people on them)
+                         record_people: their days, an answer day, the people on them,
+                         009 note_links + link_index: each note's wiki-link texts as
+                         written, and the note version they were read from)
                          connection.py (one locked connection, transactions, VACUUM at start
                          when worth it), migrate.py
                          (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py,
@@ -68,13 +71,16 @@ paradigm/                Python package
                          "meeting"; created directly under its hub as "{day} {name}"),
                          records_repo.py (decisions and questions: a row makes a note one,
                          kind "decision"/"question"; under a hub or a meeting in one),
+                         links_repo.py (the wiki-link index; store_links runs inside a
+                         note save; a note whose version moved past its index is stale),
                          images_repo.py (image bytes in SQLite, deduped per note by sha256;
                          sweep_unused deletes images no note links to, at start and stop only)
   images/                formats.py: PNG/JPEG/GIF/WebP from magic bytes + size (SVG refused)
   notes/                 titles.py (title rules), hubs.py (HUB_KINDS: project, area,
                          resource), people.py (person fields, roles), seed.py + welcome.md
                          (first-run note), meetings.py (day, time, title rules),
-                         records.py (decision/question kinds)
+                         records.py (decision/question kinds), links.py (a save's list
+                         of link texts)
 static/
   index.html
   vendor/katex-0.19.1/   KaTeX exactly as audited (package paths kept; checked against
@@ -91,7 +97,10 @@ static/
                          one breakpoint, kept in step with the CSS
   js/notes/              app.js (tree + breadcrumb + editor on the open note), api.js,
                          note-session.js (autosave, versions, conflicts), resolve.js (wiki
-                         links, nearest note wins), tree-model.js, tree-view.js, tree-keys.js
+                         links, nearest note wins), links.js (wikiTargets: a body's link
+                         texts, read by the renderer; linksInto: who links to a note, resolved
+                         now; pure), link-index.js (the page's copy: saves send links, stale
+                         notes caught up after load), tree-model.js, tree-view.js, tree-keys.js
                          (THE tree key table), breadcrumb.js, commands.js (THE note ex
                          commands: :e :new :child :rename :parent :nav :project :area
                          :resource :inbox :inarea :archive :restore :people :newperson
@@ -109,8 +118,8 @@ static/
                          (wiring; data-hub-size on .app__note), hub-line.js ("Project · Area:
                          X", "Person · Northwind · ...", "Decision · ... · from Kickoff"), hub-panel.js (tabs + one-focus-stop
                          listbox), hub-tabs.js (THE hub tab table: Notes, People, an area's
-                         Projects, a person's Hubs, Meetings, Decisions, Questions; a meeting's
-                         Attendees; pure), hub-areas.js (project
+                         Projects, a person's Hubs, Meetings, Decisions, Questions, a resource's
+                         Linked from; a meeting's Attendees; pure), hub-areas.js (project
                          <-> area; pure), hub-size.js (collapsed/open/expanded, remembered),
                          hub-keys.js (THE section panel key table)
   js/pages/              list-page.js (a list page in place of the note: filters, search
@@ -257,6 +266,12 @@ Update this section when the structure changes.
   first) and Questions (open first, oldest first; then answered, muted) tabs. Its own note
   shows a line ("Question · open · asked ... · in Rollout · from Kickoff · with ...") and no
   section panel; Notes tabs leave them out.
+- Backlinks: the server keeps each note's `[[link]]` texts as written; the page reads them with
+  the Markdown renderer (so never in code) and sends them with every save, and catches up
+  notes saved without them after load. They are resolved in the page with `resolve.js`, so a
+  backlink is wherever the link goes today. A resource has a Linked from tab (last): notes
+  outside it whose links reach it or a note under it ("to Colours"), newest change first,
+  archived ones last and muted. More kinds get the tab by adding them to its row.
 - Clicking a rendered image opens `<pd-image-viewer>` (its keys live in
   `static/js/images/viewer-keys.js`).
 - An image is deleted from the database once no note (trashed ones included) links to it any

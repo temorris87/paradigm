@@ -4,7 +4,7 @@
 // or under a note beside it ("the same level or deeper"). Links are followed through the
 // notes taken in, always measured from the exported note, so a bundled note never pulls in
 // notes from another branch. Everything else stays out, and links to it become plain text.
-import { renderMarkdown } from "../markdown/index.js";
+import { wikiTargets } from "../notes/links.js";
 import { resolveLink } from "../notes/resolve.js";
 
 /** Whether note `id` may go into an export of `rootId`. */
@@ -14,19 +14,6 @@ export function inScope(tree, rootId, id) {
   const parent = tree.parentId(rootId);
   // A top-level note's siblings are all the top-level notes, so everything is beside it or under.
   return parent === null || tree.ancestors(id).includes(parent);
-}
-
-/** The note names in a body's [[wiki links]], in order (footnotes, tables and lists too). */
-export function wikiTargets(body) {
-  const targets = [];
-  // The renderer already finds every link wherever it sits; it reports each to the resolver.
-  renderMarkdown(body, {
-    resolveWikiLink: (link) => {
-      if (link.target) targets.push(link.target);
-      return null;
-    },
-  });
-  return targets;
 }
 
 /**

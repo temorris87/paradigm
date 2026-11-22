@@ -41,7 +41,7 @@ test("hubs: a project's area, an area's projects; a non-area target counts as no
 test("hub tabs: Notes first on hubs and people; People on hubs; Projects only on areas; Hubs on people", () => {
   assertEqual(tabsFor({ kind: "area" }).map((t) => t.label).join(), "Notes,People,Projects,Meetings,Decisions,Questions");
   assertEqual(tabsFor({ kind: "project" }).map((t) => t.label).join(), "Notes,People,Meetings,Decisions,Questions");
-  assertEqual(tabsFor({ kind: "resource" }).map((t) => t.label).join(), "Notes,People,Meetings,Decisions,Questions");
+  assertEqual(tabsFor({ kind: "resource" }).map((t) => t.label).join(), "Notes,People,Meetings,Decisions,Questions,Linked from");
   assertEqual(tabsFor({ kind: "person" }).map((t) => t.label).join(), "Notes,Hubs,Meetings,Decisions,Questions");
   assertEqual(tabsFor({ kind: "meeting" }).map((t) => t.label).join(), "Attendees,Notes,Decisions,Questions");
   assertEqual(tabsFor({ kind: null }).length, 0);

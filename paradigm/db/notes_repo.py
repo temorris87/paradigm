@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional, Tuple
 
 from paradigm.db.connection import Database
+from paradigm.db.links_repo import store_links
 from paradigm.notes.hubs import HUB_KINDS, BadKind, clean_kind
 from paradigm.notes.titles import BadTitle, clean_title
 
@@ -121,7 +122,10 @@ class NoteRepository:
             row = _live_row(conn, note_id)
         return dict(_summary(row), body=row["body"], created_at=row["created_at"])
 
-    def create(self, parent_id: Optional[int], title: object, body: str = "") -> Dict:
+    def create(self, parent_id: Optional[int], title: object, body: str = "",
+               links: Optional[List[str]] = None) -> Dict:
+        """links: the wiki-link texts in body (009_links.sql); None leaves them to be read
+        later (the note is stale until then)."""
         title = clean_title(title)
         now = self._clock()
         with self._db.transaction() as conn:
@@ -133,15 +137,23 @@ class NoteRepository:
                 (parent_id, title, body, now, now),
             )
             note_id = cursor.lastrowid
+            if links is not None:
+                store_links(conn, note_id, 1, links)
         return self.get(note_id)
 
-    def save(self, note_id: int, body: str, base_version: int, force: bool = False) -> Dict:
+    def save(self, note_id: int, body: str, base_version: int, force: bool = False,
+             links: Optional[List[str]] = None) -> Dict:
+        """links: as for create, stored with the version the note ends on."""
         with self._db.transaction() as conn:
             row = _live_row(conn, note_id)
             if row["version"] != base_version and not force:
                 raise Conflict(row["version"])
+            version = row["version"]
             if row["body"] != body:
                 self._change(conn, note_id, "body = ?, version = version + 1", (body,))
+                version += 1
+            if links is not None:
+                store_links(conn, note_id, version, links)
         return self.get(note_id)
 
     def rename(self, note_id: int, title: object) -> Dict:

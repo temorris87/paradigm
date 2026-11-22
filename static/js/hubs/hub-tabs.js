@@ -5,14 +5,16 @@
 //   tabsFor(note)             the tabs for a hub, person or meeting note (new tabs go last,
 //                             so the number keys of the others stay)
 //   tab.rows(ctx, note)       [{ id, title, depth, detail, muted? }] in the order shown;
-//                             ctx: { tree, people, meetings, records }
+//                             ctx: { tree, people, meetings, records, links }
 //                             (static/js/people/people-model.js, static/js/meetings/
-//                             meetings-model.js, static/js/records/records-model.js)
+//                             meetings-model.js, static/js/records/records-model.js,
+//                             static/js/notes/links.js)
 //   tab.empty(note)           what the tab says when it has no rows
 import { archivedProjectsIn, projectsIn } from "./hub-areas.js";
 import { attendeesOf, attendeesText, meetingsOn, meetingsWith, shortTitle } from "../meetings/meetings-model.js";
 import { whenText } from "../meetings/meeting-days.js";
-import { groupForKind, inRecordBelow } from "../notes/hub-groups.js";
+import { groupForKind, hubOf, inRecordBelow } from "../notes/hub-groups.js";
+import { Links, linksInto } from "../notes/links.js";
 import { hubLinks, peopleOn, rolesText, workText } from "../people/people-model.js";
 import { isOpen, peopleOf, recordsOn } from "../records/records-model.js";
 
@@ -151,6 +153,27 @@ export const HUB_TABS = [
     empty: (owner) => owner.kind === "person"
       ? `${owner.title} is on no questions yet (:with ${owner.title} on a question)`
       : `No questions in this ${owner.kind} yet (:question [{date}] {title})`,
+  },
+  {
+    key: "linked",
+    label: "Linked from",
+    // Any note can have this tab: add its kind here.
+    kinds: ["resource"],
+    // Notes outside the owner whose [[links]] reach it or a note under it ("to Colours");
+    // links inside it are its own. Newest change first; archived ones last, muted.
+    rows: ({ tree, links = new Links() }, owner) => linksInto(tree, links, owner).map(({ note, reached, archived }) => {
+      const under = reached.filter((target) => target.id !== owner.id).map((target) => target.title);
+      const hub = hubOf(tree, note.id);
+      return {
+        id: note.id,
+        title: note.title,
+        depth: 0,
+        detail: [under.length ? `to ${under.join(", ")}` : "", hub && hub.id !== note.id ? hub.title : "", dayOf(note.updated_at),
+          archived ? "archived" : ""].filter(Boolean).join(" · "),
+        muted: archived,
+      };
+    }),
+    empty: (owner) => `Nothing links to ${owner.title} yet ([[${owner.title}]] in any note)`,
   },
 ];
 

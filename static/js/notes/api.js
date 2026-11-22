@@ -1,4 +1,4 @@
-// The notes and images endpoints (paradigm/api/notes.py, paradigm/api/images.py). Every
+// The notes, images and links endpoints (paradigm/api/notes.py, images.py, links.py). Every
 // call resolves to the JSON answer or throws an ApiError carrying the server's message.
 
 export class ApiError extends Error {
@@ -31,9 +31,10 @@ export const notesApi = {
   list: async () => (await call("/api/notes")).notes,
   get: (id) => call(`/api/note?id=${encodeURIComponent(id)}`),
   create: (parentId, title, body = "") => call("/api/note/create", { payload: { parent_id: parentId, title, body } }),
-  // keepalive: a save sent as the tab closes still arrives (bodies up to 64 KB).
-  save: ({ id, body, version, force = false }, { keepalive = false } = {}) =>
-    call("/api/note/save", { payload: { id, body, version, force }, keepalive }),
+  // keepalive: a save sent as the tab closes still arrives (bodies up to 64 KB). links: the
+  // [[wiki link]] texts in body (links.js wikiTargets); left out, the server marks them stale.
+  save: ({ id, body, version, force = false, links }, { keepalive = false } = {}) =>
+    call("/api/note/save", { payload: { id, body, version, force, links }, keepalive }),
   rename: (id, title) => call("/api/note/rename", { payload: { id, title } }),
   // kind: "project" | "area" | "resource" | null (the Inbox)
   setKind: (id, kind) => call("/api/note/kind", { payload: { id, kind } }),
@@ -48,4 +49,11 @@ export const notesApi = {
 export const imagesApi = {
   // -> { id, url, mime, width, height, size }
   upload: (noteId, blob) => call(`/api/image/upload?note=${encodeURIComponent(noteId)}`, { blob }),
+};
+
+export const linksApi = {
+  // -> { links: [{ id, targets }], stale: [{ id, version, body }] }
+  list: () => call("/api/links"),
+  // entries: [{ id, version, links }] -> { stored: [ids] }
+  catchUp: (entries) => call("/api/links/index", { payload: { entries } }),
 };
