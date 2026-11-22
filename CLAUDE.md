@@ -106,12 +106,14 @@ static/
                          :resource :inbox :inarea :archive :restore :people :newperson
                          :addperson :dropperson :org :job :email :meetings :meeting :date
                          :attendee :dropattendee :decision :question :answered :reopen :with
-                         :dropwith :hub :home :export :trash),
+                         :dropwith :hub :home :export :trash :find),
                          page-views.js (which page replaces the note: &home, &people,
                          &meetings; the URL flag and Back),
                          hub-groups.js (THE PARA group table: Inbox, Projects, Areas,
                          Resources; then People and the Archive, folded by default),
-                         headings.js,
+                         headings.js, note-menu.js (THE note menu on the open note's crumb:
+                         which items show for which note; pure), note-actions.js (what the
+                         menu, its dialogs and the Go to picker do: NotesApp methods),
                          images.js (editor "files" event -> shrink, upload, insert links)
   js/hubs/               the hub page (shown while a hub, person or meeting is open; a
                          decision or question gets the line alone): hub-page.js
@@ -158,6 +160,11 @@ static/
                          render-notes.js (sections, links inside the file; pure), page.js (the
                          file + its own no-script CSP; pure), assets.js (MathML, cleaned SVG,
                          images as data: URLs, in an inert document), download.js, export.js
+  js/ui/                 shared pieces that know nothing about notes: menu.js (a popup menu
+                         under a button), dialog.js (formDialog, confirmDialog on <dialog>:
+                         errors show inside and keep it open), picker.js (a text box over a
+                         filtered list; filterItems is pure), ui-keys.js (THE key table of
+                         menus, pickers and dialogs), dom.js
   js/connection/         connection.js (event stream + beacon), banner.js, tab-id.js
   js/editor/             the <pd-editor> component:
     pd-editor.js         the custom element (hidden textarea takes keys; events out)
@@ -282,6 +289,12 @@ Update this section when the structure changes.
   (oldest first), Projects (live ones by area, "No area" last, with open questions and the next
   meeting), Inbox (newest change first). Archived hubs are left out. One focus stop; its keys
   (`}`/`{` jump sections) live in `static/js/home/home-keys.js`.
+- Note menu: clicking the open note's name (the last crumb, with ▾) opens its menu: rename,
+  move (a picker), new note beside / under, file as, archive or restore, export, move to
+  trash (with a confirm). The table is `static/js/notes/note-menu.js`. The top bar's Go to
+  button (or `:find [text]`) opens a picker over every note: each typed word must appear in
+  the title or the path. Menus, pickers and dialogs share `static/js/ui/` and its keys
+  (`ui-keys.js`).
 - Clicking a rendered image opens `<pd-image-viewer>` (its keys live in
   `static/js/images/viewer-keys.js`).
 - An image is deleted from the database once no note (trashed ones included) links to it any

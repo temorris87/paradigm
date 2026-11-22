@@ -1,0 +1,120 @@
+// The note actions reached from the UI: the menu on the open note's crumb (note-menu.js), and
+// the dialogs and pickers it opens (static/js/ui/). Each one ends in a NotesApp method, the same
+// one the matching ex command runs (commands.js), so both ways behave alike.
+//
+//   openNoteMenu(app, anchorButton)
+//   goToNote(app, query?)            the Go to picker (top bar, :find)
+//   newNoteDialog(app, parentId, { heading?, kind? })   a title, then the new note opens
+//   moveTargets(tree, id) / goToItems(tree)            what the pickers list (pure)
+import { confirmDialog, formDialog } from "../ui/dialog.js";
+import { openMenu } from "../ui/menu.js";
+import { pickFrom } from "../ui/picker.js";
+import { groupOf, hubOf, isRecordKind } from "./hub-groups.js";
+import { noteMenuItems } from "./note-menu.js";
+
+export function openNoteMenu(app, anchor) {
+  const id = app.currentId;
+  const entries = noteMenuItems(app.tree, id).map((item) => {
+    if (item === "separator" || item.group && !item.key) return item;
+    return { ...item, run: () => app.guard(runItem(app, id, item)) };
+  });
+  openMenu(anchor, entries, { label: "Note actions" });
+}
+
+function runItem(app, id, item) {
+  const note = app.tree.get(id);
+  switch (item.key) {
+    case "rename": return formDialog({
+      title: `Rename "${note.title}"`,
+      fields: [{ key: "title", label: "Title", value: note.title }],
+      submit: "Rename",
+      run: ({ title }) => app.renameCommand(title),
+      ...focusNote(app),
+    });
+    case "move": return moveDialog(app, id);
+    case "newBeside": return newNoteDialog(app, app.tree.parentId(id), { heading: `New note beside "${note.title}"` });
+    case "newUnder": return newNoteDialog(app, id, { heading: `New note under "${note.title}"` });
+    case "file": return app.kindCommand(item.filing).then(() => app.focusNote());
+    case "archive": return app.archiveCommand().then(() => app.focusNote());
+    case "restore": return app.restoreCommand().then(() => app.focusNote());
+    case "export": return app.exportCommand().then(() => app.focusNote());
+    case "trash": return trashDialog(app, note, item.inside);
+  }
+  return undefined;
+}
+
+export function newNoteDialog(app, parentId, { heading = "New note", kind = null, label = "Title", submit = "Make it" } = {}) {
+  return formDialog({
+    title: heading,
+    fields: [{ key: "title", label }],
+    submit,
+    run: ({ title }) => (kind ? app.createFiled(kind, title) : app.createAndOpen(parentId, title, { strict: true })),
+    ...focusNote(app),
+  });
+}
+
+async function moveDialog(app, id) {
+  const note = app.tree.get(id);
+  const picked = await pickFrom({
+    title: `Move "${note.title}" under…`,
+    placeholder: "part of a title or path",
+    items: moveTargets(app.tree, id),
+    ...focusNote(app),
+  });
+  if (picked?.item) await app.moveUnder(picked.item.id);
+}
+
+function trashDialog(app, note, inside) {
+  const others = inside === 0 ? "" : ` and the ${inside === 1 ? "note" : `${inside} notes`} under it`;
+  return confirmDialog({
+    title: "Move to trash",
+    text: `Move "${note.title}"${others} to the trash?`,
+    confirm: "Move to trash",
+    danger: true,
+    run: () => app.trashCommand(true),
+    ...focusNote(app),
+  });
+}
+
+export async function goToNote(app, query = "") {
+  const picked = await pickFrom({
+    title: "Go to note",
+    placeholder: "part of a title or path",
+    items: goToItems(app.tree),
+    query,
+    empty: "No note matches",
+    ...focusNote(app),
+  });
+  if (picked?.item) await app.open(picked.item.id);
+}
+
+/** Every note, in tree order, with where it is ("Projects › Acme"). */
+export function goToItems(tree) {
+  return tree.inOrder().map((note) => ({ id: note.id, title: note.title, detail: whereText(tree, note.id) }));
+}
+
+/**
+ * Where a note can be moved: the top level (id null), then every note it may go under in tree
+ * order: never itself or a note inside it, never a person's own place for a meeting, decision
+ * or question (those stay inside a hub).
+ */
+export function moveTargets(tree, id) {
+  const note = tree.get(id);
+  const inHubOnly = isRecordKind(note?.kind);
+  const below = new Set(tree.inOrder(id).map((each) => each.id));
+  const targets = tree.inOrder().filter((each) => each.id !== id && !below.has(each.id)
+    && (!inHubOnly || hubOf(tree, each.id)) && each.id !== tree.parentId(id));
+  const items = targets.map((each) => ({ id: each.id, title: each.title, detail: whereText(tree, each.id) }));
+  if (!inHubOnly && tree.parentId(id) !== null) items.unshift({ id: null, title: "Top level", detail: "the Inbox" });
+  return items;
+}
+
+/** "Projects › Acme": a note's group and the notes above it. */
+export function whereText(tree, id) {
+  return [groupOf(tree, id).heading, ...tree.ancestors(id).reverse().map((each) => tree.get(each).title)].join(" › ");
+}
+
+// After a dialog, the focus goes back to the note (or the panel over it).
+function focusNote(app) {
+  return { fallbackFocus: () => app.focusNote() };
+}

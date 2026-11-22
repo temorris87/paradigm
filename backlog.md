@@ -48,10 +48,10 @@ Features in build order. "build feature" takes the first unchecked item.
 - [x] Backlinks: an index of wiki links; a Linked from tab on resources (and any note later) (done 2026-11-21)
 - [x] Home: active projects by area, the Inbox count, open questions, and room for today's tasks
   and meetings (done 2026-11-21)
-- [ ] Note menu on the last crumb: clicking the open note's crumb opens its actions (rename,
+- [x] Note menu on the last crumb: clicking the open note's crumb opens its actions (rename,
   move, new note beside / under, file as project / area / resource / Inbox, archive or
   restore, export, trash with a confirm); a Go to note picker in the top bar; shared menu,
-  picker and form dialogs for the items after it
+  picker and form dialogs for the items after it (done 2026-11-21)
 - [ ] Hub line controls: change a hub's kind and a project's area; edit a person's
   organisation, job title and email; a meeting's or record's date and time; mark a question
   answered or reopen it; add and remove the people on a decision or question

@@ -126,17 +126,22 @@ test("tree view: clicking a title opens, clicking the arrow folds", () => withTr
   assertEqual(opened.join(), "2");
 }));
 
-test("breadcrumb: ancestors are buttons, the note itself is not", () => {
+test("breadcrumb: ancestors open their note, the note itself opens its menu", () => {
   const nav = document.createElement("nav");
   const opened = [];
-  showBreadcrumb(nav, new NoteTree(NOTES), 4, (id) => opened.push(id));
-  assertEqual(nav.textContent, "Inbox›projects›acme›Kickoff");
+  const menus = [];
+  showBreadcrumb(nav, new NoteTree(NOTES), 4, (id) => opened.push(id), (button) => menus.push(button));
+  assertEqual(nav.textContent, "Inbox›projects›acme›Kickoff▾");
   assertEqual(nav.querySelector(".crumbs__group").tagName, "SPAN", "the group is plain text");
-  const buttons = nav.querySelectorAll("button");
-  assertEqual(buttons.length, 2);
-  buttons[1].click();
+  const links = nav.querySelectorAll(".crumbs__link");
+  assertEqual(links.length, 2);
+  links[1].click();
   assertEqual(opened.join(), "3");
-  assertEqual(nav.querySelector("[aria-current]").textContent, "Kickoff");
+  const here = nav.querySelector("[aria-current]");
+  assertEqual(here.querySelector(".crumbs__title").textContent, "Kickoff");
+  assertEqual(here.getAttribute("aria-haspopup"), "menu");
+  here.click();
+  assertEqual(menus[0], here);
 });
 
 const FILED = [
@@ -207,7 +212,7 @@ test("tree view: a note filed elsewhere is shown in its new group", () => withTr
 test("breadcrumb: a project's note starts with Projects", () => {
   const nav = document.createElement("nav");
   showBreadcrumb(nav, new NoteTree(FILED), 2, () => {});
-  assertEqual(nav.textContent, "Projects›Acme›Kickoff");
+  assertEqual(nav.textContent, "Projects›Acme›Kickoff▾");
 });
 
 test("note commands: :project :area :resource :inbox, typed in full", () => {
@@ -263,7 +268,7 @@ test("tree view: opening an archived note unfolds the Archive", () => withTree((
 test("breadcrumb: an archived note starts with Archive", () => {
   const nav = document.createElement("nav");
   showBreadcrumb(nav, new NoteTree(ARCHIVED), 7, () => {});
-  assertEqual(nav.textContent, "Archive›Gamma›Wrap-up");
+  assertEqual(nav.textContent, "Archive›Gamma›Wrap-up▾");
 });
 
 test("note commands: :arch[ive] and :resto[re]", () => {

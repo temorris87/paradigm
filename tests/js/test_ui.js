@@ -1,0 +1,148 @@
+// The shared menu, picker and dialogs (static/js/ui/).
+import { confirmDialog, formDialog } from "../../static/js/ui/dialog.js";
+import { closeMenu, openMenu, openedMenu } from "../../static/js/ui/menu.js";
+import { filterItems, pickFrom } from "../../static/js/ui/picker.js";
+import { UI_KEYS, uiAction } from "../../static/js/ui/ui-keys.js";
+import { assertEqual, assertTrue, test } from "./harness.js";
+
+const key = (target, name) => target.dispatchEvent(new KeyboardEvent("keydown", { key: name, bubbles: true, cancelable: true }));
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+function withAnchor(body) {
+  const anchor = document.createElement("button");
+  document.body.append(anchor);
+  try {
+    return body(anchor);
+  } finally {
+    closeMenu();
+    anchor.remove();
+  }
+}
+
+test("ui keys: every key is in one scope's table once", () => {
+  for (const scope of ["menu", "picker", "dialog"]) {
+    const keys = UI_KEYS.filter((each) => each.scope === scope).flatMap((each) => each.keys);
+    assertEqual(new Set(keys).size, keys.length, scope);
+  }
+  assertEqual(uiAction({ key: "j" }, "menu"), "next");
+  assertEqual(uiAction({ key: "j" }, "picker"), null, "j types in a picker");
+  assertEqual(uiAction({ key: "j", ctrlKey: true }, "menu"), null);
+});
+
+test("menu: keys move over enabled items, Enter runs one and closes", () => withAnchor((anchor) => {
+  const ran = [];
+  openMenu(anchor, [
+    { label: "One", run: () => ran.push(1) },
+    "separator",
+    { group: "Group" },
+    { label: "Off", disabled: true, run: () => ran.push(2) },
+    { label: "Three", checked: true, run: () => ran.push(3) },
+  ]);
+  const menu = document.querySelector(".menu");
+  assertTrue(menu, "shown");
+  assertEqual(anchor.getAttribute("aria-expanded"), "true");
+  assertEqual(menu.querySelectorAll("[role=menuitemradio]")[0].getAttribute("aria-checked"), "true");
+  key(menu, "j");
+  key(document.activeElement, "Enter");
+  assertEqual(ran.join(), "3", "the disabled item is skipped");
+  assertEqual(document.querySelector(".menu"), null, "closed");
+  assertEqual(openedMenu(), null);
+}));
+
+test("menu: Escape closes it and gives the focus back to its button", () => withAnchor((anchor) => {
+  openMenu(anchor, [{ label: "One", run: () => {} }]);
+  key(document.querySelector(".menu"), "Escape");
+  assertEqual(document.querySelector(".menu"), null);
+  assertEqual(document.activeElement, anchor);
+  assertEqual(anchor.getAttribute("aria-expanded"), "false");
+}));
+
+test("menu: opening another closes the first; a click outside closes it", () => withAnchor((anchor) => {
+  openMenu(anchor, [{ label: "One", run: () => {} }]);
+  openMenu(anchor, [{ label: "Two", run: () => {} }]);
+  assertEqual(document.querySelectorAll(".menu").length, 1);
+  document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+  assertEqual(document.querySelector(".menu"), null);
+}));
+
+test("picker: every word must match; title matches come first", () => {
+  const items = [
+    { id: 1, title: "Kickoff", detail: "Projects › Acme" },
+    { id: 2, title: "Acme", detail: "Projects" },
+    { id: 3, title: "Acme kick notes", detail: "Inbox" },
+  ];
+  assertEqual(filterItems(items, "acme kick").map((item) => item.id).join(), "3,1");
+  assertEqual(filterItems(items, "").length, 3);
+  assertEqual(filterItems(items, "nothing").length, 0);
+});
+
+test("picker: typing narrows, arrows move, Enter takes; a create row for new text", async () => {
+  const items = [{ id: 1, title: "Jane Doe" }, { id: 2, title: "Bob Lee" }];
+  let result = pickFrom({ title: "Person", items, create: (text) => `Add "${text}"` });
+  let box = document.querySelector(".picker__box");
+  assertEqual(document.querySelectorAll(".picker [role=option]").length, 2);
+  key(box, "ArrowDown");
+  key(box, "Enter");
+  assertEqual((await result).item.id, 2);
+  result = pickFrom({ title: "Person", items, create: (text) => `Add "${text}"` });
+  box = document.querySelector(".picker__box");
+  box.value = "Ann";
+  box.dispatchEvent(new Event("input"));
+  assertEqual(document.querySelector(".picker__row--create").textContent, 'Add "Ann"');
+  key(box, "Enter");
+  assertEqual((await result).create, "Ann");
+  result = pickFrom({ title: "Person", items });
+  key(document.querySelector(".picker__box"), "Escape");
+  assertEqual(await result, null);
+  assertEqual(document.querySelector(".picker"), null, "gone");
+});
+
+test("form dialog: an error from run shows and keeps it open; then it closes with the answer", async () => {
+  let tries = 0;
+  const result = formDialog({
+    title: "Rename",
+    fields: [{ key: "title", label: "Title", value: "Old" }],
+    submit: (values) => (values.title === "Old" ? "Keep" : "Rename"),
+    run: async ({ title }) => {
+      tries += 1;
+      if (tries === 1) throw new Error("There is already a note called 'Old' there");
+      return title;
+    },
+  });
+  const dialog = document.querySelector("dialog.dialog");
+  const input = dialog.querySelector("input");
+  const ok = dialog.querySelector(".dialog__button--ok");
+  assertEqual(ok.textContent, "Keep");
+  dialog.querySelector("form").requestSubmit();
+  await tick();
+  assertTrue(dialog.isConnected, "still open");
+  assertTrue(!dialog.querySelector(".dialog__error").hidden, "the error shows");
+  input.value = "New";
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  assertEqual(ok.textContent, "Rename", "the label follows the field");
+  dialog.querySelector("form").requestSubmit();
+  assertEqual(await result, "New");
+  assertTrue(!dialog.isConnected);
+});
+
+test("form dialog: an empty required field is refused; Escape cancels with null", async () => {
+  let ran = false;
+  const result = formDialog({ title: "New", fields: [{ key: "title", label: "Title" }], run: () => { ran = true; } });
+  const dialog = document.querySelector("dialog.dialog");
+  dialog.querySelector("form").requestSubmit();
+  await tick();
+  assertEqual(dialog.querySelector(".dialog__error").textContent, "Title is needed");
+  key(dialog.querySelector("input"), "Escape");
+  assertEqual(await result, null);
+  assertTrue(!ran);
+});
+
+test("confirm dialog: the button runs the action", async () => {
+  let ran = false;
+  const result = confirmDialog({ title: "Sure?", text: "Really", confirm: "Do it", run: async () => { ran = true; } });
+  const dialog = document.querySelector("dialog.dialog");
+  assertEqual(dialog.querySelector(".dialog__button--ok").textContent, "Do it");
+  dialog.querySelector("form").requestSubmit();
+  assertEqual(await result, true);
+  assertTrue(ran);
+});

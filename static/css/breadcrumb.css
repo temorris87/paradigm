@@ -31,6 +31,41 @@
   font-weight: 600;
 }
 
+/* The open note's name: a button that opens its menu (static/js/notes/note-actions.js). */
+.crumbs__menu {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  max-width: 100%;
+  padding: 0 0.3rem;
+  margin: 0 -0.3rem;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.crumbs__menu:hover,
+.crumbs__menu:focus-visible,
+.crumbs__menu[aria-expanded="true"] {
+  outline: none;
+  background: var(--nord2);
+}
+
+.crumbs__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.crumbs__caret {
+  color: var(--nord4);
+  font-size: 0.8em;
+  font-weight: normal;
+}
+
 .crumbs__group {
   color: var(--nord4);
 }

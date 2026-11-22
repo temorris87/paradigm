@@ -48,6 +48,7 @@ const app = new NotesApp({
     section: document.querySelector(".meetings"),
     button: document.querySelector(".topbar__meetings"),
   },
+  goTo: document.querySelector(".topbar__goto"),
   navigator: notesNavigator,
   api: notesApi,
   imagesApi,

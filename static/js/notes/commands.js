@@ -2,6 +2,7 @@
 // names (addExCommand); running one sends an "ex" event, and the page runs it here. Names
 // that Vim already uses for something else (:delete, :move, :sub...) are avoided.
 import { HUB_GROUPS, isDecisionOrQuestion } from "./hub-groups.js";
+import { goToNote } from "./note-actions.js";
 import { attendeeCommand, dateCommand, dropAttendeeCommand, newMeetingCommand } from "../meetings/meetings-commands.js";
 import { answeredCommand, dropWithCommand, newRecordCommand, recordDateCommand, reopenCommand,
   withCommand } from "../records/records-commands.js";
@@ -28,6 +29,8 @@ export const NOTE_COMMANDS = [
     run: (app, { arg }) => app.renameCommand(arg) },
   { name: "parent", min: 6, usage: ":parent {note} | /", help: "put this note under another note (/ for the top level)",
     run: (app, { arg }) => app.parentCommand(arg) },
+  { name: "find", min: 3, usage: ":fin[d] [{text}]", help: "pick a note to open from every note, narrowed by the text",
+    run: (app, { arg }) => goToNote(app, arg.trim()) },
   { name: "nav", min: 3, usage: ":nav", help: "go to the notes tree (on a narrow window it slides in)",
     run: (app) => app.navCommand() },
   ...FILING_COMMANDS,

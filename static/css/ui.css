@@ -1,0 +1,264 @@
+/* The shared popup menus, pickers and dialogs (static/js/ui/). */
+.menu {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  min-width: 12rem;
+  max-width: min(22rem, calc(100vw - 1rem));
+  max-height: calc(100vh - 1rem);
+  overflow: auto;
+  padding: 0.25rem 0;
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  background: var(--nord1);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.35);
+}
+
+.menu__item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.2rem 0.75rem 0.2rem 0.4rem;
+  border: none;
+  background: none;
+  color: var(--nord4);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu__item:focus,
+.menu__item:hover {
+  outline: none;
+  background: var(--nord2);
+  color: var(--nord6);
+}
+
+.menu__item[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.menu__item--danger {
+  color: var(--nord11);
+}
+
+.menu__item--danger:focus,
+.menu__item--danger:hover {
+  color: var(--nord11);
+}
+
+.menu__mark {
+  flex: none;
+  width: 1rem;
+  color: var(--nord9);
+  text-align: center;
+}
+
+.menu__label {
+  flex: 1;
+}
+
+.menu__hint {
+  color: var(--nord4);
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.menu__group {
+  padding: 0.3rem 0.75rem 0.1rem 1.8rem;
+  color: var(--nord4);
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.menu__separator {
+  margin: 0.25rem 0;
+  border-top: 1px solid var(--nord2);
+}
+
+.dialog {
+  width: min(28rem, calc(100vw - 2rem));
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--nord3);
+  border-radius: 6px;
+  background: var(--nord1);
+  color: var(--nord4);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.45);
+}
+
+.dialog::backdrop {
+  background: rgb(46 52 64 / 0.6);
+}
+
+.dialog__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.dialog__title {
+  margin: 0 0 0.25rem;
+  color: var(--nord6);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.dialog__text {
+  margin: 0;
+}
+
+.dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+}
+
+.dialog__input {
+  width: 100%;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--nord3);
+  border-radius: 3px;
+  background: var(--nord0);
+  color: var(--nord6);
+  font: inherit;
+  font-size: 0.95rem;
+  color-scheme: dark;
+}
+
+.dialog__input:focus-visible {
+  outline: 1px solid var(--nord9);
+  outline-offset: 0;
+}
+
+.dialog__error {
+  margin: 0;
+  color: var(--nord11);
+}
+
+.dialog__error[hidden] {
+  display: none;
+}
+
+.dialog__buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.dialog__button {
+  padding: 0.25rem 0.9rem;
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  background: var(--nord2);
+  color: var(--nord6);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.dialog__button:hover,
+.dialog__button:focus-visible {
+  border-color: var(--nord9);
+  outline: none;
+}
+
+.dialog__button--ok {
+  background: var(--nord10);
+}
+
+.dialog__button--danger {
+  background: var(--nord11);
+  color: var(--nord0);
+}
+
+.picker {
+  width: min(36rem, calc(100vw - 2rem));
+}
+
+.picker__list {
+  max-height: min(24rem, 60vh);
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  overflow: auto;
+}
+
+.picker__row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.picker__row:hover {
+  background: var(--nord2);
+}
+
+.picker__row[aria-selected="true"] {
+  background: var(--nord2);
+  color: var(--nord6);
+  box-shadow: inset 0 0 0 1px var(--nord9);
+}
+
+.picker__row--create .picker__title {
+  color: var(--nord8);
+}
+
+.picker__row--muted .picker__title {
+  opacity: 0.55;
+}
+
+.picker__title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker__detail {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--nord4);
+  font-size: 0.85rem;
+  opacity: 0.7;
+  text-align: right;
+}
+
+.picker__empty {
+  padding: 0.4rem 0.5rem;
+  opacity: 0.7;
+}
+
+/* A small icon-like button beside a fact: ▾ ✎ + × (the hub line, the tree's groups). */
+.mini-button {
+  padding: 0 0.3rem;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: var(--nord4);
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  opacity: 0.65;
+  cursor: pointer;
+}
+
+.mini-button:hover,
+.mini-button:focus-visible {
+  outline: none;
+  background: var(--nord2);
+  color: var(--nord6);
+  opacity: 1;
+}

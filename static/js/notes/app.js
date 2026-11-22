@@ -22,6 +22,7 @@ import { registerNoteCommands, runNoteCommand } from "./commands.js";
 import { headingLine } from "./headings.js";
 import { groupOf, isArchived, topNoteOf } from "./hub-groups.js";
 import { NoteImages } from "./images.js";
+import { goToNote, openNoteMenu } from "./note-actions.js";
 import { LinkIndex } from "./link-index.js";
 import { NoteSession } from "./note-session.js";
 import { resolveLink, splitTarget } from "./resolve.js";
@@ -37,7 +38,7 @@ import { TreeView } from "./tree-view.js";
 const UNSAVED = "E37: No write since last change (:w to save, or ! to drop the changes)";
 
 export class NotesApp {
-  constructor({ editor, tree, crumbs, navigator, hub, home, people, meetings, api, imagesApi, peopleApi,
+  constructor({ editor, tree, crumbs, navigator, hub, home, people, meetings, goTo, api, imagesApi, peopleApi,
                 meetingsApi, recordsApi, linksApi, location = window.location, history = window.history,
                 today = () => new Date() }) {
     this.editor = editor;
@@ -85,6 +86,7 @@ export class NotesApp {
     for (const [key, { button }] of Object.entries({ home, people, meetings })) {
       button?.addEventListener("click", () => (this.views.shown === key ? this.leaveView() : this.showView(key, "push")));
     }
+    goTo?.addEventListener("click", () => this.guard(goToNote(this)));
     this.images = new NoteImages({ editor, api: imagesApi, currentId: () => this.currentId });
     registerNoteCommands(editor);
     this.listen();
@@ -204,7 +206,8 @@ export class NotesApp {
   redraw() {
     const id = this.currentId;
     this.treeView.show(this.tree, id);
-    showBreadcrumb(this.crumbs, this.tree, id, (target) => this.guard(this.open(target)));
+    showBreadcrumb(this.crumbs, this.tree, id, (target) => this.guard(this.open(target)),
+      (button) => openNoteMenu(this, button));
     const ctx = { tree: this.tree, people: this.people, meetings: this.meetings, records: this.records,
       links: this.linkIndex.links };
     this.hubPage.show(ctx, id);
@@ -265,8 +268,12 @@ export class NotesApp {
     await this.createAndOpen(parentId, title);
   }
 
-  async createAndOpen(parentId, title) {
-    if (!(await this.saveBeforeSwitching())) return;
+  /** strict (from a dialog): an open note that can't be saved first is an error to show there. */
+  async createAndOpen(parentId, title, { strict = false } = {}) {
+    if (!(await this.saveBeforeSwitching())) {
+      if (strict) throw new Error("This note's changes could not be saved first");
+      return;
+    }
     const note = await this.api.create(parentId, title);
     await this.refreshTree();
     await this.open(note.id);
@@ -290,6 +297,11 @@ export class NotesApp {
       if (!found.note) throw new Error(explainMissing(text, found));
       parentId = found.note.id;
     }
+    await this.moveUnder(parentId);
+  }
+
+  /** Puts the open note under another note (null: the top level). */
+  async moveUnder(parentId) {
     const note = await this.api.move(this.currentId, parentId);
     this.session.updateMeta(note);
     await this.refreshTree();
@@ -344,7 +356,7 @@ export class NotesApp {
     this.session.updateMeta(note);
     await this.refreshTree();
     const notes = inside === 0 ? "" : ` with ${inside} note${inside === 1 ? "" : "s"}`;
-    this.editor.showMessage(`"${note.title}" archived${notes} (:restore brings it back)`);
+    this.editor.showMessage(`"${note.title}" archived${notes} (Restore is on its menu)`);
   }
 
   async restoreCommand() {
