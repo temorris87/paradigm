@@ -37,6 +37,8 @@ export const NOTE_COMMANDS = [
     run: (app) => app.archiveCommand() },
   { name: "restore", min: 5, usage: ":resto[re]", help: "bring this archived hub back to its group",
     run: (app) => app.restoreCommand() },
+  { name: "home", min: 4, usage: ":home", help: "open the Home page: today, open questions, projects, the Inbox (Escape comes back to the note)",
+    run: (app) => app.showView("home", "push") },
   { name: "people", min: 6, usage: ":people", help: "open the People page (Escape comes back to the note)",
     run: (app) => app.showView("people", "push") },
   { name: "newperson", min: 9, usage: ":newperson {name}", help: "add a person to People and open their note",

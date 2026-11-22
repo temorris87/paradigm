@@ -1,5 +1,5 @@
 /* The list pages (static/js/pages/list-page.js: People, Meetings), drawn in place of the
-   note while .app__note carries data-view. Each page's own columns are in its file
+   note while .app__note carries data-view (the Home page too: home.css). Each page's own columns are in its file
    (people.css, meetings.css). */
 .app__note[data-view] .app__editor,
 .app__note[data-view] .hub-line,

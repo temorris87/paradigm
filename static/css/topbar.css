@@ -37,7 +37,7 @@
   outline-offset: 1px;
 }
 
-/* The People and Meetings buttons (:people, :meetings), at the right end of the bar. */
+/* The Home, People and Meetings buttons (:home, :people, :meetings), at the right end of the bar. */
 .topbar__page {
   flex: none;
   padding: 0.15rem 0.6rem;
@@ -51,6 +51,7 @@
 }
 
 .topbar__page:hover,
+.app__note[data-view="home"] .topbar__home,
 .app__note[data-view="people"] .topbar__people,
 .app__note[data-view="meetings"] .topbar__meetings {
   background: var(--nord2);

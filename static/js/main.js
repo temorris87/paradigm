@@ -36,6 +36,10 @@ const app = new NotesApp({
     line: document.querySelector(".hub-line"),
     section: document.querySelector(".hub"),
   },
+  home: {
+    section: document.querySelector(".home"),
+    button: document.querySelector(".topbar__home"),
+  },
   people: {
     section: document.querySelector(".people"),
     button: document.querySelector(".topbar__people"),

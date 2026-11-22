@@ -106,8 +106,8 @@ static/
                          :resource :inbox :inarea :archive :restore :people :newperson
                          :addperson :dropperson :org :job :email :meetings :meeting :date
                          :attendee :dropattendee :decision :question :answered :reopen :with
-                         :dropwith :hub :export :trash),
-                         page-views.js (which list page replaces the note: &people,
+                         :dropwith :hub :home :export :trash),
+                         page-views.js (which page replaces the note: &home, &people,
                          &meetings; the URL flag and Back),
                          hub-groups.js (THE PARA group table: Inbox, Projects, Areas,
                          Resources; then People and the Archive, folded by default),
@@ -122,6 +122,10 @@ static/
                          Linked from; a meeting's Attendees; pure), hub-areas.js (project
                          <-> area; pure), hub-size.js (collapsed/open/expanded, remembered),
                          hub-keys.js (THE section panel key table)
+  js/home/               the Home page (the start page): home-model.js (today's meetings, open
+                         questions, live projects by area, the Inbox; pure), home-sections.js
+                         (THE Home section table; tasks join "today"; pure), home-page.js
+                         (one listbox, sections as groups), home-keys.js (THE Home key table)
   js/pages/              list-page.js (a list page in place of the note: filters, search
                          box, one-focus-stop listbox), page-keys.js (THE key table of the
                          People and Meetings pages)
@@ -272,6 +276,12 @@ Update this section when the structure changes.
   backlink is wherever the link goes today. A resource has a Linked from tab (last): notes
   outside it whose links reach it or a note under it ("to Colours"), newest change first,
   archived ones last and muted. More kinds get the tab by adding them to its row.
+- Home: a page in place of the note (`&home`), and the start page: a URL with no `?note=` opens
+  on it. `:home` or the Home button. Sections top to bottom (`static/js/home/home-sections.js`):
+  Today (today's meetings: timed by time, then untimed; tasks will join it), Open questions
+  (oldest first), Projects (live ones by area, "No area" last, with open questions and the next
+  meeting), Inbox (newest change first). Archived hubs are left out. One focus stop; its keys
+  (`}`/`{` jump sections) live in `static/js/home/home-keys.js`.
 - Clicking a rendered image opens `<pd-image-viewer>` (its keys live in
   `static/js/images/viewer-keys.js`).
 - An image is deleted from the database once no note (trashed ones included) links to it any

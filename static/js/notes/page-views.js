@@ -1,8 +1,8 @@
-// The pages drawn in place of the note (People, Meetings): which one shows, if any, and its
+// The pages drawn in place of the note (Home, People, Meetings): which one shows, if any, and its
 // URL flag and history step. The note stays open under them: /?note=N&people.
 //
-//   const views = new PageViews({ main, pages: { people, meetings }, history, noteUrl() });
-//   views.shown                    "people" | "meetings" | null
+//   const views = new PageViews({ main, pages: { home, people, meetings }, history, noteUrl() });
+//   views.shown                    "home" | "people" | "meetings" | null
 //   views.fromUrl(searchParams)    the view a URL asks for, or null
 //   views.show(key, history)       history: "push" (a command or button), "replace" (the
 //                                  page was loaded with the flag) or "none" (Back/Forward)
@@ -10,9 +10,11 @@
 //   views.hide()                   no view, without touching the history (opening a note)
 //   views.draw(ctx, crumbs)        after every redraw of the notes page
 //
-// Each page is a ListPage (static/js/pages/list-page.js); main carries data-view while one
+// Each page has section, show(ctx) and focus(): a ListPage (static/js/pages/list-page.js) or
+// the Home page (static/js/home/home-page.js); main carries data-view while one
 // shows, for the CSS that hides the note.
 export const PAGE_VIEWS = [
+  { key: "home", label: "Home" },
   { key: "people", label: "People" },
   { key: "meetings", label: "Meetings" },
 ];

@@ -2,18 +2,20 @@
 // It owns what the editor's events mean here: saving, following [[links]], note commands.
 //
 //   const app = new NotesApp({ editor, tree: ulElement, crumbs: navElement, navigator,
-//                              hub: { page, line, section }, people: { section, button },
-//                              meetings: { section, button },
+//                              hub: { page, line, section }, home: { section, button },
+//                              people: { section, button }, meetings: { section, button },
 //                              api: notesApi, imagesApi, peopleApi, meetingsApi, recordsApi,
 //                              linksApi });
 //
 // navigator (static/js/layout/navigator.js) holds the tree: a drawer on narrow windows.
 // hub (static/js/hubs/hub-page.js) is the hub line and section panel shown on a hub.
-// people and meetings are the People and Meetings pages (static/js/people/people-page.js,
-// static/js/meetings/meetings-page.js), drawn in place of the note while the URL has
-// &people or &meetings (page-views.js; the note stays open under them).
+// home, people and meetings are the Home, People and Meetings pages (static/js/home/,
+// static/js/people/people-page.js, static/js/meetings/meetings-page.js), drawn in place of
+// the note while the URL has &home, &people or &meetings (page-views.js; the note stays
+// open under them). A URL with no note opens on Home.
 //   await app.start();
 import { exportNote } from "../export/export.js";
+import { HomePage } from "../home/home-page.js";
 import { HubPage } from "../hubs/hub-page.js";
 import { showBreadcrumb } from "./breadcrumb.js";
 import { registerNoteCommands, runNoteCommand } from "./commands.js";
@@ -35,7 +37,7 @@ import { TreeView } from "./tree-view.js";
 const UNSAVED = "E37: No write since last change (:w to save, or ! to drop the changes)";
 
 export class NotesApp {
-  constructor({ editor, tree, crumbs, navigator, hub, people, meetings, api, imagesApi, peopleApi,
+  constructor({ editor, tree, crumbs, navigator, hub, home, people, meetings, api, imagesApi, peopleApi,
                 meetingsApi, recordsApi, linksApi, location = window.location, history = window.history,
                 today = () => new Date() }) {
     this.editor = editor;
@@ -72,11 +74,15 @@ export class NotesApp {
     const onPage = { onOpen: (id) => this.guard(this.open(id)), onLeave: () => this.leaveView() };
     this.views = new PageViews({
       main: hub.page,
-      pages: { people: peoplePage(people.section, onPage), meetings: meetingsPage(meetings.section, { ...onPage, today }) },
+      pages: {
+        home: new HomePage(home.section, { ...onPage, today }),
+        people: peoplePage(people.section, onPage),
+        meetings: meetingsPage(meetings.section, { ...onPage, today }),
+      },
       history,
       noteUrl: () => noteUrl(this.currentId),
     });
-    for (const [key, { button }] of Object.entries({ people, meetings })) {
+    for (const [key, { button }] of Object.entries({ home, people, meetings })) {
       button?.addEventListener("click", () => (this.views.shown === key ? this.leaveView() : this.showView(key, "push")));
     }
     this.images = new NoteImages({ editor, api: imagesApi, currentId: () => this.currentId });
@@ -123,7 +129,7 @@ export class NotesApp {
     const wanted = Number(params.get("note"));
     const id = this.tree.has(wanted) ? wanted : this.tree.children(null)[0]?.id;
     if (id === undefined) return;
-    const view = this.views.fromUrl(params);
+    const view = this.views.fromUrl(params) ?? (params.has("note") ? null : "home");
     const opened = await this.open(id, { history: view ? "none" : history });
     // Back/Forward to another note while this one could not be saved: stay, and say so.
     if (!opened && history === "none") this.history.pushState({}, "", noteUrl(this.currentId));
@@ -352,7 +358,7 @@ export class NotesApp {
     this.editor.showMessage(`"${note.title}" restored to ${groupLabel(this.tree, note.id)}`);
   }
 
-  /** :people, :meetings (history "push"), or a URL with the flag ("replace", "none"). */
+  /** :home, :people, :meetings (history "push"), or a URL with the flag ("replace", "none"). */
   showView(key, history) {
     this.views.show(key, history);
     this.redraw();

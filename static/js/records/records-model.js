@@ -11,6 +11,7 @@
 //                                           meeting, archived }
 //   peopleOf(tree, records, id)             their notes, by name
 //   isOpen(record)                          a question not answered yet
+//   allOfKind(tree, records, kind)          every entry of a kind, unsorted; questionOrder
 // Decisions come newest first; questions open first (oldest first: they've waited longest),
 // then answered ones (newest answer first). Those in archived hubs come last.
 import { hubOf, isArchived, isPerson, meetingOf } from "../notes/hub-groups.js";
@@ -34,8 +35,8 @@ export function isOpen(record) {
   return !record.answered;
 }
 
-/** Every live decision (or question) in a hub, unsorted. */
-function allOfKind(tree, records, kind) {
+/** Every decision (or question) in a hub, unsorted (archived ones too). */
+export function allOfKind(tree, records, kind) {
   return tree.inOrder()
     .filter((note) => note.kind === kind && hubOf(tree, note.id))
     .map((note) => ({
@@ -72,7 +73,8 @@ function newestFirst(a, b) {
   return b.record.day.localeCompare(a.record.day) || byTitle(a, b);
 }
 
-function questionOrder(a, b) {
+/** The Questions tab's order: open first (oldest first), then answered (newest answer first). */
+export function questionOrder(a, b) {
   const open = (entry) => (isOpen(entry.record) ? 0 : 1);
   if (open(a) !== open(b)) return open(a) - open(b);
   if (isOpen(a.record)) return a.record.day.localeCompare(b.record.day) || byTitle(a, b);
