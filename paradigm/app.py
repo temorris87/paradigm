@@ -9,6 +9,7 @@ from paradigm.api.images import ImagesApi
 from paradigm.api.meetings import MeetingsApi
 from paradigm.api.notes import NotesApi
 from paradigm.api.people import PeopleApi
+from paradigm.api.records import RecordsApi
 from paradigm.api.session import SessionApi
 from paradigm.config import Config, parse_args
 from paradigm.db.connection import Database
@@ -17,6 +18,7 @@ from paradigm.db.migrate import SchemaTooNew, migrate
 from paradigm.db.meetings_repo import MeetingRepository
 from paradigm.db.notes_repo import NoteRepository
 from paradigm.db.people_repo import PeopleRepository
+from paradigm.db.records_repo import RecordRepository
 from paradigm.instance import PortState, probe
 from paradigm.logging_setup import setup_logging
 from paradigm.notes.seed import seed_if_empty
@@ -130,6 +132,7 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
     NotesApi(notes).register(server.router)
     PeopleApi(PeopleRepository(db), notes).register(server.router)
     MeetingsApi(MeetingRepository(db), notes).register(server.router)
+    RecordsApi(RecordRepository(db), notes).register(server.router)
     ImagesApi(images).register(server.router)
 
 

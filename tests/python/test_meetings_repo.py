@@ -7,7 +7,7 @@ from paradigm.db.connection import Database
 from paradigm.db.meetings_repo import (BadTitle, BadWhen, HubArchived, MeetingRepository, NotAHub,
                                        NotAMeeting, NotAPerson, NotAttending)
 from paradigm.db.migrate import migrate
-from paradigm.db.notes_repo import IsAMeeting, NoteRepository, TitleTaken
+from paradigm.db.notes_repo import StaysInAHub, NoteRepository, TitleTaken
 from paradigm.db.people_repo import PeopleRepository
 from paradigm.notes.meetings import clean_day, clean_time, retitle
 
@@ -139,9 +139,9 @@ class MeetingRepositoryTest(unittest.TestCase):
         folder = self.notes.create(other, "Meetings")["id"]
         self.assertEqual(self.notes.move(meeting, folder)["parent_id"], folder)
         for where in (None, self.notes.create(None, "Loose")["id"], self.person()):
-            with self.assertRaises(IsAMeeting):
+            with self.assertRaises(StaysInAHub):
                 self.notes.move(meeting, where)
-        with self.assertRaises(IsAMeeting):
+        with self.assertRaises(StaysInAHub):
             self.notes.set_kind(meeting, "project")
 
     def test_archiving_the_hub_keeps_its_meetings(self) -> None:

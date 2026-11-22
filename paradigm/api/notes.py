@@ -18,7 +18,7 @@ POST /api/note/delete      {id, recursive?}              -> {deleted: [ids]}
 from http.server import BaseHTTPRequestHandler
 from typing import Callable, Dict
 
-from paradigm.db.notes_repo import (AreaArchived, BadKind, BadTitle, Conflict, HasChildren, IsAMeeting, IsAPerson, LastNote,
+from paradigm.db.notes_repo import (AreaArchived, BadKind, BadTitle, Conflict, HasChildren, StaysInAHub, IsAPerson, LastNote,
                                     NoteError, NoteRepository, NotAnArea, NotAProject, NotArchived,
                                     NotFound, NotTopLevel, TitleTaken, WouldCycle)
 from paradigm.web.requests import (BadRequest, bool_field, int_field, optional_int_field,
@@ -28,7 +28,7 @@ from paradigm.web.router import Router
 
 _STATUS = {NotFound: 404, Conflict: 409, TitleTaken: 409, HasChildren: 409, LastNote: 409,
            WouldCycle: 400, NotAProject: 400, NotAnArea: 400, AreaArchived: 400, NotTopLevel: 400,
-           NotArchived: 400, IsAPerson: 400, IsAMeeting: 400, BadTitle: 400, BadKind: 400, BadRequest: 400}
+           NotArchived: 400, IsAPerson: 400, StaysInAHub: 400, BadTitle: 400, BadKind: 400, BadRequest: 400}
 
 
 class NotesApi:

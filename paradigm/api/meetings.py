@@ -10,13 +10,13 @@ POST /api/meeting/attend      {meeting_id, person_ids}     -> {meeting, added: [
 POST /api/meeting/unattend    {meeting_id, person_id}      -> meeting
 """
 from http.server import BaseHTTPRequestHandler
-from typing import Dict, List
+from typing import Dict
 
 from paradigm.api.answers import answering
 from paradigm.db.meetings_repo import (BadTitle, BadWhen, HubArchived, MeetingRepository, NotAHub,
                                        NotAMeeting, NotAPerson, NotAttending, NotFound)
 from paradigm.db.notes_repo import NoteRepository, TitleTaken
-from paradigm.web.requests import BadRequest, int_field, read_json
+from paradigm.web.requests import BadRequest, int_field, int_list_field, read_json
 from paradigm.web.router import Router
 
 _STATUS = {NotFound: 404, NotAttending: 404, TitleTaken: 409, NotAMeeting: 400, NotAPerson: 400,
@@ -52,16 +52,9 @@ class MeetingsApi:
 
     def attend(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)
-        meeting, added = self._meetings.attend(int_field(payload, "meeting_id"), _ids(payload, "person_ids"))
+        meeting, added = self._meetings.attend(int_field(payload, "meeting_id"), int_list_field(payload, "person_ids"))
         return {"meeting": meeting, "added": added}
 
     def unattend(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)
         return self._meetings.unattend(int_field(payload, "meeting_id"), int_field(payload, "person_id"))
-
-
-def _ids(payload: Dict, name: str) -> List[int]:
-    values = payload.get(name)
-    if not isinstance(values, list) or not values:
-        raise BadRequest("{} must be a list of whole numbers".format(name))
-    return [int_field({name: value}, name) for value in values]

@@ -62,6 +62,23 @@ export async function fieldCommand(app, field, arg) {
   app.editor.showMessage(value ? `${FIELD_NAMES[field]}: ${value}` : `${FIELD_NAMES[field]} cleared`);
 }
 
+/**
+ * The people with these names, for :attendee and :with. A name that isn't anyone yet is an
+ * error, unless bang: then they are added to People. usage is the command for the hint
+ * (":attendee"). Returns { people: [note], made: how many were added }.
+ */
+export async function peopleNamed(app, names, bang, usage) {
+  const found = names.map((name) => ({ name, person: findPerson(app.tree, name) }));
+  const missing = found.filter((each) => !each.person).map((each) => each.name);
+  const notPeople = missing.filter((name) => findOtherNote(app, name));
+  if (notPeople.length) throw new Error(`E: "${notPeople[0]}" is a note, not a person`);
+  if (missing.length && !bang) throw new Error(`E: no person "${missing[0]}" (${usage}! ${names.join(", ")} adds them to People)`);
+  for (const each of found) {
+    if (!each.person) each.person = (await app.peopleApi.create(each.name)).note;
+  }
+  return { people: found.map((each) => each.person), made: missing.length };
+}
+
 /** "Jane Doe, Sponsor" -> { name: "Jane Doe", role: "Sponsor" } (the first comma splits). */
 export function splitNameRole(arg) {
   const text = String(arg ?? "");

@@ -256,7 +256,7 @@ test("person page: the person line and the Hubs tab", () => {
     const hub = new HubPage({ page, line, section, onOpen: () => {}, onLeave: () => {} });
     hub.show(ctx(), 10);
     assertEqual(line.textContent, "Person·Northwind·Data engineer·jane@example.com");
-    assertEqual([...section.querySelectorAll("[role=tab]")].map((t) => t.textContent).join(), "Notes,Hubs,Meetings");
+    assertEqual([...section.querySelectorAll("[role=tab]")].map((t) => t.textContent).join(), "Notes,Hubs,Meetings,Decisions,Questions");
     hub.show(ctx(), 13);
     assertEqual(line.textContent, "Person·no organisation (:org)");
     hub.show(ctx(), 12);

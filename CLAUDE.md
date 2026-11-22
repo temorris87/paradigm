@@ -50,12 +50,15 @@ paradigm/                Python package
                          notes.py; images.py (raw-bytes upload, GET /api/image?id=N cached);
                          people.py (/api/people, /api/person/create|update|link|unlink);
                          meetings.py (/api/meetings, /api/meeting/create|update|attend|
-                         unattend); answers.py (result or expected error -> response)
+                         unattend); records.py (/api/records, /api/record/create|date|
+                         answer|reopen|with|unwith); answers.py (result or expected error
+                         -> response)
   db/                    (migrations: 001 notes, 002 images, 003 notes.kind for PARA hubs,
                          004 notes.area_id: a project's area, 005 notes.archived_at:
                          archived hubs, 006 people + hub_people: a person's fields and
                          their hub links with a role, 007 meetings + meeting_people: a
-                         meeting's day, time and attendees)
+                         meeting's day, time and attendees, 008 decisions + questions +
+                         record_people: their days, an answer day, the people on them)
                          connection.py (one locked connection, transactions, VACUUM at start
                          when worth it), migrate.py
                          (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py,
@@ -63,12 +66,15 @@ paradigm/                Python package
                          makes a note a person, reported as kind "person"),
                          meetings_repo.py (a meetings row makes a note a meeting, kind
                          "meeting"; created directly under its hub as "{day} {name}"),
+                         records_repo.py (decisions and questions: a row makes a note one,
+                         kind "decision"/"question"; under a hub or a meeting in one),
                          images_repo.py (image bytes in SQLite, deduped per note by sha256;
                          sweep_unused deletes images no note links to, at start and stop only)
   images/                formats.py: PNG/JPEG/GIF/WebP from magic bytes + size (SVG refused)
   notes/                 titles.py (title rules), hubs.py (HUB_KINDS: project, area,
                          resource), people.py (person fields, roles), seed.py + welcome.md
-                         (first-run note), meetings.py (day, time, title rules)
+                         (first-run note), meetings.py (day, time, title rules),
+                         records.py (decision/question kinds)
 static/
   index.html
   vendor/katex-0.19.1/   KaTeX exactly as audited (package paths kept; checked against
@@ -90,18 +96,21 @@ static/
                          commands: :e :new :child :rename :parent :nav :project :area
                          :resource :inbox :inarea :archive :restore :people :newperson
                          :addperson :dropperson :org :job :email :meetings :meeting :date
-                         :attendee :dropattendee :hub :export :trash),
+                         :attendee :dropattendee :decision :question :answered :reopen :with
+                         :dropwith :hub :export :trash),
                          page-views.js (which list page replaces the note: &people,
                          &meetings; the URL flag and Back),
                          hub-groups.js (THE PARA group table: Inbox, Projects, Areas,
                          Resources; then People and the Archive, folded by default),
                          headings.js,
                          images.js (editor "files" event -> shrink, upload, insert links)
-  js/hubs/               the hub page (shown while a hub or a person is open): hub-page.js
+  js/hubs/               the hub page (shown while a hub, person or meeting is open; a
+                         decision or question gets the line alone): hub-page.js
                          (wiring; data-hub-size on .app__note), hub-line.js ("Project · Area:
-                         X", "Person · Northwind · ..."), hub-panel.js (tabs + one-focus-stop
+                         X", "Person · Northwind · ...", "Decision · ... · from Kickoff"), hub-panel.js (tabs + one-focus-stop
                          listbox), hub-tabs.js (THE hub tab table: Notes, People, an area's
-                         Projects, a person's Hubs, Meetings; a meeting's Attendees; pure), hub-areas.js (project
+                         Projects, a person's Hubs, Meetings, Decisions, Questions; a meeting's
+                         Attendees; pure), hub-areas.js (project
                          <-> area; pure), hub-size.js (collapsed/open/expanded, remembered),
                          hub-keys.js (THE section panel key table)
   js/pages/              list-page.js (a list page in place of the note: filters, search
@@ -114,6 +123,10 @@ static/
                          Period filter; pure), meetings-model.js (a hub's meetings, an area
                          with its projects', a person's; the page filters; pure),
                          meetings-page.js (a ListPage), meetings-commands.js
+  js/records/            decisions and questions: api.js, records-model.js (a hub's, an
+                         area's with its projects', a meeting's, a person's; the tab order:
+                         decisions newest first, questions open first; pure),
+                         records-commands.js
   js/images/             downscale.js: shrinks images wider than 1600 px on a canvas (GIFs
                          never); viewer.js: <pd-image-viewer>, a click on an image opens it
                          with its own zoom and pan; viewer-math.js (pure), viewer-keys.js
@@ -234,6 +247,16 @@ Update this section when the structure changes.
   too) and people have a Meetings tab, newest first; a hub's Notes tab leaves meetings out.
   `:meetings` or the Meetings button opens the Meetings page (filters: hub, period, title),
   with the same keys as the People page (`static/js/pages/page-keys.js`).
+- Decisions and questions: each is a note inside a hub (its title says it; its text is the
+  why, or the discussion and answer) plus a row with its day, an answer day for a question,
+  and the people on it. `:decision [{date}] {title}` / `:question ...` on a hub or a note in
+  it makes one directly under the hub (today); on a meeting or a note in one, under the
+  meeting (its day): one under a meeting came from it. `:answered [{date}]`, `:reopen`,
+  `:date {date}`, `:with[!] {name}, ...`, `:dropwith {name}`. It stays inside a hub, like a
+  meeting. Hubs (an area: its projects' too), meetings and people have Decisions (newest
+  first) and Questions (open first, oldest first; then answered, muted) tabs. Its own note
+  shows a line ("Question · open · asked ... · in Rollout · from Kickoff · with ...") and no
+  section panel; Notes tabs leave them out.
 - Clicking a rendered image opens `<pd-image-viewer>` (its keys live in
   `static/js/images/viewer-keys.js`).
 - An image is deleted from the database once no note (trashed ones included) links to it any

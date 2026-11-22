@@ -11,7 +11,7 @@ Clock = Callable[[], str]
 
 __all__ = ["NoteRepository", "NoteError", "NotFound", "Conflict", "TitleTaken", "BadTitle",
            "HasChildren", "WouldCycle", "LastNote", "BadKind", "NotAProject", "NotAnArea",
-           "NotTopLevel", "NotArchived", "AreaArchived", "IsAPerson", "IsAMeeting",
+           "NotTopLevel", "NotArchived", "AreaArchived", "IsAPerson", "StaysInAHub",
            "live_note_row", "check_title_free", "top_note_row"]
 
 
@@ -71,8 +71,9 @@ class IsAPerson(NoteError):
     """A person's note stays at the top level and is never filed as a hub."""
 
 
-class IsAMeeting(NoteError):
-    """A meeting's note stays inside a hub: never at the top level, never filed."""
+class StaysInAHub(NoteError):
+    """A meeting's, decision's or question's note stays inside a hub: never at the top
+    level, never filed."""
 
 
 def utc_now() -> str:
@@ -81,11 +82,16 @@ def utc_now() -> str:
 
 _LIVE = "deleted_at IS NULL"
 # A note with a people row is a person (006_people.sql), one with a meetings row a meeting
-# (007_meetings.sql): is_person and is_meeting say so.
+# (007_meetings.sql), one with a decisions or questions row a decision or a question
+# (008_decisions.sql): the is_* columns say so.
 _WITH_PERSON = ("SELECT notes.*, people.note_id IS NOT NULL AS is_person, "
-                "meetings.note_id IS NOT NULL AS is_meeting FROM notes "
+                "meetings.note_id IS NOT NULL AS is_meeting, "
+                "decisions.note_id IS NOT NULL AS is_decision, "
+                "questions.note_id IS NOT NULL AS is_question FROM notes "
                 "LEFT JOIN people ON people.note_id = notes.id "
-                "LEFT JOIN meetings ON meetings.note_id = notes.id")
+                "LEFT JOIN meetings ON meetings.note_id = notes.id "
+                "LEFT JOIN decisions ON decisions.note_id = notes.id "
+                "LEFT JOIN questions ON questions.note_id = notes.id")
 
 
 class NoteRepository:
@@ -151,8 +157,8 @@ class NoteRepository:
             row = _live_row(conn, note_id)
             if parent_id is not None and row["is_person"]:
                 raise IsAPerson('"{}" is a person: a person stays at the top level'.format(row["title"]))
-            if row["is_meeting"]:
-                _check_meeting_place(conn, row, parent_id)
+            if _in_hub_only(row):
+                _check_hub_place(conn, row, parent_id)
             if parent_id is not None:
                 _live_row(conn, parent_id)
                 if parent_id == note_id or note_id in _ancestors(conn, parent_id):
@@ -175,8 +181,8 @@ class NoteRepository:
             row = _live_row(conn, note_id)
             if row["is_person"]:
                 raise IsAPerson('"{}" is a person, not a note to file'.format(row["title"]))
-            if row["is_meeting"]:
-                raise IsAMeeting('"{}" is a meeting: it stays inside its hub'.format(row["title"]))
+            if _in_hub_only(row):
+                raise StaysInAHub('"{}" is a {}: it stays inside its hub'.format(row["title"], _kind(row)))
             if row["parent_id"] is not None:
                 _check_free(conn, None, row["title"], note_id)
                 self._change(conn, note_id, "parent_id = NULL", ())
@@ -251,17 +257,27 @@ def _summary(row: sqlite3.Row) -> Dict:
             "updated_at": row["updated_at"]}
 
 
+# The record kinds a note can carry, besides being a person.
+_RECORD_KINDS = ("meeting", "decision", "question")
+
+
 def _kind(row: sqlite3.Row) -> Optional[str]:
     if row["is_person"]:
         return "person"
-    return "meeting" if row["is_meeting"] else row["kind"]
+    return next((kind for kind in _RECORD_KINDS if row["is_" + kind]), row["kind"])
 
 
-def _check_meeting_place(conn: sqlite3.Connection, row: sqlite3.Row, parent_id: Optional[int]) -> None:
-    """A meeting may move anywhere inside a hub (its hub then changes), nowhere else."""
+def _in_hub_only(row: sqlite3.Row) -> bool:
+    return _kind(row) in _RECORD_KINDS
+
+
+def _check_hub_place(conn: sqlite3.Connection, row: sqlite3.Row, parent_id: Optional[int]) -> None:
+    """A meeting, decision or question may move anywhere inside a hub (its hub then
+    changes), nowhere else."""
     top = None if parent_id is None else _top_row(conn, parent_id)
     if top is None or top["is_person"] or top["kind"] not in HUB_KINDS:
-        raise IsAMeeting('"{}" is a meeting: it goes inside a project, an area or a resource'.format(row["title"]))
+        raise StaysInAHub('"{}" is a {}: it goes inside a project, an area or a resource'.format(
+            row["title"], _kind(row)))
 
 
 def _top_row(conn: sqlite3.Connection, note_id: int) -> sqlite3.Row:
@@ -273,7 +289,7 @@ def _top_row(conn: sqlite3.Connection, note_id: int) -> sqlite3.Row:
 
 
 def _what_it_is(row: sqlite3.Row) -> str:
-    if row["is_person"] or row["is_meeting"]:
+    if row["is_person"] or _in_hub_only(row):
         return "a " + _kind(row)
     return "a " + row["kind"] if row["kind"] else "in the Inbox"
 

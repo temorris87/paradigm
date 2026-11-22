@@ -1,18 +1,20 @@
 // The hub page: when the open note is a hub (or a person, or a meeting), the hub line above
-// the note and the section panel under it; for any other note, neither. It knows the tree,
-// the people, the meetings and the tab table, and tells the page which note to open; it
-// never opens notes itself.
+// the note and the section panel under it; on a decision or a question, the line alone; for
+// any other note, neither. It knows the tree, the people, the meetings, the records and the
+// tab table, and tells the page which note to open; it never opens notes itself.
 //
 //   const hub = new HubPage({ page: mainElement, line, section, onOpen(id), onLeave() });
-//   hub.show({ tree, people, meetings }, currentId)    after every redraw of the notes page
+//   hub.show({ tree, people, meetings, records }, currentId)   after every redraw of the page
 //   hub.focus()                  :hub (opens a collapsed panel first)
-//   hub.hub                      the open hub (person, meeting) note, or null
+//   hub.hub                      the open hub (person, meeting, decision, question), or null
+//   hub.hasPanel                 it has a section panel (a decision or question has none)
 //   hub.editorHidden             the panel is expanded over the note
 //
 // page carries data-hub-size (collapsed | open | expanded) while a hub is open, for the CSS.
 import { Meetings } from "../meetings/meetings-model.js";
-import { isHub, isMeeting, isPerson } from "../notes/hub-groups.js";
+import { isDecisionOrQuestion, isHub, isMeeting, isPerson } from "../notes/hub-groups.js";
 import { People } from "../people/people-model.js";
+import { Records } from "../records/records-model.js";
 import { showHubLine } from "./hub-line.js";
 import { HubPanel } from "./hub-panel.js";
 import { loadSize, loadTabs, saveSize, saveTabs, stepSize } from "./hub-size.js";
@@ -28,6 +30,7 @@ export class HubPage {
     this.tree = null;
     this.people = new People();
     this.meetings = new Meetings();
+    this.records = new Records();
     this.hub = null;
     this.size = loadSize();
     this.tabKeys = loadTabs();
@@ -45,27 +48,33 @@ export class HubPage {
   }
 
   context() {
-    return { tree: this.tree, people: this.people, meetings: this.meetings };
+    return { tree: this.tree, people: this.people, meetings: this.meetings, records: this.records };
+  }
+
+  get hasPanel() {
+    return this.tabs.length > 0;
   }
 
   get editorHidden() {
-    return Boolean(this.hub) && this.size === "expanded";
+    return this.hasPanel && this.size === "expanded";
   }
 
-  show({ tree, people = new People(), meetings = new Meetings() }, currentId) {
+  show({ tree, people = new People(), meetings = new Meetings(), records = new Records() }, currentId) {
     this.tree = tree;
     this.people = people;
     this.meetings = meetings;
-    const shown = [isHub, isPerson, isMeeting].some((is) => is(tree, currentId));
+    this.records = records;
+    const shown = [isHub, isPerson, isMeeting, isDecisionOrQuestion].some((is) => is(tree, currentId));
     const hub = shown ? tree.get(currentId) : null;
     const sameHub = hub && hub.id === this.hub?.id;
     const activeId = sameHub ? this.rows[this.active]?.id : undefined;
     this.hub = hub;
-    if (!hub) {
+    this.tabs = tabsFor(hub);
+    if (!this.hasPanel) {
+      this.rows = [];
       this.apply();
       return;
     }
-    this.tabs = tabsFor(hub);
     const remembered = this.tabs.findIndex((tab) => tab.key === this.tabKeys[hub.id]);
     if (!sameHub) this.tabIndex = Math.max(0, remembered);
     this.tabIndex = Math.min(this.tabIndex, this.tabs.length - 1);
@@ -77,9 +86,9 @@ export class HubPage {
 
   apply() {
     const hub = this.hub;
-    this.section.hidden = !hub;
+    this.section.hidden = !this.hasPanel;
     showHubLine(this.line, this.context(), hub, (id) => this.onOpen(id));
-    if (!hub) {
+    if (!this.hasPanel) {
       delete this.page.dataset.hubSize;
       return;
     }
@@ -96,7 +105,7 @@ export class HubPage {
   }
 
   focus() {
-    if (!this.hub) return;
+    if (!this.hasPanel) return;
     if (this.size === "collapsed") this.setSize("open");
     this.panel.focus();
   }
@@ -133,7 +142,7 @@ export class HubPage {
   }
 
   selectTab(index) {
-    if (!this.hub || index < 0 || index >= this.tabs.length || index === this.tabIndex) return;
+    if (!this.hasPanel || index < 0 || index >= this.tabs.length || index === this.tabIndex) return;
     this.tabIndex = index;
     this.tabKeys[this.hub.id] = this.tabs[index].key;
     saveTabs(this.tabKeys);

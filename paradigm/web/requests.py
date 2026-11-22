@@ -1,7 +1,7 @@
 """Reading what a request sent."""
 import json
 from http.server import BaseHTTPRequestHandler
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 
 class BadRequest(ValueError):
@@ -43,3 +43,11 @@ def bool_field(payload: Dict[str, Any], name: str) -> bool:
     if not isinstance(value, bool):
         raise BadRequest("{} must be true or false".format(name))
     return value
+
+
+def int_list_field(payload: Dict[str, Any], name: str) -> List[int]:
+    """A non-empty list of whole numbers (ids)."""
+    values = payload.get(name)
+    if not isinstance(values, list) or not values:
+        raise BadRequest("{} must be a list of whole numbers".format(name))
+    return [int_field({name: value}, name) for value in values]

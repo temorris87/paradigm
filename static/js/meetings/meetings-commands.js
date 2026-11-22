@@ -3,6 +3,7 @@
 // app to show. app.today() is the local day's Date.
 import { hubOf, isMeeting } from "../notes/hub-groups.js";
 import { titleKey } from "../notes/titles.js";
+import { peopleNamed } from "../people/people-commands.js";
 import { findPerson } from "../people/people-model.js";
 import { parseDay, parseTime, whenText } from "./meeting-days.js";
 import { attendeesOf } from "./meetings-model.js";
@@ -38,20 +39,13 @@ export async function attendeeCommand(app, arg, bang) {
   const id = currentMeeting(app);
   const names = splitNames(arg);
   if (!names.length) throw new Error("E471: Argument required: :attendee {name}, {name}...");
-  const found = names.map((name) => ({ name, person: findPerson(app.tree, name) }));
-  const missing = found.filter((each) => !each.person).map((each) => each.name);
-  const notPeople = missing.filter((name) => isOtherNote(app, name));
-  if (notPeople.length) throw new Error(`E: "${notPeople[0]}" is a note, not a person`);
-  if (missing.length && !bang) throw new Error(`E: no person "${missing[0]}" (:attendee! ${names.join(", ")} adds them to People)`);
-  for (const each of found) {
-    if (!each.person) each.person = (await app.peopleApi.create(each.name)).note;
-  }
-  const { added } = await app.meetingsApi.attend(id, found.map((each) => each.person.id));
+  const { people, made } = await peopleNamed(app, names, bang, ":attendee");
+  const { added } = await app.meetingsApi.attend(id, people.map((person) => person.id));
   await app.refreshTree();
-  const title = (personId) => found.find((each) => each.person.id === personId).person.title;
-  const made = missing.length ? ` (${missing.length} new in People)` : "";
+  const title = (personId) => people.find((person) => person.id === personId).title;
+  const news = made ? ` (${made} new in People)` : "";
   app.editor.showMessage(added.length
-    ? `${added.map(title).join(", ")} attending ${app.tree.get(id).title}${made}`
+    ? `${added.map(title).join(", ")} attending ${app.tree.get(id).title}${news}`
     : "They are all attending already");
 }
 
@@ -88,10 +82,6 @@ function currentMeeting(app) {
   const id = app.currentId;
   if (!isMeeting(app.tree, id)) throw new Error("E: this note is not a meeting (:meeting {title} on a hub makes one)");
   return id;
-}
-
-function isOtherNote(app, name) {
-  return app.tree.children(null).some((note) => titleKey(note.title) === titleKey(name));
 }
 
 function localToday(app) {

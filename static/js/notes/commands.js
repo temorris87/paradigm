@@ -1,8 +1,10 @@
 // THE table of note commands typed in the editor after ":". The editor knows only their
 // names (addExCommand); running one sends an "ex" event, and the page runs it here. Names
 // that Vim already uses for something else (:delete, :move, :sub...) are avoided.
-import { HUB_GROUPS } from "./hub-groups.js";
+import { HUB_GROUPS, isDecisionOrQuestion } from "./hub-groups.js";
 import { attendeeCommand, dateCommand, dropAttendeeCommand, newMeetingCommand } from "../meetings/meetings-commands.js";
+import { answeredCommand, dropWithCommand, newRecordCommand, recordDateCommand, reopenCommand,
+  withCommand } from "../records/records-commands.js";
 import { addPersonCommand, dropPersonCommand, fieldCommand, newPersonCommand } from "../people/people-commands.js";
 
 // :project :area :resource :inbox, typed in full (:res is Vim's :resize, :ar is :args).
@@ -53,12 +55,24 @@ export const NOTE_COMMANDS = [
     run: (app) => app.showView("meetings", "push") },
   { name: "meeting", min: 7, usage: ":meeting [{date}] [{time}] {title}", help: "make a meeting in this hub, titled \"{date} {title}\" (date: 2026-11-24, today, tomorrow, yesterday; today if left out)",
     run: (app, { arg }) => newMeetingCommand(app, arg) },
-  { name: "date", min: 4, usage: ":date {date} [{time}]", help: "set this meeting's date and time (no time: none); a title starting with the old date gets the new one",
-    run: (app, { arg }) => dateCommand(app, arg) },
+  { name: "date", min: 4, usage: ":date {date} [{time}]", help: "set this meeting's date and time (no time: none; a title starting with the old date gets the new one), or a decision's or question's date",
+    run: (app, { arg }) => (isDecisionOrQuestion(app.tree, app.currentId) ? recordDateCommand(app, arg) : dateCommand(app, arg)) },
   { name: "attendee", min: 8, usage: ":attendee[!] {name}[, {name}...]", help: "these people attended this meeting (! adds someone new to People)",
     run: (app, { arg, bang }) => attendeeCommand(app, arg, bang) },
   { name: "dropattendee", min: 12, usage: ":dropattendee {name}", help: "this person did not attend this meeting after all",
     run: (app, { arg }) => dropAttendeeCommand(app, arg) },
+  { name: "decision", min: 8, usage: ":decision [{date}] {title}", help: "record a decision in this hub, or from this meeting (dated today, or the meeting's day)",
+    run: (app, { arg }) => newRecordCommand(app, "decision", arg) },
+  { name: "question", min: 8, usage: ":question [{date}] {title}", help: "record an open question in this hub, or from this meeting",
+    run: (app, { arg }) => newRecordCommand(app, "question", arg) },
+  { name: "answered", min: 8, usage: ":answered [{date}]", help: "this question is answered (today if no date); write the answer in its note",
+    run: (app, { arg }) => answeredCommand(app, arg) },
+  { name: "reopen", min: 6, usage: ":reopen", help: "this answered question is open again",
+    run: (app) => reopenCommand(app) },
+  { name: "with", min: 4, usage: ":with[!] {name}[, {name}...]", help: "these people are on this decision or question (! adds someone new to People)",
+    run: (app, { arg, bang }) => withCommand(app, arg, bang) },
+  { name: "dropwith", min: 8, usage: ":dropwith {name}", help: "take a person off this decision or question",
+    run: (app, { arg }) => dropWithCommand(app, arg) },
   { name: "hub", min: 3, usage: ":hub", help: "go to the hub's section panel (opens it if collapsed)",
     run: (app) => app.hubCommand() },
   { name: "export", min: 3, usage: ":exp[ort]", help: "download this note, and the linked notes beside or under it, as one .html file",

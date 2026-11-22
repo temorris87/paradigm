@@ -43,8 +43,8 @@ Features in build order. "build feature" takes the first unchecked item.
   on hubs and a People page with filters (done 2026-11-21)
 - [x] Meetings: dated meetings in one hub with attendees and a note for minutes; a Meetings tab on
   hubs and people, a Meetings page, filter dropdowns (hub, period; an area includes its projects) (done 2026-11-21)
-- [ ] Decisions and open questions: records in a hub (optionally from a meeting, with people); a
-  Decisions tab and a Questions tab (open first) on hubs, meetings and people
+- [x] Decisions and open questions: records in a hub (optionally from a meeting, with people); a
+  Decisions tab and a Questions tab (open first) on hubs, meetings and people (done 2026-11-21)
 - [ ] Backlinks: an index of wiki links; a Linked from tab on resources (and any note later)
 - [ ] Home: active projects by area, the Inbox count, open questions, and room for today's tasks
   and meetings

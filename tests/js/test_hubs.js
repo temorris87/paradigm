@@ -39,11 +39,11 @@ test("hubs: a project's area, an area's projects; a non-area target counts as no
 });
 
 test("hub tabs: Notes first on hubs and people; People on hubs; Projects only on areas; Hubs on people", () => {
-  assertEqual(tabsFor({ kind: "area" }).map((t) => t.label).join(), "Notes,People,Projects,Meetings");
-  assertEqual(tabsFor({ kind: "project" }).map((t) => t.label).join(), "Notes,People,Meetings");
-  assertEqual(tabsFor({ kind: "resource" }).map((t) => t.label).join(), "Notes,People,Meetings");
-  assertEqual(tabsFor({ kind: "person" }).map((t) => t.label).join(), "Notes,Hubs,Meetings");
-  assertEqual(tabsFor({ kind: "meeting" }).map((t) => t.label).join(), "Attendees,Notes");
+  assertEqual(tabsFor({ kind: "area" }).map((t) => t.label).join(), "Notes,People,Projects,Meetings,Decisions,Questions");
+  assertEqual(tabsFor({ kind: "project" }).map((t) => t.label).join(), "Notes,People,Meetings,Decisions,Questions");
+  assertEqual(tabsFor({ kind: "resource" }).map((t) => t.label).join(), "Notes,People,Meetings,Decisions,Questions");
+  assertEqual(tabsFor({ kind: "person" }).map((t) => t.label).join(), "Notes,Hubs,Meetings,Decisions,Questions");
+  assertEqual(tabsFor({ kind: "meeting" }).map((t) => t.label).join(), "Attendees,Notes,Decisions,Questions");
   assertEqual(tabsFor({ kind: null }).length, 0);
 });
 
@@ -168,25 +168,24 @@ test("hub page: j k g G move, Enter opens, Escape leaves", () => withPage(({ sec
 test("hub page: tabs by h l and number, remembered per hub", () => withPage(({ section, hub }) => {
   hub.show({ tree: tree() }, 1);
   hub.focus();
-  assertEqual(tabLabels(section), "Notes*,People,Projects,Meetings");
+  assertEqual(tabLabels(section), "Notes*,People,Projects,Meetings,Decisions,Questions");
   assertEqual(section.querySelector(".hub__empty").textContent, "No notes in this area yet (:child {title} makes one)");
   press("l");
-  assertEqual(tabLabels(section), "Notes,People*,Projects,Meetings");
+  assertEqual(tabLabels(section), "Notes,People*,Projects,Meetings,Decisions,Questions");
   press("l");
-  assertEqual(tabLabels(section), "Notes,People,Projects*,Meetings");
+  assertEqual(tabLabels(section), "Notes,People,Projects*,Meetings,Decisions,Questions");
   assertEqual(rowTitles(section), "Acme,Northwind");
-  press("l");
-  press("l");
-  assertEqual(tabLabels(section), "Notes,People,Projects,Meetings*", "l stops at the last tab");
+  for (let i = 0; i < 4; i += 1) press("l");
+  assertEqual(tabLabels(section), "Notes,People,Projects,Meetings,Decisions,Questions*", "l stops at the last tab");
   press("1");
-  assertEqual(tabLabels(section), "Notes*,People,Projects,Meetings");
+  assertEqual(tabLabels(section), "Notes*,People,Projects,Meetings,Decisions,Questions");
   press("3");
   hub.show({ tree: tree() }, 2);
-  assertEqual(tabLabels(section), "Notes*,People,Meetings");
+  assertEqual(tabLabels(section), "Notes*,People,Meetings,Decisions,Questions");
   hub.show({ tree: tree() }, 1);
-  assertEqual(tabLabels(section), "Notes,People,Projects*,Meetings", "the area's tab came back");
+  assertEqual(tabLabels(section), "Notes,People,Projects*,Meetings,Decisions,Questions", "the area's tab came back");
   section.querySelector("[role=tab]").click();
-  assertEqual(tabLabels(section), "Notes*,People,Projects,Meetings", "a click picks a tab");
+  assertEqual(tabLabels(section), "Notes*,People,Projects,Meetings,Decisions,Questions", "a click picks a tab");
 }));
 
 test("hub page: - and + step the size; expanded hides the editor; Escape reopens", () => withPage(({ page, section, hub, left }) => {

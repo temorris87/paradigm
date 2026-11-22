@@ -4,7 +4,7 @@
 //   const app = new NotesApp({ editor, tree: ulElement, crumbs: navElement, navigator,
 //                              hub: { page, line, section }, people: { section, button },
 //                              meetings: { section, button },
-//                              api: notesApi, imagesApi, peopleApi, meetingsApi });
+//                              api: notesApi, imagesApi, peopleApi, meetingsApi, recordsApi });
 //
 // navigator (static/js/layout/navigator.js) holds the tree: a drawer on narrow windows.
 // hub (static/js/hubs/hub-page.js) is the hub line and section panel shown on a hub.
@@ -27,17 +27,20 @@ import { Meetings } from "../meetings/meetings-model.js";
 import { meetingsPage } from "../meetings/meetings-page.js";
 import { People } from "../people/people-model.js";
 import { peoplePage } from "../people/people-page.js";
+import { Records } from "../records/records-model.js";
 import { TreeView } from "./tree-view.js";
 
 const UNSAVED = "E37: No write since last change (:w to save, or ! to drop the changes)";
 
 export class NotesApp {
   constructor({ editor, tree, crumbs, navigator, hub, people, meetings, api, imagesApi, peopleApi,
-                meetingsApi, location = window.location, history = window.history,
+                meetingsApi, recordsApi, location = window.location, history = window.history,
                 today = () => new Date() }) {
     this.editor = editor;
     this.peopleApi = peopleApi;
     this.meetingsApi = meetingsApi;
+    this.recordsApi = recordsApi;
+    this.records = new Records();
     this.people = new People();
     this.meetings = new Meetings();
     this.today = today;
@@ -124,10 +127,13 @@ export class NotesApp {
   }
 
   async refreshTree() {
-    const [notes, people, meetings] = await Promise.all([this.api.list(), this.peopleApi.list(), this.meetingsApi.list()]);
+    const [notes, people, meetings, records] = await Promise.all([
+      this.api.list(), this.peopleApi.list(), this.meetingsApi.list(), this.recordsApi.list(),
+    ]);
     this.tree = new NoteTree(notes);
     this.people = new People(people);
     this.meetings = new Meetings(meetings);
+    this.records = new Records(records);
     this.redraw();
   }
 
@@ -188,7 +194,7 @@ export class NotesApp {
     const id = this.currentId;
     this.treeView.show(this.tree, id);
     showBreadcrumb(this.crumbs, this.tree, id, (target) => this.guard(this.open(target)));
-    const ctx = { tree: this.tree, people: this.people, meetings: this.meetings };
+    const ctx = { tree: this.tree, people: this.people, meetings: this.meetings, records: this.records };
     this.hubPage.show(ctx, id);
     this.views.draw(ctx, this.crumbs);
     const title = this.tree.get(id)?.title ?? this.session.note?.title;
@@ -297,7 +303,7 @@ export class NotesApp {
   }
 
   async hubCommand() {
-    if (!this.hubPage.hub) throw new Error("E: this note is not a hub (:project, :area or :resource files it)");
+    if (!this.hubPage.hasPanel) throw new Error("E: this note has no section panel (a hub, a person or a meeting has one)");
     this.hubPage.focus();
   }
 

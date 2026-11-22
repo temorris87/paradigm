@@ -103,9 +103,9 @@ test("meetings: the page's filters combine", () => {
 
 test("meeting tabs: Meetings on hubs and people, Attendees and Notes on a meeting", () => {
   const c = ctx();
-  assertEqual(tabsFor(c.tree.get(2)).map((t) => t.key).join(), "notes,people,meetings");
-  assertEqual(tabsFor(c.tree.get(20)).map((t) => t.key).join(), "attendees,notes");
-  assertEqual(tabsFor(c.tree.get(10)).map((t) => t.key).join(), "notes,hubs,meetings");
+  assertEqual(tabsFor(c.tree.get(2)).map((t) => t.key).join(), "notes,people,meetings,decisions,questions");
+  assertEqual(tabsFor(c.tree.get(20)).map((t) => t.key).join(), "attendees,notes,decisions,questions");
+  assertEqual(tabsFor(c.tree.get(10)).map((t) => t.key).join(), "notes,hubs,meetings,decisions,questions");
   const rows = (key, id) => tab(key).rows(c, c.tree.get(id)).map((r) => `${r.title}|${r.detail}${r.muted ? "~" : ""}`).join(",");
   assertEqual(rows("meetings", 1), "Kickoff|Tue 2026-11-24 14:00 · on Rollout · 2 attendees,"
     + "Review|Sat 2026-11-21 09:30 · no attendees,Planning|Tue 2026-11-17 · on Rollout · 1 attendee");
@@ -130,7 +130,7 @@ test("meeting page: the meeting line and its tabs", () => {
     assertEqual(line.textContent, "Meeting·Tue 2026-11-24 14:00·in Rollout·2 attendees");
     line.querySelector("button").click();
     assertEqual(opened.join(), "2");
-    assertEqual([...section.querySelectorAll("[role=tab]")].map((t) => t.textContent).join(), "Attendees,Notes");
+    assertEqual([...section.querySelectorAll("[role=tab]")].map((t) => t.textContent).join(), "Attendees,Notes,Decisions,Questions");
     hub.show(ctx(), 24);
     assertTrue(section.hidden, "a note under a meeting has no panel");
   } finally {
