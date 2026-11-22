@@ -48,13 +48,15 @@ paradigm/                Python package
                          static.py (serves static/), responses.py, security.py
   api/                   JSON endpoints; session.py = /api/ping, /api/events, /api/closing;
                          notes.py; images.py (raw-bytes upload, GET /api/image?id=N cached)
-  db/                    connection.py (one locked connection, transactions, VACUUM at start
+  db/                    (migrations: 001 notes, 002 images, 003 notes.kind for PARA hubs)
+                         connection.py (one locked connection, transactions, VACUUM at start
                          when worth it), migrate.py
                          (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py,
                          images_repo.py (image bytes in SQLite, deduped per note by sha256;
                          sweep_unused deletes images no note links to, at start and stop only)
   images/                formats.py: PNG/JPEG/GIF/WebP from magic bytes + size (SVG refused)
-  notes/                 titles.py (title rules), seed.py + welcome.md (first-run note)
+  notes/                 titles.py (title rules), hubs.py (HUB_KINDS: project, area,
+                         resource), seed.py + welcome.md (first-run note)
 static/
   index.html
   vendor/katex-0.19.1/   KaTeX exactly as audited (package paths kept; checked against
@@ -73,7 +75,9 @@ static/
                          note-session.js (autosave, versions, conflicts), resolve.js (wiki
                          links, nearest note wins), tree-model.js, tree-view.js, tree-keys.js
                          (THE tree key table), breadcrumb.js, commands.js (THE note ex
-                         commands: :e :new :child :rename :parent :nav :export :trash), headings.js,
+                         commands: :e :new :child :rename :parent :nav :project :area
+                         :resource :inbox :export :trash), hub-groups.js (THE PARA group
+                         table: Inbox, Projects, Areas, Resources), headings.js,
                          images.js (editor "files" event -> shrink, upload, insert links)
   js/images/             downscale.js: shrinks images wider than 1600 px on a canvas (GIFs
                          never); viewer.js: <pd-image-viewer>, a click on an image opens it
@@ -159,6 +163,10 @@ Update this section when the structure changes.
   unindent. In every other mode they leave the editor and move focus like on any web page**,
   so they are never bound there (Tyson's choice, 2026-11-21).
 - Keys the browser owns (Ctrl-W, Ctrl-T, Ctrl-N, Ctrl-Tab, ...) are given up. Don't fight the browser.
+- PARA hubs: only top-level notes are hubs (`notes.kind`: project, area, resource; NULL is the
+  Inbox). `:project` etc. on a nested note moves it to the top; moving a hub under a note
+  unfiles it. Groups never appear in paths or links, and top-level titles stay unique.
+  The tree's top level is the four groups (folded state remembered per browser).
 - The notes tree is reached with `:nav` or the ☰ button in the top bar. Under 1400 px wide it
   is a drawer: it opens over the note and closes on Enter (opening a note), Escape, a click on
   the backdrop, or the focus leaving it.

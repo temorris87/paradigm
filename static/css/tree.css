@@ -53,3 +53,26 @@
 .tree__item:focus > .tree__row {
   box-shadow: inset 0 0 0 1px var(--nord9);
 }
+
+/* Hub group headings: Inbox, Projects, Areas, Resources. */
+.tree__item--group + .tree__item--group {
+  margin-top: 0.4rem;
+}
+
+.tree__heading {
+  color: var(--nord4);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.tree__count {
+  margin-left: auto;
+  color: var(--nord4);
+  font-size: 0.8rem;
+}
+
+.tree__item--empty > .tree__row .tree__heading {
+  color: var(--nord3);
+}

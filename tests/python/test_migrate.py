@@ -54,6 +54,22 @@ class MigrateTest(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             migrations(folder)
 
+    def test_hub_kind_comes_to_an_existing_database_as_the_inbox(self) -> None:
+        # A database at schema 2 (before hubs), with a note in it.
+        folder = Path(self.tmp.name) / "upto2"
+        folder.mkdir()
+        for number, path in migrations()[:2]:
+            (folder / path.name).write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+        migrate(self.db, folder)
+        with self.db.transaction() as conn:
+            conn.execute("INSERT INTO notes (title, created_at, updated_at) VALUES ('Acme', 'x', 'x')")
+        migrate(self.db)
+        with self.db.reading() as conn:
+            self.assertIsNone(conn.execute("SELECT kind FROM notes").fetchone()[0])
+        with self.assertRaises(Exception):
+            with self.db.transaction() as conn:
+                conn.execute("UPDATE notes SET kind = 'archive'")
+
     def test_foreign_keys_are_on(self) -> None:
         with self.db.reading() as conn:
             self.assertEqual(conn.execute("PRAGMA foreign_keys").fetchone()[0], 1)

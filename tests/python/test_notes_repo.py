@@ -5,7 +5,7 @@ from pathlib import Path
 
 from paradigm.db.connection import Database
 from paradigm.db.migrate import migrate
-from paradigm.db.notes_repo import (BadTitle, Conflict, HasChildren, LastNote, NoteRepository,
+from paradigm.db.notes_repo import (BadKind, BadTitle, Conflict, HasChildren, LastNote, NoteRepository,
                                     NotFound, TitleTaken, WouldCycle)
 from paradigm.notes.seed import WELCOME_TITLE, seed_if_empty
 
@@ -138,6 +138,51 @@ class NoteRepositoryTest(unittest.TestCase):
         a = self.notes.create(None, "A")
         with self.assertRaises(NotFound):
             self.notes.move(a["id"], 42)
+
+    def test_new_notes_are_in_the_inbox(self) -> None:
+        note = self.notes.create(None, "Acme")
+        self.assertIsNone(note["kind"])
+        self.assertIsNone(self.notes.tree()[0]["kind"])
+
+    def test_set_kind_files_a_top_level_note(self) -> None:
+        note = self.notes.create(None, "Acme")
+        for kind in ("project", "area", "resource", None):
+            filed = self.notes.set_kind(note["id"], kind)
+            self.assertEqual((filed["kind"], filed["parent_id"]), (kind, None))
+        self.assertEqual(self.notes.get(note["id"])["version"], 1)
+
+    def test_set_kind_on_a_nested_note_moves_it_to_the_top(self) -> None:
+        top = self.notes.create(None, "Acme")
+        child = self.notes.create(top["id"], "Kickoff")
+        filed = self.notes.set_kind(child["id"], "project")
+        self.assertEqual((filed["kind"], filed["parent_id"]), ("project", None))
+
+    def test_set_kind_refuses_a_title_taken_at_the_top(self) -> None:
+        self.notes.create(None, "Kickoff")
+        top = self.notes.create(None, "Acme")
+        child = self.notes.create(top["id"], "kickoff")
+        with self.assertRaises(TitleTaken):
+            self.notes.set_kind(child["id"], "area")
+        after = self.notes.get(child["id"])
+        self.assertEqual((after["kind"], after["parent_id"]), (None, top["id"]))
+
+    def test_bad_kinds_are_refused(self) -> None:
+        note = self.notes.create(None, "Acme")
+        for kind in ("archive", "", "Project", 1, ["project"]):
+            with self.assertRaises(BadKind):
+                self.notes.set_kind(note["id"], kind)
+
+    def test_moving_a_hub_under_a_note_unfiles_it(self) -> None:
+        hub = self.notes.create(None, "Acme")
+        other = self.notes.create(None, "Northwind")
+        self.notes.set_kind(hub["id"], "project")
+        self.notes.set_kind(other["id"], "area")
+        moved = self.notes.move(hub["id"], other["id"])
+        self.assertIsNone(moved["kind"])
+        back = self.notes.move(hub["id"], None)
+        self.assertIsNone(back["kind"])
+        # Moving a top-level hub to the top level again keeps its kind.
+        self.assertEqual(self.notes.move(other["id"], None)["kind"], "area")
 
     def test_seed_only_when_empty(self) -> None:
         seed_if_empty(self.notes)

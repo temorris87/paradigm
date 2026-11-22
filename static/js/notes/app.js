@@ -216,6 +216,17 @@ export class NotesApp {
     this.editor.showMessage(`Now at ${this.tree.pathText(note.id)}`);
   }
 
+  async kindCommand(group) {
+    const before = this.session.note;
+    if (!before) throw new Error("E: no note is open");
+    const wasNested = this.tree.parentId(before.id) !== null;
+    const note = await this.api.setKind(before.id, group.kind);
+    this.session.updateMeta(note);
+    await this.refreshTree();
+    const moved = wasNested ? " moved to the top level and" : "";
+    this.editor.showMessage(`"${note.title}"${moved} is now ${group.asWhat}`);
+  }
+
   navCommand() {
     this.navigator.show();
   }

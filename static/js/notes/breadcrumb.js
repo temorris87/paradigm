@@ -1,21 +1,20 @@
-// The open note's path above the editor: Projects › Acme › Kickoff. Each ancestor can be
-// clicked to open it.
+// The open note's path above the editor: Projects › Acme › Kickoff. The hub group comes
+// first, as plain text; each ancestor note can be clicked to open it.
+import { groupOf } from "./hub-groups.js";
 
 export function showBreadcrumb(nav, tree, currentId, onOpen) {
-  const parts = [];
-  for (const note of tree.has(currentId) ? tree.path(currentId) : []) {
-    if (parts.length) {
-      const separator = document.createElement("span");
-      separator.className = "crumbs__separator";
-      separator.setAttribute("aria-hidden", "true");
-      separator.textContent = "›";
-      parts.push(separator);
-    }
+  if (!tree.has(currentId)) {
+    nav.replaceChildren();
+    return;
+  }
+  const parts = [span("crumbs__group", groupOf(tree, currentId).heading)];
+  for (const note of tree.path(currentId)) {
+    const separator = span("crumbs__separator", "›");
+    separator.setAttribute("aria-hidden", "true");
+    parts.push(separator);
     if (note.id === currentId) {
-      const here = document.createElement("span");
-      here.className = "crumbs__here";
+      const here = span("crumbs__here", note.title);
       here.setAttribute("aria-current", "page");
-      here.textContent = note.title;
       parts.push(here);
     } else {
       const button = document.createElement("button");
@@ -27,4 +26,11 @@ export function showBreadcrumb(nav, tree, currentId, onOpen) {
     }
   }
   nav.replaceChildren(...parts);
+}
+
+function span(className, text) {
+  const node = document.createElement("span");
+  node.className = className;
+  node.textContent = text;
+  return node;
 }

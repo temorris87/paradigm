@@ -34,7 +34,7 @@ Features in build order. "build feature" takes the first unchecked item.
   breadcrumb (done 2026-11-21)
 - [ ] PARA hubs: top-level notes are projects, areas or resources (`:project`, `:area`,
   `:resource`); unfiled ones sit in an Inbox; the navigator is grouped Inbox / Projects / Areas
-  / Resources
+  / Resources (done 2026-11-21)
 - [ ] Hub page: the hub's note above a tabbed section panel (Notes first, an area's Projects, a
   project's area on the hub line), collapsible and expandable, with its own key table
 - [ ] Archive and restore a hub with everything in it; collapsed Archive section; links to

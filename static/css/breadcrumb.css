@@ -30,3 +30,7 @@
   color: var(--nord6);
   font-weight: 600;
 }
+
+.crumbs__group {
+  color: var(--nord4);
+}

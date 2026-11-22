@@ -4,12 +4,13 @@ from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional
 
 from paradigm.db.connection import Database
+from paradigm.notes.hubs import BadKind, clean_kind
 from paradigm.notes.titles import BadTitle, clean_title
 
 Clock = Callable[[], str]
 
 __all__ = ["NoteRepository", "NoteError", "NotFound", "Conflict", "TitleTaken", "BadTitle",
-           "HasChildren", "WouldCycle", "LastNote"]
+           "HasChildren", "WouldCycle", "LastNote", "BadKind"]
 
 
 class NoteError(Exception):
@@ -49,7 +50,7 @@ def utc_now() -> str:
 
 
 _LIVE = "deleted_at IS NULL"
-_SUMMARY = "id, parent_id, title, version, updated_at"
+_SUMMARY = "id, parent_id, title, kind, version, updated_at"
 
 
 class NoteRepository:
@@ -118,7 +119,21 @@ class NoteRepository:
                 if parent_id == note_id or note_id in _ancestors(conn, parent_id):
                     raise WouldCycle("A note cannot go under itself or under a note inside it")
             _check_free(conn, parent_id, row["title"], note_id)
-            self._change(conn, note_id, "parent_id = ?", (parent_id,))
+            # Only top-level notes are hubs: going under another note leaves its group.
+            self._change(conn, note_id, "parent_id = ?, kind = NULL" if parent_id is not None
+                         else "parent_id = ?", (parent_id,))
+        return self.get(note_id)
+
+    def set_kind(self, note_id: int, kind: object) -> Dict:
+        """Files a note as a project, area or resource (None: the Inbox). A nested note moves
+        to the top level first, since only top-level notes are hubs."""
+        kind = clean_kind(kind)
+        with self._db.transaction() as conn:
+            row = _live_row(conn, note_id)
+            if row["parent_id"] is not None:
+                _check_free(conn, None, row["title"], note_id)
+                self._change(conn, note_id, "parent_id = NULL", ())
+            self._change(conn, note_id, "kind = ?", (kind,))
         return self.get(note_id)
 
     def delete(self, note_id: int, recursive: bool = False) -> List[int]:
@@ -148,7 +163,7 @@ class NoteRepository:
 
 def _summary(row: sqlite3.Row) -> Dict:
     return {"id": row["id"], "parent_id": row["parent_id"], "title": row["title"],
-            "version": row["version"], "updated_at": row["updated_at"]}
+            "kind": row["kind"], "version": row["version"], "updated_at": row["updated_at"]}
 
 
 def _live_row(conn: sqlite3.Connection, note_id: int) -> sqlite3.Row:

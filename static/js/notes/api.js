@@ -35,6 +35,8 @@ export const notesApi = {
   save: ({ id, body, version, force = false }, { keepalive = false } = {}) =>
     call("/api/note/save", { payload: { id, body, version, force }, keepalive }),
   rename: (id, title) => call("/api/note/rename", { payload: { id, title } }),
+  // kind: "project" | "area" | "resource" | null (the Inbox)
+  setKind: (id, kind) => call("/api/note/kind", { payload: { id, kind } }),
   move: (id, parentId) => call("/api/note/move", { payload: { id, parent_id: parentId } }),
   remove: (id, recursive = false) => call("/api/note/delete", { payload: { id, recursive } }),
 };

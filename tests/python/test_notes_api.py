@@ -49,6 +49,22 @@ class NotesApiTest(unittest.TestCase):
         status, payload = self.running.post_json("/api/note/delete", {"id": parent["id"], "recursive": True})
         self.assertEqual(sorted(payload["deleted"]), sorted([parent["id"], child["id"]]))
 
+    def test_kind_files_a_note_and_the_tree_shows_it(self) -> None:
+        top = self.create("Acme")
+        child = self.create("Kickoff", parent_id=top["id"])
+        status, filed = self.running.post_json("/api/note/kind", {"id": top["id"], "kind": "project"})
+        self.assertEqual((status, filed["kind"]), (200, "project"))
+        status, filed = self.running.post_json("/api/note/kind", {"id": child["id"], "kind": "area"})
+        self.assertEqual((status, filed["kind"], filed["parent_id"]), (200, "area", None))
+        status, payload = self.running.get_json("/api/notes")
+        kinds = {note["title"]: note["kind"] for note in payload["notes"]}
+        self.assertEqual(kinds, {"Welcome": None, "Acme": "project", "Kickoff": "area"})
+        status, filed = self.running.post_json("/api/note/kind", {"id": top["id"], "kind": None})
+        self.assertEqual((status, filed["kind"]), (200, None))
+        status, payload = self.running.post_json("/api/note/kind", {"id": top["id"], "kind": "archive"})
+        self.assertEqual(status, 400)
+        self.assertIn("kind", payload["error"])
+
     def test_errors_are_json_with_a_status(self) -> None:
         cases = [
             ("/api/note/create", {"title": "a/b"}, 400),

@@ -1,6 +1,18 @@
 // THE table of note commands typed in the editor after ":". The editor knows only their
 // names (addExCommand); running one sends an "ex" event, and the page runs it here. Names
 // that Vim already uses for something else (:delete, :move, :sub...) are avoided.
+import { HUB_GROUPS } from "./hub-groups.js";
+
+// :project :area :resource :inbox, typed in full (:res is Vim's :resize, :ar is :args).
+const FILING_COMMANDS = HUB_GROUPS.map((group) => ({
+  name: group.command,
+  min: group.command.length,
+  usage: `:${group.command}`,
+  help: group.kind
+    ? `file this note as ${group.asWhat} (a note inside another moves to the top level)`
+    : "put this note back in the Inbox (a note inside another moves to the top level)",
+  run: (app) => app.kindCommand(group),
+}));
 export const NOTE_COMMANDS = [
   { name: "edit", min: 1, usage: ":e[dit][!] {note}", help: "open a note (:e! drops unsaved changes; with no note, reloads this one)",
     run: (app, { arg, bang }) => app.editCommand(arg, bang) },
@@ -14,6 +26,7 @@ export const NOTE_COMMANDS = [
     run: (app, { arg }) => app.parentCommand(arg) },
   { name: "nav", min: 3, usage: ":nav", help: "go to the notes tree (on a narrow window it slides in)",
     run: (app) => app.navCommand() },
+  ...FILING_COMMANDS,
   { name: "export", min: 3, usage: ":exp[ort]", help: "download this note, and the linked notes beside or under it, as one .html file",
     run: (app) => app.exportCommand() },
   { name: "trash", min: 5, usage: ":trash[!]", help: "delete this note (:trash! with the notes under it)",

@@ -14,6 +14,7 @@ shows its raw text. `:set nopreview` shows it all raw. Notes save by themselves;
 
 - `:new Title` makes a note beside this one, `:sub Title` one under it
 - `:e Title` opens a note; `:rename`, `:move Parent` (or `:move /`) and `:delete`
+- `:project`, `:area` and `:resource` file a top-level note as a hub; `:inbox` unfiles it
 - `:nav` (or the ☰ button) goes to the notes tree: j k move, l h open and close, Enter opens, Esc goes back
 - [[Ideas]] is a wiki link to a note that doesn't exist yet: click it to make it
 

@@ -3,6 +3,8 @@ import { TREE_KEYS, treeAction } from "../../static/js/notes/tree-keys.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
 import { TreeView } from "../../static/js/notes/tree-view.js";
 import { showBreadcrumb } from "../../static/js/notes/breadcrumb.js";
+import { HUB_GROUPS, groupOf, hubsIn } from "../../static/js/notes/hub-groups.js";
+import { NOTE_COMMANDS, runNoteCommand } from "../../static/js/notes/commands.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
 const NOTES = [
@@ -43,8 +45,10 @@ test("tree keys: one table, modifiers left to the browser", () => {
   assertEqual(treeAction({ key: "x" }), null);
 });
 
+const STORE = ["paradigm.tree.expanded", "paradigm.tree.foldedGroups"];
+
 function withTree(body) {
-  localStorage.removeItem("paradigm.tree.expanded");
+  STORE.forEach((key) => localStorage.removeItem(key));
   const ul = document.createElement("ul");
   document.body.append(ul);
   const opened = [];
@@ -54,13 +58,15 @@ function withTree(body) {
     body({ ul, view, opened, left: () => left });
   } finally {
     ul.remove();
-    localStorage.removeItem("paradigm.tree.expanded");
+    STORE.forEach((key) => localStorage.removeItem(key));
   }
 }
 
 const press = (ul, key) => document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
 const titles = (ul) => [...ul.querySelectorAll(".tree__title")].map((node) => node.textContent).join(",");
 const focusedId = () => Number(document.activeElement.dataset.id);
+const focusedGroup = () => document.activeElement.dataset.group;
+const headings = (ul) => [...ul.querySelectorAll(".tree__item--group > .tree__row")].map((row) => row.textContent).join(",");
 
 test("tree view: the open note's ancestors are expanded and it is selected", () => withTree(({ ul, view }) => {
   view.show(new NoteTree(NOTES), 4);
@@ -96,8 +102,14 @@ test("tree view: j k move, h l close and open, Enter opens, Escape leaves", () =
   press(ul, "k");
   assertEqual(focusedId(), 5);
   press(ul, "k");
-  assertEqual(focusedId(), 5, "stops at the top");
+  assertEqual(focusedGroup(), "inbox", "k reaches the group heading");
+  press(ul, "k");
+  assertEqual(focusedGroup(), "inbox", "stops at the top");
   press(ul, "G");
+  assertEqual(focusedGroup(), "resource", "G: the last group");
+  press(ul, "g");
+  press(ul, "j");
+  press(ul, "j");
   assertEqual(focusedId(), 1);
   press(ul, "Enter");
   assertEqual(opened.join(), "1");
@@ -118,10 +130,92 @@ test("breadcrumb: ancestors are buttons, the note itself is not", () => {
   const nav = document.createElement("nav");
   const opened = [];
   showBreadcrumb(nav, new NoteTree(NOTES), 4, (id) => opened.push(id));
-  assertEqual(nav.textContent, "projects›acme›Kickoff");
+  assertEqual(nav.textContent, "Inbox›projects›acme›Kickoff");
+  assertEqual(nav.querySelector(".crumbs__group").tagName, "SPAN", "the group is plain text");
   const buttons = nav.querySelectorAll("button");
   assertEqual(buttons.length, 2);
   buttons[1].click();
   assertEqual(opened.join(), "3");
   assertEqual(nav.querySelector("[aria-current]").textContent, "Kickoff");
+});
+
+const FILED = [
+  { id: 1, parent_id: null, title: "Acme", kind: "project" },
+  { id: 2, parent_id: 1, title: "Kickoff", kind: null },
+  { id: 3, parent_id: null, title: "Welcome", kind: null },
+  { id: 4, parent_id: null, title: "Health", kind: "area" },
+  { id: 5, parent_id: null, title: "Beta", kind: "project" },
+];
+
+test("hub groups: four in order, notes grouped by their top-level note", () => {
+  assertEqual(HUB_GROUPS.map((group) => group.heading).join(), "Inbox,Projects,Areas,Resources");
+  const tree = new NoteTree(FILED);
+  assertEqual(groupOf(tree, 2).key, "project", "a nested note is in its hub's group");
+  assertEqual(groupOf(tree, 3).key, "inbox");
+  assertEqual(groupOf(tree, 99), null);
+  assertEqual(hubsIn(tree, HUB_GROUPS[1]).map((note) => note.title).join(), "Acme,Beta");
+  assertEqual(hubsIn(tree, HUB_GROUPS[3]).length, 0);
+});
+
+test("tree view: groups with counts, hubs under them, empty ones marked", () => withTree(({ ul, view }) => {
+  view.show(new NoteTree(FILED), 3);
+  assertEqual(headings(ul), "▾Inbox1,▾Projects2,▾Areas1,Resources0");
+  assertEqual(titles(ul), "Welcome,Acme,Beta,Health");
+  assertTrue(ul.querySelector('[data-group="resource"]').classList.contains("tree__item--empty"));
+  assertEqual(ul.querySelector('[data-id="1"]').getAttribute("aria-level"), "2");
+}));
+
+test("tree view: h l fold a group, Enter toggles it, folding is remembered", () => withTree(({ ul, view, opened }) => {
+  const tree = new NoteTree(FILED);
+  view.show(tree, 3);
+  view.focus();
+  press(ul, "j");
+  assertEqual(focusedGroup(), "project");
+  press(ul, "h");
+  assertEqual(titles(ul), "Welcome,Health", "h folds the group");
+  press(ul, "l");
+  assertEqual(titles(ul), "Welcome,Acme,Beta,Health", "l unfolds it");
+  press(ul, "l");
+  assertEqual(focusedId(), 1, "l again goes to the first hub");
+  press(ul, "h");
+  assertEqual(focusedGroup(), "project", "h on a hub goes to its group");
+  press(ul, "Enter");
+  assertEqual(titles(ul), "Welcome,Health", "Enter on a group folds it");
+  assertEqual(opened.length, 0, "and opens nothing");
+  const again = new TreeView(document.createElement("ul"), { onOpen() {}, onLeave() {} });
+  again.show(tree, 3);
+  assertEqual(titles(again.root), "Welcome,Health", "remembered");
+  view.show(tree, 2);
+  assertEqual(titles(ul), "Welcome,Acme,Kickoff,Beta,Health", "opening a note in a folded group unfolds it");
+}));
+
+test("tree view: a click on a group heading folds it", () => withTree(({ ul, view, opened }) => {
+  view.show(new NoteTree(FILED), 3);
+  ul.querySelector('[data-group="area"] .tree__heading').click();
+  assertEqual(titles(ul), "Welcome,Acme,Beta");
+  assertEqual(opened.length, 0);
+}));
+
+test("tree view: a note filed elsewhere is shown in its new group", () => withTree(({ ul, view }) => {
+  view.show(new NoteTree(FILED), 3);
+  view.setOpen("group:area", false);
+  const moved = FILED.map((note) => (note.id === 3 ? { ...note, kind: "area" } : note));
+  view.show(new NoteTree(moved), 3);
+  assertEqual(titles(ul), "Acme,Beta,Health,Welcome");
+}));
+
+test("breadcrumb: a project's note starts with Projects", () => {
+  const nav = document.createElement("nav");
+  showBreadcrumb(nav, new NoteTree(FILED), 2, () => {});
+  assertEqual(nav.textContent, "Projects›Acme›Kickoff");
+});
+
+test("note commands: :project :area :resource :inbox, typed in full", () => {
+  for (const group of HUB_GROUPS) {
+    const command = NOTE_COMMANDS.find((each) => each.name === group.command);
+    assertEqual(command.min, group.command.length, group.command);
+    let filed = null;
+    runNoteCommand({ kindCommand: (to) => { filed = to; } }, { name: group.command });
+    assertEqual(filed, group);
+  }
 });
