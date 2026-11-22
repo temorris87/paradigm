@@ -1,0 +1,45 @@
+// The hub line under the breadcrumb: what the open hub is. "Project · Area: Operations"
+// (the area can be clicked), "Area · 3 projects", "Resource". Empty when no hub is open.
+import { groupForKind } from "../notes/hub-groups.js";
+import { areaOf, projectsIn } from "./hub-areas.js";
+
+export function showHubLine(line, tree, hub, onOpen) {
+  line.hidden = !hub;
+  if (!hub) {
+    line.replaceChildren();
+    return;
+  }
+  const parts = [span("hub-line__kind", groupForKind(hub.kind).label)];
+  const more = details(tree, hub, onOpen);
+  if (more.length) parts.push(separator(), ...more);
+  line.replaceChildren(...parts);
+}
+
+function details(tree, hub, onOpen) {
+  if (hub.kind === "area") {
+    const n = projectsIn(tree, hub.id).length;
+    return [span("hub-line__text", n === 1 ? "1 project" : `${n} projects`)];
+  }
+  if (hub.kind !== "project") return [];
+  const area = areaOf(tree, hub.id);
+  if (!area) return [span("hub-line__text hub-line__text--none", "no area (:inarea {area})")];
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "hub-line__link";
+  button.textContent = area.title;
+  button.addEventListener("click", () => onOpen(area.id));
+  return [span("hub-line__text", "Area: "), button];
+}
+
+function separator() {
+  const node = span("hub-line__separator", "·");
+  node.setAttribute("aria-hidden", "true");
+  return node;
+}
+
+function span(className, text) {
+  const node = document.createElement("span");
+  node.className = className;
+  node.textContent = text;
+  return node;
+}

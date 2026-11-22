@@ -65,6 +65,19 @@ class NotesApiTest(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertIn("kind", payload["error"])
 
+    def test_area_puts_a_project_in_an_area(self) -> None:
+        area = self.create("Operations")
+        project = self.create("Acme")
+        self.running.post_json("/api/note/kind", {"id": area["id"], "kind": "area"})
+        self.running.post_json("/api/note/kind", {"id": project["id"], "kind": "project"})
+        status, placed = self.running.post_json("/api/note/area", {"id": project["id"], "area_id": area["id"]})
+        self.assertEqual((status, placed["area_id"]), (200, area["id"]))
+        status, payload = self.running.post_json("/api/note/area", {"id": area["id"], "area_id": area["id"]})
+        self.assertEqual(status, 400)
+        self.assertIn("not a project", payload["error"])
+        status, placed = self.running.post_json("/api/note/area", {"id": project["id"], "area_id": None})
+        self.assertEqual((status, placed["area_id"]), (200, None))
+
     def test_errors_are_json_with_a_status(self) -> None:
         cases = [
             ("/api/note/create", {"title": "a/b"}, 400),

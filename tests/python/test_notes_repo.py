@@ -6,7 +6,7 @@ from pathlib import Path
 from paradigm.db.connection import Database
 from paradigm.db.migrate import migrate
 from paradigm.db.notes_repo import (BadKind, BadTitle, Conflict, HasChildren, LastNote, NoteRepository,
-                                    NotFound, TitleTaken, WouldCycle)
+                                    NotAnArea, NotAProject, NotFound, TitleTaken, WouldCycle)
 from paradigm.notes.seed import WELCOME_TITLE, seed_if_empty
 
 
@@ -183,6 +183,62 @@ class NoteRepositoryTest(unittest.TestCase):
         self.assertIsNone(back["kind"])
         # Moving a top-level hub to the top level again keeps its kind.
         self.assertEqual(self.notes.move(other["id"], None)["kind"], "area")
+
+    def hub(self, title: str, kind: str) -> dict:
+        return self.notes.set_kind(self.notes.create(None, title)["id"], kind)
+
+    def test_a_project_goes_in_an_area(self) -> None:
+        area = self.hub("Operations", "area")
+        project = self.hub("Acme", "project")
+        self.assertIsNone(project["area_id"])
+        self.assertEqual(self.notes.set_area(project["id"], area["id"])["area_id"], area["id"])
+        tree = {note["id"]: note for note in self.notes.tree()}
+        self.assertEqual(tree[project["id"]]["area_id"], area["id"])
+        self.assertIsNone(self.notes.set_area(project["id"], None)["area_id"])
+
+    def test_only_projects_go_only_in_areas(self) -> None:
+        area = self.hub("Operations", "area")
+        project = self.hub("Acme", "project")
+        resource = self.hub("Manuals", "resource")
+        inbox = self.notes.create(None, "Loose")
+        for note in (area, resource, inbox):
+            with self.subTest(note=note["title"]), self.assertRaises(NotAProject):
+                self.notes.set_area(note["id"], area["id"])
+        for target in (project, resource, inbox):
+            with self.subTest(target=target["title"]), self.assertRaises(NotAnArea):
+                self.notes.set_area(project["id"], target["id"])
+        with self.assertRaises(NotFound):
+            self.notes.set_area(project["id"], 999)
+
+    def test_area_links_go_when_a_hub_changes(self) -> None:
+        area = self.hub("Operations", "area")
+        a = self.hub("Acme", "project")
+        b = self.hub("Northwind", "project")
+        for project in (a, b):
+            self.notes.set_area(project["id"], area["id"])
+        # A project filed as something else leaves its area.
+        self.assertIsNone(self.notes.set_kind(a["id"], "resource")["area_id"])
+        self.notes.set_kind(a["id"], "project")
+        self.notes.set_area(a["id"], area["id"])
+        # A project moved under a note leaves it too.
+        self.assertIsNone(self.notes.move(a["id"], b["id"])["area_id"])
+        # An area filed as something else empties.
+        self.notes.set_kind(area["id"], "resource")
+        self.assertIsNone(self.notes.get(b["id"])["area_id"])
+
+    def test_refiling_an_area_as_an_area_keeps_its_projects(self) -> None:
+        area = self.hub("Operations", "area")
+        project = self.hub("Acme", "project")
+        self.notes.set_area(project["id"], area["id"])
+        self.notes.set_kind(area["id"], "area")
+        self.assertEqual(self.notes.get(project["id"])["area_id"], area["id"])
+
+    def test_a_trashed_area_keeps_its_links(self) -> None:
+        area = self.hub("Operations", "area")
+        project = self.hub("Acme", "project")
+        self.notes.set_area(project["id"], area["id"])
+        self.notes.delete(area["id"])
+        self.assertEqual(self.notes.get(project["id"])["area_id"], area["id"])
 
     def test_seed_only_when_empty(self) -> None:
         seed_if_empty(self.notes)

@@ -8,20 +8,22 @@ POST /api/note/rename      {id, title}
 POST /api/note/move        {id, parent_id|null}           a hub moved under a note stops being one
 POST /api/note/kind        {id, kind}   kind: project | area | resource | null (the Inbox);
                                         a nested note moves to the top level first
+POST /api/note/area        {id, area_id|null}   put a project in an area (null: in none)
 POST /api/note/delete      {id, recursive?}              -> {deleted: [ids]}
 """
 from http.server import BaseHTTPRequestHandler
 from typing import Callable, Dict
 
 from paradigm.db.notes_repo import (BadKind, BadTitle, Conflict, HasChildren, LastNote, NoteError,
-                                    NoteRepository, NotFound, TitleTaken, WouldCycle)
+                                    NoteRepository, NotAnArea, NotAProject, NotFound,
+                                    TitleTaken, WouldCycle)
 from paradigm.web.requests import (BadRequest, bool_field, int_field, optional_int_field,
                                    read_json, str_field)
 from paradigm.web.responses import send_error_json, send_json
 from paradigm.web.router import Router
 
 _STATUS = {NotFound: 404, Conflict: 409, TitleTaken: 409, HasChildren: 409, LastNote: 409,
-           WouldCycle: 400, BadTitle: 400, BadKind: 400, BadRequest: 400}
+           WouldCycle: 400, NotAProject: 400, NotAnArea: 400, BadTitle: 400, BadKind: 400, BadRequest: 400}
 
 
 class NotesApi:
@@ -36,6 +38,7 @@ class NotesApi:
         router.add("POST", "/api/note/rename", self._answer(self.rename))
         router.add("POST", "/api/note/move", self._answer(self.move))
         router.add("POST", "/api/note/kind", self._answer(self.kind))
+        router.add("POST", "/api/note/area", self._answer(self.area))
         router.add("POST", "/api/note/delete", self._answer(self.delete))
 
     def tree(self, req: BaseHTTPRequestHandler) -> Dict:
@@ -70,6 +73,10 @@ class NotesApi:
     def kind(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)
         return self._notes.set_kind(int_field(payload, "id"), payload.get("kind"))
+
+    def area(self, req: BaseHTTPRequestHandler) -> Dict:
+        payload = read_json(req)
+        return self._notes.set_area(int_field(payload, "id"), optional_int_field(payload, "area_id"))
 
     def delete(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)

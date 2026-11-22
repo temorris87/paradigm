@@ -37,6 +37,8 @@ export const notesApi = {
   rename: (id, title) => call("/api/note/rename", { payload: { id, title } }),
   // kind: "project" | "area" | "resource" | null (the Inbox)
   setKind: (id, kind) => call("/api/note/kind", { payload: { id, kind } }),
+  // areaId: an area's id, or null for no area (projects only)
+  setArea: (id, areaId) => call("/api/note/area", { payload: { id, area_id: areaId } }),
   move: (id, parentId) => call("/api/note/move", { payload: { id, parent_id: parentId } }),
   remove: (id, recursive = false) => call("/api/note/delete", { payload: { id, recursive } }),
 };

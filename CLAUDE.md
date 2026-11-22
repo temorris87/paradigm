@@ -48,7 +48,8 @@ paradigm/                Python package
                          static.py (serves static/), responses.py, security.py
   api/                   JSON endpoints; session.py = /api/ping, /api/events, /api/closing;
                          notes.py; images.py (raw-bytes upload, GET /api/image?id=N cached)
-  db/                    (migrations: 001 notes, 002 images, 003 notes.kind for PARA hubs)
+  db/                    (migrations: 001 notes, 002 images, 003 notes.kind for PARA hubs,
+                         004 notes.area_id: a project's area)
                          connection.py (one locked connection, transactions, VACUUM at start
                          when worth it), migrate.py
                          (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py,
@@ -76,9 +77,15 @@ static/
                          links, nearest note wins), tree-model.js, tree-view.js, tree-keys.js
                          (THE tree key table), breadcrumb.js, commands.js (THE note ex
                          commands: :e :new :child :rename :parent :nav :project :area
-                         :resource :inbox :export :trash), hub-groups.js (THE PARA group
-                         table: Inbox, Projects, Areas, Resources), headings.js,
+                         :resource :inbox :inarea :hub :export :trash), hub-groups.js (THE
+                         PARA group table: Inbox, Projects, Areas, Resources), headings.js,
                          images.js (editor "files" event -> shrink, upload, insert links)
+  js/hubs/               the hub page (shown only while a hub is open): hub-page.js (wiring;
+                         data-hub-size on .app__note), hub-line.js ("Project · Area: X"),
+                         hub-panel.js (tabs + one-focus-stop listbox), hub-tabs.js (THE hub
+                         tab table: Notes, an area's Projects; pure), hub-areas.js (project
+                         <-> area; pure), hub-size.js (collapsed/open/expanded, remembered),
+                         hub-keys.js (THE section panel key table)
   js/images/             downscale.js: shrinks images wider than 1600 px on a canvas (GIFs
                          never); viewer.js: <pd-image-viewer>, a click on an image opens it
                          with its own zoom and pan; viewer-math.js (pure), viewer-keys.js
@@ -167,6 +174,11 @@ Update this section when the structure changes.
   Inbox). `:project` etc. on a nested note moves it to the top; moving a hub under a note
   unfiles it. Groups never appear in paths or links, and top-level titles stay unique.
   The tree's top level is the four groups (folded state remembered per browser).
+- Hub page: a hub shows a hub line under the breadcrumb and a tabbed section panel under the
+  note (Notes: the whole subtree; Projects on areas). `:hub` or Tab reaches the panel; its keys
+  live in `static/js/hubs/hub-keys.js`. `-`/`+` size it (collapsed, open, expanded; expanded
+  hides the editor). New record types become new rows in `hub-tabs.js`. `:inarea {area}` puts
+  a project in an area; a note that stops being a project or area loses the link.
 - The notes tree is reached with `:nav` or the ☰ button in the top bar. Under 1400 px wide it
   is a drawer: it opens over the note and closes on Enter (opening a note), Escape, a click on
   the backdrop, or the focus leaving it.

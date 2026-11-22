@@ -28,6 +28,11 @@ const app = new NotesApp({
   editor,
   tree: document.querySelector(".tree"),
   crumbs: document.querySelector(".crumbs"),
+  hub: {
+    page: document.querySelector(".app__note"),
+    line: document.querySelector(".hub-line"),
+    section: document.querySelector(".hub"),
+  },
   navigator: notesNavigator,
   api: notesApi,
   imagesApi,

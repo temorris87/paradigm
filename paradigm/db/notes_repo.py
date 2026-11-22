@@ -10,7 +10,7 @@ from paradigm.notes.titles import BadTitle, clean_title
 Clock = Callable[[], str]
 
 __all__ = ["NoteRepository", "NoteError", "NotFound", "Conflict", "TitleTaken", "BadTitle",
-           "HasChildren", "WouldCycle", "LastNote", "BadKind"]
+           "HasChildren", "WouldCycle", "LastNote", "BadKind", "NotAProject", "NotAnArea"]
 
 
 class NoteError(Exception):
@@ -45,12 +45,20 @@ class LastNote(NoteError):
     """The tree is never left empty."""
 
 
+class NotAProject(NoteError):
+    """Only a project belongs to an area."""
+
+
+class NotAnArea(NoteError):
+    """A project can only be put in an area."""
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 _LIVE = "deleted_at IS NULL"
-_SUMMARY = "id, parent_id, title, kind, version, updated_at"
+_SUMMARY = "id, parent_id, title, kind, area_id, version, updated_at"
 
 
 class NoteRepository:
@@ -120,8 +128,11 @@ class NoteRepository:
                     raise WouldCycle("A note cannot go under itself or under a note inside it")
             _check_free(conn, parent_id, row["title"], note_id)
             # Only top-level notes are hubs: going under another note leaves its group.
-            self._change(conn, note_id, "parent_id = ?, kind = NULL" if parent_id is not None
-                         else "parent_id = ?", (parent_id,))
+            if parent_id is not None:
+                self._change(conn, note_id, "parent_id = ?, kind = NULL", (parent_id,))
+                _drop_area_links(conn, note_id)
+            else:
+                self._change(conn, note_id, "parent_id = ?", (parent_id,))
         return self.get(note_id)
 
     def set_kind(self, note_id: int, kind: object) -> Dict:
@@ -134,6 +145,24 @@ class NoteRepository:
                 _check_free(conn, None, row["title"], note_id)
                 self._change(conn, note_id, "parent_id = NULL", ())
             self._change(conn, note_id, "kind = ?", (kind,))
+            if kind != "project":
+                conn.execute("UPDATE notes SET area_id = NULL WHERE id = ?", (note_id,))
+            if kind != "area":
+                conn.execute("UPDATE notes SET area_id = NULL WHERE area_id = ?", (note_id,))
+        return self.get(note_id)
+
+    def set_area(self, note_id: int, area_id: Optional[int]) -> Dict:
+        """Puts a project in an area (None: in no area)."""
+        with self._db.transaction() as conn:
+            row = _live_row(conn, note_id)
+            if row["kind"] != "project" or row["parent_id"] is not None:
+                raise NotAProject('"{}" is not a project: only a project goes in an area'.format(row["title"]))
+            if area_id is not None:
+                area = _live_row(conn, area_id)
+                if area["kind"] != "area" or area["parent_id"] is not None:
+                    what = "a " + area["kind"] if area["kind"] else "in the Inbox"
+                    raise NotAnArea('"{}" is {}, not an area'.format(area["title"], what))
+            self._change(conn, note_id, "area_id = ?", (area_id,))
         return self.get(note_id)
 
     def delete(self, note_id: int, recursive: bool = False) -> List[int]:
@@ -163,7 +192,13 @@ class NoteRepository:
 
 def _summary(row: sqlite3.Row) -> Dict:
     return {"id": row["id"], "parent_id": row["parent_id"], "title": row["title"],
-            "kind": row["kind"], "version": row["version"], "updated_at": row["updated_at"]}
+            "kind": row["kind"], "area_id": row["area_id"], "version": row["version"],
+            "updated_at": row["updated_at"]}
+
+
+def _drop_area_links(conn: sqlite3.Connection, note_id: int) -> None:
+    """A note that stops being a hub leaves its area, and no project stays in it."""
+    conn.execute("UPDATE notes SET area_id = NULL WHERE id = ? OR area_id = ?", (note_id, note_id))
 
 
 def _live_row(conn: sqlite3.Connection, note_id: int) -> sqlite3.Row:

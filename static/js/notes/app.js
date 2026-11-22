@@ -2,11 +2,13 @@
 // It owns what the editor's events mean here: saving, following [[links]], note commands.
 //
 //   const app = new NotesApp({ editor, tree: ulElement, crumbs: navElement, navigator,
-//                              api: notesApi, imagesApi });
+//                              hub: { page, line, section }, api: notesApi, imagesApi });
 //
 // navigator (static/js/layout/navigator.js) holds the tree: a drawer on narrow windows.
+// hub (static/js/hubs/hub-page.js) is the hub line and section panel shown on a hub.
 //   await app.start();
 import { exportNote } from "../export/export.js";
+import { HubPage } from "../hubs/hub-page.js";
 import { showBreadcrumb } from "./breadcrumb.js";
 import { registerNoteCommands, runNoteCommand } from "./commands.js";
 import { headingLine } from "./headings.js";
@@ -19,7 +21,7 @@ import { TreeView } from "./tree-view.js";
 const UNSAVED = "E37: No write since last change (:w to save, or ! to drop the changes)";
 
 export class NotesApp {
-  constructor({ editor, tree, crumbs, navigator, api, imagesApi, location = window.location, history = window.history }) {
+  constructor({ editor, tree, crumbs, navigator, hub, api, imagesApi, location = window.location, history = window.history }) {
     this.editor = editor;
     this.crumbs = crumbs;
     this.navigator = navigator;
@@ -36,6 +38,11 @@ export class NotesApp {
       // The drawer closes even when the note can't be opened, so the editor's message shows.
       onOpen: (id) => this.open(id).finally(() => this.navigator.hide()),
       onLeave: () => this.navigator.hide(),
+    });
+    this.hubPage = new HubPage({
+      ...hub,
+      onOpen: (id) => this.guard(this.openFromHub(id)),
+      onLeave: () => this.editor.focus(),
     });
     this.images = new NoteImages({ editor, api: imagesApi, currentId: () => this.currentId });
     registerNoteCommands(editor);
@@ -130,6 +137,7 @@ export class NotesApp {
     const id = this.currentId;
     this.treeView.show(this.tree, id);
     showBreadcrumb(this.crumbs, this.tree, id, (target) => this.guard(this.open(target)));
+    this.hubPage.show(this.tree, id);
     const title = this.tree.get(id)?.title ?? this.session.note?.title;
     document.title = title ? `${title} - Paradigm` : "Paradigm";
     // Links resolve against the tree and the open note, so both changing means new links.
@@ -225,6 +233,33 @@ export class NotesApp {
     await this.refreshTree();
     const moved = wasNested ? " moved to the top level and" : "";
     this.editor.showMessage(`"${note.title}"${moved} is now ${group.asWhat}`);
+  }
+
+  async openFromHub(id) {
+    await this.open(id);
+    // The next note may be a hub with the panel over it: then the panel keeps the focus.
+    if (this.hubPage.editorHidden) this.hubPage.focus();
+    else this.editor.focus();
+  }
+
+  async hubCommand() {
+    if (!this.hubPage.hub) throw new Error("E: this note is not a hub (:project, :area or :resource files it)");
+    this.hubPage.focus();
+  }
+
+  async inAreaCommand(arg) {
+    const text = arg.trim();
+    let areaId = null;
+    if (text) {
+      const found = resolveLink(this.tree, this.currentId, text);
+      if (!found.note) throw new Error(explainMissing(text, found));
+      areaId = found.note.id;
+    }
+    const note = await this.api.setArea(this.currentId, areaId);
+    this.session.updateMeta(note);
+    await this.refreshTree();
+    const where = areaId === null ? "in no area now" : `now in ${this.tree.get(areaId).title}`;
+    this.editor.showMessage(`"${note.title}" is ${where}`);
   }
 
   navCommand() {
