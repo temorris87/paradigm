@@ -84,7 +84,7 @@ test("records: questions open first (oldest first), then answered (newest answer
   assertEqual(rows.map((r) => r.detail).join("|"),
     "open · asked 2026-11-10|open · asked 2026-11-19 · Jane Doe|answered 2026-11-25 · from Kickoff|answered 2026-11-02");
   assertEqual(rows.map((r) => Boolean(r.muted)).join(), "false,false,true,true");
-  assertEqual(tab("questions").empty(c.tree.get(2)), "No questions in this project yet (:question [{date}] {title})");
+  assertEqual(tab("questions").empty(c.tree.get(2)), "No questions in this project yet");
 });
 
 function fakeApp(currentId) {

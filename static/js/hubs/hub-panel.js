@@ -2,12 +2,15 @@
 // draws what it is given and reports what the user asked for; HubPage decides the rest.
 //
 //   const panel = new HubPanel(sectionElement, { onAction(action, event), onTab(index),
-//                                                onRow(index), onSize(size) });
-//   panel.draw({ tabs, tabIndex, rows, empty, active, size })
+//                                                onRow(index), onSize(size), onAdd(),
+//                                                onRowAction(index, key) });
+//   panel.draw({ tabs, tabIndex, rows, empty, add, active, size })   add: the button's label
+//                                                                      or null
 //   panel.focus()            the one focus stop: the list, or the tab row when collapsed
 //
 // Only one element in the panel takes the focus (Tab passes through it once); the active
-// row is shown with aria-activedescendant, as a listbox does.
+// row is shown with aria-activedescendant, as a listbox does. The add and row buttons are for
+// the mouse (tabIndex -1); the keys do the same (hub-keys.js).
 import { hubAction } from "./hub-keys.js";
 
 const SIZE_BUTTONS = [
@@ -18,7 +21,7 @@ const SIZE_BUTTONS = [
 const MAX_DEPTH = 6;
 
 export class HubPanel {
-  constructor(section, { onAction, onTab, onRow, onSize }) {
+  constructor(section, { onAction, onTab, onRow, onSize, onAdd = () => {}, onRowAction = () => {} }) {
     this.section = section;
     this.tabList = element("div", "hub__tabs");
     this.tabList.setAttribute("role", "tablist");
@@ -28,8 +31,15 @@ export class HubPanel {
     this.list.setAttribute("role", "listbox");
     this.list.id = "hub-list";
     this.rowCount = 0;
+    this.addButton = element("button", "hub__add");
+    Object.assign(this.addButton, { type: "button", tabIndex: -1 });
+    // The focus comes back to the list after the dialog, so the keys work on.
+    this.addButton.addEventListener("click", () => {
+      this.focus();
+      onAdd();
+    });
     const bar = element("div", "hub__bar");
-    bar.append(this.tabList, this.sizes);
+    bar.append(this.tabList, this.addButton, this.sizes);
     section.replaceChildren(bar, this.list);
     for (const { size, text, label } of SIZE_BUTTONS) {
       const button = element("button", "hub__size");
@@ -51,12 +61,16 @@ export class HubPanel {
       if (tab) onTab(Number(tab.dataset.index));
     });
     this.list.addEventListener("click", (event) => {
+      const action = event.target.closest?.("[data-action]");
+      if (action) this.focus();
+      if (action?.classList.contains("hub__add")) return onAdd();
       const row = event.target.closest?.("[role=option]");
+      if (action && row) return onRowAction(Number(row.dataset.index), action.dataset.action);
       if (row) onRow(Number(row.dataset.index));
     });
   }
 
-  draw({ tabs, tabIndex, rows, empty, active, size }) {
+  draw({ tabs, tabIndex, rows, empty, add = null, active, size }) {
     const hadFocus = this.section.contains(document.activeElement);
     this.section.dataset.size = size;
     for (const button of this.sizes.children) button.setAttribute("aria-pressed", String(button.dataset.size === size));
@@ -64,7 +78,10 @@ export class HubPanel {
     this.tabList.replaceChildren(...tabs.map((tab, index) => this.tab(tab, index, index === tabIndex)));
     this.list.hidden = size === "collapsed";
     this.list.setAttribute("aria-labelledby", `hub-tab-${tabIndex}`);
-    this.list.replaceChildren(...(rows.length ? rows.map((row, index) => this.row(row, index)) : [this.emptyRow(empty)]));
+    this.addButton.hidden = !add;
+    this.addButton.textContent = add ? `+ ${add}` : "";
+    this.addButton.title = add ? `${add} (a)` : "";
+    this.list.replaceChildren(...(rows.length ? rows.map((row, index) => this.row(row, index)) : [this.emptyRow(empty, add)]));
     // One focus stop: the list while it shows, else the tab row (so - and + still work).
     this.list.tabIndex = size === "collapsed" ? -1 : 0;
     this.tabList.tabIndex = size === "collapsed" ? 0 : -1;
@@ -86,18 +103,35 @@ export class HubPanel {
     return tab;
   }
 
-  row({ title, depth, detail, muted }, index) {
+  row({ title, depth, detail, muted, actions = [] }, index) {
     const li = element("li", `hub__row hub__row--depth-${Math.min(depth, MAX_DEPTH)}${muted ? " hub__row--muted" : ""}`);
     li.id = `hub-row-${index}`;
     li.dataset.index = String(index);
     li.setAttribute("role", "option");
     li.setAttribute("aria-selected", "false");
     li.append(element("span", "hub__title", title), element("span", "hub__detail", detail));
+    if (actions.length) {
+      const box = element("span", "hub__row-actions");
+      for (const { key, label } of actions) {
+        const button = element("button", "hub__row-action", label);
+        Object.assign(button, { type: "button", tabIndex: -1, title: `${label} (${key === "role" ? "r" : "x"})` });
+        button.dataset.action = key;
+        box.append(button);
+      }
+      li.append(box);
+    }
     return li;
   }
 
-  emptyRow(text) {
-    return element("li", "hub__empty", text);
+  emptyRow(text, add) {
+    const li = element("li", "hub__empty", text);
+    if (add) {
+      const button = element("button", "hub__add hub__add--empty", add);
+      Object.assign(button, { type: "button", tabIndex: -1 });
+      button.dataset.action = "add";
+      li.append(" ", button);
+    }
+    return li;
   }
 
   markActive(active) {

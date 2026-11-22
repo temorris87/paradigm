@@ -1,14 +1,15 @@
 // The notes tree in the sidebar: an ARIA tree with one focusable item (roving tabindex).
 // The top level is the hub groups and the Archive (hub-groups.js); the notes sit under them.
 //
-//   const view = new TreeView(ulElement, { onOpen(id), onLeave() });
+//   const view = new TreeView(ulElement, { onOpen(id), onLeave(), onAdd(group), onAddUnder(id) });
 //   view.show(tree, currentId)     draw (the open note's group and ancestors are expanded)
 //   view.focus()
 //
 // Each row has a key: a note's id (a number) or "group:<key>" for a group heading. Which
 // branches are open and which groups are folded are remembered in localStorage, per browser.
 // A group folded by default (the Archive) is remembered the other way round: when unfolded.
-import { NAV_GROUPS, RECORD_LABELS, groupForKind, groupOf, hubsIn, isRecordKind } from "./hub-groups.js";
+// Each group a note can be made in (not the Archive) has a + on its heading: onAdd(group).
+import { ARCHIVE_GROUP, NAV_GROUPS, RECORD_LABELS, groupForKind, groupOf, hubsIn, isRecordKind } from "./hub-groups.js";
 import { treeAction } from "./tree-keys.js";
 
 const STORE_KEY = "paradigm.tree.expanded";
@@ -19,10 +20,12 @@ const groupKey = (group) => `group:${group.key}`;
 const isGroupKey = (key) => typeof key === "string";
 
 export class TreeView {
-  constructor(root, { onOpen, onLeave }) {
+  constructor(root, { onOpen, onLeave, onAdd = () => {}, onAddUnder = () => {} }) {
     this.root = root;
     this.onOpen = onOpen;
     this.onLeave = onLeave;
+    this.onAdd = onAdd;
+    this.onAddUnder = onAddUnder;
     this.tree = null;
     this.current = null;
     this.currentParent = null;
@@ -76,7 +79,18 @@ export class TreeView {
     const count = document.createElement("span");
     count.className = "tree__count";
     count.textContent = String(hubs.length);
-    li.append(this.row(hubs.length ? (open ? "▾" : "▸") : "", group.heading, "tree__heading", count));
+    const row = this.row(hubs.length ? (open ? "▾" : "▸") : "", group.heading, "tree__heading", count);
+    if (group !== ARCHIVE_GROUP) {
+      const add = document.createElement("button");
+      add.type = "button";
+      add.tabIndex = -1;
+      add.className = "mini-button tree__add";
+      add.textContent = "+";
+      add.title = `${addLabel(group)} (a)`;
+      add.setAttribute("aria-label", addLabel(group));
+      row.insertBefore(add, count);
+    }
+    li.append(row);
     if (open && hubs.length) li.append(this.group(hubs, 2, Boolean(group.showsKind)));
     return li;
   }
@@ -178,6 +192,7 @@ export class TreeView {
     const item = event.target.closest?.("[role=treeitem]");
     if (!item) return;
     const key = keyOf(item);
+    if (event.target.closest(".tree__add")) return this.add(key);
     if (isGroupKey(key)) return this.setOpen(key, !this.isOpen(key));
     if (event.target.closest(".tree__twisty") && this.childKeys(key).length) {
       this.setOpen(key, !this.isOpen(key));
@@ -212,8 +227,15 @@ export class TreeView {
         return this.moveTo(this.parentKey(key));
       case "open":
         return isGroupKey(key) ? this.setOpen(key, !this.isOpen(key)) : this.onOpen(key);
+      case "add": return this.add(key);
       case "editor": return this.onLeave();
     }
+  }
+
+  add(key) {
+    if (!isGroupKey(key)) return this.onAddUnder(key);
+    const group = NAV_GROUPS.find((each) => groupKey(each) === key);
+    if (group !== ARCHIVE_GROUP) this.onAdd(group);
   }
 
   moveTo(key) {
@@ -236,6 +258,11 @@ export class TreeView {
     }
     this.redraw();
   }
+}
+
+/** "New project", "New person", "New note" (the Inbox). */
+export function addLabel(group) {
+  return group.kind ? `New ${group.label.toLowerCase()}` : "New note";
 }
 
 function keyOf(item) {

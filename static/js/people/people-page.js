@@ -1,12 +1,25 @@
 // The People page: the directory with filters (hub, role, organisation, name), drawn in
 // place of the note. A ListPage (static/js/pages/list-page.js) told what to show.
 //
-//   const page = peoplePage(sectionElement, { onOpen(id), onLeave() });
+//   const page = peoplePage(sectionElement, { onOpen(id), onLeave(), onAdd() });
 //   page.show({ tree, people }); page.focus();
+//   newPersonDialog(app)     New person: a name, then their note opens
 import { ListPage } from "../pages/list-page.js";
+import { formDialog } from "../ui/dialog.js";
+import { makePerson } from "./people-commands.js";
 import { filterOptions, filterPeople, hubLinks, workText } from "./people-model.js";
 
-export function peoplePage(section, { onOpen, onLeave }) {
+export function newPersonDialog(app) {
+  return formDialog({
+    title: "New person",
+    fields: [{ key: "name", label: "Name" }],
+    submit: "Add to People",
+    run: ({ name }) => makePerson(app, name.trim(), { strict: true }),
+    fallbackFocus: () => app.focusNote(),
+  });
+}
+
+export function peoplePage(section, { onOpen, onLeave, onAdd = () => {} }) {
   return new ListPage(section, {
     name: "people",
     heading: "People",
@@ -32,7 +45,8 @@ export function peoplePage(section, { onOpen, onLeave }) {
       ["people__hubs", hubLinks(tree, people, note.id).filter((link) => !link.archived)
         .map(({ hub, role }) => (role ? `${hub.title} (${role})` : hub.title)).join(", ")],
     ],
-    empty: "No one matches (:newperson {name} adds someone)",
+    empty: "No one matches",
+    add: { label: "New person", run: onAdd },
     onOpen,
     onLeave,
   });

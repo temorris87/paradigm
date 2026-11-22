@@ -114,7 +114,7 @@ test("meeting tabs: Meetings on hubs and people, Attendees and Notes on a meetin
   assertEqual(rows("attendees", 20), "Bob Lee|,Jane Doe|Northwind · Data engineer");
   assertEqual(tab("notes").rows(c, c.tree.get(2)).map((r) => r.title).join(), "Plan", "meetings have their own tab");
   assertEqual(tab("notes").rows(c, c.tree.get(20)).map((r) => r.title).join(), "Actions");
-  assertEqual(tab("meetings").empty({ kind: "resource" }), "No meetings in this resource yet (:meeting [{date}] [{time}] {title})");
+  assertEqual(tab("meetings").empty({ kind: "resource" }), "No meetings in this resource yet");
 });
 
 test("meeting page: the meeting line and its tabs", () => {
@@ -153,7 +153,7 @@ test("meetings page: lists and filters by period", () => {
     assertEqual(period.options[0].textContent, "any time");
     period.value = "lastWeek";
     period.dispatchEvent(new Event("change"));
-    assertEqual(section.querySelector(".list-page__empty").textContent, "No meetings match (:meeting {title} on a hub makes one)");
+    assertEqual(section.querySelector(".list-page__empty").textContent, "No meetings match");
   } finally {
     section.remove();
   }

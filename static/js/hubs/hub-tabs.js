@@ -9,7 +9,10 @@
 //                             (static/js/people/people-model.js, static/js/meetings/
 //                             meetings-model.js, static/js/records/records-model.js,
 //                             static/js/notes/links.js)
+//                             actions: [{ key, label }] on rows that link records (not
+//                             whole notes): "role" and "remove" (hub-actions.js runs them)
 //   tab.empty(note)           what the tab says when it has no rows
+//   tab.add                   { label } of its add button (hub-actions.js), or null
 import { archivedProjectsIn, projectsIn } from "./hub-areas.js";
 import { attendeesOf, attendeesText, meetingsOn, meetingsWith, shortTitle } from "../meetings/meetings-model.js";
 import { whenText } from "../meetings/meeting-days.js";
@@ -19,6 +22,8 @@ import { hubLinks, peopleOn, rolesText, workText } from "../people/people-model.
 import { isOpen, peopleOf, recordsOn } from "../records/records-model.js";
 
 const PARA = ["project", "area", "resource"];
+const REMOVE = Object.freeze({ key: "remove", label: "Remove" });
+const ROLE = Object.freeze({ key: "role", label: "Role…" });
 
 export const HUB_TABS = [
   {
@@ -30,8 +35,10 @@ export const HUB_TABS = [
       title: person.title,
       depth: 0,
       detail: workText(people.get(person.id)),
+      actions: [REMOVE],
     })),
-    empty: () => "No attendees yet (:attendee {name}, {name}...)",
+    empty: () => "No attendees yet",
+    add: { label: "Add attendee" },
   },
   {
     key: "notes",
@@ -45,22 +52,30 @@ export const HUB_TABS = [
       detail: dayOf(note.updated_at),
     })),
     empty: (hub) => ["person", "meeting"].includes(hub.kind)
-      ? `No notes under ${hub.title} yet (:child {title} makes one)`
-      : `No notes in this ${hub.kind} yet (:child {title} makes one)`,
+      ? `No notes under ${hub.title} yet`
+      : `No notes in this ${hub.kind} yet`,
+    add: { label: "New note" },
   },
   {
     key: "people",
     label: "People",
     kinds: PARA,
     // An area lists the people on its projects too. Archived people come last, muted.
-    rows: ({ tree, people }, hub) => peopleOn(tree, people, hub).map(({ person, roles, archived }) => ({
-      id: person.id,
-      title: person.title,
-      depth: 0,
-      detail: [rolesText(roles), workText(people.get(person.id))].filter(Boolean).join(" · "),
-      muted: archived,
-    })),
-    empty: (hub) => `No people on this ${hub.kind} yet (:addperson {name}, {role})`,
+    // Only a link on this hub itself can be changed here: a project's is changed on the project.
+    rows: ({ tree, people }, hub) => peopleOn(tree, people, hub).map(({ person, roles, archived }) => {
+      const own = roles.find((each) => each.via === null);
+      return {
+        id: person.id,
+        title: person.title,
+        depth: 0,
+        detail: [rolesText(roles), workText(people.get(person.id))].filter(Boolean).join(" · "),
+        muted: archived,
+        role: own?.role ?? "",
+        actions: own ? [ROLE, REMOVE] : [],
+      };
+    }),
+    empty: (hub) => `No people on this ${hub.kind} yet`,
+    add: { label: "Add person" },
   },
   {
     key: "projects",
@@ -71,13 +86,15 @@ export const HUB_TABS = [
       ...projectsIn(tree, hub.id).map((project) => {
         const inside = tree.inOrder(project.id);
         const latest = [project, ...inside].map((note) => note.updated_at ?? "").sort().pop();
-        return { id: project.id, title: project.title, depth: 0, detail: `${countNotes(inside.length)} · ${dayOf(latest)}` };
+        return { id: project.id, title: project.title, depth: 0, detail: `${countNotes(inside.length)} · ${dayOf(latest)}`,
+          actions: [{ key: "remove", label: "Take out" }] };
       }),
       ...archivedProjectsIn(tree, hub.id).map((project) => ({
         id: project.id, title: project.title, depth: 0, detail: `archived ${dayOf(project.archived_at)}`, muted: true,
       })),
     ],
-    empty: () => "No projects in this area yet (:inarea {area} on a project puts it here)",
+    empty: () => "No projects in this area yet",
+    add: { label: "Add project" },
   },
   {
     key: "hubs",
@@ -90,8 +107,11 @@ export const HUB_TABS = [
       depth: 0,
       detail: [role, groupForKind(hub.kind).label, archived ? "archived" : ""].filter(Boolean).join(" · "),
       muted: archived,
+      role,
+      actions: [ROLE, REMOVE],
     })),
-    empty: (person) => `${person.title} is on no hubs yet (:addperson ${person.title} on a hub)`,
+    empty: (person) => `${person.title} is on no hubs yet`,
+    add: { label: "Add to a hub" },
   },
   {
     key: "meetings",
@@ -115,8 +135,9 @@ export const HUB_TABS = [
       }));
     },
     empty: (owner) => owner.kind === "person"
-      ? `${owner.title} attended no meetings yet (:attendee ${owner.title} on a meeting)`
-      : `No meetings in this ${owner.kind} yet (:meeting [{date}] [{time}] {title})`,
+      ? `${owner.title} attended no meetings yet`
+      : `No meetings in this ${owner.kind} yet`,
+    add: { label: "New meeting" },
   },
   {
     key: "decisions",
@@ -131,8 +152,9 @@ export const HUB_TABS = [
       muted: entry.archived,
     })),
     empty: (owner) => owner.kind === "person"
-      ? `${owner.title} is on no decisions yet (:with ${owner.title} on a decision)`
-      : `No decisions in this ${owner.kind} yet (:decision [{date}] {title})`,
+      ? `${owner.title} is on no decisions yet`
+      : `No decisions in this ${owner.kind} yet`,
+    add: { label: "New decision" },
   },
   {
     key: "questions",
@@ -151,8 +173,9 @@ export const HUB_TABS = [
       };
     }),
     empty: (owner) => owner.kind === "person"
-      ? `${owner.title} is on no questions yet (:with ${owner.title} on a question)`
-      : `No questions in this ${owner.kind} yet (:question [{date}] {title})`,
+      ? `${owner.title} is on no questions yet`
+      : `No questions in this ${owner.kind} yet`,
+    add: { label: "New question" },
   },
   {
     key: "linked",
@@ -173,7 +196,8 @@ export const HUB_TABS = [
         muted: archived,
       };
     }),
-    empty: (owner) => `Nothing links to ${owner.title} yet ([[${owner.title}]] in any note)`,
+    empty: (owner) => `Nothing links to ${owner.title} yet. Write [[${owner.title}]] in any note.`,
+    add: null,
   },
 ];
 

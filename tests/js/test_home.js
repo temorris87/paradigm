@@ -98,7 +98,7 @@ test("home: the section table's headings, details and rows", () => {
   assertTrue(projects[0].group && projects[3].group && projects[3].id === null && projects[1].indent);
   const empty = homeSections({ tree: new NoteTree([]), meetings: new Meetings(), records: new Records() }, TODAY);
   assertEqual(empty.map((s) => `${s.detail}:${s.rows.length}:${s.empty}`).join("|"),
-    "Sat 2026-11-21:0:No meetings today|0:0:No open questions|0:0:No active projects (:project files a note as one)|0:0:Inbox is empty");
+    "Sat 2026-11-21:0:No meetings today|0:0:No open questions|0:0:No active projects|0:0:Inbox is empty");
 });
 
 test("home: the key table and :home", () => {

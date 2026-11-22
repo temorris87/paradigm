@@ -55,8 +55,8 @@ Features in build order. "build feature" takes the first unchecked item.
 - [x] Hub line controls: change a hub's kind and a project's area; edit a person's
   organisation, job title and email; a meeting's or record's date and time; mark a question
   answered or reopen it; add and remove the people on a decision or question (done 2026-11-21)
-- [ ] Hub tab actions: an add button on every tab (note, person with a role, meeting,
+- [x] Hub tab actions: an add button on every tab (note, person with a role, meeting,
   attendee, decision, question), remove and change role on rows, empty tabs offer the
-  button; a + on each tree group; New person and New meeting on their pages
+  button; a + on each tree group; New person and New meeting on their pages (done 2026-11-21)
 - [ ] Trash view: trashed notes are kept for one week, then deleted for good; a Trash page
   lists them and restores a note (with the notes under it)

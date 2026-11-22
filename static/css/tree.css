@@ -86,3 +86,14 @@
 .tree__item--empty > .tree__row .tree__heading {
   color: var(--nord3);
 }
+
+/* The + on a group heading: a new note in that group (shown on hover, or while focused). */
+.tree__add {
+  margin-left: 0.15rem;
+  visibility: hidden;
+}
+
+.tree__row:hover .tree__add,
+.tree__item:focus > .tree__row .tree__add {
+  visibility: visible;
+}

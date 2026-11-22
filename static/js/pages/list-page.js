@@ -11,6 +11,7 @@
 //     rows(ctx, filters) -> [{ id, ... }]   what matches, in the order shown
 //     cells(row, ctx) -> [[className, text]]
 //     empty: "No one matches",
+//     add: { label: "New person", run() },  optional: a button in the bar (and the a key)
 //     onOpen(id), onLeave() });
 //   page.show(ctx)    draw (again) with the filters as they are
 //   page.focus()      the list
@@ -50,6 +51,13 @@ export class ListPage {
     });
     const bar = element("div", "list-page__bar");
     bar.append(heading, filters);
+    if (spec.add) {
+      const add = element("button", "list-page__add", `+ ${spec.add.label}`);
+      add.type = "button";
+      add.title = `${spec.add.label} (a)`;
+      add.addEventListener("click", () => spec.add.run());
+      bar.append(add);
+    }
     section.replaceChildren(bar, this.list);
   }
 
@@ -136,6 +144,7 @@ export class ListPage {
       case "last": return this.moveTo(last);
       case "open": return this.openRow(this.active);
       case "search": return this.searchBox.focus();
+      case "add": return this.spec.add?.run();
       case "leave": return this.spec.onLeave();
     }
   }

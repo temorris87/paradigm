@@ -53,7 +53,7 @@ test("hub tabs: Notes lists the whole subtree in tree order with depths", () => 
   const rows = tab("notes").rows({ tree: t }, t.get(2));
   assertEqual(rows.map((r) => `${r.title}:${r.depth}`).join(), "Budget:0,Kickoff:0,Minutes:1");
   assertEqual(rows[0].detail, dayOf(T));
-  assertEqual(tab("notes").empty(t.get(7)), "No notes in this resource yet (:child {title} makes one)");
+  assertEqual(tab("notes").empty(t.get(7)), "No notes in this resource yet");
 });
 
 test("hub tabs: Projects counts notes and takes the latest change inside", () => {
@@ -80,7 +80,8 @@ test("hub keys: one table, Tab never bound, modifiers left to the browser", () =
   assertEqual(hubAction({ key: "j" }), "next");
   assertEqual(hubAction({ key: "3" }), "tabNumber");
   assertEqual(hubAction({ key: "j", ctrlKey: true }), null);
-  assertEqual(hubAction({ key: "x" }), null);
+  assertEqual(hubAction({ key: "x" }), "remove");
+  assertEqual(hubAction({ key: "q" }), null);
 });
 
 test("note commands: :inarea and :hub, typed in full", () => {
@@ -170,7 +171,7 @@ test("hub page: tabs by h l and number, remembered per hub", () => withPage(({ s
   hub.show({ tree: tree() }, 1);
   hub.focus();
   assertEqual(tabLabels(section), "Notes*,People,Projects,Meetings,Decisions,Questions");
-  assertEqual(section.querySelector(".hub__empty").textContent, "No notes in this area yet (:child {title} makes one)");
+  assertEqual(section.querySelector(".hub__empty").textContent, "No notes in this area yet New note");
   press("l");
   assertEqual(tabLabels(section), "Notes,People*,Projects,Meetings,Decisions,Questions");
   press("l");
@@ -277,4 +278,43 @@ test("hub line: its buttons call the controls with the hub", () => {
   showHubLine(line, { tree: tree() }, tree().get(9), () => {}, controls);
   line.querySelector(".hub-line__set").click();
   assertEqual(calls[2].join(":"), "area:9", "a project with no area offers Set area");
+});
+
+test("hub tabs: every tab but Linked from has an add button; link rows can be changed", () => {
+  const withAdd = HUB_TABS.filter((each) => each.add).map((each) => each.key).join();
+  assertEqual(withAdd, "attendees,notes,people,projects,hubs,meetings,decisions,questions");
+  const rows = tab("projects").rows({ tree: tree() }, tree().get(1));
+  assertEqual(rows.map((row) => row.actions.map((action) => action.key).join("+")).join(), "remove,remove");
+});
+
+test("hub page: a adds on the tab, x and r work only on rows offering them", () => {
+  STORE.forEach((key) => localStorage.removeItem(key));
+  const page = document.createElement("main");
+  const line = document.createElement("div");
+  const section = document.createElement("section");
+  page.append(line, section);
+  document.body.append(page);
+  const calls = [];
+  const tabActions = { add: (key, hub) => calls.push(`add ${key} ${hub.id}`), row: (key, tabKey, hub, row) => calls.push(`${key} ${tabKey} ${row.id}`) };
+  try {
+    const hub = new HubPage({ page, line, section, onOpen() {}, onLeave() {}, tabActions });
+    hub.show({ tree: tree() }, 1);
+    hub.focus();
+    press("a");
+    press("x");
+    assertEqual(calls.join("|"), "add notes 1", "a Notes row has no Remove");
+    press("l");
+    press("l");
+    assertEqual(hub.tabs[hub.tabIndex].key, "projects");
+    press("x");
+    press("r");
+    assertEqual(calls.join("|"), "add notes 1|remove projects 2", "a project row has no role");
+    section.querySelector(".hub__add").click();
+    assertEqual(calls.pop(), "add projects 1");
+    section.querySelector("[data-action=remove]").click();
+    assertEqual(calls.pop(), "remove projects 2");
+  } finally {
+    page.remove();
+    STORE.forEach((key) => localStorage.removeItem(key));
+  }
 });

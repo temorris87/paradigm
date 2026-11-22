@@ -72,13 +72,13 @@ test("people tabs: People on a hub, Hubs and Notes on a person", () => {
   const rows = tab("people").rows(c, c.tree.get(2));
   assertEqual(rows.map((r) => `${r.title}|${r.detail}${r.muted ? "~" : ""}`).join(),
     "Jane Doe|Lead · Northwind · Data engineer,Ann Lee|SME · Acme~");
-  assertEqual(tab("people").empty({ kind: "resource" }), "No people on this resource yet (:addperson {name}, {role})");
+  assertEqual(tab("people").empty({ kind: "resource" }), "No people on this resource yet");
   const hubs = tab("hubs").rows(c, c.tree.get(10));
   assertEqual(hubs.map((r) => `${r.title}|${r.detail}${r.muted ? "~" : ""}`).join(),
     "Operations|Sponsor · Area,Rollout|Lead · Project,Old plan|Lead · Project · archived~");
-  assertEqual(tab("hubs").empty(c.tree.get(13)), "Cy Young is on no hubs yet (:addperson Cy Young on a hub)");
+  assertEqual(tab("hubs").empty(c.tree.get(13)), "Cy Young is on no hubs yet");
   assertEqual(tab("notes").rows(c, c.tree.get(10)).map((r) => r.title).join(), "1:1 notes");
-  assertEqual(tab("notes").empty(c.tree.get(13)), "No notes under Cy Young yet (:child {title} makes one)");
+  assertEqual(tab("notes").empty(c.tree.get(13)), "No notes under Cy Young yet");
 });
 
 test("people: filters combine; a hub filter on an area includes its projects", () => {
@@ -225,7 +225,7 @@ test("people page: lists, filters by the dropdowns and the name box", () => with
   assertEqual(titles(section), "Jane Doe");
   name.value = "zzz";
   name.dispatchEvent(new Event("input"));
-  assertEqual(section.querySelector(".list-page__empty").textContent, "No one matches (:newperson {name} adds someone)");
+  assertEqual(section.querySelector(".list-page__empty").textContent, "No one matches");
 }));
 
 test("people page: keys move, open, reach the name box and leave", () => withPeoplePage(({ section, page, opened, left }) => {

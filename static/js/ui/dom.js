@@ -15,8 +15,9 @@ export function uniqueId(prefix) {
   return `${prefix}-${counter}`;
 }
 
-/** Puts the focus back where it was, if that element is still in the page. */
+/** Puts the focus back where it was, if that element is still in the page and shown. */
 export function restoreFocus(node, fallback) {
-  if (node?.isConnected && node !== document.body && typeof node.focus === "function") node.focus();
+  const shown = node?.isConnected && node !== document.body && node.getClientRects().length > 0;
+  if (shown && typeof node.focus === "function") node.focus();
   else fallback?.();
 }

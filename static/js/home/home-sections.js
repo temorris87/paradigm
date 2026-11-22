@@ -55,7 +55,7 @@ export const HOME_SECTIONS = [
         ],
       })),
     ]),
-    empty: "No active projects (:project files a note as one)",
+    empty: "No active projects",
   },
   {
     key: "inbox",

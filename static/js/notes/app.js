@@ -16,14 +16,14 @@
 //   await app.start();
 import { exportNote } from "../export/export.js";
 import { HomePage } from "../home/home-page.js";
-import { hubLineControls } from "../hubs/hub-actions.js";
+import { hubLineControls, hubTabActions, newMeetingDialog } from "../hubs/hub-actions.js";
 import { HubPage } from "../hubs/hub-page.js";
 import { showBreadcrumb } from "./breadcrumb.js";
 import { registerNoteCommands, runNoteCommand } from "./commands.js";
 import { headingLine } from "./headings.js";
 import { groupOf, isArchived, topNoteOf } from "./hub-groups.js";
 import { NoteImages } from "./images.js";
-import { goToNote, openNoteMenu } from "./note-actions.js";
+import { goToNote, newNoteDialog, openNoteMenu } from "./note-actions.js";
 import { LinkIndex } from "./link-index.js";
 import { NoteSession } from "./note-session.js";
 import { resolveLink, splitTarget } from "./resolve.js";
@@ -34,7 +34,8 @@ import { meetingsPage } from "../meetings/meetings-page.js";
 import { People } from "../people/people-model.js";
 import { peoplePage } from "../people/people-page.js";
 import { Records } from "../records/records-model.js";
-import { TreeView } from "./tree-view.js";
+import { TreeView, addLabel } from "./tree-view.js";
+import { newPersonDialog } from "../people/people-page.js";
 
 const UNSAVED = "E37: No write since last change (:w to save, or ! to drop the changes)";
 
@@ -67,20 +68,23 @@ export class NotesApp {
       // The drawer closes even when the note can't be opened, so the editor's message shows.
       onOpen: (id) => this.open(id).finally(() => this.navigator.hide()),
       onLeave: () => this.navigator.hide(),
+      onAdd: (group) => this.guard(this.newInGroup(group)),
+      onAddUnder: (id) => this.guard(newNoteDialog(this, id, { heading: `New note under "${this.tree.get(id).title}"` })),
     });
     this.hubPage = new HubPage({
       ...hub,
       onOpen: (id) => this.guard(this.openFromHub(id)),
       onLeave: () => this.editor.focus(),
       controls: hubLineControls(this),
+      tabActions: hubTabActions(this),
     });
     const onPage = { onOpen: (id) => this.guard(this.open(id)), onLeave: () => this.leaveView() };
     this.views = new PageViews({
       main: hub.page,
       pages: {
         home: new HomePage(home.section, { ...onPage, today }),
-        people: peoplePage(people.section, onPage),
-        meetings: meetingsPage(meetings.section, { ...onPage, today }),
+        people: peoplePage(people.section, { ...onPage, onAdd: () => this.guard(newPersonDialog(this)) }),
+        meetings: meetingsPage(meetings.section, { ...onPage, today, onAdd: () => this.guard(newMeetingDialog(this)) }),
       },
       history,
       noteUrl: () => noteUrl(this.currentId),
@@ -280,6 +284,26 @@ export class NotesApp {
     await this.refreshTree();
     await this.open(note.id);
     this.editor.showMessage(`"${note.title}" made at ${this.tree.pathText(note.id)}`);
+  }
+
+  /** Makes a top-level note filed as kind (a project, area or resource) and opens it; areaId
+   * puts a new project in an area. From a dialog: errors are thrown for it to show. */
+  async createFiled(kind, title, { areaId = null } = {}) {
+    if (!(await this.saveBeforeSwitching())) throw new Error("This note's changes could not be saved first");
+    const made = await this.api.create(null, title);
+    await this.api.setKind(made.id, kind);
+    if (areaId !== null) await this.api.setArea(made.id, areaId);
+    await this.refreshTree();
+    await this.open(made.id);
+    const where = areaId === null ? groupLabel(this.tree, made.id) : `${groupLabel(this.tree, made.id)}, in ${this.tree.get(areaId).title}`;
+    this.editor.showMessage(`"${made.title}" made in ${where}`);
+  }
+
+  /** The + on a tree group: a new note there (a person in People). */
+  newInGroup(group) {
+    if (group.kind === "person") return newPersonDialog(this);
+    return newNoteDialog(this, null, { heading: addLabel(group), kind: group.kind,
+      label: "Title" });
   }
 
   async renameCommand(title) {

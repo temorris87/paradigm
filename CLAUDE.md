@@ -120,8 +120,9 @@ static/
                          (wiring; data-hub-size on .app__note), hub-line.js ("Project · Area:
                          X", "Person · Northwind · ...", "Decision · ... · from Kickoff"),
                          hub-line-controls.js (the line's buttons: ▾ ✎ + ×, they only report),
-                         hub-actions.js (what the line's buttons do: menus, pickers, dialogs,
-                         then the same code as the ex commands; personDialog), hub-panel.js (tabs + one-focus-stop
+                         hub-actions.js (what the line's and the tabs' buttons do: menus,
+                         pickers, dialogs, then the same code as the ex commands;
+                         personDialog, newMeetingDialog, newRecordDialog), hub-panel.js (tabs + one-focus-stop
                          listbox), hub-tabs.js (THE hub tab table: Notes, People, an area's
                          Projects, a person's Hubs, Meetings, Decisions, Questions, a resource's
                          Linked from; a meeting's Attendees; pure), hub-areas.js (project
@@ -237,7 +238,10 @@ Update this section when the structure changes.
 - PARA hubs: only top-level notes are hubs (`notes.kind`: project, area, resource; NULL is the
   Inbox). `:project` etc. on a nested note moves it to the top; moving a hub under a note
   unfiles it. Groups never appear in paths or links, and top-level titles stay unique.
-  The tree's top level is the four groups (folded state remembered per browser).
+  The tree's top level is the four groups (folded state remembered per browser). Each group
+  but the Archive has a + on its heading (a new project, area, ... or person); `a` in the
+  tree does the same on a group, and makes a note under the one it is on. The People and
+  Meetings pages have New person / New meeting buttons (`a` too).
 - Archive: `:archive` on a top-level note archives it with everything under it (only
   `archived_at` on the top-level note; a note is archived when its top note is). It moves to
   the Archive group (last, folded by default) and keeps its kind and area link, so `:restore`
@@ -245,7 +249,9 @@ Update this section when the structure changes.
   still work but are drawn muted; no project goes into an archived area.
 - Hub page: a hub shows a hub line under the breadcrumb and a tabbed section panel under the
   note (Notes: the whole subtree; Projects on areas). `:hub` or Tab reaches the panel; its keys
-  live in `static/js/hubs/hub-keys.js`. `-`/`+` size it (collapsed, open, expanded; expanded
+  live in `static/js/hubs/hub-keys.js`. Each tab that can grow has an add button (`add` in
+  its `hub-tabs.js` row; also in an empty tab, and the `a` key); rows that are links (a
+  person on a hub, an attendee, a project in an area) have Role… / Remove (`r`, `x`). `-`/`+` size it (collapsed, open, expanded; expanded
   hides the editor). New record types become new rows in `hub-tabs.js` (at the end, so the
   number keys of the others stay). `:inarea {area}` puts
   a project in an area; a note that stops being a project or area loses the link.

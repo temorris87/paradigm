@@ -15,8 +15,18 @@ export async function newMeetingCommand(app, arg) {
   if (!hub) throw new Error("E: meetings go in a hub: open a project, an area or a resource (or a note in one)");
   const { day, time, rest } = splitWhen(arg, app.today());
   if (!rest) throw new Error("E471: Argument required: :meeting [{date}] [{time}] {title}");
-  if (!(await app.saveBeforeSwitching())) return;
-  const { note } = await app.meetingsApi.create(hub.id, rest, day ?? localToday(app), time ?? "");
+  await makeMeeting(app, hub, rest, day ?? localToday(app), time ?? "");
+}
+
+/** Makes a meeting in a hub and opens it; attendeeIds attend it from the start. strict (from a
+ * dialog): an open note that can't be saved first is an error to show there. */
+export async function makeMeeting(app, hub, title, day, time, { attendeeIds = [], strict = false } = {}) {
+  if (!(await app.saveBeforeSwitching())) {
+    if (strict) throw new Error("This note's changes could not be saved first");
+    return;
+  }
+  const { note } = await app.meetingsApi.create(hub.id, title, day, time);
+  if (attendeeIds.length) await app.meetingsApi.attend(note.id, attendeeIds);
   await app.refreshTree();
   await app.open(note.id);
   app.editor.showMessage(`"${note.title}" made in ${hub.title}`);
@@ -44,7 +54,11 @@ export async function attendeeCommand(app, arg, bang) {
   const id = currentMeeting(app);
   const names = splitNames(arg);
   if (!names.length) throw new Error("E471: Argument required: :attendee {name}, {name}...");
-  const { people, made } = await peopleNamed(app, names, bang, ":attendee");
+  await addAttendees(app, id, await peopleNamed(app, names, bang, ":attendee"));
+}
+
+/** They attend a meeting ({ people, made } as peopleNamed gives them). */
+export async function addAttendees(app, id, { people, made }) {
   const { added } = await app.meetingsApi.attend(id, people.map((person) => person.id));
   await app.refreshTree();
   const title = (personId) => people.find((person) => person.id === personId).title;
@@ -62,6 +76,10 @@ export async function dropAttendeeCommand(app, arg) {
   const person = attendeesOf(app.tree, app.meetings, id).find((each) => titleKey(each.title) === titleKey(name))
     ?? findPerson(app.tree, name);
   if (!person) throw new Error(`E: no person "${name}"`);
+  await dropAttendee(app, id, person);
+}
+
+export async function dropAttendee(app, id, person) {
   await app.meetingsApi.unattend(id, person.id);
   await app.refreshTree();
   app.editor.showMessage(`${person.title} is off ${app.tree.get(id).title}`);

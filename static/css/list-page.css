@@ -117,3 +117,23 @@
   padding: 0.5rem;
   color: var(--nord3);
 }
+
+/* The page's New button (New person, New meeting). */
+.list-page__add {
+  align-self: flex-end;
+  padding: 0.15rem 0.7rem;
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  background: none;
+  color: var(--nord9);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.list-page__add:hover,
+.list-page__add:focus-visible {
+  outline: none;
+  border-color: var(--nord9);
+  color: var(--nord6);
+}

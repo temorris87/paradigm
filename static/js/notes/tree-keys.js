@@ -9,6 +9,7 @@ export const TREE_KEYS = [
   { keys: ["g", "Home"], action: "first", help: "first note" },
   { keys: ["G", "End"], action: "last", help: "last note" },
   { keys: ["Enter"], action: "open", help: "open the note in the editor" },
+  { keys: ["a"], action: "add", help: "on a group: a new project, area, person...; on a note: a new note under it" },
   { keys: ["Escape"], action: "editor", help: "back to the editor" },
 ];
 

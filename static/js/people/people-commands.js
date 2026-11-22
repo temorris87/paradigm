@@ -11,7 +11,16 @@ const FIELD_NAMES = { org: "Organisation", job: "Job title", email: "Email" };
 export async function newPersonCommand(app, arg) {
   const name = arg.trim();
   if (!name) throw new Error("E471: Argument required: the person's name");
-  if (!(await app.saveBeforeSwitching())) return;
+  await makePerson(app, name);
+}
+
+/** Adds a person to People and opens their note. strict (from a dialog): an open note that
+ * can't be saved first is an error to show there. */
+export async function makePerson(app, name, { strict = false } = {}) {
+  if (!(await app.saveBeforeSwitching())) {
+    if (strict) throw new Error("This note's changes could not be saved first");
+    return;
+  }
   const { note } = await app.peopleApi.create(name);
   await app.refreshTree();
   await app.open(note.id);
@@ -24,19 +33,24 @@ export async function addPersonCommand(app, arg, bang) {
   const { name, role } = splitNameRole(arg);
   if (!name) throw new Error("E471: Argument required: :addperson {name}, {role}");
   let person = findPerson(app.tree, name);
-  let made = "";
+  let made = 0;
   if (!person) {
     if (findOtherNote(app, name)) throw new Error(`E: "${name}" is a note, not a person`);
     if (!bang) throw new Error(`E: no person "${name}" (:addperson! ${arg.trim()} makes them)`);
     const { note } = await app.peopleApi.create(name);
     person = note;
-    made = " (new in People)";
+    made = 1;
   }
+  await linkPerson(app, hub, person, role, made);
+}
+
+/** Puts a person on a hub with a role (again: changes the role). made: they are new in People. */
+export async function linkPerson(app, hub, person, role, made = 0) {
   const { created } = await app.peopleApi.link(hub.id, person.id, role);
   await app.refreshTree();
   const as = role ? ` as ${role}` : "";
   app.editor.showMessage(created
-    ? `${person.title} is on ${hub.title}${as}${made}`
+    ? `${person.title} is on ${hub.title}${as}${made ? " (new in People)" : ""}`
     : `${person.title}'s role on ${hub.title} is now ${role || "none"}`);
 }
 
@@ -47,6 +61,11 @@ export async function dropPersonCommand(app, arg) {
   if (!name) throw new Error("E471: Argument required: the person to take off this hub");
   const person = findPerson(app.tree, name);
   if (!person) throw new Error(`E: no person "${name}"`);
+  await unlinkPerson(app, hub, person);
+}
+
+/** Takes a person off a hub (they stay in People). */
+export async function unlinkPerson(app, hub, person) {
   await app.peopleApi.unlink(hub.id, person.id);
   await app.refreshTree();
   app.editor.showMessage(`${person.title} is off ${hub.title}`);

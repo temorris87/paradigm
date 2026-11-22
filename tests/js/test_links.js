@@ -57,7 +57,7 @@ test("links: the Linked from tab on resources, last", () => {
     "to Colours · Pilot · 2026-11-21 | Pilot · 2026-11-20 | 2026-11-22 · archived");
   assertTrue(rows[2].muted && !rows[0].muted);
   assertEqual(linked.rows({ tree: t, links: new Links(LINKS) }, t.get(9)).length, 0);
-  assertEqual(linked.empty(t.get(9)), "Nothing links to Second yet ([[Second]] in any note)");
+  assertEqual(linked.empty(t.get(9)), "Nothing links to Second yet. Write [[Second]] in any note.");
 });
 
 test("links: the hub page passes the links to the tab", () => {

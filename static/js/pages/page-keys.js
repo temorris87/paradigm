@@ -10,6 +10,7 @@ export const PAGE_KEYS = [
   { scope: "list", keys: ["G", "End"], action: "last", help: "last row" },
   { scope: "list", keys: ["Enter"], action: "open", help: "open the row's note" },
   { scope: "list", keys: ["/"], action: "search", help: "go to the search box" },
+  { scope: "list", keys: ["a"], action: "add", help: "the page's New button (New person, New meeting)" },
   { scope: "list", keys: ["Escape"], action: "leave", help: "back to the note" },
   { scope: "search", keys: ["Enter", "Escape", "ArrowDown"], action: "list", help: "back to the list" },
 ];

@@ -262,3 +262,57 @@
 .hub-line__mini {
   margin-left: -0.2rem;
 }
+
+/* The tab's add button (hub-tabs.js add) in the bar, and again in an empty tab. */
+.hub__add {
+  flex: none;
+  padding: 0.1rem 0.6rem;
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  background: none;
+  color: var(--nord9);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.hub__add[hidden] {
+  display: none;
+}
+
+.hub__add:hover {
+  border-color: var(--nord9);
+  color: var(--nord6);
+}
+
+.hub__add--empty {
+  margin-left: 0.5rem;
+}
+
+/* A row's own buttons (Role…, Remove): shown on the active or hovered row. */
+.hub__row-actions {
+  display: none;
+  flex: none;
+  gap: 0.25rem;
+}
+
+.hub__row:hover .hub__row-actions,
+.hub__row[aria-selected="true"] .hub__row-actions {
+  display: flex;
+}
+
+.hub__row-action {
+  padding: 0 0.45rem;
+  border: 1px solid var(--nord3);
+  border-radius: 3px;
+  background: var(--nord1);
+  color: var(--nord4);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.hub__row-action:hover {
+  border-color: var(--nord9);
+  color: var(--nord6);
+}

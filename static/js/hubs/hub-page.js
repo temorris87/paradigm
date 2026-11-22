@@ -4,7 +4,9 @@
 // tab table, and tells the page which note to open; it never opens notes itself.
 //
 //   const hub = new HubPage({ page: mainElement, line, section, onOpen(id), onLeave(),
-//                             controls });   the hub line's buttons (hub-actions.js)
+//                             controls,      the hub line's buttons (hub-actions.js)
+//                             tabActions }); { add(tabKey, hub), row(key, tabKey, hub, row) }:
+//                                            the panel's add and row buttons (hub-actions.js)
 //   hub.show({ tree, people, meetings, records, links }, currentId)   after every redraw
 //   hub.focus()                  :hub (opens a collapsed panel first)
 //   hub.hub                      the open hub (person, meeting, decision, question), or null
@@ -24,9 +26,10 @@ import { loadSize, loadTabs, saveSize, saveTabs, stepSize } from "./hub-size.js"
 import { tabsFor } from "./hub-tabs.js";
 
 export class HubPage {
-  constructor({ page, line, section, onOpen, onLeave, controls = NO_CONTROLS }) {
+  constructor({ page, line, section, onOpen, onLeave, controls = NO_CONTROLS, tabActions = { add() {}, row() {} } }) {
     this.page = page;
     this.controls = controls;
+    this.tabActions = tabActions;
     this.line = line;
     this.section = section;
     this.onOpen = onOpen;
@@ -48,6 +51,8 @@ export class HubPage {
       onTab: (index) => this.selectTab(index),
       onRow: (index) => this.openRow(index),
       onSize: (size) => this.setSize(size),
+      onAdd: () => this.add(),
+      onRowAction: (index, key) => this.rowAction(index, key),
     });
     this.apply();
   }
@@ -105,6 +110,7 @@ export class HubPage {
       tabIndex: this.tabIndex,
       rows: this.rows,
       empty: tab.empty(hub),
+      add: tab.add?.label ?? null,
       active: this.active,
       size: this.size,
     });
@@ -124,6 +130,9 @@ export class HubPage {
       case "first": return this.moveTo(0);
       case "last": return this.moveTo(last);
       case "open": return this.openRow(this.active);
+      case "add": return this.add();
+      case "remove":
+      case "role": return this.rowAction(this.active, action);
       case "previousTab": return this.selectTab(this.tabIndex - 1);
       case "nextTab": return this.selectTab(this.tabIndex + 1);
       case "tabNumber": return this.selectTab(Number(event.key) - 1);
@@ -140,6 +149,20 @@ export class HubPage {
     if (index < 0) return;
     this.active = index;
     this.panel.markActive(index);
+  }
+
+  add() {
+    const tab = this.tabs[this.tabIndex];
+    if (tab?.add) this.tabActions.add(tab.key, this.hub);
+  }
+
+  /** A row's button, or its key: only when the row offers it. */
+  rowAction(index, key) {
+    const row = this.rows[index];
+    if (!row?.actions?.some((each) => each.key === key)) return;
+    this.active = index;
+    this.panel.markActive(index);
+    this.tabActions.row(key, this.tabs[this.tabIndex].key, this.hub, row);
   }
 
   openRow(index) {

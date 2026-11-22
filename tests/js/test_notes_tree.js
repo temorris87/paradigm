@@ -1,9 +1,9 @@
 // The note hierarchy (pure) and the sidebar tree in a real page, with its keys.
 import { TREE_KEYS, treeAction } from "../../static/js/notes/tree-keys.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
-import { TreeView } from "../../static/js/notes/tree-view.js";
+import { TreeView, addLabel } from "../../static/js/notes/tree-view.js";
 import { showBreadcrumb } from "../../static/js/notes/breadcrumb.js";
-import { ARCHIVE_GROUP, HUB_GROUPS, groupOf, hubsIn, isArchived } from "../../static/js/notes/hub-groups.js";
+import { ARCHIVE_GROUP, HUB_GROUPS, NAV_GROUPS, groupOf, hubsIn, isArchived } from "../../static/js/notes/hub-groups.js";
 import { NOTE_COMMANDS, runNoteCommand } from "../../static/js/notes/commands.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
@@ -164,7 +164,7 @@ test("hub groups: four in order, notes grouped by their top-level note", () => {
 
 test("tree view: groups with counts, hubs under them, empty ones marked", () => withTree(({ ul, view }) => {
   view.show(new NoteTree(FILED), 3);
-  assertEqual(headings(ul), "▾Inbox1,▾Projects2,▾Areas1,Resources0,People0,Archive0");
+  assertEqual(headings(ul), "▾Inbox+1,▾Projects+2,▾Areas+1,Resources+0,People+0,Archive0");
   assertEqual(titles(ul), "Welcome,Acme,Beta,Health");
   assertTrue(ul.querySelector('[data-group="resource"]').classList.contains("tree__item--empty"));
   assertEqual(ul.querySelector('[data-id="1"]').getAttribute("aria-level"), "2");
@@ -246,7 +246,7 @@ test("hub groups: an archived hub and its notes are in the Archive, not their gr
 test("tree view: the Archive is last, folded by default, its hubs labelled with their kind", () => withTree(({ ul, view }) => {
   const tree = new NoteTree(ARCHIVED);
   view.show(tree, 3);
-  assertEqual(headings(ul), "▾Inbox1,▾Projects2,▾Areas1,Resources0,People0,▸Archive2");
+  assertEqual(headings(ul), "▾Inbox+1,▾Projects+2,▾Areas+1,Resources+0,People+0,▸Archive2");
   assertEqual(titles(ul), "Welcome,Acme,Beta,Health", "folded");
   view.setOpen("group:archive", true);
   assertEqual(titles(ul), "Welcome,Acme,Beta,Health,Gamma,Scratch");
@@ -279,4 +279,29 @@ test("note commands: :arch[ive] and :resto[re]", () => {
   assertEqual(calls.join(), "archive,restore");
   assertEqual(NOTE_COMMANDS.find((c) => c.name === "archive").min, 4);
   assertEqual(NOTE_COMMANDS.find((c) => c.name === "restore").min, 5);
+});
+
+test("tree view: + on a group (not the Archive) and a add there; a on a note adds under it", () => {
+  STORE.forEach((key) => localStorage.removeItem(key));
+  const ul = document.createElement("ul");
+  document.body.append(ul);
+  const calls = [];
+  const view = new TreeView(ul, { onOpen() {}, onLeave() {}, onAdd: (group) => calls.push(group.key), onAddUnder: (id) => calls.push(id) });
+  try {
+    view.show(new NoteTree(FILED), 1);
+    assertEqual(ul.querySelectorAll(".tree__add").length, NAV_GROUPS.length - 1);
+    ul.querySelector("[data-group=project] .tree__add").click();
+    view.focus();
+    press(ul, "a");
+    view.moveTo("group:area");
+    press(ul, "a");
+    view.moveTo("group:archive");
+    press(ul, "a");
+    assertEqual(calls.join(), "project,1,area");
+    assertEqual(addLabel(NAV_GROUPS[1]), "New project");
+    assertEqual(addLabel(NAV_GROUPS[0]), "New note");
+  } finally {
+    ul.remove();
+    STORE.forEach((key) => localStorage.removeItem(key));
+  }
 });

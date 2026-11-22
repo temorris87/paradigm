@@ -21,13 +21,30 @@ export async function newRecordCommand(app, kind, arg) {
   const meeting = app.tree.get(id)?.kind === "meeting" ? app.tree.get(id) : meetingOf(app.tree, id);
   const { day, rest } = splitDay(arg, app.today());
   if (!rest) throw new Error(`E471: Argument required: :${kind} [{date}] {title}`);
-  const meetingDay = meeting ? app.meetings.get(meeting.id).day : "";
-  if (!(await app.saveBeforeSwitching())) return;
-  const parent = meeting ?? hub;
-  const { note } = await app.recordsApi.create(parent.id, kind, rest, day ?? (meetingDay || localDay(app.today())));
+  await makeRecord(app, kind, meeting ?? hub, rest, day ?? defaultDay(app, meeting));
+}
+
+/** The day a new record gets: its meeting's, else today. */
+export function defaultDay(app, meeting) {
+  return (meeting ? app.meetings.get(meeting.id).day : "") || localDay(app.today());
+}
+
+/**
+ * Makes a decision or question under parent (a hub, or a meeting: then it came from it) and
+ * opens it; peopleIds are on it from the start. strict (from a dialog): an open note that can't
+ * be saved first is an error to show there.
+ */
+export async function makeRecord(app, kind, parent, title, day, { peopleIds = [], strict = false } = {}) {
+  if (!(await app.saveBeforeSwitching())) {
+    if (strict) throw new Error("This note's changes could not be saved first");
+    return;
+  }
+  const { note } = await app.recordsApi.create(parent.id, kind, title, day);
+  if (peopleIds.length) await app.recordsApi.involve(note.id, peopleIds);
   await app.refreshTree();
   await app.open(note.id);
-  const from = meeting ? `from ${shortTitle(meeting, app.meetings.get(meeting.id))}` : `in ${hub.title}`;
+  const meeting = parent.kind === "meeting" ? parent : null;
+  const from = meeting ? `from ${shortTitle(meeting, app.meetings.get(meeting.id))}` : `in ${parent.title}`;
   app.editor.showMessage(`${capital(WHAT[kind])} "${note.title}" made ${from}`);
 }
 

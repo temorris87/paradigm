@@ -2,13 +2,13 @@
 // note. A ListPage (static/js/pages/list-page.js) told what to show. today() is asked on each
 // draw, so "this week" moves on with the clock.
 //
-//   const page = meetingsPage(sectionElement, { onOpen(id), onLeave(), today? });
+//   const page = meetingsPage(sectionElement, { onOpen(id), onLeave(), onAdd(), today? });
 //   page.show({ tree, people, meetings }); page.focus();
 import { ListPage } from "../pages/list-page.js";
 import { PERIODS, whenText } from "./meeting-days.js";
 import { attendeesOf, filterMeetings, meetingFilterHubs, shortTitle } from "./meetings-model.js";
 
-export function meetingsPage(section, { onOpen, onLeave, today = () => new Date() }) {
+export function meetingsPage(section, { onOpen, onLeave, onAdd = () => {}, today = () => new Date() }) {
   return new ListPage(section, {
     name: "meetings",
     heading: "Meetings",
@@ -30,7 +30,8 @@ export function meetingsPage(section, { onOpen, onLeave, today = () => new Date(
       ["meetings__hub", hub.title],
       ["meetings__attendees", attendeesOf(tree, meetings, note.id).map((person) => person.title).join(", ")],
     ],
-    empty: "No meetings match (:meeting {title} on a hub makes one)",
+    empty: "No meetings match",
+    add: { label: "New meeting", run: onAdd },
     onOpen,
     onLeave,
   });
