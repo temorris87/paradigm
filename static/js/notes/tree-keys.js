@@ -8,8 +8,8 @@ export const TREE_KEYS = [
   { keys: ["h", "ArrowLeft"], action: "collapse", help: "hide the notes under it, or go to its parent" },
   { keys: ["g", "Home"], action: "first", help: "first note" },
   { keys: ["G", "End"], action: "last", help: "last note" },
-  { keys: ["Enter"], action: "open", help: "open the note in the editor" },
-  { keys: ["a"], action: "add", help: "on a group: a new project, area, person...; on a note: a new note under it" },
+  { keys: ["Enter"], action: "open", help: "open the note in the editor; on a folder, its page" },
+  { keys: ["a"], action: "add", help: "on a group: a new project, area, person...; on a note: a new note under it; on a folder (or Resources): a new note or folder in it" },
   { keys: ["Escape"], action: "editor", help: "back to the editor" },
 ];
 

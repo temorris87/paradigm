@@ -56,7 +56,7 @@ class FileRepository:
         with self._db.transaction() as conn:
             hub = top_note_row(conn, note_id)
             if hub["id"] != note_id or hub["is_person"] or hub["is_template"] or hub["kind"] not in HUB_KINDS:
-                raise NotAHub("A folder is linked to a project, an area or a resource")
+                raise NotAHub("A folder is linked to a project or an area")
             taken = conn.execute("SELECT 1 FROM file_folders WHERE note_id = ? AND path = ?", (note_id, str(path))).fetchone()
             if taken:
                 raise FolderLinked("That folder is linked here already")

@@ -1,7 +1,7 @@
 import { HUB_KEYS, hubAction } from "../../static/js/hubs/hub-keys.js";
 import { archivedProjectsIn, areaOf, projectsIn } from "../../static/js/hubs/hub-areas.js";
 import { HubPage } from "../../static/js/hubs/hub-page.js";
-import { HUB_SECTIONS, dayOf, sectionsFor } from "../../static/js/hubs/hub-sections.js";
+import { DASHBOARD_LAYOUT, HUB_SECTIONS, dashboardFor, dayOf, sectionsFor } from "../../static/js/hubs/hub-sections.js";
 import { fieldsFor } from "../../static/js/hubs/fields.js";
 import { showHubLine } from "../../static/js/hubs/hub-line.js";
 import { dueText, isOverdue, statusText } from "../../static/js/hubs/project-facts.js";
@@ -28,7 +28,7 @@ const TODAY = new Date(2026, 10, 22);
 
 test("hubs: only top-level notes with a kind are hubs", () => {
   const t = tree();
-  assertEqual([1, 2, 3, 7, 8].map((id) => isHub(t, id)).join(), "true,true,false,true,false");
+  assertEqual([1, 2, 3, 7, 8].map((id) => isHub(t, id)).join(), "true,true,false,false,false", "a resource is a plain note");
 });
 
 test("hubs: a project's area, an area's projects; a non-area target counts as none", () => {
@@ -45,7 +45,7 @@ test("hub sections: each kind's sections, top to bottom", () => {
   const keys = (kind) => sectionsFor({ kind }).map((each) => each.key).join();
   assertEqual(keys("project"), "plan,tasks,questions,decisions,meetings,files,notes,people");
   assertEqual(keys("area"), "projects,tasks,questions,decisions,meetings,files,templates,notes,people");
-  assertEqual(keys("resource"), "notes,files,tasks,questions,decisions,meetings,people,linked");
+  assertEqual(keys("resource"), "tasks,files", "a resource: as a plain note");
   assertEqual(keys("meeting"), "tasks,questions,decisions,files");
   assertEqual(keys("person"), "waiting,active,archived,backlinks");
   assertEqual(keys(null), "tasks,files", "a plain note: its tasks and files");
@@ -68,8 +68,9 @@ test("hub sections: Notes lists the whole subtree in tree order with depths", ()
   const t = tree();
   const rows = section("notes").rows({ tree: t }, t.get(2));
   assertEqual(rows.map((r) => `${r.title}:${r.depth}`).join(), "Budget:0,Kickoff:0,Minutes:1");
-  assertEqual(rows[0].detail, "21 Nov");
-  assertEqual(section("notes").empty(t.get(7)), "No notes in this resource yet");
+  assertEqual(rows[0].date, "21 Nov", "the day it changed, in the date column");
+  assertEqual(rows[0].detail, "");
+  assertEqual(section("notes").empty(t.get(1)), "No notes in this area yet");
   assertEqual(dayOf(""), "");
   assertEqual(dayOf("nonsense"), "");
 });
@@ -144,16 +145,18 @@ const press = (key) => document.activeElement.dispatchEvent(new KeyboardEvent("k
 const rowTitles = (section) => [...section.querySelectorAll(".hub__title")].map((n) => n.textContent).join(",");
 const headings = (section) => [...section.querySelectorAll(".hub__heading")]
   .map((n) => `${n.querySelector(".hub__label").textContent}${n.getAttribute("aria-expanded") === "false" ? "+" : ""}`).join(",");
+const empties = (section) => [...section.querySelectorAll(".hub__empty-label")].map((n) => n.textContent).join(",");
 const active = (section) => {
   const node = section.querySelector("[role=option][aria-selected=true]");
-  return node?.querySelector(".hub__title, .hub__label")?.textContent ?? node?.textContent;
+  return node?.querySelector(".hub__title, .hub__label, .hub__empty-label")?.textContent ?? node?.textContent;
 };
 const rows = (line) => [...line.querySelectorAll(".hub-line__row")].map((row) => row.textContent);
 
 test("hub page: shows only on a hub, a person or a meeting; labels the text box", () => withPage(({ page, line, main, section, hub }) => {
   hub.show({ tree: tree() }, 8);
   assertTrue(!section.hidden && line.hidden, "an Inbox note has no card, only its Tasks");
-  assertEqual(headings(section), "Tasks");
+  assertEqual(headings(section), "", "an empty section has no heading of its own");
+  assertEqual(empties(section), "Tasks", "it is on the Nothing yet line");
   assertEqual(page.dataset.page, "note");
   assertEqual(main.textContent, "Notes");
   hub.show({ tree: tree() }, 3);
@@ -163,13 +166,14 @@ test("hub page: shows only on a hub, a person or a meeting; labels the text box"
   assertTrue(!section.hidden && !line.hidden);
   assertEqual(page.dataset.page, "project");
   assertEqual(main.querySelector(".field-label__name").textContent, "Outcome");
-  assertEqual(headings(section), "Tasks,Questions,Decisions,Meetings,Notes,People");
+  assertEqual(headings(section), "Notes");
+  assertEqual(empties(section), "Tasks,Questions,Decisions,Meetings,People", "the empty ones, in their order, on one line");
   assertEqual(rows(line)[0], "Project▾·Active▾·Set due date·Area: Operations✎·Set time code");
   assertEqual(rows(line)[1], "People:no one yet+ Add person");
   hub.show({ tree: tree() }, 1);
   assertEqual(rows(line)[0], "Area▾·1 live project·1 on hold·0 people·Set time code");
   hub.show({ tree: tree() }, 7);
-  assertEqual(rows(line).join("|"), "Resource▾");
+  assertTrue(line.hidden, "a resource has no card: it is a plain note");
   hub.show({ tree: tree(), today: TODAY }, 6);
   assertEqual(rows(line)[0], "Project▾·On hold▾·overdue since Sun 1 Nov·Area: Operations✎·Set time code");
   assertTrue(line.querySelector(".hub-line__when--late") !== null);
@@ -187,18 +191,13 @@ test("hub page: j k g G move over headings and rows, Enter opens, Escape leaves"
   hub.show({ tree: tree() }, 2);
   hub.focus();
   assertEqual(rowTitles(section), "Budget,Kickoff,Minutes");
-  assertEqual(active(section), "Tasks");
-  press("}");
-  press("}");
-  press("}");
-  press("}");
   assertEqual(active(section), "Notes");
   press("j");
   assertEqual(active(section), "Budget");
   press("j");
   press("j");
   press("j");
-  assertEqual(active(section), "People", "j goes on to the next heading");
+  assertEqual(active(section), "Tasks", "j goes on to the empty sections' line");
   press("k");
   assertEqual(active(section), "Minutes");
   press("{");
@@ -206,11 +205,7 @@ test("hub page: j k g G move over headings and rows, Enter opens, Escape leaves"
   press("G");
   assertEqual(active(section), "People");
   press("g");
-  assertEqual(active(section), "Tasks");
-  press("}");
-  press("}");
-  press("}");
-  press("}");
+  assertEqual(active(section), "Notes");
   press("j");
   press("Enter");
   assertEqual(opened.join(), "5");
@@ -221,20 +216,19 @@ test("hub page: j k g G move over headings and rows, Enter opens, Escape leaves"
 test("hub page: Enter or z on a heading folds it; folds are remembered per kind", () => withPage(({ section, hub }) => {
   hub.show({ tree: tree() }, 2);
   hub.focus();
-  press("}");
-  press("}");
-  press("}");
-  press("}");
   press("Enter");
-  assertEqual(headings(section), "Tasks,Questions,Decisions,Meetings,Notes+,People");
+  assertEqual(headings(section), "Notes+");
   assertEqual(rowTitles(section), "", "a folded section shows no rows");
   assertEqual(active(section), "Notes", "the heading stays active");
+  assertEqual(JSON.parse(localStorage.getItem("paradigm.hub.folds"))["project:notes"], true);
   hub.show({ tree: tree() }, 9);
-  assertEqual(headings(section), "Tasks,Questions,Decisions,Meetings,Notes+,People", "another project too");
+  assertEqual(headings(section), "", "another project's Notes, empty: on the Nothing yet line, folded or not");
+  hub.show({ tree: tree() }, 2);
+  assertEqual(headings(section), "Notes+", "the fold is remembered per kind");
   hub.focus();
-  assertEqual(active(section), "Notes", "the same heading stays active");
+  press("g");
   press("z");
-  assertEqual(headings(section), "Tasks,Questions,Decisions,Meetings,Notes,People");
+  assertEqual(headings(section), "Notes");
   assertEqual(JSON.parse(localStorage.getItem("paradigm.hub.folds"))["project:notes"], false);
 }));
 
@@ -254,10 +248,6 @@ test("hub page: a section past its limit shows Show all", () => withPage(({ sect
 test("hub page: a redraw of the same hub keeps the active row; a click on a row opens it", () => withPage(({ section, hub, opened }) => {
   hub.show({ tree: tree() }, 2);
   hub.focus();
-  press("}");
-  press("}");
-  press("}");
-  press("}");
   press("j");
   press("j");
   hub.show({ tree: tree() }, 2);
@@ -286,7 +276,8 @@ test("hub sections: archived projects come last, muted", () => {
   const t = new NoteTree(WITH_ARCHIVED);
   const projectRows = section("projects").rows({ tree: t, today: TODAY }, t.get(1));
   assertEqual(projectRows.map((r) => `${r.title}${r.muted ? "~" : ""}`).join(), "Acme,Northwind~,Zeta~");
-  assertEqual(projectRows[2].detail, "archived 15 Nov");
+  assertEqual(projectRows[2].detail, "archived");
+  assertEqual(projectRows[2].date, "15 Nov");
 });
 
 test("hub page: an archived hub says so; an archived area is muted on its projects", () => withPage(({ line, hub }) => {
@@ -315,7 +306,7 @@ test("hub card: its buttons call the controls with the hub", () => {
 
 test("hub sections: add buttons; link rows can be changed", () => {
   const withAdd = HUB_SECTIONS.filter((each) => each.add).map((each) => each.key).join();
-  assertEqual(withAdd, "projects,questions,plan,milestones,tasks,files,templates,decisions,notes,meetings,people,active");
+  assertEqual(withAdd, "projects,questions,openQuestions,plan,milestones,tasks,files,templates,decisions,notes,meetings,upcomingMeetings,people,active");
   const projectRows = section("projects").rows({ tree: tree(), today: TODAY }, tree().get(1));
   assertEqual(projectRows.map((row) => row.actions.map((action) => action.key).join("+")).join(), "remove,remove");
 });
@@ -332,15 +323,65 @@ test("hub page: a adds in the section, x and r work only on rows offering them",
     press("x");
     press("r");
     assertEqual(calls.join("|"), "add projects 1|remove projects 2", "a project row has no second button");
-    press("}");
-    press("}");
-    press("}");
-    press("j");
+    press("G");
     press("x");
-    assertEqual(calls.length, 2, "a Notes row has no Remove");
-    section.querySelector(".hub__section--notes .hub__add").click();
+    assertEqual(calls.length, 2, "an empty section's item has no Remove");
+    press("a");
+    assertEqual(calls.pop(), "add people 1", "a on an empty section's item adds there");
+    [...section.querySelectorAll(".hub__empty-item")].find((n) => n.textContent.startsWith("Notes")).querySelector("[data-action=add]").click();
     assertEqual(calls.pop(), "add notes 1");
     section.querySelector("[data-action=remove]").click();
     assertEqual(calls.pop(), "remove projects 2");
   }, { tabActions });
+});
+
+// ---- the main window's dashboard: two lanes ---------------------------------------------
+
+test("dashboard: every lane's section is in the table; a project's and an area's lanes", () => {
+  const keys = new Set(HUB_SECTIONS.map((each) => each.key));
+  for (const [kind, lanes] of Object.entries(DASHBOARD_LAYOUT)) {
+    for (const key of [...lanes.act, ...lanes.know]) assertTrue(keys.has(key), `${kind}: ${key}`);
+  }
+  const lanes = (kind) => Object.values(dashboardFor({ kind })).map((lane) => lane.map((each) => each.key).join()).join(" | ");
+  assertEqual(lanes("project"), "tasks,openQuestions,upcomingMeetings | decisions,answeredQuestions,notes,files,people,pastMeetings");
+  assertTrue(lanes("area").startsWith("projects,"), "an area's Projects come first");
+  assertEqual(dashboardFor({ kind: "meeting" }), null, "the note window's single list for the rest");
+  assertTrue(!lanes("project").includes("plan"), "the chart shows the plan");
+});
+
+test("dashboard: an area's Projects as a table: status, due, next milestone, counts", () => {
+  const rows = section("projects").rows({ tree: tree(), today: TODAY }, tree().get(1));
+  assertEqual(rows.map((row) => row.cells.join("|")).join(" / "), "Active|||| / On hold|1 Nov|||");
+  assertEqual(section("projects").columns.length, rows[0].cells.length);
+});
+
+test("dashboard: two lanes; arrows cross between them; split sections act as their base", () => {
+  const calls = [];
+  const tabActions = { add: (key, hub) => calls.push(`add ${key} ${hub.id}`), row: () => {} };
+  STORE.forEach((key) => localStorage.removeItem(key));
+  const page = document.createElement("main");
+  const section = document.createElement("section");
+  page.append(section);
+  document.body.append(page);
+  try {
+    const hub = new HubPage({ page, line: document.createElement("div"), section, onOpen: () => {}, onLeave: () => {},
+      dashboard: true, tabActions });
+    hub.show({ tree: tree(), today: TODAY }, 2);
+    const lanes = [...section.querySelectorAll(".hub__lane")];
+    assertEqual(lanes.length, 2);
+    assertEqual(empties(lanes[0]), "Tasks,Open questions,Upcoming meetings");
+    assertEqual(headings(lanes[1]), "Notes", "Know: Notes has rows; folded ones keep a heading");
+    hub.focus();
+    assertEqual(active(section), "Tasks");
+    press("ArrowRight");
+    assertEqual(active(section), "Notes");
+    press("ArrowLeft");
+    assertEqual(active(section), "Tasks");
+    press("j");
+    press("a");
+    assertEqual(calls.pop(), "add questions 2", "Open questions adds a question");
+  } finally {
+    page.remove();
+    STORE.forEach((key) => localStorage.removeItem(key));
+  }
 });

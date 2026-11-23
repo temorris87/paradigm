@@ -1,6 +1,6 @@
-/* The main window's dashboard of a hub or a person (static/js/hubs/dashboard.js): the card,
-   the plan as a Gantt chart (gantt.css), the hub's text rendered, then its sections laid out
-   in columns. Under 1400 px wide (the laptop) the columns fall back to one. */
+/* The main window's dashboard of a hub or a person (static/js/hubs/dashboard.js): full-width
+   bands (the card, the plan as a Gantt chart (gantt.css), the hub's text rendered), then its
+   sections in two lanes. */
 [data-role="main"] .app__note {
   gap: var(--sp-3);
   padding: var(--sp-4) var(--sp-5) 3rem;
@@ -11,10 +11,12 @@
   display: none;
 }
 
+/* The hub's own text, full width over the lanes: a faint ground marks it as the page's text,
+   not one more section. */
 .dash-text {
   padding: var(--sp-3) var(--sp-4);
-  border: 1px solid var(--nord2);
   border-radius: 6px;
+  background: var(--nord1);
 }
 
 .dash-text__head {
@@ -73,35 +75,24 @@
   color: var(--nord3);
 }
 
-/* The sections in columns: each section a card of its own. */
+/* The sections in two lanes (hub-sections.js DASHBOARD_LAYOUT): to act on (3 parts), to look
+   up (2 parts). No box around a section: its heading's rule and the space between sections
+   set them apart. Each lane is a column of its own, so a section never moves because another
+   one grew. Under 1400 px wide (the laptop) the lanes stack. */
 [data-role="main"] .hub {
   border-top: none;
+  padding-top: 0;
 }
 
-/* Columns filled top to bottom in the section order, so a short section sits under the one
-   before it instead of leaving a hole beside a long one. */
-[data-role="main"] .hub__list {
-  display: block;
-  columns: 30rem 4;
-  column-gap: var(--sp-3);
-}
-
-[data-role="main"] .hub__section {
-  break-inside: avoid;
-  margin-bottom: var(--sp-3);
-  padding: var(--sp-2);
-  border: 1px solid var(--nord2);
-  border-radius: 6px;
-  min-width: 0;
-}
-
-/* An empty section is one line: its heading, its count and its add button. */
-[data-role="main"] .hub__section--empty .hub__empty {
-  display: none;
+[data-role="main"] .hub__list--lanes {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  align-items: start;
+  column-gap: var(--sp-6);
 }
 
 @media (max-width: 1399.98px) {
-  [data-role="main"] .hub__list {
-    columns: auto;
+  [data-role="main"] .hub__list--lanes {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

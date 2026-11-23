@@ -10,12 +10,13 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 from paradigm.db.connection import Database
+from paradigm.db.folders_repo import purge_folders, restore_folder_chain
 from paradigm.db.notes_repo import (Clock, NoteError, NotFound, StaysInAHub, TitleTaken,
                                     check_title_free, utc_now)
 
 __all__ = ["TrashRepository", "NotFound", "StaysInAHub"]
 
-_ROWS = ("SELECT notes.id, notes.parent_id, notes.title, notes.kind, notes.deleted_at, notes.title_shared, "
+_ROWS = ("SELECT notes.id, notes.parent_id, notes.title, notes.kind, notes.deleted_at, notes.title_shared, notes.folder_id, "
          "people.note_id IS NOT NULL AS is_person, "
          "meetings.note_id IS NOT NULL AS is_meeting, "
          "decisions.note_id IS NOT NULL AS is_decision, "
@@ -86,6 +87,9 @@ class TrashRepository:
                          (parent, title, now, note_id))
             conn.executemany("UPDATE notes SET deleted_at = NULL WHERE id = ?",
                              [(each,) for each in batch if each != note_id])
+            # A resource goes back into its folder, which comes back with it if trashed.
+            if parent is None:
+                restore_folder_chain(conn, row["folder_id"])
         return {"id": note_id, "title": title, "renamed": title != row["title"]}
 
     def purge(self) -> int:
@@ -96,6 +100,7 @@ class TrashRepository:
             ids = [(row[0],) for row in conn.execute(
                 "SELECT id FROM notes WHERE deleted_at IS NOT NULL AND deleted_at <= ?", (self._cutoff(),))]
             if not ids:
+                purge_folders(conn, self._cutoff())
                 return 0
             # A note's tasks go with it, and their sessions (its logged time with them).
             conn.executemany("DELETE FROM task_sessions WHERE task_id IN (SELECT id FROM tasks WHERE note_id = ?)", ids)
@@ -114,6 +119,7 @@ class TrashRepository:
             conn.executemany("UPDATE notes SET area_id = NULL WHERE area_id = ?", ids)
             conn.executemany("UPDATE notes SET parent_id = NULL WHERE parent_id = ?", ids)
             conn.executemany("DELETE FROM notes WHERE id = ?", ids)
+            purge_folders(conn, self._cutoff())
         return len(ids)
 
     def _cutoff(self) -> str:

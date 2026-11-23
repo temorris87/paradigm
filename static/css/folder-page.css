@@ -1,0 +1,127 @@
+/* A folder's page in the main window (static/js/resources/folder-page.js): where it is, its
+   name and buttons, then its folders and notes, one row each. */
+.folder-view[hidden] {
+  display: none;
+}
+
+.folder-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  max-width: 60rem;
+  outline: none;
+}
+
+.folder-page__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.folder-page__path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-1);
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+.folder-page__separator {
+  color: var(--text-faint);
+}
+
+.folder-page__crumb-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--nord8);
+  font: inherit;
+  cursor: pointer;
+}
+
+.folder-page__crumb-link:hover,
+.folder-page__crumb-link:focus-visible {
+  text-decoration: underline;
+}
+
+.folder-page__title {
+  margin: 0;
+  font-size: var(--fs-lg);
+  color: var(--nord13);
+}
+
+.folder-page__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.folder-page__button {
+  padding: var(--sp-0) var(--sp-3);
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  background: var(--nord1);
+  color: var(--nord5);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.folder-page__button:hover,
+.folder-page__button:focus-visible {
+  border-color: var(--nord8);
+}
+
+.folder-page__button--danger {
+  color: var(--nord11);
+}
+
+.folder-page__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--nord2);
+}
+
+.folder-page__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-1) var(--sp-2);
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: var(--nord4);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.folder-page__row:hover,
+.folder-page__row:focus-visible {
+  outline: none;
+  background: var(--nord2);
+  color: var(--nord6);
+}
+
+.folder-page__row--folder {
+  color: var(--text-dim);
+}
+
+.folder-page__detail {
+  margin-left: auto;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+.folder-page__empty {
+  padding: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--text-faint);
+}
+
+.folder-page__empty .folder-page__button {
+  margin-left: var(--sp-1);
+}

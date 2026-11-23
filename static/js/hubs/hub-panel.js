@@ -1,12 +1,16 @@
 // The sections under a hub's text: each a heading (label, count, add button) and its rows,
-// folded or not, with "Show all (12)" past a section's limit. It draws what it is given and
-// reports what the user asked for; HubPage decides the rest.
+// folded or not, with "Show all (12)" past a section's limit. Sections with nothing in them
+// share one quiet line at the foot of their lane. It draws what it is given and reports what
+// the user asked for; HubPage decides the rest.
 //
 //   const panel = new HubPanel(sectionElement, { onRow(section, row), onToggle(section),
 //     onMore(section), onAdd(section), onRowAction(section, row, key), onLeave(),
 //     renderSnippet(markdown) -> html });
-//   panel.draw([{ key, label, detail, folded, rows, empty, add, more }])
-//     add: the button's label or null; more: how many rows "Show all" would add (0: none)
+//   panel.draw(sections)            one lane (the note window)
+//   panel.draw({ act, know })       two lanes side by side (the main window's dashboard)
+//     each section: { key, label, detail, folded, rows, empty, add, more, columns? }
+//     add: the button's label or null; more: how many rows "Show all" would add (0: none);
+//     columns: a table's column names (its rows carry cells)
 //   panel.focus()
 //
 // The whole panel is one focus stop (Tab passes through it once): a listbox whose options are
@@ -41,16 +45,46 @@ export class HubPanel {
     this.list.addEventListener("click", (event) => this.onClick(event));
   }
 
-  draw(sections) {
+  draw(layout) {
     const hadFocus = this.hasFocus();
     const activeId = this.options[this.active]?.id;
-    this.sections = sections;
+    const lanes = Array.isArray(layout) ? [{ key: "page", label: "Sections", sections: layout }]
+      : [{ key: "act", label: "To act on", sections: layout.act }, { key: "know", label: "To look up", sections: layout.know }];
+    this.sections = lanes.flatMap((lane) => lane.sections);
     this.options = [];
-    this.list.replaceChildren(...sections.map((section) => this.group(section)));
+    this.list.classList.toggle("hub__list--lanes", lanes.length > 1);
+    this.list.replaceChildren(...lanes.map((lane, index) => this.lane(lane, index)));
     const again = this.options.findIndex((option) => option.id === activeId);
     this.active = Math.max(0, again);
     this.markActive();
     if (hadFocus) this.focus();
+  }
+
+  lane(lane, index) {
+    const node = element("div", `hub__lane hub__lane--${lane.key}`);
+    node.setAttribute("role", "group");
+    node.setAttribute("aria-label", lane.label);
+    this.laneIndex = index;
+    // Empty, folded or not, a section is only a name on the lane's Nothing yet line.
+    const empty = lane.sections.filter((section) => !section.rows.length);
+    node.append(...lane.sections.filter((section) => !empty.includes(section)).map((section) => this.group(section)));
+    if (empty.length) node.append(this.empties(empty));
+    return node;
+  }
+
+  /** "Nothing yet: Open questions + · Files + · Past meetings": the lane's empty sections on one line. */
+  empties(sections) {
+    const line = element("div", "hub__empties");
+    line.append(element("span", "hub__empties-label", "Nothing yet:"));
+    sections.forEach((section, index) => {
+      if (index) line.append(element("span", "hub__empties-separator", "·"));
+      const item = this.option(element("span", "hub__empty-item"), { type: "empty", section });
+      item.title = section.empty;
+      item.append(element("span", "hub__empty-label", section.label));
+      if (section.add) item.append(button("hub__empty-add", "+", `${section.add} (a)`, "add"));
+      line.append(item);
+    });
+    return line;
   }
 
   group(section) {
@@ -71,6 +105,14 @@ export class HubPanel {
       const empty = element("div", "hub__empty", section.empty);
       group.append(empty);
     }
+    if (section.columns && section.rows.length) group.classList.add("hub__section--table");
+    if (section.columns && section.rows.length) {
+      const head = element("div", "hub__columns");
+      head.setAttribute("aria-hidden", "true");
+      head.append(element("span", "hub__column hub__column--title", "Name"),
+        ...section.columns.map((name) => element("span", "hub__column", name)));
+      group.append(head);
+    }
     for (const row of section.rows) group.append(this.row(section, row));
     if (section.more) {
       group.append(this.option(element("div", "hub__more", `Show all (${section.rows.length + section.more})`),
@@ -81,14 +123,18 @@ export class HubPanel {
 
   row(section, row) {
     const classes = ["hub__row", `hub__row--depth-${Math.min(row.depth ?? 0, MAX_DEPTH)}`, row.muted && "hub__row--muted",
-      row.late && "hub__row--late", row.addSubtask && "hub__row--add"];
+      row.late && "hub__row--late", row.addSubtask && "hub__row--add", row.date && "hub__row--dated"];
     const node = this.option(element("div", classes.filter(Boolean).join(" ")), { type: "row", section, row });
     const line = element("div", "hub__line");
     if (row.task !== undefined && row.depth === 0 && !row.addSubtask) {
       line.append(element("span", "hub__twisty hub__twisty--task", row.expanded ? "▾" : "▸"));
     }
     if (row.task !== undefined && !row.addSubtask) line.append(element("span", "hub__box", row.done ? "☑" : "☐"));
-    line.append(element("span", "hub__title", row.title), element("span", "hub__detail", row.detail ?? ""));
+    line.append(element("span", "hub__title", row.title));
+    if (section.columns && row.cells) line.append(...row.cells.map((cell) => element("span", "hub__cell", cell)));
+    else line.append(element("span", "hub__detail", row.detail ?? ""));
+    // The date sits in a column of its own at the end, so a section's dates line up.
+    if (!section.columns) line.append(element("span", "hub__date", row.date ?? ""));
     if (row.actions?.length) {
       const box = element("span", "hub__row-actions");
       for (const { key, label } of row.actions) box.append(button("hub__row-action", label, `${label} (${KEYS_OF[key] ?? ""})`, key));
@@ -107,7 +153,7 @@ export class HubPanel {
   option(node, option) {
     const index = this.options.length;
     const rowId = option.row ? `${option.row.id}:${option.row.at?.line ?? ""}:${option.row.task ?? option.row.file ?? option.row.template ?? option.row.addSubtask ?? ""}` : "";
-    this.options.push({ ...option, id: `${option.type}:${option.section.key}:${rowId}` });
+    this.options.push({ ...option, lane: this.laneIndex ?? 0, id: `${option.type}:${option.section.key}:${rowId}` });
     node.id = `hub-option-${index}`;
     node.dataset.index = String(index);
     node.setAttribute("role", "option");
@@ -133,6 +179,7 @@ export class HubPanel {
   activate(option) {
     if (!option) return undefined;
     if (option.type === "heading") return this.handlers.onToggle(option.section);
+    if (option.type === "empty") return option.section.add ? this.handlers.onAdd(option.section) : undefined;
     if (option.type === "more") return this.handlers.onMore(option.section);
     return this.handlers.onRow(option.section, option.row);
   }
@@ -147,8 +194,10 @@ export class HubPanel {
       case "last": return this.moveTo(last);
       case "nextSection": return this.moveTo(this.headingIndex(1));
       case "previousSection": return this.moveTo(this.headingIndex(-1));
+      case "nextLane": return this.moveTo(this.laneTarget(1));
+      case "previousLane": return this.moveTo(this.laneTarget(-1));
       case "open": return this.activate(option);
-      case "fold": return option && this.handlers.onToggle(option.section);
+      case "fold": return option && option.type !== "empty" ? this.handlers.onToggle(option.section) : undefined;
       case "add": return option?.section.add ? this.handlers.onAdd(option.section) : undefined;
       case "remove": return this.rowAction(option, ["remove"]);
       case "second": return this.rowAction(option, ["role", "answer"]);
@@ -172,6 +221,23 @@ export class HubPanel {
     const headings = this.options.map((option, index) => (option.type === "heading" ? index : -1)).filter((index) => index >= 0);
     if (direction > 0) return headings.find((index) => index > this.active) ?? this.active;
     return headings.filter((index) => index < this.active).pop() ?? this.active;
+  }
+
+  /** The option in the next (1) or previous (-1) lane nearest the active one's height. */
+  laneTarget(direction) {
+    const from = this.options[this.active];
+    if (!from) return this.active;
+    const lane = from.lane + direction;
+    const nodes = [...this.list.querySelectorAll("[role=option]")];
+    const top = nodes[this.active]?.getBoundingClientRect().top ?? 0;
+    let best = -1;
+    let distance = Infinity;
+    this.options.forEach((option, index) => {
+      if (option.lane !== lane) return;
+      const away = Math.abs((nodes[index]?.getBoundingClientRect().top ?? 0) - top);
+      if (away < distance) [best, distance] = [index, away];
+    });
+    return best >= 0 ? best : this.active;
   }
 
   moveTo(index) {

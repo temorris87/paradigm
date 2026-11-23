@@ -6,6 +6,7 @@ import { Changes } from "./connection/changes.js";
 import { Dashboard } from "./hubs/dashboard.js";
 import { setNotePath } from "./notes/app.js";
 import { TemplatePage } from "./plan/template-page.js";
+import { FolderPage } from "./resources/folder-page.js";
 import { timeApi } from "./timesheet/api.js";
 import { TimePage } from "./timesheet/time-page.js";
 import { openMenu } from "./ui/menu.js";
@@ -41,6 +42,7 @@ boot({
     const time = new TimePage({ root: timeRoot, bar: $(".time-bar"), main: $(".time-main"), api: timeApi, changes: new Changes(),
       isShown: shown("time") });
     const template = new TemplatePage($(".plan-template-view"), { app, onLeave: () => app().leaveView() });
+    const folder = new FolderPage($(".folder-view"), { app, onLeave: () => app().leaveView() });
     const pageOf = (section, page) => ({ section, show() {}, enter: () => page.show(), focus: () => page.focus() });
     const windowButton = $(".topbar__window");
     windowButton.addEventListener("click", () => openMenu(windowButton, WINDOW_MODES.map((mode) => ({
@@ -61,6 +63,7 @@ boot({
         calendar: pageOf(calendarRoot, calendar),
         time: pageOf(timeRoot, time),
         template: { section: $(".plan-template-view"), show: (ctx) => template.show(ctx), focus: () => template.focus() },
+        folder: { section: $(".folder-view"), show: (ctx) => folder.show(ctx), focus: () => folder.focus() },
       },
       buttons: { calendar: $(".topbar__calendar"), time: $(".topbar__time") },
       status: $(".status-line"),

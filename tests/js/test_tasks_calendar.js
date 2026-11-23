@@ -74,7 +74,8 @@ test("tasks: a project's list hides subtasks behind a count; done ones last", ()
   assertEqual(rows.length, 5);
   assertEqual(rows[0].detail, "1/2 subtasks");
   assertTrue(rows[1].detail.startsWith("→ Priya Shah") && rows[1].late, rows[1].detail);
-  assertEqual(rows[2].detail, "in Packing");
+  assertEqual(rows[2].detail, "", "closed, a row doesn't say where it is");
+  assertEqual(section.rows({ ...ctx, expanded: new Set([12]) }, tree().get(2))[2].detail, "in Packing", "opened, it does");
   assertEqual(rows[4].actions[0].label, "Reopen");
   // Opened, a task shows its subtasks and + Add subtask under it.
   const open = section.rows({ ...ctx, expanded: new Set([10]) }, tree().get(2));

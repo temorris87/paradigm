@@ -17,7 +17,7 @@ const WHAT = { decision: "decision", question: "question" };
 export async function newRecordCommand(app, kind, arg) {
   const id = app.currentId;
   const hub = hubOf(app.tree, id);
-  if (!hub) throw new Error(`E: a ${WHAT[kind]} goes in a hub: open a project, an area or a resource (or a note in one)`);
+  if (!hub) throw new Error(`E: a ${WHAT[kind]} goes in a hub: open a project or an area (or a note in one)`);
   const meeting = isMeeting(app.tree, id) ? app.tree.get(id) : meetingOf(app.tree, id);
   const { day, rest } = splitDay(arg, app.today());
   if (!rest) throw new Error(`E471: Argument required: :${kind} [{date}] {title}`);

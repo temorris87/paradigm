@@ -55,6 +55,8 @@ paradigm/                Python package
                          answer|reopen|with|unwith); links.py (/api/links: the wiki-link and
                          mention index and stale notes; /api/links/index: the page's catch-up);
                          trash.py (/api/trash, /api/trash/restore);
+                         folders.py (/api/folders, /api/folder/create|rename|move|trash,
+                         /api/note/folder: Resources' folders);
                          tasks.py (/api/tasks, /api/task/create|update|delegate|done|move|
                          remove: tasks as records, one level of subtasks; /api/sessions,
                          /api/session/add|move|remove: blocks of time);
@@ -91,7 +93,8 @@ paradigm/                Python package
                          milestones (dates and baselines) + schedule_changes (every date
                          move, with why), 019 note_templates, plan_templates + plan_items +
                          plan_item_tasks (working days from 0), project_plans, 020
-                         file_folders + files + file_links)
+                         file_folders + files + file_links, 021 resource_folders +
+                         notes.folder_id; resources holding hub things became areas)
                          connection.py (one locked connection, transactions, VACUUM at start
                          when worth it), migrate.py
                          (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py,
@@ -117,7 +120,10 @@ paradigm/                Python package
                          (templates on an area; apply: working days, weekends and the
                          timesheet's holidays skipped; save from a project), templates_repo.py
                          (a note_templates row makes a top-level note kind "template"),
-                         files_repo.py (linked folders, their files, attachments; scan), import_repo.py (applies an Outlook .ics: new, moved,
+                         files_repo.py (linked folders, their files, attachments; scan),
+                         folders_repo.py (folders in Resources: nest, unique names per
+                         parent, trash with their notes, back with a restored note),
+                         import_repo.py (applies an Outlook .ics: new, moved,
                          cancelled, removed; series go to their hub, the rest wait in To
                          file; attendees matched or made as people; <data>/import/ read at
                          start and when the calendar asks), time_repo.py (settings, holidays,
@@ -133,8 +139,9 @@ paradigm/                Python package
                          Default code; pure), holidays.py (rules like "4th Thu of Nov + 1",
                          observed Sat->Fri / Sun->Mon, the US seed list; pure)
   images/                formats.py: PNG/JPEG/GIF/WebP from magic bytes + size (SVG refused)
-  notes/                 titles.py (title rules), hubs.py (HUB_KINDS: project, area,
-                         resource; a project's statuses and due date), people.py (person
+  notes/                 titles.py (title rules), hubs.py (FILE_KINDS: project, area,
+                         resource; HUB_KINDS: project, area; a project's statuses and due
+                         date), people.py (person
                          fields, roles, first/last name), seed.py + welcome.md (first-run
                          note), meetings.py (day, time), records.py (decision/question
                          kinds), links.py (a save's list of link texts), mentions.py (a
@@ -149,7 +156,7 @@ static/
   vendor/mermaid-12.3.0/ Mermaid exactly as audited (same check, mermaid-12.3.0.sha256)
   css/                   dashboard.css (the main window's dashboard: sections flowing down
                          columns, long text folded under Show more),
-                         gantt.css, plan-template.css,
+                         gantt.css, plan-template.css, folder-page.css,
                          nord.css (palette variables and THE design tokens: --font-ui,
                          --font-mono, --fs-xs..xl, --sp-0..6, --text/-dim/-faint), base.css (the
                          page grid, color-scheme dark; one column under 1400 px), one file per component (topbar.css, navigator.css...)
@@ -279,6 +286,10 @@ static/
                          drag bars, ends, diamonds), gantt-keys.js (THE Gantt key table)
   js/templates/          api.js, template-text.js ({{date}} {{time}} {{title}} {{cursor}};
                          boxes become tasks; pure), template-commands.js
+  js/resources/          Resources' folders: api.js, folders-model.js (folders, the notes in
+                         each; pure), folder-commands.js (new note / folder, rename, move,
+                         trash, move a note to a folder; pickers), folder-page.js (a folder's
+                         page in the main window, &folder=ID)
   js/files/              api.js, files-model.js (a page's files; folders of a hub and its
                          area; pure), file-commands.js (link a folder, add, open, remove)
   js/tasks/              api.js, tasks-model.js (a page's tasks with subtask counts, never
@@ -363,13 +374,23 @@ Update this section when the structure changes.
   unindent. In every other mode they leave the editor and move focus like on any web page**,
   so they are never bound there (Tyson's choice, 2026-11-21).
 - Keys the browser owns (Ctrl-W, Ctrl-T, Ctrl-N, Ctrl-Tab, ...) are given up. Don't fight the browser.
-- PARA hubs: only top-level notes are hubs (`notes.kind`: project, area, resource; NULL is the
-  Inbox). `:project` etc. on a nested note moves it to the top; moving a hub under a note
-  unfiles it. Groups never appear in paths or links, and top-level titles stay unique.
+- PARA hubs: only top-level notes are hubs, and only projects and areas (`notes.kind`:
+  project, area; NULL is the Inbox). `:project` etc. on a nested note moves it to the top;
+  moving a hub under a note unfiles it. Groups never appear in paths or links, and top-level titles stay unique.
   The tree's top level is the four groups (folded state remembered per browser). Each group
   but the Archive has a + on its heading (a new project, area, ... or person); `a` in the
   tree does the same on a group, and makes a note under the one it is on. The People and
   Meetings pages have New person / New meeting buttons (`a` too).
+- Resources (Tyson, 2026-11-22): plain notes sorted into folders, not hubs: no card, no
+  sections but Tasks and Files, no meetings, records, people or OneDrive folders (a note
+  holding those can't be filed as one). A folder is only a name (`resource_folders`); it
+  nests, and holds top-level resource notes (`notes.folder_id`). Folders never appear in
+  paths or links. In the tree, Resources lists its folders, then the notes in none; a folder
+  folds (`l`/`h`, its twisty), and Enter or a click on its name opens its page in the main
+  window (New note…, New folder…, Rename…, Move…, Move to trash…, then its contents). The
+  Resources + and `a` on a folder offer New note… / New folder…. A resource's note menu has
+  Move to folder…. Trashing a folder trashes its folders and their notes; restoring a note
+  brings its folders back.
 - Archive: `:archive` on a top-level note archives it with everything under it (only
   `archived_at` on the top-level note; a note is archived when its top note is). It moves to
   the Archive group (last, folded by default) and keeps its kind and area link, so `:restore`
@@ -383,7 +404,7 @@ Update this section when the structure changes.
   its Notes, a decision's Why, a question's Answer, else Notes) with a hint while empty.
   Under the text, a hub, person or meeting has sections (`hub-sections.js`, each kind's
   order in SECTION_ORDER; a project: Questions, Decisions, Notes, Meetings, People; an area:
-  Projects first; a resource: Linked from last; a meeting: Questions, Decisions; a person:
+  Projects first; a meeting: Questions, Decisions; a person:
   Active, Archived (folded), Backlinks). The page scrolls as a whole. Tab or `:hub` reaches
   the sections: one focus stop, headings fold (Enter or `z`, remembered per kind), long
   sections end in "Show all (n)"; its keys live in `static/js/hubs/hub-keys.js`. Each
@@ -445,9 +466,8 @@ Update this section when the structure changes.
 - Backlinks: the server keeps each note's `[[link]]` texts as written; the page reads them with
   the Markdown renderer (so never in code) and sends them with every save, and catches up
   notes saved without them after load. They are resolved in the page with `resolve.js`, so a
-  backlink is wherever the link goes today. A resource has a Linked from tab (last): notes
-  outside it whose links reach it or a note under it ("to Colours"), newest change first,
-  archived ones last and muted. More kinds get the tab by adding them to its row.
+  backlink is wherever the link goes today. A person's Backlinks use them (`linksInto` in
+  `links.js`: notes outside it whose links reach it or a note under it).
 - Home: a page in place of the note (`&home`), and the start page: a URL with no `?note=` opens
   on it. `:home` or the Home button. Sections top to bottom (`static/js/home/home-sections.js`):
   Today (today's meetings and task blocks by time, untimed meetings last; "Calendar not
@@ -477,8 +497,14 @@ Update this section when the structure changes.
   window, Dashboard (or `:dashboard`) shows the note's hub in the main window; Home,
   `:people`, `:calendar`... show there too (`showMainWindow`; Chrome may refuse to raise it).
   A hub's dashboard: the card, a project's or an area's Gantt chart, its text rendered
-  (Edit ↗ opens it in the note window), then its sections in columns (one column under
-  1400 px). A hub's linked folders are read again when its dashboard opens.
+  (Edit ↗ opens it in the note window), full width, then its sections in two fixed lanes
+  (Tyson, 2026-11-22; `DASHBOARD_LAYOUT` in `hub-sections.js`): Act on the left (Tasks, Open
+  questions, Upcoming meetings; an area's Projects table first) and Know on the right
+  (Decisions, Answered questions, Notes, Files, People, Past meetings; an area's Plan
+  templates). No boxes: a heading with a rule; each row's date in a right-aligned column;
+  empty sections share one "Nothing yet:" line at the foot of their lane (in the note window
+  too). ←/→ cross between the lanes. Under 1400 px the lanes stack. A hub's linked folders
+  are read again when its dashboard opens.
 - Tasks (Tyson, 2026-11-22: records, not text; this replaced the `- [ ]` tasks): a task
   belongs to one note (a project, an area, a phase, a milestone, a meeting, any note) and is
   made in that page's Tasks section (+ New task, `a`, or `:task [!]{text}`, ! due today).

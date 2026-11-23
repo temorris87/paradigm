@@ -8,6 +8,8 @@ export const HUB_KEYS = [
   { keys: ["G", "End"], action: "last", help: "last row" },
   { keys: ["}"], action: "nextSection", help: "the next section's heading" },
   { keys: ["{"], action: "previousSection", help: "this section's heading, then the previous one's" },
+  { keys: ["ArrowRight"], action: "nextLane", help: "on a dashboard: across to the right-hand lane (to look up)" },
+  { keys: ["ArrowLeft"], action: "previousLane", help: "on a dashboard: back to the left-hand lane (to act on)" },
   { keys: ["Enter"], action: "open", help: "open the row's note (a task: show its subtasks; a file: open it); on a heading, fold or unfold it; Show all" },
   { keys: ["z"], action: "fold", help: "fold or unfold the section" },
   { keys: ["a"], action: "add", help: "the section's add button: new note, add person, new meeting..." },

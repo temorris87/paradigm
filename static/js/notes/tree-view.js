@@ -3,32 +3,48 @@
 // Meetings, decisions, questions and milestones are not in it: their hub's page lists them.
 // A project's phases are, tagged "Phase".
 //
-//   const view = new TreeView(ulElement, { onOpen(id), onLeave(), onAdd(group), onAddUnder(id) });
-//   view.show(tree, currentId, { marked? })  draw (the open note's group and ancestors are
-//                                  expanded); marked false: a page is shown, no row is current
+// Resources holds folders (static/js/resources/): each folder's folders, then its notes, and
+// the notes in no folder after the folders.
+//
+//   const view = new TreeView(ulElement, { onOpen(id), onLeave(), onAdd(group, anchor),
+//     onAddUnder(id), onOpenFolder(id), onAddInFolder(id, anchor) });
+//   view.show(tree, currentId, { marked?, folders? })  draw (the open note's group, folders and
+//                                  ancestors are expanded); marked false: a page is shown, no
+//                                  row is current; folders: a Folders (resources/folders-model.js)
 //   view.focus()
 //
-// Each row has a key: a note's id (a number) or "group:<key>" for a group heading. Which
-// branches are open and which groups are folded are remembered in localStorage, per browser.
-// A group folded by default (the Archive) is remembered the other way round: when unfolded.
-// Each group a note can be made in (not the Archive) has a + on its heading: onAdd(group).
+// Each row has a key: a note's id (a number), "group:<key>" for a group heading, or
+// "folder:<id>" for a folder. Which branches and folders are open and which groups are folded
+// are remembered in localStorage, per browser. A group folded by default (the Archive) is
+// remembered the other way round: when unfolded. Each group a note can be made in (not the
+// Archive) has a + on its heading: onAdd(group, anchor).
+import { Folders, folderOf, notesIn } from "../resources/folders-model.js";
 import { ARCHIVE_GROUP, NAV_GROUPS, groupForKind, groupOf, hubsIn, isRecordKind } from "./hub-groups.js";
 import { treeAction } from "./tree-keys.js";
 
 const STORE_KEY = "paradigm.tree.expanded";
+const FOLDERS_KEY = "paradigm.tree.openFolders";
 const FOLDED_KEY = "paradigm.tree.foldedGroups";
 const UNFOLDED_KEY = "paradigm.tree.unfoldedGroups";
 
 const groupKey = (group) => `group:${group.key}`;
-const isGroupKey = (key) => typeof key === "string";
+const folderKey = (id) => `folder:${id}`;
+const isGroupKey = (key) => typeof key === "string" && key.startsWith("group:");
+const isFolderKey = (key) => typeof key === "string" && key.startsWith("folder:");
+const folderIdOf = (key) => Number(key.slice("folder:".length));
 
 export class TreeView {
-  constructor(root, { onOpen, onLeave, onAdd = () => {}, onAddUnder = () => {} }) {
+  constructor(root, { onOpen, onLeave, onAdd = () => {}, onAddUnder = () => {}, onOpenFolder = () => {},
+    onAddInFolder = () => {} }) {
     this.root = root;
     this.onOpen = onOpen;
     this.onLeave = onLeave;
     this.onAdd = onAdd;
     this.onAddUnder = onAddUnder;
+    this.onOpenFolder = onOpenFolder;
+    this.onAddInFolder = onAddInFolder;
+    this.folders = new Folders();
+    this.openFolders = loadIds(FOLDERS_KEY, Number.isInteger);
     this.tree = null;
     this.current = null;
     this.currentParent = null;
@@ -44,8 +60,9 @@ export class TreeView {
     });
   }
 
-  show(tree, openId, { marked = true } = {}) {
+  show(tree, openId, { marked = true, folders = this.folders } = {}) {
     this.tree = tree;
+    this.folders = folders;
     this.marked = marked;
     // A meeting, decision or question isn't in the tree: its hub stands for it.
     const currentId = isRecordKind(tree.get(openId)?.kind) ? tree.parentId(openId) : openId;
@@ -55,6 +72,8 @@ export class TreeView {
     if (currentId !== this.current || parent !== this.currentParent || group !== this.currentGroup) {
       for (const id of tree.ancestors(openId)) this.expanded.add(id);
       if (group) this.folded.delete(group.key);
+      const folder = folderOf(tree, folders, currentId);
+      if (folder !== null) for (const each of folders.path(folder)) this.openFolders.add(each.id);
       this.active = currentId;
     }
     this.current = currentId;
@@ -77,21 +96,39 @@ export class TreeView {
   }
 
   exists(key) {
+    if (isFolderKey(key)) return this.folders.has(folderIdOf(key));
     return isGroupKey(key) ? NAV_GROUPS.some((group) => groupKey(group) === key) : this.tree.has(key);
+  }
+
+  /** What a group shows under its heading: Resources its folders, then the notes in none. */
+  groupRows(group) {
+    if (!group.folders) return hubsIn(this.tree, group).map((note) => ({ note }));
+    return [...this.folders.children(null).map((folder) => ({ folder })),
+      ...notesIn(this.tree, this.folders, null).map((note) => ({ note }))];
+  }
+
+  folderRows(id) {
+    return [...this.folders.children(id).map((folder) => ({ folder })),
+      ...notesIn(this.tree, this.folders, id).map((note) => ({ note }))];
+  }
+
+  rowKey(entry) {
+    return entry.folder ? folderKey(entry.folder.id) : entry.note.id;
   }
 
   groupItem(group) {
     const hubs = hubsIn(this.tree, group);
+    const rows = this.groupRows(group);
     const open = !this.folded.has(group.key);
     const li = this.treeItem(groupKey(group), 1);
     li.classList.add("tree__item--group");
     li.dataset.group = group.key;
     li.setAttribute("aria-expanded", String(open));
-    if (!hubs.length) li.classList.add("tree__item--empty");
+    if (!rows.length) li.classList.add("tree__item--empty");
     const count = document.createElement("span");
     count.className = "tree__count";
     count.textContent = String(hubs.length);
-    const row = this.row(hubs.length ? (open ? "▾" : "▸") : "", group.heading, "tree__heading", count);
+    const row = this.row(rows.length ? (open ? "▾" : "▸") : "", group.heading, "tree__heading", count);
     if (group !== ARCHIVE_GROUP) {
       const add = document.createElement("button");
       add.type = "button";
@@ -103,7 +140,24 @@ export class TreeView {
       row.insertBefore(add, count);
     }
     li.append(row);
-    if (open && hubs.length) li.append(this.group(hubs, 2, Boolean(group.showsKind)));
+    if (open && rows.length) li.append(this.group(rows, 2, Boolean(group.showsKind)));
+    return li;
+  }
+
+  /** A folder: its name (a click opens its page in the main window), its folders and notes. */
+  folderItem(folder, level) {
+    const rows = this.folderRows(folder.id);
+    const open = rows.length > 0 && this.openFolders.has(folder.id);
+    const li = this.treeItem(folderKey(folder.id), level);
+    li.classList.add("tree__item--folder");
+    li.dataset.folder = String(folder.id);
+    if (rows.length) li.setAttribute("aria-expanded", String(open));
+    const mark = document.createElement("span");
+    mark.className = "tree__folder-mark";
+    mark.setAttribute("aria-hidden", "true");
+    mark.textContent = "/";
+    li.append(this.row(rows.length ? (open ? "▾" : "▸") : "", folder.title, "tree__title tree__title--folder", mark));
+    if (open) li.append(this.group(rows, level + 1));
     return li;
   }
 
@@ -122,7 +176,7 @@ export class TreeView {
       kind.textContent = note.kind === "phase" ? "Phase" : groupForKind(note.kind).label;
     }
     li.append(this.row(kids.length ? (open ? "▾" : "▸") : "", note.title, "tree__title", kind));
-    if (open) li.append(this.group(kids, level + 1));
+    if (open) li.append(this.group(kids.map((each) => ({ note: each })), level + 1));
     return li;
   }
 
@@ -150,11 +204,12 @@ export class TreeView {
     return row;
   }
 
-  group(notes, level, withKind = false) {
+  /** rows: [{ note } | { folder }] */
+  group(rows, level, withKind = false) {
     const group = document.createElement("ul");
     group.setAttribute("role", "group");
     group.className = "tree__group";
-    group.append(...notes.map((note) => this.item(note, level, withKind)));
+    group.append(...rows.map((entry) => (entry.folder ? this.folderItem(entry.folder, level) : this.item(entry.note, level, withKind))));
     return group;
   }
 
@@ -170,42 +225,56 @@ export class TreeView {
   /** The rows as shown, top to bottom (folded groups and collapsed branches skipped). */
   visible() {
     const out = [];
-    const walk = (notes) => {
-      for (const note of notes) {
-        out.push(note.id);
-        if (this.expanded.has(note.id)) walk(this.kids(note.id));
+    const walk = (rows) => {
+      for (const entry of rows) {
+        const key = this.rowKey(entry);
+        out.push(key);
+        if (this.isOpen(key)) walk(this.childRows(key));
       }
     };
     for (const group of NAV_GROUPS) {
       out.push(groupKey(group));
-      if (!this.folded.has(group.key)) walk(hubsIn(this.tree, group));
+      if (!this.folded.has(group.key)) walk(this.groupRows(group));
     }
     return out;
   }
 
-  /** What a row holds: a group's hubs, or a note's children. */
+  childRows(key) {
+    if (isFolderKey(key)) return this.folderRows(folderIdOf(key));
+    if (isGroupKey(key)) return this.groupRows(NAV_GROUPS.find((each) => groupKey(each) === key));
+    return this.kids(key).map((note) => ({ note }));
+  }
+
+  /** What a row holds: a group's hubs (Resources: its folders and notes), a folder's folders
+   * and notes, or a note's children. */
   childKeys(key) {
-    if (!isGroupKey(key)) return this.kids(key).map((note) => note.id);
-    const group = NAV_GROUPS.find((each) => groupKey(each) === key);
-    return hubsIn(this.tree, group).map((note) => note.id);
+    return this.childRows(key).map((entry) => this.rowKey(entry));
   }
 
   isOpen(key) {
+    if (isFolderKey(key)) return this.openFolders.has(folderIdOf(key));
     return isGroupKey(key) ? !this.folded.has(key.slice("group:".length)) : this.expanded.has(key);
   }
 
   parentKey(key) {
     if (isGroupKey(key)) return key;
+    if (isFolderKey(key)) {
+      const parent = this.folders.parentId(folderIdOf(key));
+      return parent === null ? "group:resource" : folderKey(parent);
+    }
     const parent = this.tree.parentId(key);
-    return parent ?? groupKey(groupOf(this.tree, key));
+    if (parent !== null) return parent;
+    const folder = folderOf(this.tree, this.folders, key);
+    return folder !== null ? folderKey(folder) : groupKey(groupOf(this.tree, key));
   }
 
   onClick(event) {
     const item = event.target.closest?.("[role=treeitem]");
     if (!item) return;
     const key = keyOf(item);
-    if (event.target.closest(".tree__add")) return this.add(key);
+    if (event.target.closest(".tree__add")) return this.add(key, event.target.closest(".tree__add"));
     if (isGroupKey(key)) return this.setOpen(key, !this.isOpen(key));
+    if (isFolderKey(key) && !event.target.closest(".tree__twisty")) return this.onOpenFolder(folderIdOf(key));
     if (event.target.closest(".tree__twisty") && this.childKeys(key).length) {
       this.setOpen(key, !this.isOpen(key));
       return;
@@ -238,16 +307,19 @@ export class TreeView {
         if (kids.length && this.isOpen(key)) return this.setOpen(key, false);
         return this.moveTo(this.parentKey(key));
       case "open":
+        if (isFolderKey(key)) return this.onOpenFolder(folderIdOf(key));
         return isGroupKey(key) ? this.setOpen(key, !this.isOpen(key)) : this.onOpen(key);
       case "add": return this.add(key);
       case "editor": return this.onLeave();
     }
   }
 
-  add(key) {
+  add(key, anchor = null) {
+    const row = anchor ?? this.itemNode(key)?.querySelector(".tree__row") ?? null;
+    if (isFolderKey(key)) return this.onAddInFolder(folderIdOf(key), row);
     if (!isGroupKey(key)) return this.onAddUnder(key);
     const group = NAV_GROUPS.find((each) => groupKey(each) === key);
-    if (group !== ARCHIVE_GROUP) this.onAdd(group);
+    if (group !== ARCHIVE_GROUP) this.onAdd(group, row);
   }
 
   moveTo(key) {
@@ -258,7 +330,11 @@ export class TreeView {
   }
 
   setOpen(key, open) {
-    if (isGroupKey(key)) {
+    if (isFolderKey(key)) {
+      if (open) this.openFolders.add(folderIdOf(key));
+      else this.openFolders.delete(folderIdOf(key));
+      saveIds(FOLDERS_KEY, this.openFolders);
+    } else if (isGroupKey(key)) {
       const name = key.slice("group:".length);
       if (open) this.folded.delete(name);
       else this.folded.add(name);
@@ -272,13 +348,16 @@ export class TreeView {
   }
 }
 
-/** "New project", "New person", "New note" (the Inbox). */
+/** "New project", "New person", "New note" (the Inbox), "New note or folder" (Resources). */
 export function addLabel(group) {
+  if (group.folders) return "New note or folder";
   return group.kind ? `New ${group.label.toLowerCase()}` : "New note";
 }
 
 function keyOf(item) {
-  return item.dataset.group ? `group:${item.dataset.group}` : Number(item.dataset.id);
+  if (item.dataset.group) return `group:${item.dataset.group}`;
+  if (item.dataset.folder) return folderKey(Number(item.dataset.folder));
+  return Number(item.dataset.id);
 }
 
 function loadIds(storeKey, valid) {

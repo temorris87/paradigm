@@ -284,7 +284,7 @@ def _hub_guess(conn: sqlite3.Connection, title: str) -> Optional[int]:
 def _hub_row(conn: sqlite3.Connection, hub_id: int) -> sqlite3.Row:
     hub = live_note_row(conn, hub_id)
     if hub["is_person"] or hub["parent_id"] is not None or hub["kind"] not in HUB_KINDS:
-        raise NotAHub('"{}" is not a hub: meetings go in a project, an area or a resource'.format(hub["title"]))
+        raise NotAHub('"{}" is not a hub: meetings go in a project or an area'.format(hub["title"]))
     if hub["archived_at"] is not None:
         raise HubArchived('"{}" is archived: restore it first'.format(hub["title"]))
     return hub

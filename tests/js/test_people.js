@@ -163,7 +163,7 @@ test("people commands: :addperson links, changes a role, and needs ! for someone
   assertEqual(app.messages.pop(), "Jim Halpert is on Rollout as Lead (new in People)");
   ({ app } = fakeApp(5));
   assertEqual(await rejects(runNoteCommand(app, { name: "addperson", arg: "Jane Doe" })),
-    "E: people go on a hub: open a project, an area or a resource");
+    "E: people go on a hub: open a project or an area");
 });
 
 test("people commands: :dropperson, :newperson, fields only on a person", async () => {
@@ -260,13 +260,14 @@ test("person page: the card and the Active, Archived and Backlinks sections", ()
     const hub = new HubPage({ page, line, section, onOpen: () => {}, onLeave: () => {} });
     hub.show(ctx(), 10);
     assertEqual(line.textContent, "Person·jane@example.com·Northwind·Data engineer✎");
-    assertEqual([...section.querySelectorAll(".hub__label")].map((t) => t.textContent).join(), "Waiting on,Active,Archived,Backlinks");
+    // Sections with rows (and folded ones) first; the empty ones share the Nothing yet line.
+    assertEqual([...section.querySelectorAll(".hub__label, .hub__empty-label")].map((t) => t.textContent).join(), "Active,Archived,Waiting on,Backlinks");
     hub.show(ctx(), 13);
     assertEqual(line.textContent, "Person·Add details");
     hub.show(ctx(), 12);
     assertTrue(line.textContent.startsWith("Archived·Person"), line.textContent);
     hub.show(ctx(), 14);
-    assertEqual([...section.querySelectorAll(".hub__label")].map((t) => t.textContent).join(), "Tasks,Files", "a note under a person: its tasks and files");
+    assertEqual([...section.querySelectorAll(".hub__label, .hub__empty-label")].map((t) => t.textContent).join(), "Tasks,Files", "a note under a person: its tasks and files");
   } finally {
     page.remove();
     localStorage.removeItem("paradigm.hub.folds");

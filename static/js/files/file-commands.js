@@ -20,7 +20,7 @@ async function changed(app) {
 
 export async function addFileDialog(app, owner) {
   const hub = hubOf(app.tree, owner.id);
-  if (!hub) throw new Error(`E: "${owner.title}" is in no hub: file it in a project, an area or a resource first`);
+  if (!hub) throw new Error(`E: "${owner.title}" is in no hub: file it in a project or an area first`);
   const folders = foldersFor(app.tree, app.files, owner.id);
   const attached = new Set(app.files.onNote(owner.id));
   const items = [

@@ -7,7 +7,9 @@
 //
 //   const hub = new HubPage({ page: mainElement, line, section, labels, onOpen(id, at?),
 //                             onLeave(), controls, tabActions, renderSnippet(markdown),
-//                             hideSections: ["plan"] });   (the dashboard draws the plan as a chart)
+//                             hideSections: [...], dashboard: true });
+//     dashboard: the main window: a hub's or a person's sections in two lanes (Act, Know:
+//             hub-sections.js DASHBOARD_LAYOUT), the plan drawn as a chart instead
 //     labels: { main, agenda, agendaField }: the label elements over the text boxes, and the
 //             agenda's wrapper (shown on a meeting only)
 //     controls: the card's buttons (hub-actions.js hubLineControls)
@@ -33,14 +35,16 @@ import { foldKey, isFolded, loadFolds, saveFolds } from "./hub-folds.js";
 import { showHubLine } from "./hub-line.js";
 import { NO_CONTROLS } from "./hub-line-controls.js";
 import { HubPanel } from "./hub-panel.js";
-import { sectionsFor } from "./hub-sections.js";
+import { dashboardFor, sectionsFor } from "./hub-sections.js";
 
 const NO_LABELS = { main: null, agenda: null, agendaField: null };
 
 export class HubPage {
   constructor({ page, line, section, labels = NO_LABELS, onOpen, onLeave, controls = NO_CONTROLS,
-                tabActions = { add() {}, row() {} }, renderSnippet = () => "", hideSections = [] }) {
+                tabActions = { add() {}, row() {} }, renderSnippet = () => "", hideSections = [], dashboard = false }) {
     this.hideSections = new Set(hideSections);
+    this.dashboard = dashboard;
+    this.lanes = null;
     this.expanded = new Set(); // tasks shown with their subtasks
     this.page = page;
     this.line = line;
@@ -60,8 +64,9 @@ export class HubPage {
       onRow: (sectionDef, row) => this.onRow(sectionDef, row),
       onToggle: (sectionDef) => this.toggle(sectionDef),
       onMore: (sectionDef) => this.showAll(sectionDef),
-      onAdd: (sectionDef) => this.tabActions.add(sectionDef.key, this.hub),
-      onRowAction: (sectionDef, row, key) => this.tabActions.row(key, sectionDef.key, this.hub, row),
+      // A split section ("openQuestions") adds and acts as the section it is cut from.
+      onAdd: (sectionDef) => this.tabActions.add(sectionDef.base ?? sectionDef.key, this.hub),
+      onRowAction: (sectionDef, row, key) => this.tabActions.row(key, sectionDef.base ?? sectionDef.key, this.hub, row),
       onLeave: () => this.onLeave(),
       renderSnippet,
     });
@@ -88,12 +93,15 @@ export class HubPage {
     }
     // hub: the page's owner, whose sections these are (any note but a template).
     this.hub = note && note.kind !== "template" ? note : null;
-    this.sections = sectionsFor(this.hub).filter((section) => section && !this.hideSections.has(section.key));
+    const shown = (sections) => sections.filter((section) => section && !this.hideSections.has(section.key));
+    const lanes = this.dashboard ? dashboardFor(this.hub) : null;
+    this.lanes = lanes && { act: shown(lanes.act), know: shown(lanes.know) };
+    this.sections = this.lanes ? [...this.lanes.act, ...this.lanes.know] : shown(sectionsFor(this.hub));
     this.page.dataset.page = this.hub?.kind ?? "note";
     this.showLabels(note);
     showHubLine(this.line, this.ctx, carded ? note : null, (id) => this.onOpen(id), this.controls);
     this.section.hidden = !this.hasPanel;
-    if (this.hasPanel) this.panel.draw(this.sections.map((section) => this.drawn(section)));
+    this.redraw();
   }
 
   showLabels(note) {
@@ -110,7 +118,9 @@ export class HubPage {
     const limit = section.limit && !all ? section.limit : rows.length;
     return {
       key: section.key,
+      base: section.base ?? null,
       label: section.label,
+      columns: section.columns ?? null,
       detail: section.detail ? section.detail(rows) : String(rows.length),
       folded: isFolded(this.folds, hub.kind, section),
       rows: rows.slice(0, limit),
@@ -121,7 +131,9 @@ export class HubPage {
   }
 
   redraw() {
-    if (this.hasPanel) this.panel.draw(this.sections.map((section) => this.drawn(section)));
+    if (!this.hasPanel) return;
+    const drawn = (sections) => sections.map((section) => this.drawn(section));
+    this.panel.draw(this.lanes ? { act: drawn(this.lanes.act), know: drawn(this.lanes.know) } : drawn(this.sections));
   }
 
   onRow(sectionDef, row) {

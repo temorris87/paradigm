@@ -14,6 +14,7 @@ import { localDay, whenText } from "../meetings/meeting-days.js";
 import { noteMenuItems } from "./note-menu.js";
 import { makePhaseDialog, unmakePhase } from "../plan/plan-commands.js";
 import { createFromTemplate, insertTemplateDialog, templateChoices } from "../templates/template-commands.js";
+import { moveToFolderDialog } from "../resources/folder-commands.js";
 
 export function openNoteMenu(app, anchor) {
   const id = app.currentId;
@@ -35,6 +36,7 @@ function runItem(app, id, item) {
       ...focusNote(app),
     });
     case "move": return moveDialog(app, id);
+    case "moveToFolder": return moveToFolderDialog(app, id);
     case "newBeside": return newNoteDialog(app, app.tree.parentId(id), { heading: `New note beside "${note.title}"` });
     case "newUnder": return newNoteDialog(app, id, { heading: `New note under "${note.title}"` });
     case "file": return app.kindCommand(item.filing).then(() => app.focusNote());

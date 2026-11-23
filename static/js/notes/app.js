@@ -62,6 +62,8 @@ import { Plan } from "../plan/plan-model.js";
 import { Files } from "../files/files-model.js";
 import { scanFolders } from "../files/file-commands.js";
 import { newTemplateDialog } from "../templates/template-commands.js";
+import { Folders } from "../resources/folders-model.js";
+import { addInFolderMenu } from "../resources/folder-commands.js";
 
 // The blocks of time loaded for the pages (a task's next block, Home's Today).
 const SESSIONS_BACK_DAYS = 7;
@@ -72,7 +74,7 @@ const UNSAVED = "E37: No write since last change (:w to save, or ! to drop the c
 export class NotesApp {
   constructor({ role = "note", editor, tree, crumbs, navigator, hub, agenda = {}, home, people, meetings, trash, goTo, api, trashApi,
                 imagesApi, peopleApi, meetingsApi, recordsApi, linksApi, tasksApi = null, calendarApi = null,
-                planApi = null, planTemplatesApi = null, filesApi = null, templatesApi = null, extraPages = {},
+                planApi = null, planTemplatesApi = null, filesApi = null, templatesApi = null, foldersApi = null, extraPages = {},
                 buttons = {}, status = null, dashboard = null, location = window.location, history = window.history,
                 today = () => new Date(), changes = new Changes() }) {
     this.role = role;
@@ -82,6 +84,9 @@ export class NotesApp {
     this.planTemplatesApi = planTemplatesApi;
     this.filesApi = filesApi;
     this.templatesApi = templatesApi;
+    this.foldersApi = foldersApi;
+    this.folders = new Folders();
+    this.folderId = null; // the folder page's (the main window)
     this.plan = new Plan();
     this.planTemplates = [];
     this.files = new Files();
@@ -134,8 +139,13 @@ export class NotesApp {
       // The drawer closes even when the note can't be opened, so the editor's message shows.
       onOpen: (id) => this.open(id).finally(() => this.navigator.hide()),
       onLeave: () => this.navigator.hide(),
-      onAdd: (group) => this.guard(this.newInGroup(group)),
+      onAdd: (group, anchor) => this.guard(this.newInGroup(group, anchor)),
       onAddUnder: (id) => this.guard(newNoteDialog(this, id, { heading: `New note under "${this.tree.get(id).title}"` })),
+      onOpenFolder: (id) => {
+        this.navigator.hide({ refocus: false });
+        this.showFolder(id);
+      },
+      onAddInFolder: (id, anchor) => addInFolderMenu(this, id, anchor),
     });
     // The main window draws a project's plan as a chart over its sections, not as a list.
     this.dashboard?.attach(this);
@@ -146,7 +156,7 @@ export class NotesApp {
       controls: hubLineControls(this),
       tabActions: hubTabActions(this),
       renderSnippet: (markdown) => renderMarkdown(markdown, this.markdownOptions()),
-      hideSections: role === "main" ? ["plan"] : [],
+      dashboard: role === "main",
     });
     const onPage = { onOpen: (id) => this.guard(this.open(id)), onLeave: () => this.leaveView() };
     // The pages drawn in place of a dashboard live in the main window only.
@@ -235,7 +245,12 @@ export class NotesApp {
       await this.refreshTree();
       if (this.tree.has(message.id)) await this.open(message.id);
     } else if (message.type === "view" && message.to === "main" && this.role === "main") {
-      if (this.views.pages[message.key]) this.showView(message.key, "push");
+      if (message.key === "folder") {
+        await this.refreshTree();
+        this.showFolder(message.folderId);
+      } else if (this.views.pages[message.key]) {
+        this.showView(message.key, "push");
+      }
     } else if (message.type === "changed") {
       await this.refreshTree();
       await this.reloadIfChanged();
@@ -294,6 +309,7 @@ export class NotesApp {
         : this.tree.children(null).find((note) => this.isDashboard(note.id))?.id ?? this.tree.children(null)[0]?.id;
     if (id === undefined) return;
     if (params.has("template")) this.templateId = Number(params.get("template"));
+    if (params.has("folder")) this.folderId = Number(params.get("folder"));
     const view = this.views.fromUrl(params) ?? (asked !== null && this.isDashboard(id) ? null : "home");
     await this.open(id, { history: view ? "none" : history });
     if (view) this.showView(view, history === "replace" ? "replace" : "none");
@@ -315,13 +331,15 @@ export class NotesApp {
 
   async refreshTree() {
     const today = this.today();
-    const [notes, people, meetings, records, trash, , tasks, sessions, importStatus, plan, planTemplates, files] = await Promise.all([
+    const [notes, people, meetings, records, trash, , tasks, sessions, importStatus, plan, planTemplates, files, folders] = await Promise.all([
       this.api.list(), this.peopleApi.list(), this.meetingsApi.list(), this.recordsApi.list(),
       this.trashApi.list(), this.linkIndex.refresh(), this.tasksApi?.list() ?? [],
       this.tasksApi?.sessions(localDay(addDays(today, -SESSIONS_BACK_DAYS)), localDay(addDays(today, SESSIONS_AHEAD_DAYS))) ?? [],
       this.calendarApi?.status().catch(() => null) ?? null,
       this.planApi?.list() ?? undefined, this.planTemplatesApi?.list() ?? [], this.filesApi?.list() ?? undefined,
+      this.foldersApi?.list() ?? [],
     ]);
+    this.folders = new Folders(folders);
     this.plan = new Plan(plan);
     this.planTemplates = planTemplates;
     this.files = new Files(files);
@@ -399,13 +417,13 @@ export class NotesApp {
   redraw() {
     const id = this.currentId;
     // While a page (Home, Calendar...) is shown, no tree row is the current one.
-    this.treeView.show(this.tree, id, { marked: !this.views.shown });
+    this.treeView.show(this.tree, id, { marked: !this.views.shown, folders: this.folders });
     showBreadcrumb(this.crumbs, this.tree, id, (target) => this.guard(this.open(target)),
       (button) => openNoteMenu(this, button));
     const ctx = { tree: this.tree, people: this.people, meetings: this.meetings, records: this.records,
       links: this.linkIndex.links, mentions: this.linkIndex.mentions, trash: this.trash, tasks: this.tasks,
       sessions: this.sessions, importStatus: this.importStatus, plan: this.plan, planTemplates: this.planTemplates,
-      files: this.files, templateId: this.templateId, today: this.today() };
+      files: this.files, templateId: this.templateId, folders: this.folders, folderId: this.folderId, today: this.today() };
     const trashed = this.trash.entries.length;
     if (this.trashButton) this.trashButton.textContent = trashed ? `Trash · ${trashed}` : "Trash";
     this.hubPage.show(ctx, id);
@@ -530,12 +548,13 @@ export class NotesApp {
   }
 
   /** Makes a top-level note filed as kind (a project, area or resource) and opens it; areaId
-   * puts a new project in an area; timeCode is its timesheet code. From a dialog: errors are
-   * thrown for it to show. */
-  async createFiled(kind, title, { areaId = null, timeCode = "" } = {}) {
+   * puts a new project in an area; timeCode is its timesheet code; folderId a resource in a
+   * folder. From a dialog: errors are thrown for it to show. */
+  async createFiled(kind, title, { areaId = null, timeCode = "", folderId = null } = {}) {
     if (!(await this.saveBeforeSwitching())) throw new Error("This note's changes could not be saved first");
     const made = await this.api.create(null, title);
     await this.api.setKind(made.id, kind);
+    if (folderId !== null) await this.foldersApi.putNote(made.id, folderId);
     if (areaId !== null) await this.api.setArea(made.id, areaId);
     if (timeCode) await this.api.setTimeCode(made.id, timeCode);
     await this.refreshTree();
@@ -544,8 +563,10 @@ export class NotesApp {
     this.say(`"${made.title}" made in ${where}`);
   }
 
-  /** The + on a tree group: a new note there (a person in People). */
-  newInGroup(group) {
+  /** The + on a tree group: a new note there (a person in People; in Resources, a note or a
+   * folder). */
+  newInGroup(group, anchor = null) {
+    if (group.folders && anchor) return addInFolderMenu(this, null, anchor);
     if (group.kind === "person") return newPersonDialog(this);
     if (group.kind === "template") return newTemplateDialog(this);
     return newNoteDialog(this, null, { heading: addLabel(group), kind: group.kind,
@@ -658,6 +679,26 @@ export class NotesApp {
     else showMainWindow({ type: "show", id: target }, this.changes);
   }
 
+  /** A folder's page (the main window): from the note window, it shows there. */
+  showFolder(folderId) {
+    if (this.role !== "main") {
+      showMainWindow({ type: "view", key: "folder", folderId }, this.changes);
+      return;
+    }
+    this.folderId = folderId;
+    this.views.show("folder", "push", `folder=${folderId}`);
+    this.redraw();
+  }
+
+  /** A folder was made, renamed, moved or trashed (or a note moved between them): every
+   * window shows it. gone: a trashed folder, whose page then leaves for Home. */
+  async folderChanged(message, { gone = null } = {}) {
+    await this.refreshTree();
+    this.changes.send({ type: "changed", what: ["notes"] });
+    if (gone !== null && this.views.shown === "folder" && !this.folders.has(this.folderId)) this.showView("home", "push");
+    this.say(message);
+  }
+
   /** A plan template's page (the main window). */
   showTemplate(templateId) {
     if (this.role !== "main") {
@@ -753,7 +794,9 @@ export class NotesApp {
       showMainWindow({ type: "view", key }, this.changes);
       return;
     }
-    this.views.show(key, history);
+    // A page about one thing keeps which one in its URL flag.
+    const flag = key === "folder" ? `folder=${this.folderId}` : key === "template" ? `template=${this.templateId}` : key;
+    this.views.show(key, history, flag);
     this.redraw();
   }
 

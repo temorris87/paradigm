@@ -370,7 +370,7 @@ function hubField(app) {
 
 function chosenHub(app, values) {
   const hub = app.tree.get(Number(values.hub));
-  if (!hub) throw new Error("Choose a hub first (make a project, an area or a resource)");
+  if (!hub) throw new Error("Choose a hub first (make a project or an area)");
   return hub;
 }
 

@@ -319,7 +319,7 @@ export class CalendarPage {
 
   newMeetingAt(day, minute) {
     const hubs = liveHubs(this.data.tree);
-    if (!hubs.length) return this.say("Make a project, an area or a resource first: a meeting goes in one");
+    if (!hubs.length) return this.say("Make a project or an area first: a meeting goes in one");
     const start = Math.max(0, Math.min(minute, DAY_MINUTES - DEFAULT_LENGTH));
     return formDialog({
       title: `New meeting on ${whenText({ day, time: clock(start) })}`,

@@ -88,7 +88,8 @@ export function showMainWindow(message, changes) {
   if (!main) {
     main = window.open("", MAIN_WINDOW);
     if (main && isBlank(main)) {
-      const url = message.type === "show" ? `/?note=${encodeURIComponent(message.id)}` : `/?${message.key}`;
+      const flag = message.folderId ? `${message.key}=${encodeURIComponent(message.folderId)}` : message.key;
+      const url = message.type === "show" ? `/?note=${encodeURIComponent(message.id)}` : `/?${flag}`;
       main.location.replace(url);
     }
   }

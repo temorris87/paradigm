@@ -1,10 +1,14 @@
-"""PARA hub kinds: what a top-level note can be filed as. None means the Inbox."""
+"""PARA kinds: what a top-level note can be filed as (None: the Inbox), and which of them
+are hubs. A resource is a plain note in Resources, sorted into folders (folders_repo.py): it
+holds no meetings, records, people or linked OneDrive folders."""
 from typing import Optional
 
 from paradigm.notes.meetings import BadWhen, clean_day
 
 # Keep in step with the CHECK in db/migrations/003_hub_kind.sql and static/js/notes/hub-groups.js.
-HUB_KINDS = ("project", "area", "resource")
+FILE_KINDS = ("project", "area", "resource")
+# The hubs: what meetings, decisions, questions, people and OneDrive folders go on.
+HUB_KINDS = ("project", "area")
 
 
 class BadKind(ValueError):
@@ -12,9 +16,9 @@ class BadKind(ValueError):
 
 
 def clean_kind(kind: object) -> Optional[str]:
-    if kind is None or kind in HUB_KINDS:
+    if kind is None or kind in FILE_KINDS:
         return kind
-    raise BadKind("kind must be one of {} or null".format(", ".join(HUB_KINDS)))
+    raise BadKind("kind must be one of {} or null".format(", ".join(FILE_KINDS)))
 
 
 # A project's state (011_pages.sql); keep in step with static/js/hubs/project-facts.js.

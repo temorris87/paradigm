@@ -2,7 +2,8 @@
 // it says which items show and how they read; note-actions.js runs them.
 //
 //   noteMenuItems(tree, id, { window }) -> [{ key, label, ... } | { group } | "separator"]
-//     keys: rename, move, newBeside, newUnder, file (with filing: a HUB_GROUPS entry, checked),
+//     keys: rename, move, moveToFolder (a resource), newBeside, newUnder, file (with filing: a
+//           HUB_GROUPS entry, checked),
 //           insertTemplate (the note window: a template's text at the cursor), makePhase (a plain
 //           note directly in a project), unmakePhase (a phase back to a plain note), dashboard
 //           (the note window: its hub's dashboard in the main window),
@@ -18,6 +19,7 @@ export function noteMenuItems(tree, id, { window = "note" } = {}) {
   const nested = tree.parentId(id) !== null;
   const items = [{ key: "rename", label: "Rename…" }];
   if (!person && !template) items.push({ key: "move", label: "Move…" });
+  if (note.kind === "resource" && !nested) items.push({ key: "moveToFolder", label: "Move to folder…" });
   // A meeting, decision or question has no notes under it: its page holds its text.
   if (isRecordKind(note.kind)) items.push({ key: "newBeside", label: "New note in the hub…" });
   else if (!template) items.push({ key: "newBeside", label: "New note beside…" }, { key: "newUnder", label: "New note under…" });

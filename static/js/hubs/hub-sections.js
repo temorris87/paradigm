@@ -8,8 +8,11 @@
 // counts (the Projects section).
 //
 //   sectionsFor(note)          the sections for a hub, person or meeting note, in page order
-//   section.rows(ctx, note)    [{ id, title, depth, detail, muted?, late?, actions?, snippet?, at?,
-//                              task?, file?, template?, addSubtask? }]
+//   dashboardFor(note)         the main window's two lanes { act: [...], know: [...] }, or null
+//   section.rows(ctx, note)    [{ id, title, depth, detail, date?, cells?, muted?, late?, actions?,
+//                              snippet?, at?, task?, file?, template?, addSubtask? }]
+//                              date: its day, in a column of its own at the row's end;
+//                              cells: a table row's columns (an area's Projects)
 //                              ctx: { tree, people, meetings, records, links, mentions, tasks,
 //                              sessions, plan, files, planTemplates, expanded: Set of task ids
 //                              shown with their subtasks, today }
@@ -25,6 +28,8 @@
 //   section.add                { label } of its add button (hub-actions.js), or null
 //   section.limit              rows shown before "Show all"
 //   section.folded             folded until opened (remembered per browser: hub-folds.js)
+//   section.base               the section whose add button and row buttons it shares
+//                              ("openQuestions" adds a question), or none
 import { archivedProjectsIn, projectsIn } from "./hub-areas.js";
 import { attendeesOf, attendeesText, meetingsOn, meetingsWith, shortTitle } from "../meetings/meetings-model.js";
 import { localDay, whenText } from "../meetings/meeting-days.js";
@@ -36,7 +41,7 @@ import { isOpen, peopleOf, recordsOn } from "../records/records-model.js";
 import { openCount, subtaskText, tasksOn, waitingOn } from "../tasks/tasks-model.js";
 import { Files, fileDir, filesOn } from "../files/files-model.js";
 import { Plan, milestonesOf, nextMilestone, phasesOf, shortDay, slipOf, slipText } from "../plan/plan-model.js";
-import { projectFactsText, statusText } from "./project-facts.js";
+import { projectFactsText, statusLabel, statusText } from "./project-facts.js";
 import { dayText } from "../ui/dates.js";
 
 const REMOVE = Object.freeze({ key: "remove", label: "Remove" });
@@ -55,13 +60,34 @@ const LIMIT = 5;
 export const SECTION_ORDER = {
   project: ["plan", "tasks", "questions", "decisions", "meetings", "files", "notes", "people"],
   area: ["projects", "tasks", "questions", "decisions", "meetings", "files", "templates", "notes", "people"],
-  resource: ["notes", "files", "tasks", "questions", "decisions", "meetings", "people", "linked"],
+  // A resource is a plain note (in a folder): its tasks and files, as any note.
+  resource: ["tasks", "files"],
   meeting: ["tasks", "questions", "decisions", "files"],
   phase: ["tasks", "milestones", "files", "notes"],
   milestone: ["tasks", "files"],
   note: ["tasks", "files"],
   person: ["waiting", "active", "archived", "backlinks"],
 };
+
+// The main window's dashboard: two lanes under the card, the chart and the text. Act holds
+// what needs doing, Know what is looked up; each section keeps its place, full or empty.
+export const DASHBOARD_LAYOUT = {
+  project: {
+    act: ["tasks", "openQuestions", "upcomingMeetings"],
+    know: ["decisions", "answeredQuestions", "notes", "files", "people", "pastMeetings"],
+  },
+  area: {
+    act: ["projects", "tasks", "openQuestions", "upcomingMeetings"],
+    know: ["decisions", "answeredQuestions", "templates", "notes", "files", "people", "pastMeetings"],
+  },
+  person: {
+    act: ["waiting", "active"],
+    know: ["backlinks", "archived"],
+  },
+};
+
+// A project's columns in an area's Projects table.
+export const PROJECT_CELLS = ["Status", "Due", "Next milestone", "Open tasks", "Open questions"];
 
 export const HUB_SECTIONS = [
   {
@@ -72,40 +98,53 @@ export const HUB_SECTIONS = [
       ...projectsIn(ctx.tree, area.id).map((project) => ({
         id: project.id, title: project.title, depth: 0,
         detail: [statusText(project), projectCounts(ctx, project), projectFactsText(ctx, project)].filter(Boolean).join(" · "),
+        cells: projectCells(ctx, project),
         muted: project.status === "on_hold",
         late: projectLate(ctx, project),
         actions: [{ key: "remove", label: "Take out" }],
       })),
       ...archivedProjectsIn(ctx.tree, area.id).map((project) => ({
-        id: project.id, title: project.title, depth: 0, detail: `archived ${shortDay(dayOf(project.archived_at), localDay(ctx.today ?? new Date()))}`, muted: true,
+        id: project.id, title: project.title, depth: 0, detail: "archived",
+        cells: ["archived", "", "", "", ""], date: shortDay(dayOf(project.archived_at), localDay(ctx.today ?? new Date())), muted: true,
       })),
     ],
     detail: (rows) => counted(rows.filter((row) => !row.muted).length, "live"),
     empty: () => "No projects in this area yet",
     add: { label: "Add project" },
+    columns: PROJECT_CELLS,
   },
   {
     key: "questions",
     label: "Questions",
     // Open first, oldest first (they have waited longest); then answered ones, muted.
-    rows: (ctx, owner) => recordsOn(ctx.tree, ctx.records, owner, "question").map((entry) => {
-      const open = isOpen(entry.record);
-      return {
-        id: entry.note.id,
-        title: entry.note.title,
-        depth: 0,
-        detail: [open ? `asked ${shortDay(entry.record.day, localDay(ctx.today ?? new Date()))}` : `answered ${shortDay(entry.record.answered, localDay(ctx.today ?? new Date()))}`,
-          ...whereText(ctx, owner, entry)].filter(Boolean).join(" · "),
-        muted: entry.archived || !open,
-        actions: open && !entry.archived ? [ANSWER] : [],
-      };
-    }),
+    rows: (ctx, owner) => questionRows(ctx, owner),
     detail: (rows) => counted(rows.filter((row) => !row.muted).length, "open"),
     empty: (owner) => owner.kind === "meeting"
       ? "No questions from this meeting yet. Select text in the notes and right-click to add one."
       : "No questions yet. Select text in a note and right-click to add one.",
     add: { label: "New question" },
     limit: LIMIT,
+  },
+  {
+    key: "openQuestions",
+    label: "Open questions",
+    base: "questions",
+    rows: (ctx, owner) => questionRows(ctx, owner).filter((row) => row.open),
+    detail: (rows) => String(rows.length),
+    empty: () => "No open questions. Select text in a note and right-click to add one.",
+    add: { label: "New question" },
+    limit: LIMIT,
+  },
+  {
+    key: "answeredQuestions",
+    label: "Answered questions",
+    base: "questions",
+    rows: (ctx, owner) => questionRows(ctx, owner).filter((row) => !row.open),
+    detail: (rows) => String(rows.length),
+    empty: () => "No answered questions yet",
+    add: null,
+    limit: LIMIT,
+    folded: true,
   },
   {
     key: "plan",
@@ -190,7 +229,8 @@ export const HUB_SECTIONS = [
       id: entry.note.id,
       title: entry.note.title,
       depth: 0,
-      detail: [shortDay(entry.record.day, localDay(ctx.today ?? new Date())), ...whereText(ctx, owner, entry)].filter(Boolean).join(" · "),
+      detail: whereText(ctx, owner, entry).filter(Boolean).join(" · "),
+      date: shortDay(entry.record.day, localDay(ctx.today ?? new Date())),
       muted: entry.archived,
     })),
     detail: (rows) => String(rows.length),
@@ -210,7 +250,8 @@ export const HUB_SECTIONS = [
       id: note.id,
       title: note.title,
       depth: tree.ancestors(note.id).length - 1,
-      detail: changedDay(note.updated_at),
+      detail: "",
+      date: changedDay(note.updated_at),
     })),
     detail: (rows) => String(rows.length),
     empty: (hub) => `No notes in this ${hub.kind} yet`,
@@ -221,18 +262,34 @@ export const HUB_SECTIONS = [
     label: "Meetings",
     // Upcoming first (soonest first), then past ones (newest first); an area's include its
     // projects' ("on Pilot"). Meetings in archived hubs come last, muted.
-    rows: (ctx, owner) => upcomingFirst(meetingsOn(ctx.tree, ctx.meetings, owner), ctx.today).map(({ note, meeting, hub, archived }) => ({
-      id: note.id,
-      title: shortTitle(note, meeting),
-      depth: 0,
-      detail: [whenText(meeting), hub.id !== owner.id ? `on ${hub.title}` : "",
-        attendeesText(attendeesOf(ctx.tree, ctx.meetings, note.id).length), archived ? "archived" : ""].filter(Boolean).join(" · "),
-      muted: archived,
-    })),
+    rows: (ctx, owner) => meetingRows(ctx, owner, upcomingFirst(meetingsOn(ctx.tree, ctx.meetings, owner), ctx.today)),
     detail: (rows) => String(rows.length),
     empty: (owner) => `No meetings in this ${owner.kind} yet`,
     add: { label: "New meeting" },
     limit: LIMIT,
+  },
+  {
+    key: "upcomingMeetings",
+    label: "Upcoming meetings",
+    base: "meetings",
+    // Soonest first, from today on.
+    rows: (ctx, owner) => meetingRows(ctx, owner, upcomingOnly(meetingsOn(ctx.tree, ctx.meetings, owner), ctx.today)),
+    detail: (rows) => String(rows.length),
+    empty: () => "No meetings coming up",
+    add: { label: "New meeting" },
+    limit: LIMIT,
+  },
+  {
+    key: "pastMeetings",
+    label: "Past meetings",
+    base: "meetings",
+    // Newest first; archived hubs' last, muted.
+    rows: (ctx, owner) => meetingRows(ctx, owner, pastOnly(meetingsOn(ctx.tree, ctx.meetings, owner), ctx.today)),
+    detail: (rows) => String(rows.length),
+    empty: () => "No past meetings",
+    add: null,
+    limit: LIMIT,
+    folded: true,
   },
   {
     key: "people",
@@ -254,27 +311,6 @@ export const HUB_SECTIONS = [
     detail: (rows) => String(rows.length),
     empty: (hub) => `No people on this ${hub.kind} yet`,
     add: { label: "Add person" },
-  },
-  {
-    key: "linked",
-    label: "Linked from",
-    // Notes outside the owner whose [[links]] reach it or a note under it ("to Colours");
-    // links inside it are its own. Newest change first; archived ones last, muted.
-    rows: ({ tree, links = new Links() }, owner) => linksInto(tree, links, owner).map(({ note, reached, archived }) => {
-      const under = reached.filter((target) => target.id !== owner.id).map((target) => target.title);
-      const hub = hubOf(tree, note.id);
-      return {
-        id: note.id,
-        title: note.title,
-        depth: 0,
-        detail: [under.length ? `to ${under.join(", ")}` : "", hub && hub.id !== note.id ? hub.title : "", changedDay(note.updated_at),
-          archived ? "archived" : ""].filter(Boolean).join(" · "),
-        muted: archived,
-      };
-    }),
-    detail: (rows) => String(rows.length),
-    empty: (owner) => `Nothing links to ${owner.title} yet. Write [[${owner.title}]] in any note.`,
-    add: null,
   },
   {
     key: "active",
@@ -312,6 +348,41 @@ const BY_KEY = new Map(HUB_SECTIONS.map((section) => [section.key, section]));
 export function sectionsFor(note) {
   if (!note) return [];
   return (SECTION_ORDER[note.kind ?? "note"] ?? []).map((key) => BY_KEY.get(key));
+}
+
+export function dashboardFor(note) {
+  const layout = note ? DASHBOARD_LAYOUT[note.kind] : null;
+  if (!layout) return null;
+  return { act: layout.act.map((key) => BY_KEY.get(key)), know: layout.know.map((key) => BY_KEY.get(key)) };
+}
+
+function questionRows(ctx, owner) {
+  const today = localDay(ctx.today ?? new Date());
+  return recordsOn(ctx.tree, ctx.records, owner, "question").map((entry) => {
+    const open = isOpen(entry.record);
+    return {
+      id: entry.note.id,
+      title: entry.note.title,
+      depth: 0,
+      detail: whereText(ctx, owner, entry).filter(Boolean).join(" · "),
+      date: open ? `asked ${shortDay(entry.record.day, today)}` : `answered ${shortDay(entry.record.answered, today)}`,
+      open,
+      muted: entry.archived || !open,
+      actions: open && !entry.archived ? [ANSWER] : [],
+    };
+  });
+}
+
+function meetingRows(ctx, owner, entries) {
+  return entries.map(({ note, meeting, hub, archived }) => ({
+    id: note.id,
+    title: shortTitle(note, meeting),
+    depth: 0,
+    detail: [hub.id !== owner.id ? `on ${hub.title}` : "", attendeesText(attendeesOf(ctx.tree, ctx.meetings, note.id).length),
+      archived ? "archived" : ""].filter(Boolean).join(" · "),
+    date: whenText(meeting),
+    muted: archived,
+  }));
 }
 
 /** Where a decision or question is, as seen from the section's owner, and who is on it. */
@@ -377,6 +448,19 @@ function dedent(text) {
   return lines.map((line) => line.slice(Math.min(indent, /^[ \t]*/.exec(line)[0].length))).join("\n");
 }
 
+function upcomingOnly(entries, today = new Date()) {
+  const day = localDay(today);
+  const when = (entry) => `${entry.meeting.day} ${entry.meeting.time}`;
+  return entries.filter((entry) => !entry.archived && entry.meeting.day >= day).sort((a, b) => when(a).localeCompare(when(b)));
+}
+
+function pastOnly(entries, today = new Date()) {
+  const day = localDay(today);
+  const when = (entry) => `${entry.meeting.day} ${entry.meeting.time}`;
+  const past = entries.filter((entry) => !entry.archived && entry.meeting.day < day).sort((a, b) => when(b).localeCompare(when(a)));
+  return [...past, ...entries.filter((entry) => entry.archived)];
+}
+
 function upcomingFirst(entries, today = new Date()) {
   const day = localDay(today);
   const live = entries.filter((entry) => !entry.archived);
@@ -435,13 +519,15 @@ function taskRows(ctx, owner, entry) {
   const { task, note, archived } = entry;
   const open = ctx.expanded?.has(task.id) ?? false;
   const subtasks = entry.subtasks ?? [];
+  // Closed, a row shows who has it and its subtasks; opened (Enter), where it is and its next
+  // block on the calendar too.
   const row = {
     id: note.id,
     title: task.title || "(no text)",
     depth: 0,
-    detail: [subtaskText(entry), delegateText(ctx, task), dueText(ctx, task), note.id !== owner.id ? `in ${note.title}` : "",
-      nextBlockText(ctx, task.id), task.done ? `done ${shortDay(task.done_day, localDay(ctx.today ?? new Date()))}`.trim() : "", archived ? "archived" : ""]
-      .filter(Boolean).join(" · "),
+    detail: [subtaskText(entry), delegateText(ctx, task), open && note.id !== owner.id ? `in ${note.title}` : "",
+      open ? nextBlockText(ctx, task.id) : "", archived ? "archived" : ""].filter(Boolean).join(" · "),
+    date: task.done ? `done ${shortDay(task.done_day, localDay(ctx.today ?? new Date()))}`.trim() : dueText(ctx, task),
     muted: task.done || archived,
     late: isLate(ctx, task),
     task: task.id,
@@ -455,7 +541,8 @@ function taskRows(ctx, owner, entry) {
     id: note.id,
     title: sub.title,
     depth: 1,
-    detail: [delegateText(ctx, sub), dueText(ctx, sub), sub.done ? `done ${shortDay(sub.done_day, localDay(ctx.today ?? new Date()))}` : ""].filter(Boolean).join(" · "),
+    detail: delegateText(ctx, sub),
+    date: sub.done ? `done ${shortDay(sub.done_day, localDay(ctx.today ?? new Date()))}` : dueText(ctx, sub),
     muted: sub.done || archived,
     late: isLate(ctx, sub),
     task: sub.id,
@@ -512,6 +599,16 @@ function projectCounts(ctx, project) {
   const next = nextMilestone(ctx.tree, plan(ctx), project.id);
   if (next) parts.push(`◆ ${next.note.title} ${shortDay(next.milestone.day, localDay(ctx.today ?? new Date()))}`);
   return parts.join(" · ");
+}
+
+/** An area's Projects table: status, due, next milestone, open tasks, open questions. */
+function projectCells(ctx, project) {
+  const today = localDay(ctx.today ?? new Date());
+  const next = nextMilestone(ctx.tree, plan(ctx), project.id);
+  const tasks = ctx.tasks ? openCount(ctx.tree, ctx.tasks, project) : 0;
+  const questions = ctx.records ? recordsOn(ctx.tree, ctx.records, project, "question").filter((entry) => isOpen(entry.record)).length : 0;
+  return [statusLabel(project), project.due ? shortDay(project.due, today) : "",
+    next ? `◆ ${next.note.title} ${shortDay(next.milestone.day, today)}` : "", tasks ? String(tasks) : "", questions ? String(questions) : ""];
 }
 
 function projectLate(ctx, project) {

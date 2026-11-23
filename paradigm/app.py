@@ -10,6 +10,7 @@ from paradigm.api.files import FilesApi
 from paradigm.api.images import ImagesApi
 from paradigm.api.links import LinksApi
 from paradigm.api.meetings import MeetingsApi
+from paradigm.api.folders import FoldersApi
 from paradigm.api.notes import NotesApi
 from paradigm.api.people import PeopleApi
 from paradigm.api.plans import PlansApi
@@ -35,6 +36,7 @@ from paradigm.db.records_repo import RecordRepository
 from paradigm.db.tasks_repo import TaskRepository
 from paradigm.db.templates_repo import TemplateRepository
 from paradigm.db.time_repo import TimeRepository
+from paradigm.db.folders_repo import FolderRepository
 from paradigm.db.trash_repo import TrashRepository
 from paradigm.instance import PortState, probe
 from paradigm.logging_setup import setup_logging
@@ -156,6 +158,7 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
     server.on_close.insert(0, tidy_at_stop)
     SessionApi(presence, config.keepalive_seconds, config.max_streams).register(server.router)
     NotesApi(notes).register(server.router)
+    FoldersApi(FolderRepository(db), notes).register(server.router)
     PeopleApi(PeopleRepository(db), notes).register(server.router)
     MeetingsApi(MeetingRepository(db), notes).register(server.router)
     RecordsApi(RecordRepository(db), notes).register(server.router)

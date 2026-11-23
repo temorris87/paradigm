@@ -104,9 +104,13 @@ test("meetings: the page's filters combine", () => {
 test("meeting sections: Meetings on hubs (upcoming first), what a person attended", () => {
   const c = { ...ctx(), records: { all: () => [], get: () => ({ people: [] }) } };
   assertEqual(sectionsFor(c.tree.get(20)).map((t) => t.key).join(), "tasks,questions,decisions,files");
-  const rows = (key, id) => tab(key).rows(c, c.tree.get(id)).map((r) => `${r.title}|${r.detail}${r.muted ? "~" : ""}`).join(",");
+  const rows = (key, id) => tab(key).rows(c, c.tree.get(id)).map((r) => `${r.title}|${[r.date, r.detail].filter(Boolean).join(" · ")}${r.muted ? "~" : ""}`).join(",");
   assertEqual(rows("meetings", 1), "Review|Sat 21 Nov 09:30 · no attendees,"
     + "Kickoff|Tue 24 Nov 14:00 · on Rollout · 2 attendees,Planning|Tue 17 Nov · on Rollout · 1 attendee");
+  // The dashboard splits them: from today on (soonest first), and before (newest first).
+  assertEqual(rows("upcomingMeetings", 1), "Review|Sat 21 Nov 09:30 · no attendees,Kickoff|Tue 24 Nov 14:00 · on Rollout · 2 attendees",
+    "today's count as upcoming");
+  assertEqual(rows("pastMeetings", 1), "Planning|Tue 17 Nov · on Rollout · 1 attendee");
   assertEqual(rows("active", 10), "Kickoff|Meeting · Tue 24 Nov 14:00 · Rollout,Planning|Meeting · Tue 17 Nov · Rollout");
   assertEqual(rows("archived", 10), "Old sync|Meeting · Sun 1 Jun 2025 · Old plan~");
   assertEqual(tab("notes").rows(c, c.tree.get(2)).map((r) => r.title).join(), "Plan", "meetings have their own section");
@@ -127,7 +131,7 @@ test("meeting page: the card and its sections", () => {
     assertEqual(rows.join("|"), "Meeting·Tue 24 Nov 14:00·in Rollout|Attendees:Bob Lee×, Jane Doe×+ Add attendee");
     line.querySelector(".hub-line__link").click();
     assertEqual(opened.join(), "2");
-    assertEqual([...section.querySelectorAll(".hub__label")].map((t) => t.textContent).join(), "Tasks,Questions,Decisions,Files");
+    assertEqual([...section.querySelectorAll(".hub__label, .hub__empty-label")].map((t) => t.textContent).join(), "Tasks,Questions,Decisions,Files");
     assertEqual(page.dataset.page, "meeting");
   } finally {
     page.remove();
@@ -209,7 +213,7 @@ test("meeting commands: :meeting goes in the open note's hub", async () => {
   assertEqual(await rejects(runNoteCommand(app, { name: "meeting", arg: "tomorrow" })), "E471: Argument required: :meeting [{date}] [{time}] {title}");
   ({ app } = fakeApp(4));
   assertEqual(await rejects(runNoteCommand(app, { name: "meeting", arg: "X" })),
-    "E: meetings go in a hub: open a project, an area or a resource (or a note in one)");
+    "E: meetings go in a hub: open a project or an area (or a note in one)");
   ({ app } = fakeApp(10));
   assertTrue((await rejects(runNoteCommand(app, { name: "meeting", arg: "X" }))).startsWith("E: meetings go in a hub"), "not on a person");
 });

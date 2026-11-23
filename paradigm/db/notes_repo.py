@@ -16,7 +16,7 @@ Clock = Callable[[], str]
 __all__ = ["NoteRepository", "NoteError", "NotFound", "Conflict", "TitleTaken", "BadTitle",
            "HasChildren", "WouldCycle", "LastNote", "BadKind", "NotAProject", "NotAnArea",
            "NotTopLevel", "NotArchived", "AreaArchived", "IsAPerson", "StaysInAHub", "NoNotesUnder",
-           "BadProjectField", "live_note_row", "check_title_free", "top_note_row", "refuse_notes_under"]
+           "BadProjectField", "HoldsHubThings", "NotAResource", "live_note_row", "check_title_free", "top_note_row", "refuse_notes_under"]
 
 
 class NoteError(Exception):
@@ -82,6 +82,15 @@ class StaysInAHub(NoteError):
 
 class NoNotesUnder(NoteError):
     """A meeting, decision or question has no notes under it: its page holds its text."""
+
+
+class HoldsHubThings(NoteError):
+    """A resource is a plain note: one holding meetings, records, a plan, people or linked
+    OneDrive folders must stay a project or an area."""
+
+
+class NotAResource(NoteError):
+    """Only a resource (a top-level note in Resources) goes in a folder."""
 
 
 def utc_now() -> str:
@@ -209,7 +218,7 @@ class NoteRepository:
             # Only top-level notes are hubs: going under another note leaves its group.
             # Only top-level notes are archived: under another note, it shares that one's state.
             if parent_id is not None:
-                self._change(conn, note_id, "parent_id = ?, kind = NULL, archived_at = NULL", (parent_id,))
+                self._change(conn, note_id, "parent_id = ?, kind = NULL, archived_at = NULL, folder_id = NULL", (parent_id,))
                 _drop_area_links(conn, note_id)
             else:
                 self._change(conn, note_id, "parent_id = ?", (parent_id,))
@@ -225,14 +234,32 @@ class NoteRepository:
                 raise IsAPerson('"{}" is a {}, not a note to file'.format(row["title"], _kind(row)))
             if _in_hub_only(row):
                 raise StaysInAHub('"{}" is a {}: it stays inside its hub'.format(row["title"], _kind(row)))
+            if kind == "resource":
+                _refuse_hub_things(conn, row)
             if row["parent_id"] is not None:
                 _check_free(conn, None, row["title"], note_id)
                 self._change(conn, note_id, "parent_id = NULL", ())
             self._change(conn, note_id, "kind = ?", (kind,))
+            if kind != "resource":
+                conn.execute("UPDATE notes SET folder_id = NULL WHERE id = ?", (note_id,))
             if kind != "project":
                 conn.execute("UPDATE notes SET area_id = NULL WHERE id = ?", (note_id,))
             if kind != "area":
                 conn.execute("UPDATE notes SET area_id = NULL WHERE area_id = ?", (note_id,))
+        return self.get(note_id)
+
+    def set_folder(self, note_id: int, folder_id: Optional[int]) -> Dict:
+        """Puts a resource in a folder (None: at the top of Resources)."""
+        with self._db.transaction() as conn:
+            row = _live_row(conn, note_id)
+            if row["kind"] != "resource" or row["parent_id"] is not None or row["is_person"] or row["is_template"]:
+                raise NotAResource('"{}" is not a resource: only a note in Resources goes in a folder'.format(row["title"]))
+            if folder_id is not None:
+                folder = conn.execute("SELECT id FROM resource_folders WHERE id = ? AND deleted_at IS NULL",
+                                      (folder_id,)).fetchone()
+                if folder is None:
+                    raise NotFound("No such folder: {}".format(folder_id))
+            self._change(conn, note_id, "folder_id = ?", (folder_id,))
         return self.get(note_id)
 
     def set_area(self, note_id: int, area_id: Optional[int]) -> Dict:
@@ -321,7 +348,7 @@ class NoteRepository:
 
 def _summary(row: sqlite3.Row) -> Dict:
     return {"id": row["id"], "parent_id": row["parent_id"], "title": row["title"],
-            "kind": _kind(row), "area_id": row["area_id"], "archived_at": row["archived_at"],
+            "kind": _kind(row), "area_id": row["area_id"], "folder_id": row["folder_id"], "archived_at": row["archived_at"],
             "status": row["status"], "due": row["due"], "time_code": row["time_code"], "version": row["version"],
             "updated_at": row["updated_at"]}
 
@@ -360,7 +387,7 @@ def _check_hub_place(conn: sqlite3.Connection, row: sqlite3.Row, parent_id: Opti
         return
     if parent is None or parent["parent_id"] is not None or parent["is_person"] or parent["is_template"] \
             or parent["kind"] not in HUB_KINDS:
-        raise StaysInAHub('"{}" is a {}: it goes directly in a project, an area or a resource'.format(
+        raise StaysInAHub('"{}" is a {}: it goes directly in a project or an area'.format(
             row["title"], kind))
 
 
@@ -372,6 +399,26 @@ def _refuse_notes_under(parent: sqlite3.Row) -> None:
     if _kind(parent) in _LEAF_KINDS:
         raise NoNotesUnder('"{}" is a {}: it has no notes under it (write in its page instead)'.format(
             parent["title"], _kind(parent)))
+
+
+def _refuse_hub_things(conn: sqlite3.Connection, row: sqlite3.Row) -> None:
+    """A note filed as a resource holds no meetings, records or plan under it, and has no
+    people or OneDrive folders on it: those only go on a project or an area."""
+    inside = _subtree(conn, row["id"])[1:]
+    marks = ",".join("?" * len(inside))
+    held = 0
+    if inside:
+        # marks is only "?, ?, ...": the ids go in as parameters.
+        held = conn.execute(
+            "SELECT count(*) FROM notes WHERE id IN ({0}) AND (id IN (SELECT note_id FROM meetings) "
+            "OR id IN (SELECT note_id FROM decisions) OR id IN (SELECT note_id FROM questions) "
+            "OR id IN (SELECT note_id FROM phases) OR id IN (SELECT note_id FROM milestones))".format(marks),
+            inside).fetchone()[0]
+    linked = conn.execute("SELECT (SELECT count(*) FROM hub_people WHERE hub_id = ?) "
+                          "+ (SELECT count(*) FROM file_folders WHERE note_id = ?)", (row["id"], row["id"])).fetchone()[0]
+    if held or linked:
+        raise HoldsHubThings('"{}" holds meetings, decisions, questions, a plan, people or OneDrive folders: '
+                             'a resource is a plain note, so it stays a project or an area'.format(row["title"]))
 
 
 def _project_row(conn: sqlite3.Connection, note_id: int) -> sqlite3.Row:

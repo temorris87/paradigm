@@ -1,6 +1,7 @@
-// PARA hub groups: THE table of what a top-level note can be filed as, in the navigator's
-// order (label names one of them: "a Project"). A note with no kind waits in the Inbox. Pure.
-// Keep the kinds in step with paradigm/notes/hubs.py (HUB_KINDS).
+// PARA groups: THE table of what a top-level note can be filed as, in the navigator's order
+// (label names one of them: "a Project"). A note with no kind waits in the Inbox. Projects and
+// areas are hubs; a resource is a plain note, sorted into folders (static/js/resources/). Pure.
+// Keep the kinds in step with paradigm/notes/hubs.py (FILE_KINDS, HUB_KINDS).
 //
 // Archived hubs (archived_at set on the top-level note) leave their group for the Archive,
 // which the navigator shows last and folded until it is opened. A hub keeps its kind there,
@@ -20,7 +21,8 @@ export const HUB_GROUPS = [
   { key: "inbox", label: "Inbox", kind: null, heading: "Inbox", command: "inbox", asWhat: "in the Inbox" },
   { key: "project", label: "Project", kind: "project", heading: "Projects", command: "project", asWhat: "a project" },
   { key: "area", label: "Area", kind: "area", heading: "Areas", command: "area", asWhat: "an area" },
-  { key: "resource", label: "Resource", kind: "resource", heading: "Resources", command: "resource", asWhat: "a resource" },
+  { key: "resource", label: "Resource", kind: "resource", heading: "Resources", command: "resource", asWhat: "a resource",
+    folders: true },
 ];
 
 // Not groups: the kinds of note that live inside a hub with no notes under them (the tree
@@ -41,7 +43,7 @@ export const ARCHIVE_GROUP = { key: "archive", heading: "Archive", foldedByDefau
 export const NAV_GROUPS = [...HUB_GROUPS, PEOPLE_GROUP, TEMPLATES_GROUP, ARCHIVE_GROUP];
 
 const KIND_GROUPS = [...HUB_GROUPS, PEOPLE_GROUP, TEMPLATES_GROUP];
-const HUB_KINDS = new Set(["project", "area", "resource"]);
+const HUB_KINDS = new Set(["project", "area"]);
 
 export function groupForKind(kind) {
   return KIND_GROUPS.find((group) => group.kind === (kind ?? null)) ?? HUB_GROUPS[0];
@@ -71,7 +73,7 @@ export function isArchived(tree, id) {
   return Boolean(topNoteOf(tree, id)?.archived_at);
 }
 
-/** Whether a note is a hub: a top-level note filed as a project, an area or a resource. */
+/** Whether a note is a hub: a top-level note filed as a project or an area. */
 export function isHub(tree, id) {
   const note = tree.get(id);
   return HUB_KINDS.has(note?.kind) && tree.parentId(id) === null;

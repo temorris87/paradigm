@@ -24,6 +24,7 @@ export const PAGE_VIEWS = [
   { key: "calendar", label: "Calendar" },
   { key: "time", label: "Time" },
   { key: "template", label: "Plan template" },
+  { key: "folder", label: "Folder" },
 ];
 
 /** A page's name ("Home"), for the tab's title. */

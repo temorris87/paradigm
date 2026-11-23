@@ -78,20 +78,24 @@ test("records: decisions newest first; a hub's, an area's, a meeting's, a person
     "a person's: archived last");
   assertEqual(peopleOf(c.tree, c.records, 30).map((p) => p.title).join(), "Bob Lee,Jane Doe", "by name, missing skipped");
   const rows = tab("decisions").rows(c, c.tree.get(1));
-  assertEqual(rows.map((r) => r.detail).join("|"),
+  assertEqual(rows.map((r) => `${r.date} · ${r.detail}`).join("|"),
     "18 Nov · Jane Doe", "an area's own only");
   const mine = tab("decisions").rows(c, c.tree.get(10));
-  assertEqual(mine[2].detail, "1 Jan 2025 · Old plan · Jane Doe · archived");
+  assertEqual(`${mine[2].date} · ${mine[2].detail}`, "1 Jan 2025 · Old plan · Jane Doe · archived");
   assertTrue(mine[2].muted && !mine[0].muted);
-  assertEqual(tab("decisions").rows(c, c.tree.get(20))[0].detail, "24 Nov", "a meeting doesn't name itself");
+  const fromMeeting = tab("decisions").rows(c, c.tree.get(20))[0];
+  assertEqual([fromMeeting.date, fromMeeting.detail].join("|"), "24 Nov|", "a meeting doesn't name itself");
 });
 
 test("records: questions open first (oldest first), then answered (newest answer first)", () => {
   const c = ctx();
   assertEqual(titles(recordsOn(c.tree, c.records, c.tree.get(2), "question")), "Which region?,Who owns the feed?,Who pays?,Budget?,Hosting?");
   const rows = tab("questions").rows(c, c.tree.get(2));
-  assertEqual(rows.map((r) => r.detail).join("|"),
+  assertEqual(rows.map((r) => [r.date, r.detail].filter(Boolean).join(" · ")).join("|"),
     "asked 10 Nov|asked 19 Nov · Jane Doe|asked 23 Nov · from Plan|answered 25 Nov · from Kickoff|answered 2 Nov");
+  // The dashboard splits them: open ones to act on, answered ones to look up.
+  assertEqual(tab("openQuestions").rows(c, c.tree.get(2)).length, 3);
+  assertEqual(tab("answeredQuestions").rows(c, c.tree.get(2)).map((r) => r.date).join("|"), "answered 25 Nov|answered 2 Nov");
   assertEqual(rows.map((r) => Boolean(r.muted)).join(), "false,false,false,true,true");
   assertEqual(rows.map((r) => r.actions.map((a) => a.key).join()).join("|"), "answer|answer|answer||", "open ones can be answered");
   assertEqual(tab("questions").detail(rows), "3 open");
@@ -153,7 +157,7 @@ test("record commands: :decision and :question go under the hub or the meeting",
   assertEqual(app.messages.pop(), 'Question "Who signs off?" made from Kickoff');
   ({ app } = fakeApp(4));
   assertEqual(await rejects(runNoteCommand(app, { name: "decision", arg: "X" })),
-    "E: a decision goes in a hub: open a project, an area or a resource (or a note in one)");
+    "E: a decision goes in a hub: open a project or an area (or a note in one)");
   ({ app } = fakeApp(2));
   assertEqual(await rejects(runNoteCommand(app, { name: "question", arg: "today" })), "E471: Argument required: :question [{date}] {title}");
 });

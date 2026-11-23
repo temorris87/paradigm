@@ -2,14 +2,13 @@
 // empty one shows. A meeting has two: its agenda, then its notes (the minutes). Pure.
 //
 //   fieldsFor(note, inHub)   { main: { label, hint }, agenda?: { label, hint } }
-//                            inHub: the note is inside a project, area or resource (then
+//                            inHub: the note is inside a project or an area (then
 //                            text can become a question or decision)
 const FROM_TEXT = "select text and right-click to add a question or decision";
 
 export const FIELDS = {
   project: { main: { label: "Outcome", hint: "what done looks like" } },
   area: { main: { label: "Purpose", hint: "the standard this area keeps up" } },
-  resource: { main: { label: "Notes", hint: "what this resource holds" } },
   person: { main: { label: "Notes", hint: "anything worth remembering about them" } },
   meeting: {
     agenda: { label: "Agenda", hint: "what to cover" },

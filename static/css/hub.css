@@ -149,14 +149,107 @@
   border-radius: 3px;
 }
 
+/* A lane: its sections top to bottom, the empty ones' line at its foot. */
+.hub__lane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+/* A section heading carries a thin rule under it; no box around the section. */
 .hub__heading {
   display: flex;
   align-items: baseline;
   gap: var(--sp-2);
   padding: var(--sp-1) var(--sp-2);
-  border-radius: 3px;
+  border-bottom: 1px solid var(--nord2);
+  border-radius: 3px 3px 0 0;
+  margin-bottom: var(--sp-1);
   font-size: var(--fs-sm);
   cursor: pointer;
+}
+
+/* A row's date, in a column of its own at the end so a section's dates line up. */
+.hub__date {
+  flex: none;
+  min-width: 6.5rem;
+  margin-left: auto;
+  text-align: right;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+.hub__date:empty {
+  min-width: 0;
+}
+
+/* A table section (an area's Projects): the name, then aligned columns. */
+.hub__section--table .hub__line,
+.hub__columns {
+  display: grid;
+  grid-template-columns: minmax(8rem, 2fr) minmax(4.5rem, 0.7fr) minmax(5rem, 0.7fr) minmax(8rem, 1.6fr)
+    minmax(4.5rem, 0.6fr) minmax(5.5rem, 0.6fr) auto;
+  column-gap: var(--sp-3);
+}
+
+.hub__columns {
+  padding: 0 var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+.hub__cell {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+/* The lane's empty sections, on one quiet line: "Nothing yet: Files + · Past meetings". */
+.hub__empties {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-1) var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--text-faint);
+}
+
+.hub__empty-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-1);
+  padding: 0 var(--sp-1);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.hub__empty-item:hover {
+  background: var(--nord1);
+}
+
+.hub__empty-label {
+  color: var(--text-dim);
+}
+
+.hub__empty-add {
+  padding: 0 var(--sp-1);
+  border: 1px solid var(--nord3);
+  border-radius: 3px;
+  background: none;
+  color: var(--nord9);
+  font: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.hub__empty-add:hover {
+  border-color: var(--nord9);
 }
 
 /* THE section heading (also Home's, the dashboard's text label and the field labels): sentence
@@ -376,7 +469,8 @@
 /* Late: an overdue task or milestone, a follow-up past its day, a plan that keeps slipping. */
 /* Late (overdue, slipping, a file gone): a red dot leads the detail; the text itself stays
    muted, so red marks only the signal, never the whole row. */
-.hub__row--late .hub__detail::before {
+.hub__row--late:not(.hub__row--dated) .hub__detail::before,
+.hub__row--late .hub__date::before {
   content: "● ";
   color: var(--nord11);
 }

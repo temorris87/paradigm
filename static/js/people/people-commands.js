@@ -113,7 +113,7 @@ export function splitNameRole(arg) {
 function currentHub(app) {
   const id = app.currentId;
   if (isMeeting(app.tree, id)) throw new Error("E: on a meeting, :attendee {name} says who attended");
-  if (!isHub(app.tree, id)) throw new Error("E: people go on a hub: open a project, an area or a resource");
+  if (!isHub(app.tree, id)) throw new Error("E: people go on a hub: open a project or an area");
   return app.tree.get(id);
 }
 

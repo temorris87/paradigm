@@ -89,3 +89,6 @@ Features in build order. "build feature" takes the first unchecked item.
   a project from a start day; Save as plan template… from a project's Gantt (done 2026-11-22)
 - [x] OneDrive files: a file record whose OneDrive link is the truth, attached to many notes
   and meetings; names filled from a linked, synced OneDrive folder (done 2026-11-22)
+- [x] Simpler resources and calmer dashboards: resources are plain notes in folders (not hubs);
+  project and area dashboards in two fixed lanes, Act and Know, under the full-width text
+  (done 2026-11-22)

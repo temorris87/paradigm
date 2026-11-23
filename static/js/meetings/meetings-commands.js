@@ -12,7 +12,7 @@ import { attendeesOf } from "./meetings-model.js";
  * a date is given. */
 export async function newMeetingCommand(app, arg) {
   const hub = hubOf(app.tree, app.currentId);
-  if (!hub) throw new Error("E: meetings go in a hub: open a project, an area or a resource (or a note in one)");
+  if (!hub) throw new Error("E: meetings go in a hub: open a project or an area (or a note in one)");
   const { day, time, rest } = splitWhen(arg, app.today());
   if (!rest) throw new Error("E471: Argument required: :meeting [{date}] [{time}] {title}");
   await makeMeeting(app, hub, rest, day ?? localToday(app), time ?? "");
