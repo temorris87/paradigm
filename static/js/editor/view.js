@@ -59,7 +59,7 @@ function lineAt(vim, at) {
   const unit = unitAt(vim, at.line);
   if (!unit.rendered) return at.line;
   const lines = unit.end - unit.start + 1;
-  return unit.start + clamp(Math.floor((at.skip / Math.max(1, unit.rows)) * lines), 0, lines - 1);
+  return unit.start + clamp(Math.floor((at.skip / Math.max(1, unit.rows)) * lines + EPSILON), 0, lines - 1);
 }
 
 /**
@@ -156,13 +156,14 @@ export function ensureCursorVisible(vim) {
   const view = vim.view;
   const unit = unitAt(vim, vim.cursor.line);
   const so = scrolloff(vim);
-  const above = walk(vim, { line: unit.start, skip: 0 }, -so);
+  const [first, last] = cursorSteps(vim, unit);
+  const above = walk(vim, { line: unit.start, skip: first }, -so);
   // As in Vim: when the margin above reaches past the top (or the start of the text), the
   // screen moves up to it, and the bottom margin is not checked as well.
   if (unit.start < view.top || above.short || before(above.at, topOf(vim))) {
     if (before(above.at, topOf(vim))) setTop(vim, above.at);
   } else {
-    const below = walk(vim, { line: unit.start, skip: stepsIn(unit) - 1 }, so);
+    const below = walk(vim, { line: unit.start, skip: last }, so);
     const lowest = topShowingDownTo(vim, below.at);
     if (before(topOf(vim), lowest)) setTop(vim, lowest);
   }
@@ -173,6 +174,19 @@ export function ensureCursorVisible(vim) {
   } else {
     view.left = 0;
   }
+}
+
+/**
+ * The steps of the cursor's unit that must be on screen: all of it, except a rendered block
+ * taller than the screen (the cursor stays in it in normal mode), where it is the step the
+ * cursor's line stands at, by proportion (as lineAt maps a step back to a line).
+ */
+function cursorSteps(vim, unit) {
+  const steps = stepsIn(unit);
+  if (!unit.rendered || steps <= vim.view.height - 2 * scrolloff(vim)) return [0, steps - 1];
+  const lines = unit.end - unit.start + 1;
+  const step = clamp(Math.ceil(((vim.cursor.line - unit.start) / lines) * unit.rows - EPSILON), 0, steps - 1);
+  return [step, step];
 }
 
 /**

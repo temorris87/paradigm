@@ -1,7 +1,7 @@
 /* The page around the open note's text (static/js/hubs/): the card under the breadcrumb, the
    labels over the text boxes, and the sections under the text. .app__note carries data-page
    (project, area, resource, person, meeting, decision, question, note): how tall each text
-   box is. A page with sections scrolls as a whole. */
+   box is. In the note window the sections sit in a sheet under the text (sheet.css). */
 .hub-line {
   display: flex;
   flex-direction: column;
@@ -105,8 +105,8 @@
   display: inline;
 }
 
-/* How tall each text box is. A plain note, a decision and a question fill the column; pages
-   with sections give the text a fixed share and scroll as a whole. */
+/* How tall each text box is: the main one fills what the card and the agenda leave. Only a
+   window too short for even that scrolls. */
 .app__note[data-page] {
   overflow-y: auto;
 }
@@ -127,12 +127,8 @@
   height: 2.75rem;
 }
 
-/* The note window is where text is written: its main text box gets most of the window on
-   every kind of page, and the sections follow below it. */
-.app__note[data-page] .app__editor {
-  flex: none;
-  height: max(20rem, 60vh);
-}
+/* The note window is where text is written: its main text box fills the window on every
+   kind of page, down to the sections' bar (sheet.css). */
 
 /* The sections under the text: one listbox, each section a heading and its rows. */
 .hub {

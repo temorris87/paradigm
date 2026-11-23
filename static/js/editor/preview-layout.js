@@ -1,6 +1,6 @@
-// The live-preview layout (see text-layout.js for the interface): a Markdown unit away from
-// the cursor is one rendered piece, as many rows tall as it measures; everything else is
-// raw text. Pure: the measuring is injected, so tests pass a fake.
+// The live-preview layout (see text-layout.js for the interface): a Markdown unit is one
+// rendered piece, as many rows tall as it measures, unless it must show raw (rawRanges: the
+// cursor's in insert mode, a selection, a search match); everything else is raw text. Pure: the measuring is injected, so tests pass a fake.
 //
 //   new PreviewLayout({ measure })   measure: { rows(html) -> rows, generation }
 //                                    (generation changes whenever old sizes go stale)

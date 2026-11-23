@@ -2,7 +2,7 @@
 // commands as the dashboards and the calendar). Each wraps its work in app.guard, so errors
 // show in the status line.
 //
-//   const actions = todayActions(app);    { done, schedule, delegate, snooze, answer, extend, fileAll, log }
+//   const actions = todayActions(app);    { done, schedule, delegate, snooze, answer, extend, fileAll, log, onCall }
 import { answerDialog } from "../hubs/hub-actions.js";
 import { logStatusDialog } from "../status/status-commands.js";
 import { delegateDialog, extendBlock, scheduleTask, setTaskDone, snoozeTask } from "../tasks/task-commands.js";
@@ -19,6 +19,7 @@ export function todayActions(app) {
     answer: (questionId) => run(() => answerDialog(app, app.tree.get(questionId))),
     extend: (sessionId) => run(() => extendBlock(app, sessionId)),
     fileAll: () => run(() => triageInbox(app)),
+    onCall: () => app.onCallCommand(),
     // The day's "Log status" line: the stalest project first.
     log: () => run(() => {
       const stale = projectRows({ tree: app.tree, statusLogs: app.statusLogs }, app.today())

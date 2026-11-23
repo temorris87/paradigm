@@ -20,6 +20,7 @@ export const PAGES = [
   { label: "Today", command: "home" },
   { label: "Week", command: "calendar" },
   { label: "Timesheet", command: "time" },
+  { label: "On call", command: "oncall" },
   { label: "Meetings", command: "meetings" },
   { label: "People", command: "people" },
   { label: "Trash", command: "trashed" },

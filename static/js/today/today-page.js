@@ -3,14 +3,15 @@
 //      one; then the day: meetings, blocks, free gaps, and a Log status reminder.
 //   2. Up next: one list ranked across every project (today-model.js upNext), with the keys
 //      under it.
-//   3. Projects with their latest status, the Inbox, and whether today's calendar is in.
+//   3. Who is on call this week (the rota, oncall/), Projects with their latest status, the
+//      Inbox, and whether today's calendar is in.
 // It draws what today-model.js works out and reports what was asked (actions); the app runs
-// it. The whole page is one focus stop: a listbox over Up next, the day, Projects and the
-// Inbox, in that order (} and { jump between them), starting on Up next.
+// it. The whole page is one focus stop: a listbox over Up next, the day, On call, Projects and
+// the Inbox, in that order (} and { jump between them), starting on Up next.
 //
 //   const page = new TodayPage(section, { onOpen(id), onLeave(), today(), actions });
 //     actions: { done(taskId, done), schedule(taskId), delegate(taskId), snooze(taskId),
-//                answer(questionId), extend(sessionId), log(), fileAll() }
+//                answer(questionId), extend(sessionId), log(), fileAll(), onCall() }
 //   page.show(ctx); page.focus();
 // The Now card's bar moves on once a minute while the page shows.
 import { localDay } from "../meetings/meeting-days.js";
@@ -21,6 +22,7 @@ import { hoursText } from "../week/capacity.js";
 import { clock } from "../calendar/week-model.js";
 import { dayText, whenText } from "../ui/dates.js";
 import { allMeetings, shortTitle } from "../meetings/meetings-model.js";
+import { cellPeople } from "../oncall/oncall-model.js";
 
 const MINUTE_MS = 60 * 1000;
 
@@ -58,7 +60,8 @@ export class TodayPage {
     const inbox = inboxNotes(ctx.tree);
     this.options = [];
     // Options are numbered in key order (Up next first), whatever the column they sit in.
-    const parts = { next: [], day: [], projects: [], inbox: [] };
+    const order = ["next", "day", "oncall", "projects", "inbox"];
+    const parts = Object.fromEntries(order.map((part) => [part, []]));
     const register = (part, key, item) => {
       parts[part].push({ key, part, item });
       return parts[part].length - 1;
@@ -68,12 +71,16 @@ export class TodayPage {
     const nextColumn = element("div", "today__col today__col--next");
     nextColumn.append(this.upNextPart(next, register));
     const sideColumn = element("div", "today__col today__col--side");
-    sideColumn.append(this.projectsPart(projects, register), this.inboxPart(inbox, register), this.importChip(ctx));
+    sideColumn.append(this.onCallPart(ctx, now, register), this.projectsPart(projects, register), this.inboxPart(inbox, register),
+      this.importChip(ctx));
     this.list.replaceChildren(nowColumn, nextColumn, sideColumn);
-    this.options = [...parts.next, ...parts.day, ...parts.projects, ...parts.inbox];
+    this.options = order.flatMap((part) => parts[part]);
     // Number the nodes now that the order is known.
-    const offsets = { next: 0, day: parts.next.length, projects: parts.next.length + parts.day.length,
-      inbox: parts.next.length + parts.day.length + parts.projects.length };
+    const offsets = {};
+    order.reduce((at, part) => {
+      offsets[part] = at;
+      return at + parts[part].length;
+    }, 0);
     for (const node of this.list.querySelectorAll("[data-part]")) {
       const index = offsets[node.dataset.part] + Number(node.dataset.at);
       node.id = `today-row-${index}`;
@@ -192,6 +199,29 @@ export class TodayPage {
 
   // ---- column 3 ----
 
+  /** This week's rota: a row per name ("Primary · Tom Reyes"); none: nothing shows. */
+  onCallPart({ onCall, tree }, now, register) {
+    const part = element("section", "today-oncall");
+    const entries = onCall?.of(localDay(now)) ?? [];
+    part.hidden = !entries.length;
+    if (!entries.length) return part;
+    part.setAttribute("role", "group");
+    const heading = element("h2", "today__heading", "On call this week");
+    heading.id = "today-heading-oncall";
+    part.setAttribute("aria-labelledby", heading.id);
+    part.append(heading);
+    for (const { role, name } of entries) {
+      for (const { text, person } of cellPeople(tree, name)) {
+        const node = element("div", "today-oncall__row");
+        node.append(element("span", "today-oncall__role", role), element("span", person ? "today-oncall__name" : "today-oncall__name today-oncall__name--text", person?.title ?? text));
+        // A name not in People opens the rota instead.
+        const item = person ? { id: person.id, kind: "person" } : { id: null, kind: "oncall" };
+        part.append(this.option(node, register("oncall", `oncall:${role}:${text}`, item), "oncall"));
+      }
+    }
+    return part;
+  }
+
   projectsPart(projects, register) {
     const part = element("section", "today-projects");
     part.setAttribute("role", "group");
@@ -304,6 +334,7 @@ export class TodayPage {
     switch (action) {
       case "open":
         if (item.kind === "suggest") return this.actions.log?.();
+        if (item.kind === "oncall") return this.actions.onCall?.();
         return item.id !== null && item.id !== undefined ? this.onOpen(item.id) : undefined;
       case "done":
         if (item.questionId) return this.actions.answer?.(item.questionId);

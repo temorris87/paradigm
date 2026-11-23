@@ -190,6 +190,35 @@
   cursor: pointer;
 }
 
+/* No phases yet: a muted line and what starts a plan. */
+.plan-strip__track--empty {
+  align-items: center;
+  gap: var(--sp-4);
+  min-height: 30px;
+}
+
+.plan-strip__empty {
+  color: var(--text-faint);
+  font-size: var(--fs-sm);
+}
+
+.plan-strip__add {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--nord9);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.plan-strip__add:hover,
+.plan-strip__add:focus-visible,
+.plan-strip__gantt:hover,
+.plan-strip__gantt:focus-visible {
+  color: var(--nord8);
+}
+
 /* The full plan's page. */
 .plan-page {
   display: flex;

@@ -19,7 +19,8 @@
 //     submit: "Rename",                 // or (values) => "Add new person": the label follows the fields
 //     danger: false,                    // a red submit button (trash)
 //     live: (values) => "...",          // a line under the fields, worked out again as they
-//                                       // change (Edit dates' knock-on effect)
+//                                       // change (Edit dates' knock-on effect), in red; or
+//                                       // { text, plain: true }: dim, not a warning (a preview)
 //     run: async (values) => ...,       // throws: its message shows here and the dialog stays
 //   });                                 // -> what run returned, or null when cancelled
 //
@@ -70,7 +71,9 @@ export function formDialog({ title, text = "", lines = [], fields = [], submit =
     const label = () => {
       ok.textContent = typeof submit === "function" ? submit(values()) : submit;
       if (liveLine) {
-        liveLine.textContent = live(values()) ?? "";
+        const said = live(values()) ?? "";
+        liveLine.textContent = typeof said === "string" ? said : said.text ?? "";
+        liveLine.classList.toggle("dialog__live--plain", typeof said !== "string" && Boolean(said.plain));
         liveLine.hidden = !liveLine.textContent;
       }
     };

@@ -15,8 +15,8 @@ const groups = (query, more = {}) => paletteGroups({ query, recent: [NOTES[0]], 
 const show = (list) => list.map((group) => `${group.label}: ${group.items.map((item) => item.title).join(", ")}`).join(" | ");
 
 test("palette: with nothing typed, Recent then the Pages with their keys", () => {
-  assertEqual(show(groups("")), "Recent: Event bus migration | Pages: Today, Week, Timesheet, Meetings, People, Trash");
-  assertEqual(groups("")[1].items.map((item) => item.hint).join(), "gt,gw,,,,", "a page shows its key; no :command names on screen");
+  assertEqual(show(groups("")), "Recent: Event bus migration | Pages: Today, Week, Timesheet, On call, Meetings, People, Trash");
+  assertEqual(groups("")[1].items.map((item) => item.hint).join(), "gt,gw,,,,,", "a page shows its key; no :command names on screen");
 });
 
 test("palette: words find notes, then pages", () => {
@@ -32,7 +32,9 @@ test("palette: a colon lists commands with their usage and key, then notes", () 
   assertTrue(NOTE_COMMANDS.every((command) => command.label), "every command has a label");
   assertTrue(!groups(":")[0].items.some((item) => item.command === "template"), "the main window leaves out note-only commands");
   assertTrue(groups(":", { window: "note" })[0].items.some((item) => item.command === "template"));
-  assertEqual(PAGES.length, 6);
+  assertEqual(PAGES.length, 7);
+  const plan = groups(":plan")[0].items[0];
+  assertEqual([plan.title, plan.hint].join(), "Plan (Gantt chart),:plan gp", "the Plan command shows its key");
 });
 
 test("palette: commands parse and abbreviate as in Vim", () => {
@@ -50,11 +52,14 @@ test("palette: the recent list, newest first, at most 8", () => {
   assertEqual(recentIds(storage).length, MAX_RECENT);
 });
 
-test("main keys: : and gt gw outside text boxes; a page-wide key clears a list's waiting g", () => {
+test("main keys: : and gt gw gp outside text boxes; a page-wide key clears a list's waiting g", () => {
   const key = (k, target = document.body) => mainAction({ key: k, target, ctrlKey: false, altKey: false, metaKey: false });
   assertEqual(key(":"), "palette");
   assertEqual([key("g"), key("t")].join(), "pending,today");
   assertEqual([key("g"), key("w")].join(), "pending,week");
+  assertEqual([key("g"), key("p")].join(), "pending,plan");
+  const editor = document.createElement("pd-editor");
+  assertEqual(key("g", editor), null, "the editor's own gp (put) is left alone");
   const input = document.createElement("input");
   assertEqual(key(":", input), null, "typing in a box stays typing");
   const read = keyReader([{ keys: ["gg"], action: "first" }, { keys: ["j"], action: "next" }]);

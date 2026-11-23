@@ -138,6 +138,11 @@
 .md-doc li > ol {
   margin-bottom: 0;
 }
+/* In a loose list (blank lines between items) an item's text is a paragraph; its sub-bullets
+   still sit right under it. */
+.md-doc li > p:has(+ ul, + ol) {
+  margin-bottom: 0;
+}
 .md-doc li::marker {
   color: var(--nord9);
 }

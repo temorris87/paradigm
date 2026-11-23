@@ -487,6 +487,10 @@
   font-size: var(--fs-sm);
 }
 
+.dialog__live--plain {
+  color: var(--text-dim);
+}
+
 .dialog__live[hidden] {
   display: none;
 }

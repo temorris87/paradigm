@@ -15,7 +15,8 @@ test("keyName: characters stay as typed, specials get Vim names", () => {
   assertEqual(keyName(event(" ")), " ");
   assertEqual(keyName(event("<")), "<");
   assertEqual(keyName(event("Escape")), "<Esc>");
-  assertEqual(keyName(event("Enter", { shiftKey: true })), "<CR>");
+  assertEqual(keyName(event("Enter")), "<CR>");
+  assertEqual(keyName(event("Enter", { shiftKey: true })), "<S-CR>");
   assertEqual(keyName(event("Backspace")), "<BS>");
   assertEqual(keyName(event("ArrowLeft")), "<Left>");
   assertEqual(keyName(event("Insert", { shiftKey: true })), "<S-Insert>");

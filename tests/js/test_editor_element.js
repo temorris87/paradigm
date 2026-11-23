@@ -120,12 +120,14 @@ test("element: the status line shows the mode and messages", () => withEditor("f
 
 test("element: the cursor is drawn, as a bar in insert mode", () => withEditor("foo", (editor) => {
   const root = editor.shadowRoot;
+  editor.setAttribute("syntax", "plain"); // no live preview: "foo" is a raw line in normal mode
   assertEqual(root.querySelector(".pd-cursor").textContent, "f");
   press(editor, "A");
   assertEqual(root.querySelectorAll(".pd-cursor-bar").length, 1);
 }));
 
 test("element: Markdown is coloured unless syntax is plain", () => withEditor("# Title", (editor) => {
+  press(editor, "A"); // insert mode shows the heading raw
   assertTrue(editor.shadowRoot.querySelector(".md-h1") !== null);
   editor.setAttribute("syntax", "plain");
   assertEqual(editor.shadowRoot.querySelector(".md-h1"), null);

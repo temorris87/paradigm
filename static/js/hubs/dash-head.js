@@ -3,7 +3,8 @@
 // Purpose on one line; and the buttons for the page: Log status / Open in note window ↗ (a
 // project), Copy weekly digest / Log area status (an area). A person: their name, job,
 // organisation, email and how many projects they are on; the next 1:1 (the next meeting they
-// attend) and Start 1:1 notes. The card under it (hub-line.js) holds the rest.
+// attend), their next on-call week (oncall/) and Start 1:1 notes. The card under it
+// (hub-line.js) holds the rest.
 //
 //   const head = new DashHead(headerElement, { onLog(note), onDigest(note), onEdit(note), onOneOnOne(person) });
 //   head.show(ctx, note, body)     note: a project, an area or a person, else the head hides
@@ -11,6 +12,7 @@ import { localDay } from "../meetings/meeting-days.js";
 import { StatusLogs, firstSentence, healthOf } from "../status/status-model.js";
 import { fieldsFor } from "./fields.js";
 import { nextTogether } from "../people/one-on-one.js";
+import { nextOnCall, nextOnCallText } from "../oncall/oncall-model.js";
 import { dayText } from "../ui/dates.js";
 
 export class DashHead {
@@ -77,6 +79,12 @@ DashHead.prototype.showPerson = function showPerson(ctx, person) {
     const when = element("div", "dash-head__next");
     when.append(element("span", "dash-head__next-label", "Next 1:1"),
       element("span", "dash-head__next-when", `${dayText(next.meeting.day, { today })}${next.meeting.time ? `, ${next.meeting.time}` : ""}`));
+    actions.append(when);
+  }
+  const onCall = ctx.onCall ? nextOnCall(ctx.onCall, ctx.tree, person.id, today) : null;
+  if (onCall) {
+    const when = element("div", `dash-head__oncall${onCall.thisWeek ? " dash-head__oncall--now" : ""}`, nextOnCallText(onCall, today));
+    when.title = "From the on-call rota (Week › On call)";
     actions.append(when);
   }
   const start = button("Start 1:1 notes", "", "The next meeting with them, its agenda filled from To raise", () => this.handlers.onOneOnOne(person));

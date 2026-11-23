@@ -6,6 +6,7 @@ import { MOTIONS, searchMotion } from "./motions.js";
 import { OPERATORS, regionFromMotion, regionFromObject } from "./operators.js";
 import { parse } from "./parser.js";
 import { lastCol, pos } from "./position.js";
+import { realignAt } from "./table-edit.js";
 import { TEXT_OBJECTS } from "./text-objects.js";
 import { applyVisualOperator, restoreShape, selectObject, VISUAL_ACTIONS } from "./visual.js";
 
@@ -24,8 +25,14 @@ export function commandKey(vim, key) {
     vim.bell();
     return;
   }
+  const version = vim.buf.version;
   runCommand(vim, result.cmd);
+  // A change on a table row lines the table up, in the same undo step. Undo and redo put back
+  // exactly what was there, so they never do.
+  if (vim.mode === "normal" && vim.buf.version !== version && !KEEP_AS_IS.has(result.cmd.entry.name)) realignAt(vim);
 }
+
+const KEEP_AS_IS = new Set(["undo", "redo"]);
 
 function context(vim, cmd) {
   return { register: cmd.register, count: cmd.count ?? 1, hasCount: cmd.count !== null, arg: cmd.arg };

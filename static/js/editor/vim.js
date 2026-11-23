@@ -115,6 +115,21 @@ export class Vim {
     this.afterKey();
   }
 
+  /** An ex command from the host (a menu item): insert or visual mode is left first, and an
+   * error shows in the status line as if it had been typed. */
+  exFromOutside(text) {
+    if (this.mode !== "normal" || this.pending.length > 0) this.feed("<Esc>");
+    if (this.mode !== "normal") this.feed("<Esc>");
+    this.commandStart = { ...this.cursor };
+    try {
+      this.runEx(text);
+    } catch (error) {
+      if (!(error instanceof EditorError)) throw error;
+      this.fail(error.message);
+    }
+    this.afterKey();
+  }
+
   /** One line's text replaced by the host (a task box ticked elsewhere): one undo step; the
    * cursor stays where it is. In insert mode it waits: the host tries again later. */
   replaceLineFromOutside(line, text) {

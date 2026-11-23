@@ -1,13 +1,16 @@
-// The Week page, in the main window (&week): the calendar and the timesheet as one page with
-// Plan / Timesheet / Settings. It owns the week shown (‹ This week ›, the keys [ ] t), the
-// switch, the week's totals in its bar (focus planned, meetings, free), and the footer under
+// The Week page, in the main window (&week): the calendar, the timesheet and the on-call rota
+// as one page with Plan / Timesheet / Settings / On call. It owns the week shown (‹ This week ›,
+// the keys [ ] t), the switch, the week's totals in its bar (focus planned, meetings, free),
+// who is on call that week (on every tab; a click opens On call), and the footer under
 // Plan: the hours so far by time code and the week projected, with Timesheet ↗. The calendar
-// (calendar/calendar-page.js) and the timesheet (timesheet/time-page.js) draw the rest.
+// (calendar/calendar-page.js), the timesheet (timesheet/time-page.js) and the rota
+// (oncall/oncall-page.js) draw the rest.
 //
-//   const page = new WeekPage({ root, bar, plan, time, foot, calendar, timesheet, api: timeApi,
-//                               changes, today });
-//     plan, time: the two bodies; foot: Plan's footer
-//   page.show(view?)    view: "plan" | "timesheet" | "settings" (the last one shown if none)
+//   const page = new WeekPage({ root, bar, plan, time, oncall, foot, api: timeApi, changes, today });
+//     plan, time, oncall: the bodies; foot: Plan's footer
+//   page.hold(calendar, timesheet, onCallPage)
+//   page.show(view?)    view: "plan" | "timesheet" | "settings" | "oncall" (the last one if none)
+//   page.redraw(ctx)    the app drew: its tree and rota (ctx.onCall) for the bar's On call line
 //   page.focus()
 //   page.moveWeek(days) days: -7, 7, or 0 (this week)
 import { addDays, dateOf, localDay } from "../meetings/meeting-days.js";
@@ -15,18 +18,23 @@ import { weekOf } from "../calendar/week-model.js";
 import { weekRange } from "../ui/dates.js";
 import { hoursText } from "./capacity.js";
 import { weekSummary } from "./tray-model.js";
+import { barText } from "../oncall/oncall-model.js";
 
 export const WEEK_VIEWS = [
   { key: "plan", label: "Plan", title: "Meetings, blocks and the tasks to plan onto them" },
   { key: "timesheet", label: "Timesheet", title: "The week's hours by time code" },
   { key: "settings", label: "Settings", title: "Codes, working hours, holidays and time off" },
+  { key: "oncall", label: "On call", title: "Who is on call each week: paste the Excel sheet here" },
 ];
 
 export class WeekPage {
-  constructor({ root, bar, plan, time, foot, api, changes, today = () => new Date() }) {
+  constructor({ root, bar, plan, time, oncall, foot, api, changes, today = () => new Date() }) {
     this.root = root;
     this.planBody = plan;
     this.timeBody = time;
+    this.onCallBody = oncall;
+    this.onCall = null;
+    this.ctx = null;
     this.foot = foot;
     this.api = api;
     this.today = today;
@@ -42,9 +50,16 @@ export class WeekPage {
   }
 
   /** The two pages it holds (made with onMove pointing here). */
-  hold(calendar, timesheet) {
+  hold(calendar, timesheet, onCall) {
     this.calendar = calendar;
     this.timesheet = timesheet;
+    this.onCall = onCall;
+  }
+
+  redraw(ctx) {
+    this.ctx = ctx;
+    this.drawOnCall();
+    if (this.view === "oncall") this.onCall?.draw();
   }
 
   makeBar(bar) {
@@ -65,24 +80,32 @@ export class WeekPage {
     });
     switcher.append(...tabs);
     const summary = element("p", "week-bar__summary");
+    const onCall = make("", "Who is on call this week", () => this.show("oncall"), "week-bar__oncall");
+    onCall.hidden = true;
     const copy = make("Copy for timesheet", "Copy the grid: paste it into the timesheet, Excel or an email (c)",
       () => this.timesheet?.run(this.timesheet.copy()), "cal-button week-bar__primary");
     bar.replaceChildren(range, make("‹", "The week before ([)", () => this.moveWeek(-7)),
       make("This week", "This week (t)", () => this.moveWeek(0)), make("›", "The week after (])", () => this.moveWeek(7)),
-      switcher, summary, copy);
-    return { range, tabs, summary, copy };
+      switcher, summary, onCall, copy);
+    return { range, tabs, summary, onCall, copy };
   }
 
   show(view = this.view) {
     this.view = view;
     const plan = view === "plan";
+    const onCall = view === "oncall";
     this.planBody.hidden = !plan;
-    this.timeBody.hidden = plan;
+    this.timeBody.hidden = plan || onCall;
+    this.onCallBody.hidden = !onCall;
     for (const tab of this.bar.tabs) tab.setAttribute("aria-selected", String(tab.dataset.view === view));
     this.bar.copy.hidden = view !== "timesheet";
     this.bar.summary.hidden = !plan;
     this.drawRange();
     if (plan) this.calendar.show();
+    else if (onCall) {
+      this.onCall.show();
+      this.onCall.focus();
+    }
     else {
       this.timesheet.showTab(view === "settings" ? "settings" : "week");
       this.timesheet.show();
@@ -94,12 +117,22 @@ export class WeekPage {
     this.monday = days === 0 ? weekOf(localDay(this.today())) : localDay(addDays(dateOf(this.monday), days));
     this.calendar.setMonday(this.monday);
     this.timesheet.setMonday(this.monday);
+    this.onCall?.setMonday(this.monday);
     this.drawRange();
     this.loadFoot();
   }
 
   drawRange() {
     this.bar.range.textContent = weekRange(this.monday, localDay(this.today()));
+    this.drawOnCall();
+  }
+
+  /** Who is on call the week shown, from the app's rota. */
+  drawOnCall() {
+    const { text, title } = this.ctx?.onCall ? barText(this.ctx.tree, this.ctx.onCall.of(this.monday)) : { text: "" };
+    this.bar.onCall.hidden = !text;
+    this.bar.onCall.textContent = text;
+    this.bar.onCall.title = text ? `${title}\n(On call: the whole rota)` : "";
   }
 
   /** The calendar drew: the week's totals in the bar. */
@@ -152,7 +185,9 @@ export class WeekPage {
   }
 
   focus() {
-    this.root.focus({ preventScroll: true });
+    // On call takes its keys and Ctrl-V where the focus is: on its own body.
+    if (this.view === "oncall") this.onCall.focus();
+    else this.root.focus({ preventScroll: true });
   }
 }
 

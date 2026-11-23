@@ -6,6 +6,7 @@ import { OPERATORS } from "./operators.js";
 import { clamp, firstNonBlankCol, pos } from "./position.js";
 import { compilePattern } from "./search.js";
 import { setOptions } from "./options.js";
+import { alignColumn, copyTable, insertTable, sortTable } from "./table-edit.js";
 
 // name, the shortest abbreviation Vim accepts, and the handler.
 const COMMANDS = [
@@ -20,6 +21,11 @@ const COMMANDS = [
   ["yank", 1, (vim, cmd) => onLines(vim, cmd, "yank")],
   ["undo", 1, (vim) => vim.feedKeysNow(["u"])],
   ["redo", 3, (vim) => vim.feedKeysNow(["<C-r>"])],
+  // Markdown tables (table-edit.js); none of these names is a Vim command.
+  ["table", 5, (vim, cmd) => insertTable(vim, ...cmd.arg.trim().split(/\s+/).filter(Boolean).map(Number))],
+  ["tsort", 5, (vim, cmd) => sortTable(vim, cmd.arg, cmd.bang)],
+  ["talign", 6, (vim, cmd) => alignColumn(vim, cmd.arg)],
+  ["tcopy", 5, (vim) => copyTable(vim)],
 ];
 
 export function runEx(vim, text) {

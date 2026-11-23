@@ -99,6 +99,23 @@ export function renderListItem(list, index, options) {
   return `<${tag}${start}>\n${renderItem(list.children[index], options, list.tight)}\n</${tag}>`;
 }
 
+/**
+ * One item without its sub-lists, at its depth (live preview: each bullet is its own unit).
+ * `path` is [{ list, index }] from the top-level list down to the item; the lists above it
+ * become marker-less wrappers (md-nest), so its indent and marker style match the whole list.
+ * options.keepSubLists keeps its sub-lists (an item with more blocks after them stays whole).
+ */
+export function renderNestedItem(path, options) {
+  const { list, index } = path[path.length - 1];
+  const item = list.children[index];
+  const shallow = options.keepSubLists ? item : { ...item, children: item.children.filter((child) => child.type !== "list") };
+  const own = renderListItem({ ...list, children: list.children.map((child, at) => (at === index ? shallow : child)) }, index, options);
+  return path.slice(0, -1).reduceRight((inner, { list: outer }) => {
+    const tag = outer.ordered ? "ol" : "ul";
+    return `<${tag} class="md-nest">\n<li class="md-nest-li">\n${inner}\n</li>\n</${tag}>`;
+  }, own);
+}
+
 function renderItem(item, options, tight) {
   const cls = item.task ? ` class="md-task${item.task.checked ? " md-task-done" : ""}"` : "";
   let inner = item.children

@@ -7,7 +7,7 @@
 //
 //   const hub = new HubPage({ page: mainElement, line, section, labels, onOpen(id, at?),
 //                             onLeave(), controls, tabActions, renderSnippet(markdown),
-//                             hideSections: [...], dashboard: true });
+//                             hideSections: [...], dashboard: true, sheet });
 //     dashboard: the main window: a hub's or a person's sections in two lanes (Act, Know:
 //             hub-sections.js DASHBOARD_LAYOUT), the plan drawn as a chart instead
 //     labels: { main, agenda, agendaField }: the label elements over the text boxes, and the
@@ -17,9 +17,11 @@
 //             (hub-actions.js); command: "logStatus", "plan";
 //             row keys besides the row's buttons: "addSubtask", "openFile", "openTemplate"
 //     at: { field, line } when a row points into the text (a mention)
+//     sheet: the note window's .sheet around the sections (section-sheet.js): they slide up
+//             over the text from a bar of counts; closed whenever another note opens
 //   hub.show(ctx, currentId)    after every redraw; ctx: { tree, people, meetings, records, tasks, sessions,
 //                               links, mentions, today }
-//   hub.focus()                 :hub: the sections
+//   hub.focus()                 :hub: the sections (the sheet opened first)
 //   hub.hub                     the open hub, person, meeting, decision or question, or null
 //   hub.hasPanel                it has sections
 //
@@ -37,12 +39,14 @@ import { showHubLine } from "./hub-line.js";
 import { NO_CONTROLS } from "./hub-line-controls.js";
 import { HubPanel } from "./hub-panel.js";
 import { dashboardFor, sectionsFor } from "./hub-sections.js";
+import { SectionSheet } from "./section-sheet.js";
+import { sectionSummary } from "./section-summary.js";
 
 const NO_LABELS = { main: null, agenda: null, agendaField: null };
 
 export class HubPage {
   constructor({ page, line, section, labels = NO_LABELS, onOpen, onLeave, controls = NO_CONTROLS,
-                tabActions = { add() {}, row() {} }, renderSnippet = () => "", hideSections = [], dashboard = false }) {
+                tabActions = { add() {}, row() {} }, renderSnippet = () => "", hideSections = [], dashboard = false, sheet = null }) {
     this.hideSections = new Set(hideSections);
     this.dashboard = dashboard;
     this.lanes = null;
@@ -70,9 +74,15 @@ export class HubPage {
       onRowAction: (sectionDef, row, key) => this.tabActions.row(key, sectionDef.base ?? sectionDef.key, this.hub, row),
       // Keys about the page's owner, not a row: L (Log status…), gp (the full plan).
       onCommand: (action) => this.tabActions.command?.(action, this.hub),
-      onLeave: () => this.onLeave(),
+      onLeave: () => this.leave(),
       renderSnippet,
     });
+    this.sheet = sheet && new SectionSheet(sheet, { onEnter: () => this.panel.focus(), onLeave: () => this.onLeave() });
+  }
+
+  leave() {
+    this.sheet?.close();
+    this.onLeave();
   }
 
   get hasPanel() {
@@ -93,6 +103,7 @@ export class HubPage {
     if (this.hub?.id !== note?.id) {
       this.showingAll.clear();
       this.expanded.clear();
+      this.sheet?.close();
     }
     // hub: the page's owner, whose sections these are (any note but a template).
     this.hub = note && note.kind !== "template" ? note : null;
@@ -114,9 +125,8 @@ export class HubPage {
     if (fields.agenda) setLabel(this.labels.agenda, fields.agenda);
   }
 
-  drawn(section) {
+  drawn(section, rows) {
     const hub = this.hub;
-    const rows = section.rows(this.ctx, hub);
     const all = this.showingAll.has(`${hub.id}:${section.key}`);
     const limit = section.limit && !all ? section.limit : rows.length;
     return {
@@ -135,10 +145,14 @@ export class HubPage {
   }
 
   redraw() {
-    if (!this.hasPanel) return;
-    const drawn = (sections) => sections.map((section) => this.drawn(section));
+    if (!this.hasPanel) return this.sheet?.setSummary([]);
+    const rows = new Map(this.sections.map((section) => [section, section.rows(this.ctx, this.hub)]));
+    const drawn = (sections) => sections.map((section) => this.drawn(section, rows.get(section)));
     this.panel.draw(this.lanes ? { wide: drawn(this.lanes.wide), act: drawn(this.lanes.act), know: drawn(this.lanes.know) }
       : drawn(this.sections));
+    this.sheet?.setSummary(sectionSummary(this.sections.map((section) => ({
+      key: section.key, label: typeof section.label === "function" ? section.label(this.hub) : section.label,
+      rows: rows.get(section) }))));
   }
 
   onRow(sectionDef, row) {
@@ -170,7 +184,9 @@ export class HubPage {
   }
 
   focus() {
-    if (this.hasPanel) this.panel.focus();
+    if (!this.hasPanel) return;
+    this.sheet?.open();
+    this.panel.focus();
   }
 }
 

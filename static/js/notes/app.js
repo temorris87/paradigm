@@ -74,6 +74,7 @@ import { Folders } from "../resources/folders-model.js";
 import { addInFolderMenu } from "../resources/folder-commands.js";
 import { StatusLogs, healthOf } from "../status/status-model.js";
 import { navCounts } from "../today/today-model.js";
+import { Rota } from "../oncall/oncall-model.js";
 import { drawPins, drawSaveState, saveStateOf } from "../layout/navigator-parts.js";
 
 // The blocks of time loaded for the pages (a task's next block, Home's Today).
@@ -86,7 +87,7 @@ export class NotesApp {
   constructor({ role = "note", editor, tree, crumbs, navigator, hub, agenda = {}, home, people, meetings, trash, goTo, api, trashApi,
                 imagesApi, peopleApi, meetingsApi, recordsApi, linksApi, tasksApi = null, calendarApi = null,
                 planApi = null, planTemplatesApi = null, filesApi = null, templatesApi = null, foldersApi = null, statusApi = null,
-                timeApi = null, extraPages = {}, pins = null, saveState = null, connection = null, prep = null, contextStrip = null,
+                timeApi = null, onCallApi = null, extraPages = {}, pins = null, saveState = null, connection = null, prep = null, contextStrip = null,
                 buttons = {}, status = null, dashboard = null, location = window.location, history = window.history,
                 today = () => new Date(), changes = new Changes() }) {
     this.role = role;
@@ -99,6 +100,8 @@ export class NotesApp {
     this.foldersApi = foldersApi;
     this.statusApi = statusApi;
     this.timeApi = timeApi;
+    this.onCallApi = onCallApi;
+    this.onCall = new Rota();
     this.pins = pins;
     this.contextStrip = contextStrip ? new ContextStrip(contextStrip, { onOpen: (id) => this.guard(this.open(id)) }) : null;
     // The strip's bar and "left" move on with the clock.
@@ -115,7 +118,7 @@ export class NotesApp {
     this.planTemplates = [];
     this.files = new Files();
     this.templateId = null;
-    this.weekView = "plan"; // the Week page's Plan, Timesheet or Settings
+    this.weekView = "plan"; // the Week page's Plan, Timesheet, Settings or On call
     this.editor = editor;
     this.tasksApi = tasksApi;
     this.calendarApi = calendarApi;
@@ -300,7 +303,7 @@ export class NotesApp {
       if (message.key === "folder") {
         await this.refreshTree();
         this.showFolder(message.folderId);
-      } else if (this.views.pages[message.key] || ["calendar", "time"].includes(message.key)) {
+      } else if (this.views.pages[message.key] || ["calendar", "time", "oncall"].includes(message.key)) {
         // A page about one hub (its plan) opens that hub's dashboard under it first.
         if (message.id !== undefined) {
           await this.refreshTree();
@@ -383,7 +386,7 @@ export class NotesApp {
     if (id === undefined) return;
     if (params.has("template")) this.templateId = Number(params.get("template"));
     if (params.has("folder")) this.folderId = Number(params.get("folder"));
-    this.weekView = params.has("time") ? "timesheet" : ["timesheet", "settings"].includes(params.get("week")) ? params.get("week") : "plan";
+    this.weekView = params.has("time") ? "timesheet" : ["timesheet", "settings", "oncall"].includes(params.get("week")) ? params.get("week") : "plan";
     const view = this.views.fromUrl(params) ?? (asked !== null && this.isDashboard(id) ? null : "home");
     await this.open(id, { history: view ? "none" : history });
     if (view) this.showView(view, history === "replace" ? "replace" : "none");
@@ -405,15 +408,16 @@ export class NotesApp {
 
   async refreshTree() {
     const today = this.today();
-    const [notes, people, meetings, records, trash, , tasks, sessions, importStatus, plan, planTemplates, files, folders, status, timeSettings, topics] = await Promise.all([
+    const [notes, people, meetings, records, trash, , tasks, sessions, importStatus, plan, planTemplates, files, folders, status, timeSettings, topics, onCall] = await Promise.all([
       this.api.list(), this.peopleApi.list(), this.meetingsApi.list(), this.recordsApi.list(),
       this.trashApi.list(), this.linkIndex.refresh(), this.tasksApi?.list() ?? [],
       this.tasksApi?.sessions(localDay(addDays(today, -SESSIONS_BACK_DAYS)), localDay(addDays(today, SESSIONS_AHEAD_DAYS))) ?? [],
       this.calendarApi?.status().catch(() => null) ?? null,
       this.planApi?.list() ?? undefined, this.planTemplatesApi?.list() ?? [], this.filesApi?.list() ?? undefined,
       this.foldersApi?.list() ?? [], this.statusApi?.list() ?? null, this.timeApi?.settings().catch(() => null) ?? null,
-      this.peopleApi.topics?.() ?? [],
+      this.peopleApi.topics?.() ?? [], this.onCallApi?.list().catch(() => []) ?? [],
     ]);
+    this.onCall = new Rota(onCall);
     this.topics = topics;
     this.timeSettings = timeSettings;
     this.statusLogs = new StatusLogs(status?.logs ?? [], status?.stale_days);
@@ -510,7 +514,7 @@ export class NotesApp {
       links: this.linkIndex.links, mentions: this.linkIndex.mentions, trash: this.trash, tasks: this.tasks,
       sessions: this.sessions, importStatus: this.importStatus, plan: this.plan, planTemplates: this.planTemplates,
       files: this.files, templateId: this.templateId, folders: this.folders, folderId: this.folderId, statusLogs: this.statusLogs,
-      timeSettings: this.timeSettings, topics: this.topics ?? [], today: this.today() };
+      timeSettings: this.timeSettings, topics: this.topics ?? [], onCall: this.onCall, today: this.today() };
     const trashed = this.trash.entries.length;
     if (this.trashButton) this.trashButton.textContent = trashed ? `Trash · ${trashed}` : "Trash";
     this.hubPage.show(ctx, id);
@@ -852,6 +856,11 @@ export class NotesApp {
     this.showView("calendar", "push");
   }
 
+  /** :oncall: the Week page's On call (the rota) in the main window. */
+  onCallCommand() {
+    this.showView("oncall", "push");
+  }
+
   /** :time: the Week page's Timesheet in the main window. */
   timeCommand() {
     this.showView("time", "push");
@@ -901,6 +910,14 @@ export class NotesApp {
     }
     if (this.currentId !== top.id) await this.open(top.id);
     this.showView("plan", "push");
+  }
+
+  /** gp in the main window: the plan of the dashboard shown (already there on the plan page;
+   * any other page has no dashboard under it to take a plan from). */
+  async planKey() {
+    if (this.views.shown === "plan") return;
+    if (this.views.shown) throw new Error("E: gp: open a project's or area's dashboard first");
+    await this.showPlan();
   }
 
   /** A plan template's page (the main window). */
@@ -998,9 +1015,9 @@ export class NotesApp {
       showMainWindow({ type: "view", key }, this.changes);
       return;
     }
-    // The calendar and the timesheet are the Week page's Plan and Timesheet now.
-    if (key === "calendar" || key === "time") {
-      this.weekView = key === "time" ? "timesheet" : "plan";
+    // The calendar, the timesheet and the rota are the Week page's Plan, Timesheet and On call.
+    if (key === "calendar" || key === "time" || key === "oncall") {
+      this.weekView = key === "time" ? "timesheet" : key === "oncall" ? "oncall" : "plan";
       key = "week";
     }
     // A page about one thing keeps which one in its URL flag.

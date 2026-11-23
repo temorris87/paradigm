@@ -13,6 +13,8 @@ import { FolderPage } from "./resources/folder-page.js";
 import { timeApi } from "./timesheet/api.js";
 import { TimePage } from "./timesheet/time-page.js";
 import { WeekPage } from "./week/week-page.js";
+import { OnCallPage } from "./oncall/oncall-page.js";
+import { onCallApi } from "./oncall/api.js";
 import { planApi } from "./plan/api.js";
 import { openMenu } from "./ui/menu.js";
 import { MAIN_WINDOW, WINDOW_MODES, setWindowMode, windowMode } from "./windows/note-window.js";
@@ -35,7 +37,7 @@ const app = boot({
     const weekRoot = $(".week-view");
     const changes = new Changes();
     const week = new WeekPage({ root: weekRoot, bar: $(".week-bar"), plan: $(".week-plan"), time: $(".week-time"),
-      foot: $(".week-foot"), api: timeApi, changes });
+      oncall: $(".week-oncall"), foot: $(".week-foot"), api: timeApi, changes });
     const calendar = new CalendarPage({
       root: $(".week-plan"),
       bar: $(".cal-bar"),
@@ -50,7 +52,9 @@ const app = boot({
     });
     const time = new TimePage({ root: $(".week-time"), bar: $(".time-bar"), main: $(".time-main"), api: timeApi, changes,
       isShown: shown("week"), onMove: (days) => week.moveWeek(days) });
-    week.hold(calendar, time);
+    const onCall = new OnCallPage({ root: $(".week-oncall"), api: onCallApi, app, changes,
+      onMove: (days) => week.moveWeek(days) });
+    week.hold(calendar, time, onCall);
     const template = new TemplatePage($(".plan-template-view"), { app, onLeave: () => app().leaveView() });
     const folder = new FolderPage($(".folder-view"), { app, onLeave: () => app().leaveView() });
     const plan = new PlanPage($(".plan-view"), { app, onLeave: () => app().leaveView() });
@@ -70,7 +74,7 @@ const app = boot({
       meetings: { section: $(".meetings"), button: null },
       trash: { section: $(".trash"), button: $(".navigator__trash") },
       extraPages: {
-        week: { section: weekRoot, show() {}, enter: () => week.show(app().weekView), focus: () => week.focus() },
+        week: { section: weekRoot, show: (ctx) => week.redraw(ctx), enter: () => week.show(app().weekView), focus: () => week.focus() },
         template: { section: $(".plan-template-view"), show: (ctx) => template.show(ctx), focus: () => template.focus() },
         folder: { section: $(".folder-view"), show: (ctx) => folder.show(ctx), focus: () => folder.focus() },
         plan: { section: $(".plan-view"), show: (ctx) => plan.show(ctx), focus: () => plan.focus() },
@@ -87,10 +91,11 @@ const app = boot({
   },
 });
 
-// Keys of the whole main window (layout/main-keys.js): the palette, Today, the Week.
+// Keys of the whole main window (layout/main-keys.js): the palette, Today, the Week, the plan.
 installMainKeys(window, {
   // Typed, : starts a command, as in the editor; the bar's field opens it empty.
   palette: () => app.guard(openPalette(app, ":")),
   today: () => app.showView("home", "push"),
   week: () => app.calendarCommand(),
+  plan: () => app.guard(app.planKey()),
 });

@@ -1,0 +1,117 @@
+/* The note window's sections sheet (static/js/hubs/section-sheet.js): a one-line bar under the
+   text naming each section with its count; open, the sections slide up from it over the lower
+   part of the text, at most half the window, scrolling inside. */
+.sheet {
+  position: relative;
+  flex: none;
+}
+
+.sheet[hidden] {
+  display: none;
+}
+
+.sheet__bar {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  width: 100%;
+  min-width: 0;
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--nord2);
+  border-radius: 6px;
+  background: var(--nord1);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.sheet__bar:hover,
+.sheet__bar:focus-visible {
+  border-color: var(--nord3);
+  color: var(--text);
+  outline: none;
+}
+
+.sheet--open .sheet__bar {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.sheet__caret {
+  flex: none;
+  color: var(--nord8);
+}
+
+.sheet__label {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.sheet__count {
+  color: var(--text);
+}
+
+.sheet__part--empty .sheet__label,
+.sheet__part--empty .sheet__count {
+  color: var(--text-faint);
+  font-weight: 400;
+}
+
+/* Only the signal is red: the count of late tasks or missing files. */
+.sheet__flag {
+  color: var(--nord11);
+}
+
+.sheet__separator {
+  color: var(--text-faint);
+}
+
+.sheet__hint,
+.sheet__close {
+  margin-left: auto;
+  padding-left: var(--sp-3);
+  color: var(--text-faint);
+}
+
+.sheet__close:hover {
+  color: var(--text);
+}
+
+/* The sections, closed: out of the page and out of the Tab order. */
+.sheet:not(.sheet--open) .hub {
+  display: none;
+}
+
+.sheet .hub {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--nord3);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: var(--nord1);
+  box-shadow: 0 -6px 16px color-mix(in srgb, var(--nord0) 70%, transparent);
+  animation: sheet-up 120ms ease-out;
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(var(--sp-4));
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet .hub {
+    animation: none;
+  }
+}

@@ -15,6 +15,11 @@
 //   editor.replaceLine(4, "- [x] Done")  // one line's text from the host: one undo step, the
 //                                     // cursor stays; resolves false in insert mode (not done)
 //   editor.selectedText                // the visual selection's text, or null
+//   editor.table                       // the Markdown table at the cursor: null, or { column,
+//                                     // columns, title (the column's header), align }
+//   editor.tableCommand("tsort", "!") // a table command from the host's menu: "table" [cols
+//                                     // rows], "tsort" [column | "!"], "talign" left|center|right,
+//                                     // "tcopy"; insert or visual mode is left first
 //   editor.completions = { "@": (query) => [item] }   // a list under the cursor in insert mode
 //                                     // while "@query" is typed (a word start): item
 //                                     // { label, detail?, insert } puts insert in place of
@@ -28,8 +33,8 @@
 //                                     // the cursor's line in insert mode; cmdline over the
 //                                     // command line while typing one. Each returns "" for none
 //
-// Live preview (on by default, :set nopreview turns it off): Markdown blocks away from the
-// cursor are drawn rendered; the block holding the cursor shows its raw text.
+// Live preview (on by default, :set nopreview turns it off): Markdown blocks are drawn
+// rendered, the cursor's marked in normal mode; it shows its raw text in insert mode.
 //
 // Events: "task" (a rendered task box was clicked: detail.line, its source line),
 // "change" (the text changed, on every edit), "save" (:w, :x, ZZ; detail.force for
@@ -42,8 +47,14 @@
 // cursor stays where it is. An image inside a link is the link's.
 //
 // "menu": a right-click, or the context-menu key (Shift-F10, Menu), detail.text: the visual
-// selection's text or null, detail.x / .y where to show a menu. Cancel it (preventDefault)
-// to keep the browser's own menu away.
+// selection's text or null, detail.table: editor.table where it was clicked, detail.x / .y
+// where to show a menu. A right-click outside a selection moves the cursor there first.
+// Cancel it (preventDefault) to keep the browser's own menu away.
+//
+// Tables: on a table row in insert mode Tab / Shift-Tab go to the next / previous cell, Enter
+// / Shift-Enter the same cell a row down / up (a new row at the end); the table lines itself
+// up. Cells pasted from Excel or Word become a table. :table, :tsort, :talign and :tcopy (a
+// table on the clipboard as HTML + Tab text) are the editor's own commands (table-edit.js).
 //
 // "files": images pasted in insert mode (detail.how "paste"; they win over any text on the
 // clipboard too) or files dropped on the text in any mode (detail.how "drop", detail.line
@@ -54,12 +65,14 @@
 // work as usual. Tab and Shift-Tab indent in insert mode; in every other mode they are not
 // taken, so they move the focus on, like on any page.
 import { onDiagramDrawn } from "../diagrams/mermaid.js";
+import { copyRich } from "../ui/clipboard.js";
 import { syncDiagramSheets } from "../diagrams/insert-svg.js";
 import { KATEX_CSS, ensureMathFonts } from "../math/typeset.js";
 import { isTextKey, keyName } from "./key-names.js";
 import { BOUND_KEYS, INSERT_ONLY_KEYS } from "./keys.js";
 import { Completion } from "./completion.js";
 import { markHighlights } from "./highlights.js";
+import { tableInfo } from "./table-edit.js";
 import { PreviewLayout } from "./preview-layout.js";
 import { PreviewMeasure } from "./preview-measure.js";
 import { PreviewView } from "./preview-view.js";
@@ -229,6 +242,16 @@ export class PdEditor extends HTMLElement {
     return this.vim.selectedText();
   }
 
+  get table() {
+    return tableInfo(this.vim);
+  }
+
+  tableCommand(name, arg = "") {
+    const bang = arg === "!" ? "!" : "";
+    this.input.focus();
+    this.enqueue(() => this.vim.exFromOutside(`${name}${bang}${bang ? "" : ` ${arg}`}`.trim()));
+  }
+
   get completions() {
     return this.completion.sources;
   }
@@ -387,13 +410,22 @@ export class PdEditor extends HTMLElement {
   }
 
   onContextMenu(event) {
+    const fromKey = event.button !== 2 || (event.clientX === 0 && event.clientY === 0);
+    // A right-click on the text puts the cursor there (a selection stays as it is), so what the
+    // menu offers is about the place clicked: a table's column, say.
+    if (!fromKey && this.vim.mode !== "visual" && this.textArea.contains(event.target)) {
+      const at = this.view.positionAt(event.clientX, event.clientY);
+      if (at) {
+        this.vim.click(at);
+        this.render();
+      }
+    }
     // The context-menu key comes with no pointer position: show the menu at the cursor.
     const box = this.view.cursorBox();
-    const fromKey = event.button !== 2 || (event.clientX === 0 && event.clientY === 0);
     const x = fromKey && box ? box.left : event.clientX;
     const y = fromKey && box ? box.bottom : event.clientY;
     const menu = new CustomEvent("menu", { cancelable: true,
-      detail: { text: this.vim.selectedText(), x, y, value: this.vim.text } });
+      detail: { text: this.vim.selectedText(), table: tableInfo(this.vim), x, y, value: this.vim.text } });
     this.dispatchEvent(menu);
     if (menu.defaultPrevented) event.preventDefault();
   }
@@ -491,7 +523,10 @@ export class PdEditor extends HTMLElement {
   afterFeed() {
     const vim = this.vim;
     const value = vim.text;
-    for (const { type, ...detail } of vim.takeEvents()) this.emitEvent(type, detail);
+    for (const { type, ...detail } of vim.takeEvents()) {
+      if (type === "copytable") this.copyTable(detail);
+      else this.emitEvent(type, detail);
+    }
     if (vim.buf.version !== this.seen.version) {
       this.seen.version = vim.buf.version;
       this.dispatchEvent(new CustomEvent("change", { detail: { value } }));
@@ -508,6 +543,15 @@ export class PdEditor extends HTMLElement {
     }
     this.render();
     this.completion.update(vim, () => this.view.cursorBox(), this.frame.getBoundingClientRect());
+  }
+
+  async copyTable({ html, text, message }) {
+    try {
+      await copyRich(html, text);
+      this.showMessage(message);
+    } catch {
+      this.showMessage("The browser did not let the table onto the clipboard", { error: true });
+    }
   }
 
   emitEvent(type, detail = {}) {

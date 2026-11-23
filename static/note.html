@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="/css/navigator.css">
   <link rel="stylesheet" href="/css/markdown.css">
   <link rel="stylesheet" href="/css/hub.css">
+  <link rel="stylesheet" href="/css/sheet.css">
   <link rel="stylesheet" href="/css/image-viewer.css">
   <link rel="stylesheet" href="/css/ui.css">
   <script type="module" src="/js/note-main.js"></script>
@@ -40,7 +41,11 @@
       </div>
       <div class="field-label field-label--main" id="note-label"></div>
       <pd-editor class="app__editor" aria-label="Note"></pd-editor>
-      <section class="hub" aria-label="Sections" hidden></section>
+      <!-- The sections slide up over the text from a bar of counts (hubs/section-sheet.js). -->
+      <section class="sheet" aria-label="Sections" hidden>
+        <section class="hub" aria-label="Sections" hidden></section>
+        <button type="button" class="sheet__bar" aria-expanded="false"></button>
+      </section>
     </main>
     <div class="navigator__backdrop" hidden></div>
     <nav class="app__sidebar" id="navigator" aria-label="Notes">

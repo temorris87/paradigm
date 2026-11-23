@@ -1,6 +1,8 @@
 // p / P / gp / gP, and replacing a visual selection with a register.
 import { EditorError } from "./errors.js";
 import { endAfter, firstNonBlankCol, pos } from "./position.js";
+import { putTable, tableMayGoHere } from "./table-edit.js";
+import { pasteAsTable } from "./table-paste.js";
 
 function registerValue(vim, register) {
   const name = register ?? '"';
@@ -11,9 +13,22 @@ function registerValue(vim, register) {
 
 export function put(vim, { register = null, count = 1, before = false, moveAfter = false }) {
   const value = registerValue(vim, register);
+  if (putClipboardTable(vim, register, value, count, before)) return;
   if (value.type === "line") putLines(vim, value.text, count, before, moveAfter);
   else if (value.type === "block") putBlock(vim, value.text, count, before);
   else putChars(vim, value.text, count, before, moveAfter);
+}
+
+// "+p of cells copied from Excel, Word or a web page: a table (below the line; P above it).
+function putClipboardTable(vim, register, value, count, before) {
+  if ((register !== "+" && register !== "*") || value.type === "block" || count !== 1) return false;
+  const table = pasteAsTable(value.text);
+  if (!table) return false;
+  const line = before && vim.cursor.line > 0 ? vim.cursor.line - 1 : vim.cursor.line;
+  if (!tableMayGoHere(vim, line)) return false;
+  vim.setCursor(pos(line, 0));
+  putTable(vim, table);
+  return true;
 }
 
 function putLines(vim, text, count, before, moveAfter) {

@@ -21,6 +21,7 @@ from paradigm.api.templates import TemplatesApi
 from paradigm.api.timesheet import TimesheetApi
 from paradigm.api.status import StatusApi
 from paradigm.api.topics import TopicsApi
+from paradigm.api.oncall import OnCallApi
 from paradigm.api.trash import TrashApi
 from paradigm.config import Config, parse_args
 from paradigm.db.connection import Database
@@ -41,6 +42,7 @@ from paradigm.db.time_repo import TimeRepository
 from paradigm.db.status_repo import StatusRepository
 from paradigm.db.capture_repo import store_captures
 from paradigm.db.topics_repo import TopicRepository
+from paradigm.db.oncall_repo import OnCallRepository
 from paradigm.db.folders_repo import FolderRepository
 from paradigm.db.trash_repo import TrashRepository
 from paradigm.instance import PortState, probe
@@ -179,6 +181,7 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
     TimesheetApi(TimeRepository(db)).register(server.router)
     StatusApi(StatusRepository(db), config.stale_days).register(server.router)
     TopicsApi(TopicRepository(db)).register(server.router)
+    OnCallApi(OnCallRepository(db)).register(server.router)
 
 
 def import_calendar(imports: ImportRepository) -> None:

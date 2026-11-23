@@ -63,7 +63,8 @@ export class EditorView {
     for (; line <= vim.buf.lastLine && rows < vim.view.height; line += 1) {
       const unit = unitAt(vim, line);
       if (unit.rendered) {
-        nodes.push(this.preview.node(unit, line === vim.view.top ? vim.view.skip * this.rowHeight : 0));
+        const cursor = vim.mode !== "cmdline" && vim.cursor.line >= unit.start && vim.cursor.line <= unit.end;
+        nodes.push(this.preview.node(unit, line === vim.view.top ? vim.view.skip * this.rowHeight : 0, cursor));
         if (syntax) for (let at = unit.start; at <= unit.end; at += 1) fence = tokenizeLine(vim.buf.line(at), fence).fence;
         rows += unit.rows;
         line = unit.end;
@@ -204,9 +205,14 @@ export class EditorView {
     return null;
   }
 
+  /** Where the cursor is drawn: its cell, or the top of the rendered block it is in. */
   cursorBox() {
     const cursor = this.text.querySelector(".pd-cursor, .pd-cursor-bar, .pd-cursor-under");
-    return cursor ? cursor.getBoundingClientRect() : null;
+    if (cursor) return cursor.getBoundingClientRect();
+    const block = this.text.querySelector(".pd-unit--cursor");
+    if (!block) return null;
+    const box = block.getBoundingClientRect();
+    return { left: box.left, right: box.left + (this.charWidth || 8), top: box.top, bottom: box.top + this.rowHeight, width: this.charWidth || 8, height: this.rowHeight };
   }
 }
 

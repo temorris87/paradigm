@@ -29,30 +29,56 @@ function mouseDown(target) {
 }
 
 const units = (root) => [...root.querySelectorAll(".pd-text .pd-unit")];
+const unitOn = (root, line) => units(root).find((unit) => unit.dataset.line === String(line));
+const lines = (root) => units(root).map((unit) => unit.dataset.line).join(" ");
+const marked = (root) => [...root.querySelectorAll(".pd-unit--cursor")].map((unit) => unit.dataset.line).join(" ");
 const SAMPLE = "# Title\n\nSee [Acme](https://acme.example) and [the end](#md-end).\n\n- one\n- two\n\n## End";
 
-test("preview element: blocks away from the cursor render, the cursor's block is raw", () => withEditor(SAMPLE, (editor, root) => {
-  assertEqual(units(root).map((unit) => unit.dataset.line).join(" "), "2 4 5 7");
-  assertTrue(root.querySelector(".pd-text .md-h1") !== null, "the heading under the cursor is raw");
-  assertTrue(units(root)[0].querySelector("p") !== null);
+test("preview element: normal mode renders every block and marks the cursor's; insert shows it raw", () => withEditor(SAMPLE, (editor, root) => {
+  assertEqual(lines(root), "0 2 4 5 7");
+  assertEqual(marked(root), "0", "the heading under the cursor is marked");
+  assertTrue(unitOn(root, 2).querySelector("p") !== null);
+  press(editor, "j");
+  assertEqual(marked(root), "", "a blank line: no block marked");
+  press(editor, "j");
+  assertEqual(marked(root), "2", "the mark moves with the cursor; the reused node lost it");
+  press(editor, "i");
+  assertEqual(lines(root), "0 4 5 7", "insert mode: the cursor's block is raw");
+  assertEqual(marked(root), "");
+  press(editor, "Escape");
+  assertEqual(lines(root), "0 2 4 5 7");
+  assertEqual(marked(root), "2");
+}));
+
+test("preview element: a sub-bullet is drawn at its depth, right under its parent", () => withEditor("- a\n\n- Scope\n  - in: reports\n  - out", (editor, root) => {
+  // A loose list (a blank line between items): an item's text is a paragraph, and its
+  // sub-bullets still sit right under it.
+  const parent = unitOn(root, 2).querySelector("li");
+  const sub = unitOn(root, 3).querySelector(".md-nest-li li");
+  assertTrue(sub !== null, "drawn inside its parent's list");
+  const gap = unitOn(root, 3).getBoundingClientRect().top - unitOn(root, 2).getBoundingClientRect().bottom;
+  assertTrue(Math.abs(gap) < 1, `gap ${gap}px between an item and its sub-bullet`);
+  const indent = sub.getBoundingClientRect().left - parent.getBoundingClientRect().left;
+  assertTrue(indent > 10, `sub-bullet indented ${indent}px`);
 }));
 
 test("preview element: links open in a new tab and are skipped by Tab", () => withEditor(SAMPLE, (editor, root) => {
-  const link = units(root)[0].querySelector('a[href^="https:"]');
+  const link = unitOn(root, 2).querySelector('a[href^="https:"]');
   assertEqual(link.target, "_blank");
   assertEqual(link.rel, "noopener noreferrer");
   assertEqual(link.tabIndex, -1);
 }));
 
 test("preview element: a # link moves the cursor to its heading", () => withEditor(SAMPLE, (editor, root) => {
-  mouseDown(units(root)[0].querySelector('a[href="#md-end"]'));
+  mouseDown(unitOn(root, 2).querySelector('a[href="#md-end"]'));
   assertEqual(editor.vim.cursor.line, 7);
 }));
 
 test("preview element: clicking a rendered block puts the cursor on its first line", () => withEditor(SAMPLE, (editor, root) => {
-  mouseDown(units(root)[2]);
+  mouseDown(unitOn(root, 5));
   assertEqual(editor.vim.cursor.line, 5);
-  assertEqual(units(root).map((unit) => unit.dataset.line).join(" "), "0 2 4 7");
+  assertEqual(lines(root), "0 2 4 5 7", "it stays rendered");
+  assertEqual(marked(root), "5");
 }));
 
 test("preview element: a block's node is kept while the cursor moves elsewhere", () => withEditor(SAMPLE, (editor, root) => {
@@ -68,18 +94,18 @@ test("preview element: :set nopreview and syntax=plain show raw text", () => wit
   assertEqual(units(root).length, 0);
   for (const key of ":set preview") press(editor, key);
   press(editor, "Enter");
-  assertEqual(units(root).length, 4);
+  assertEqual(units(root).length, 5);
   editor.setAttribute("syntax", "plain");
   assertEqual(units(root).length, 0);
 }));
 
 const MATHS = "Intro\n\n$$\n\\frac{a}{b}\n\\\\\nc\n$$\n\nInline $x^2$ here.";
 
-test("preview element: maths renders away from the cursor and is raw under it", () => withEditor(MATHS, (editor, root) => {
+test("preview element: maths renders, and is raw under the cursor in insert mode", () => withEditor(MATHS, (editor, root) => {
   const block = units(root).find((unit) => unit.dataset.line === "2");
   assertTrue(block.querySelector(".katex-display") !== null, "display maths drawn");
   assertTrue(units(root).find((unit) => unit.dataset.line === "8").querySelector(".katex") !== null, "inline maths drawn");
-  for (const key of "3j") press(editor, key);
+  for (const key of "3ji") press(editor, key);
   assertTrue(!units(root).some((unit) => unit.dataset.line === "2"), "the block is raw under the cursor");
   assertTrue(root.querySelector(".pd-text .md-math") !== null, "raw maths coloured");
 }));

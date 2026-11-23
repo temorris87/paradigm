@@ -6,6 +6,7 @@
 //                                  one entry per top-level block
 //   renderBlockHtml(block, opt)       -> HTML for one top-level block (live preview)
 //   renderListItemHtml(list, i, opt)  -> HTML for item i of a list, as a one-item list
+//   renderNestedItemHtml(path, opt)   -> one item at any depth, without its sub-lists
 //
 // Options: idPrefix ("md-") goes before every id, so two notes on one page never clash;
 // breaks (true) renders single newlines as <br>, like Obsidian; resolveWikiLink(link) returns
@@ -14,7 +15,7 @@
 // for an @mention of someone known, or null (it stays text).
 import { parseBlocks } from "./blocks.js";
 import { parseInline } from "./inline.js";
-import { renderBlock, renderFootnotes, renderListItem, plainText } from "./render.js";
+import { renderBlock, renderFootnotes, renderListItem, renderNestedItem, plainText } from "./render.js";
 import { makeSlugger } from "./slug.js";
 
 const DEFAULTS = { idPrefix: "md-", breaks: true, resolveWikiLink: null, resolveMention: null, taskLines: false };
@@ -51,6 +52,10 @@ export function renderBlockHtml(block, options = {}) {
 
 export function renderListItemHtml(list, index, options = {}) {
   return renderListItem(list, index, { ...DEFAULTS, ...options });
+}
+
+export function renderNestedItemHtml(path, options = {}) {
+  return renderNestedItem(path, { ...DEFAULTS, ...options });
 }
 
 // Inline parsing and heading ids, in document order (footnote numbers depend on it), and

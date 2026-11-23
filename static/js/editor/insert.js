@@ -5,6 +5,9 @@ import { findKey, INSERT_KEYS } from "./keys.js";
 import { isTextKey } from "./key-names.js";
 import { openLine } from "./lines.js";
 import { endAfter, leadingWhitespace, pos } from "./position.js";
+import { moveCell, putTable, realignAt, tableMayGoHere } from "./table-edit.js";
+import { pasteAsTable } from "./table-paste.js";
+import { isTableLine } from "./tables.js";
 
 export function insertKey(vim, key) {
   const session = vim.insert;
@@ -19,7 +22,7 @@ export function insertKey(vim, key) {
   if (entry) {
     HANDLERS[entry.name](vim, session);
   } else if (typeof key === "object" && key.paste !== undefined) {
-    typeText(vim, key.paste);
+    pasteText(vim, key.paste);
   } else if (isTextKey(key)) {
     if (key === " ") session.typedSpace = true;
     typeText(vim, key);
@@ -50,7 +53,28 @@ function typeText(vim, text) {
   vim.setCursor(endAfter(pos(line, col), text));
 }
 
+// Cells from Excel, Word or a web page become a table (table-paste.js); other text goes in as is.
+function pasteText(vim, text) {
+  const table = vim.mode === "insert" && tableMayGoHere(vim) ? pasteAsTable(text) : null;
+  if (!table) {
+    typeText(vim, text);
+    return;
+  }
+  vim.insert.pendingIndent = null;
+  putTable(vim, table, { insert: true });
+}
+
+// Tab, Shift-Tab, Enter and Shift-Enter move between cells on a table row (insert mode only;
+// replace mode keeps Vim's own keys).
+function inTable(vim) {
+  return vim.mode === "insert" && isTableLine(vim.buf.lines, vim.cursor.line);
+}
+
 function newline(vim, session) {
+  if (inTable(vim)) {
+    moveCell(vim, "down");
+    return;
+  }
   // The indent is taken before an unused one is dropped, so it carries on to the next line.
   const indent = vim.options.autoindent ? leadingWhitespace(vim.buf.line(vim.cursor.line)) : "";
   dropUnusedIndent(vim);
@@ -107,12 +131,20 @@ function softTabStart(vim, line, col) {
 
 // <Tab>: spaces up to the next multiple of shiftwidth (a real tab without expandtab).
 function tab(vim) {
+  if (inTable(vim)) {
+    moveCell(vim, "next");
+    return;
+  }
   const width = vim.options.shiftwidth;
   typeText(vim, vim.options.expandtab ? " ".repeat(width - (vim.cursor.col % width)) : "\t");
 }
 
 // <S-Tab>: the line's indent goes back one step; the cursor stays on the same text.
 function unindent(vim) {
+  if (inTable(vim)) {
+    moveCell(vim, "prev");
+    return;
+  }
   const { line, col } = vim.cursor;
   const indent = leadingWhitespace(vim.buf.line(line));
   if (!indent) return;
@@ -185,6 +217,8 @@ function oneCommand(vim, session) {
 export function leaveInsert(vim) {
   const session = vim.insert;
   dropUnusedIndent(vim);
+  // Leaving a table row lines its table up (the cursor stays on its text).
+  if (!session.block && isTableLine(vim.buf.lines, vim.cursor.line)) realignAt(vim);
   let cursor;
   if (session.block) {
     finishBlock(vim, session);
@@ -232,6 +266,8 @@ function finishBlock(vim, session) {
 const HANDLERS = {
   leave: leaveInsert,
   newline,
+  // Shift-Enter: the cell above on a table row, else a new line like Enter.
+  lineUp: (vim, session) => (inTable(vim) ? moveCell(vim, "up") : newline(vim, session)),
   tab,
   unindent,
   backspace,

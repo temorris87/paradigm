@@ -72,6 +72,7 @@ paradigm/                Python package
                          calendar.py (the Outlook import: /api/calendar/status|import|upload|
                          pending|file|ignore); timesheet.py (/api/time/week, /api/time/
                          settings, holiday/add|update|remove, off/add|remove);
+                         oncall.py (/api/oncall, /api/oncall/paste|clear: the on-call rota);
                          answers.py (result or expected error -> response)
   db/                    (migrations: 001 notes, 002 images, 003 notes.kind for PARA hubs,
                          004 notes.area_id: a project's area, 005 notes.archived_at:
@@ -103,7 +104,7 @@ paradigm/                Python package
                          tasks.snoozed_until: off Today's Up next until that day, 025
                          tasks.estimate_min, 026 task_sources (a captured T: line) +
                          tasks.for_person_id (I owe them), 027 person_topics (to raise at
-                         the next 1:1))
+                         the next 1:1), 028 on_call (week's Monday, role, name as pasted))
                          connection.py (one locked connection, transactions, VACUUM at start
                          when worth it), migrate.py
                          (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py,
@@ -141,7 +142,9 @@ paradigm/                Python package
                          cancelled, removed; series go to their hub, the rest wait in To
                          file; attendees matched or made as people; <data>/import/ read at
                          start and when the calendar asks), time_repo.py (settings, holidays,
-                         time off; gathers a week for the report; holiday_dates)
+                         time off; gathers a week for the report; holiday_dates),
+                         oncall_repo.py (the rota: a paste replaces the weeks it holds, keeps
+                         the rest; clear)
   files/                 folders.py (a synced OneDrive folder: OneDrive roots from the
                          environment, listing files and folders, paths kept inside the
                          folder, opening a file with this computer's program)
@@ -170,7 +173,9 @@ static/
   vendor/mermaid-12.3.0/ Mermaid exactly as audited (same check, mermaid-12.3.0.sha256)
   css/                   dashboard.css (the main window's dashboard: sections flowing down
                          columns, long text folded under Show more),
-                         gantt.css, plan-template.css, folder-page.css,
+                         gantt.css, plan-template.css, folder-page.css, oncall.css (the On call
+                         tab, the Week bar's line, Today's rows, a person's head line),
+                         sheet.css (the note window's sections sheet and its bar),
                          nord.css (palette variables and THE design tokens: --font-ui,
                          --font-mono, --fs-xs..xl, --sp-0..6, --text/-dim/-faint), base.css (the
                          page grid, color-scheme dark; one column under 1400 px), one file per component (topbar.css, navigator.css...)
@@ -213,7 +218,7 @@ static/
                          :resource :inbox :inarea :archive :restore :people :newperson
                          :addperson :dropperson :org :job :email :phone :meetings :meeting :date
                          :attendee :dropattendee :decision :question :answered :reopen :with
-                         :dropwith :task :template :dashboard :timecode :calendar :time :hub
+                         :dropwith :task :template :dashboard :plan :timecode :calendar :time :oncall :hub
                          :home :export :trash :trashed :find),
                          page-views.js (which page the main window shows: &home, &people,
                          &meetings, &trash, &calendar, &time, &template=ID; the URL flag
@@ -239,7 +244,10 @@ static/
                          answerDialog, newMeetingDialog, newRecordDialog), fields.js (THE field
                          table: the label over each text box per kind: Outcome, Purpose,
                          Agenda + Notes, Why, Answer, Notes), hub-panel.js (the sections: one
-                         focus stop, headings fold, Show all), hub-sections.js (THE section
+                         focus stop, headings fold, Show all), section-sheet.js (the note
+                         window's sheet: the bar of counts, open / close, its focus rules),
+                         section-summary.js (the bar's counts: "Tasks 3 (1 late)"; pure),
+                         hub-sections.js (THE section
                          table and each kind's order: Plan, Projects, Tasks, Questions,
                          Decisions, Meetings, Files, Plan templates, Notes, People, Linked
                          from; a phase's Milestones; a plain note's Tasks and Files; a
@@ -342,6 +350,12 @@ static/
                          task-sidebar.js (Tasks and To file), calendar-page.js (the page:
                          loading, menus, dialogs, the import), calendar-keys.js (THE
                          calendar key table)
+  js/oncall/             the on-call rota: sheet.js (the Excel sheet: header dates in many
+                         forms, month/day, nearest year; each column its date's Monday; pure),
+                         oncall-model.js (Rota, names to people: "First Last", "Last, First", a
+                         unique first name; a person's next week; the Week bar's line; the
+                         paste's preview; pure), oncall-page.js (the Week's On call tab),
+                         oncall-keys.js (THE On call key table), api.js
   js/timesheet/          api.js, copy.js (the grid as HTML and tab-separated text; pure),
                          time-page.js (Week and Settings), time-keys.js (THE timesheet key
                          table)
@@ -365,6 +379,10 @@ static/
     cmdline.js ex.js options.js put.js lines.js scroll.js
     buffer.js position.js words.js sentences.js brackets.js search.js
     registers.js undo.js marks.js key-names.js markdown-tokens.js errors.js
+    tables.js            Markdown tables as lines: rows, cells, align, sort, a column's
+                         alignment (pure); table-paste.js (Excel / Word cells -> a table;
+                         pure), table-copy.js (HTML + Tab text for the clipboard; pure),
+                         table-edit.js (cell moves, realign, :table :tsort :talign :tcopy)
   js/markdown/           the Markdown renderer: pure, Markdown in, HTML string out, no DOM
     index.js             parseMarkdown, renderMarkdown, renderBlocks (blocks with source lines)
     blocks.js            block parser (CommonMark algorithm); block-types.js, block-starts.js
@@ -408,12 +426,28 @@ Update this section when the structure changes.
 - The editor is a real modal Vim on raw Markdown: normal, insert, visual and command-line modes,
   counts, operators + motions, text objects, `.`, registers and undo. Vim itself is the reference
   for its keys.
-- Live preview (`:set preview`, on by default): blocks away from the cursor render; the block
-  under the cursor, a visual selection and the incsearch match show raw. Lists split per item.
-  A rendered block scrolls one step per row; a plain line is one step.
+- Live preview (`:set preview`, on by default; Tyson, 2026-11-23): in normal mode every block
+  renders, the cursor's too, marked by a band with a nord8 bar at its left edge. The block
+  under the cursor shows raw only in insert or replace mode; a visual selection (and `:` from
+  it) and the incsearch match show raw too. Lists split per item at every depth: each
+  sub-bullet is its own unit, drawn inside its parents' marker-less lists (`md-nest`); an
+  item with other blocks after its sub-list stays whole. A sub-list sits right under its
+  item, even in a loose list. A rendered block scrolls one step per row; a plain line is
+  one step; `j` through a block taller than the screen scrolls by proportion.
 - **Tab / Shift-Tab: in insert mode they indent (spaces to the next shiftwidth stop) and
   unindent. In every other mode they leave the editor and move focus like on any web page**,
   so they are never bound there (Tyson's choice, 2026-11-21).
+- Tables (Tyson, 2026-11-23; worknotes' behaviour): a table row is a line starting and ending
+  with `|`, outside a code fence. In insert mode on one, Tab / Shift-Tab go to the next /
+  previous cell and Enter / Shift-Enter the same cell a row down / up (past the last row: a new
+  row); the table lines itself up then, on Escape, and after a normal-mode change on a row (in
+  the same undo step; never on undo or redo). Cells pasted from Excel, Word or a web page (2+
+  rows, Tab-split) become a table, in insert mode or with `"+p`; not in a fence or a table.
+  The right-click menu in the text: Sort by "Column" (again: the other way; empty cells last,
+  numbers by value), Align "Column" left / center / right, Copy table (HTML for Word, Outlook,
+  Teams + Tab text for Excel); outside a table, Insert table… (also the note menu). The
+  editor's own commands `:table [cols [rows]]`, `:tsort[!] [col]`, `:talign {how}`, `:tcopy`.
+  No normal-mode keys for them.
 - Keys the browser owns (Ctrl-W, Ctrl-T, Ctrl-N, Ctrl-Tab, ...) are given up. Don't fight the browser.
 - PARA hubs: only top-level notes are hubs, and only projects and areas (`notes.kind`:
   project, area; NULL is the Inbox). `:project` etc. on a nested note moves it to the top;
@@ -446,8 +480,13 @@ Update this section when the structure changes.
   Under the text, a hub, person or meeting has sections (`hub-sections.js`, each kind's
   order in SECTION_ORDER; a project: Questions, Decisions, Notes, Meetings, People; an area:
   Projects first; a meeting: Questions, Decisions; a person:
-  Active, Archived (folded), Backlinks). The page scrolls as a whole. Tab or `:hub` reaches
-  the sections: one focus stop, headings fold (Enter or `z`, remembered per kind), long
+  Active, Archived (folded), Backlinks). In the note window (Tyson, 2026-11-23) the text
+  fills the window down to a one-line bar naming every section with its count ("Tasks 3
+  (1 late) · Files 2"; empty ones muted; none: no bar); the sections slide up from it over
+  the lower half of the text: a click on the bar, Tab out of the text onto it, or `:hub`.
+  Escape, the bar, its ✕ or the focus back in the text close it; it stays open under its
+  dialogs, menus and pickers; another note opens with it closed. The main window's dashboard
+  is unchanged. Tab or `:hub` reaches the sections: one focus stop, headings fold (Enter or `z`, remembered per kind), long
   sections end in "Show all (n)"; its keys live in `static/js/hubs/hub-keys.js`. Each
   section that can grow has an add button (`add` in its row, and the `a` key); rows that are
   links have Role… / Remove (`r`, `x`); an open question has Answer… (`r`). New record types
@@ -572,7 +611,8 @@ Update this section when the structure changes.
   window, Tab completes a command. Buttons never show `:command` names; the palette's command
   mode is the one place they appear.
 - Main-window keys (`static/js/layout/main-keys.js`, read in the capture phase): `:` the palette,
-  `gt` Today, `gw` the Week. `g` waits for a second key everywhere (as in Vim): `gg` is the
+  `gt` Today, `gw` the Week, `gp` the plan of the project or area on the dashboard (anywhere on
+  it; on another page it says to open one; `:plan` in the palette). `g` waits for a second key everywhere (as in Vim): `gg` is the
   first row in every list (`static/js/ui/key-sequence.js` reads two-key entries; a page-wide
   key clears a list's waiting `g`).
 - Card controls: what the card shows can be changed there: a hub's kind (▾), a project's
@@ -640,7 +680,8 @@ Update this section when the structure changes.
   Tasks; Weekly digest on the right (Copy: Markdown + HTML).
 - Dashboards (2026-11-22): a project's or area's head (name at `--fs-2xl`, health, Outcome or
   Purpose on one line, buttons), the card under it as its meta row, a project's Plan strip
-  (phases as wide as their working days; done ✓, current, late underlined red, today's line);
+  (phases as wide as their working days; done ✓, current, late underlined red, today's line;
+  always there on a project: with no phases, "No phases yet", + Phase and Apply plan template…);
   the text box only when the text runs past its first line. The full Gantt is its own page,
   `&plan` (`gp`, or Gantt on the strip; Escape back).
 - Plan templates (kept on an area, its Plan templates section): phases and milestones in
@@ -690,6 +731,21 @@ Update this section when the structure changes.
   all-day, free, tentative, out of office, working elsewhere. Attendees are matched by email,
   then name, else made as people (rooms, groups and you left out; none past 20). A trashed
   imported meeting is never made again. Home and the calendar remind until today's import.
+- On call (Tyson, 2026-11-23): the Week page's fourth tab (`:oncall`, the palette's Pages; URL
+  `&week=oncall`). Copy the Excel sheet (Role, then one column per week, a date in each header)
+  and Ctrl-V on the tab, or Paste sheet… (`p`): a dialog shows the sheet and a preview ("3 roles ×
+  6 weeks … replaces 2 weeks already in · 1 name not in People: …"), then Save rota. Each column
+  is the week (Mon–Sun) holding its date (11/23, 11/23/26, 2026-11-23, 23-Nov, Nov 23, "Week of
+  …"; numbers month/day; no year: the nearest); a paste replaces the weeks it holds, all roles,
+  and keeps the rest; Clear rota… empties it. Names are kept as pasted and matched in the page
+  ("First Last", "Last, First", a first name only one live person has; a cell split on / & , ;
+  and), so a person added later gets linked; an unknown name stays text, never made a person.
+  The grid: roles × weeks, the week shown lit, earlier weeks under Earlier (n) (`e`), `[` `]`
+  `t` move the week. The Week bar names who is on call the week shown (two roles, then +N),
+  on every tab; Today has "On call this week" over Projects (rows in its listbox: Enter opens
+  the person, or the rota for an unknown name); a person's head has "On call this week
+  (Role)" / "On call from Mon 7 Dec (Role)". Firefox sends a paste outside a text box to the
+  body, so the tab listens on the document while it shows.
 - Timesheet (the Week page's Timesheet, `:time`): a code per row (with its hub) x Mon-Fri, each
   day exactly the working day (8.00 h) in quarter hours: holidays, time off and sick time first,
   then meetings and task blocks inside the working hours (not lunch), overlaps shared evenly,

@@ -43,14 +43,17 @@ export class PreviewView {
     this.nodes = new Map();
   }
 
-  /** The node for a rendered unit; skipPx of it scrolled off the top of the screen. */
-  node(unit, skipPx) {
+  /** The node for a rendered unit; skipPx of it scrolled off the top of the screen; cursor:
+   * the cursor is in it (normal mode keeps it rendered, marked). */
+  node(unit, skipPx, cursor = false) {
     const node = this.previous.get(unit.html)?.shift() ?? this.create(unit.html);
     if (!this.nodes.has(unit.html)) this.nodes.set(unit.html, []);
     this.nodes.get(unit.html).push(node);
     node.dataset.line = String(unit.start);
     node.dataset.end = String(unit.end);
     node.style.marginTop = skipPx > 0 ? `${-skipPx}px` : "";
+    // A reused node may have been marked last time.
+    node.classList.toggle("pd-unit--cursor", cursor);
     return node;
   }
 

@@ -131,3 +131,16 @@ Features in build order. "build feature" takes the first unchecked item.
   from, Inbox triage dialog, Delegate with "at our 1:1", Edit dates showing the knock-on
   effect, Trash with "Gone in", and the disconnected banner copy (only promise kept changes
   once `note-session.js` can keep them through a disconnect). New token `--fs-2xl` (2f–2m) (done 2026-11-22)
+- [x] Tables like worknotes: new table, Tab / Shift-Tab / Enter between cells in insert mode
+  (inside a table row only), columns kept aligned, sort by a column, align a column, a paste
+  of Excel/Word cells becomes a table, copy a table for Word/Excel (done 2026-11-23)
+- [x] Start a plan on a new project: the dashboard's Plan strip always shows on a project
+  (empty: + Phase, Apply plan template…, Gantt gp); `gp` works anywhere on a project's or
+  area's dashboard; a Plan command in the palette (done 2026-11-23)
+- [x] Live preview: no blank line between a list item and its sub-bullets; the block under the
+  cursor stays rendered in normal mode (a cursor marker beside it, nested bullets their own
+  units) and shows raw Markdown only in insert mode (and in a visual selection or search match)
+  (done 2026-11-23)
+- [x] On call: paste the Excel on-call sheet (Role + one column per week) into an On call tab
+  on the Week page; this week's names on Today and in the Week bar; a person's next on-call
+  week on their dashboard (done 2026-11-23)

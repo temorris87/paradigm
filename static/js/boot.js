@@ -23,9 +23,10 @@ import { tasksApi } from "./tasks/api.js";
 import { templatesApi } from "./templates/api.js";
 import { timeApi } from "./timesheet/api.js";
 import { trashApi } from "./trash/api.js";
+import { onCallApi } from "./oncall/api.js";
 
 export const APIS = { api: notesApi, imagesApi, peopleApi, meetingsApi, recordsApi, trashApi, linksApi, tasksApi, calendarApi,
-  planApi, planTemplatesApi, filesApi, templatesApi, foldersApi, statusApi, timeApi };
+  planApi, planTemplatesApi, filesApi, templatesApi, foldersApi, statusApi, timeApi, onCallApi };
 
 export function boot({ role, kind, options }) {
   const connection = new Connection({ tabId: tabId(sessionStorage, kind) });
@@ -55,6 +56,7 @@ export function boot({ role, kind, options }) {
       page: document.querySelector(".app__note"),
       line: document.querySelector(".hub-line"),
       section: document.querySelector(".hub"),
+      sheet: document.querySelector(".sheet"),
       labels: {
         main: document.querySelector(".field-label--main"),
         agenda: document.querySelector(".field-label--agenda"),

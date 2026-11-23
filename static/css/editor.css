@@ -61,6 +61,24 @@
   margin-bottom: 0;
 }
 
+/* Each bullet is its own unit, drawn inside its parents' lists; those wrappers keep the
+   indent but draw no marker of their own. */
+.pd-unit .md-nest-li {
+  list-style: none;
+}
+
+/* Normal mode keeps the cursor's block rendered: a bar at its left edge and a faint band say
+   the cursor is in it (dim while the editor doesn't have the focus, like the block cursor).
+   Shadows, not borders or padding, so the block is as tall and as wide as it measured. */
+.pd-unit--cursor {
+  background: var(--nord1);
+  box-shadow: inset 2px 0 0 var(--nord3);
+}
+
+.pd-editor--focused .pd-unit--cursor {
+  box-shadow: inset 2px 0 0 var(--nord8);
+}
+
 .pd-measure {
   position: absolute;
   left: 0;

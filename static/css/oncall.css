@@ -1,0 +1,189 @@
+/* The Week page's On call tab (static/js/oncall/oncall-page.js): the rota, a row per role and a
+   column per week, the week shown lit; then how to paste the sheet. Also the bar's On call line. */
+.week-oncall {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--sp-4);
+}
+
+.week-oncall[hidden] {
+  display: none;
+}
+
+.week-oncall:focus {
+  outline: none;
+}
+
+.oncall__empty {
+  max-width: 48rem;
+  margin: 0 0 var(--sp-4);
+  color: var(--text-dim);
+}
+
+.oncall__earlier {
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-0) var(--sp-3);
+  font-size: var(--fs-sm);
+}
+
+.oncall__grid {
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.oncall__grid th,
+.oncall__grid td {
+  padding: var(--sp-1) var(--sp-3);
+  border-bottom: 1px solid var(--nord2);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.oncall__role-head,
+.oncall__week {
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.oncall__role {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.oncall__now {
+  color: var(--nord13);
+  font-weight: 400;
+}
+
+.oncall__week--shown,
+.oncall__cell--shown {
+  background: var(--nord1);
+}
+
+.oncall__week--shown {
+  box-shadow: inset 0 2px 0 var(--nord8);
+}
+
+.oncall__person {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--nord8);
+  font: inherit;
+  cursor: pointer;
+}
+
+.oncall__person:hover,
+.oncall__person:focus-visible {
+  text-decoration: underline;
+}
+
+.oncall__name {
+  color: var(--text);
+}
+
+.oncall__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  margin-top: var(--sp-4);
+  font-size: var(--fs-sm);
+}
+
+.oncall__hint {
+  color: var(--text-dim);
+}
+
+.oncall__foot .cal-button {
+  padding: var(--sp-0) var(--sp-3);
+  font-size: var(--fs-sm);
+}
+
+/* The Week bar: who is on call the week shown; a click opens the tab. */
+.week-bar__oncall {
+  max-width: 28rem;
+  overflow: hidden;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.week-bar__oncall:hover,
+.week-bar__oncall:focus-visible {
+  color: var(--text-strong);
+}
+
+.week-bar__summary + .week-bar__oncall {
+  margin-left: var(--sp-3);
+}
+
+.week-bar__summary[hidden] + .week-bar__oncall {
+  margin-left: auto;
+}
+
+.week-bar__oncall[hidden] {
+  display: none;
+}
+
+/* Today's On call this week (static/js/today/today-page.js). */
+.today-oncall {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.today-oncall[hidden] {
+  display: none;
+}
+
+.today-oncall__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+}
+
+.today-oncall__role {
+  flex-shrink: 100;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.today-oncall__name {
+  margin-left: auto;
+  color: var(--text-strong);
+}
+
+.today-oncall__name--text {
+  color: var(--text);
+}
+
+/* A person's head: their next on-call week beside the next 1:1. */
+.dash-head__oncall {
+  align-self: center;
+  margin-right: var(--sp-3);
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.dash-head__oncall--now {
+  color: var(--nord13);
+  font-weight: 600;
+}
+
+/* One column (today.css): it stays just over Projects. */
+@media (max-width: 1399.98px) {
+  .today-oncall { order: 4; }
+}

@@ -17,6 +17,7 @@ import { startOneOnOne } from "../people/topic-commands.js";
 import { DashHead } from "./dash-head.js";
 import { fieldsFor } from "./fields.js";
 import { PlanStrip } from "./plan-strip.js";
+import { applyTemplateDialog, newPhaseDialog } from "../plan/plan-commands.js";
 
 // Past this height (rem) the rendered text folds under Show more.
 const FOLD_REM = 24;
@@ -27,7 +28,14 @@ export class Dashboard {
     this.note = null;
     this.hasChart = false;
     this.app = null;
-    const run = (work) => this.app.guard(work());
+    // Some dialogs refuse at once (a throw, not a rejection): both go to the status line.
+    const run = (work) => {
+      try {
+        this.app.guard(work());
+      } catch (error) {
+        this.app.fail(error);
+      }
+    };
     this.head = new DashHead(head, {
       onLog: (note) => run(() => logStatusDialog(this.app, note)),
       onDigest: (note) => run(() => copyDigest(this.app, note)),
@@ -37,6 +45,8 @@ export class Dashboard {
     this.strip = new PlanStrip(strip, {
       onOpen: (id) => run(() => this.app.open(id)),
       onPlan: () => run(() => this.app.showPlan(this.note?.id)),
+      onAddPhase: () => run(() => newPhaseDialog(this.app, this.note)),
+      onApplyTemplate: () => run(() => applyTemplateDialog(this.app, this.note)),
     });
     // Long text is folded under "Show more" (never a scroll box inside the scrolling page);
     // opened stays opened for that note until another note is shown.

@@ -1,0 +1,197 @@
+// The Week page's On call tab (&week=oncall): the rota pasted from the Excel sheet, a row per
+// role and a column per week, the week shown lit; earlier weeks fold under "Earlier (n)".
+// Ctrl-V on the tab, or Paste sheet…, reads the sheet (sheet.js) and asks before it saves;
+// Clear rota… empties it. A name that is a person opens their dashboard. Its keys live in
+// oncall-keys.js.
+//
+//   const page = new OnCallPage({ root, api, app, changes, onMove, today })
+//     app(): the NotesApp (its tree, its rota, refreshTree, open, say)
+//     onMove(days): the Week page moves the week (-7, 7, 0: this week)
+//   page.show(); page.setMonday(monday); page.paste(text?)
+import { confirmDialog, formDialog } from "../ui/dialog.js";
+import { weekOf } from "../calendar/week-model.js";
+import { localDay } from "../meetings/meeting-days.js";
+import { dayText } from "../ui/dates.js";
+import { parseSheet } from "./sheet.js";
+import { cellPeople, pasteSummary } from "./oncall-model.js";
+import { onCallAction } from "./oncall-keys.js";
+
+export class OnCallPage {
+  constructor({ root, api, app, changes, onMove = () => {}, today = () => new Date() }) {
+    this.root = root;
+    this.api = api;
+    this.app = app;
+    this.changes = changes;
+    this.today = today;
+    this.onMove = onMove;
+    this.monday = weekOf(localDay(today()));
+    this.showEarlier = false;
+    root.classList.add("oncall");
+    root.addEventListener("keydown", (event) => this.onKey(event));
+    // On the document: Firefox sends a paste outside a text box to the body, not the focus.
+    root.ownerDocument.addEventListener("paste", (event) => {
+      if (!this.shown() || event.target.closest?.("input, textarea, dialog, [contenteditable]")) return;
+      const text = event.clipboardData?.getData("text/plain") ?? "";
+      if (!text.trim()) return;
+      event.preventDefault();
+      this.paste(text);
+    });
+  }
+
+  onKey(event) {
+    const action = onCallAction(event);
+    if (!action) return;
+    event.preventDefault();
+    switch (action) {
+      case "previousWeek": return this.onMove(-7);
+      case "nextWeek": return this.onMove(7);
+      case "thisWeek": return this.onMove(0);
+      case "paste": return this.app().guard(this.paste(""));
+      case "earlier":
+        this.showEarlier = !this.showEarlier;
+        return this.draw();
+    }
+  }
+
+  /** Whether the tab is on screen (the Week page and its On call tab both showing). */
+  shown() {
+    return !this.root.hidden && !this.root.closest("[hidden]");
+  }
+
+    setMonday(monday) {
+    this.monday = monday;
+    if (this.shown()) this.draw();
+  }
+
+  show() {
+    this.draw();
+  }
+
+  focus() {
+    this.root.focus({ preventScroll: true });
+  }
+
+  draw() {
+    const app = this.app();
+    const rota = app.onCall;
+    const today = localDay(this.today());
+    const thisWeek = weekOf(today);
+    const earlier = rota.weeks.filter((week) => week < thisWeek);
+    const weeks = this.showEarlier ? rota.weeks : rota.weeks.filter((week) => week >= thisWeek);
+    const parts = [];
+    if (rota.empty) {
+      parts.push(element("p", "oncall__empty", "No rota yet. In Excel, copy the on-call sheet (Role, then one column per week) and paste it here with Ctrl-V, or use Paste sheet…"));
+    } else {
+      if (earlier.length) {
+        const fold = button(this.showEarlier ? "Hide earlier weeks" : `Earlier (${earlier.length})`,
+          "Weeks before this one (e)", () => {
+            this.showEarlier = !this.showEarlier;
+            this.draw();
+          }, "cal-button oncall__earlier");
+        parts.push(fold);
+      }
+      parts.push(weeks.length ? this.grid(app.tree, rota, weeks, today) : element("p", "oncall__empty", "Nothing from this week on: paste the next sheet."));
+    }
+    const foot = element("div", "oncall__foot");
+    foot.append(element("span", "oncall__hint", "Paste the sheet here (Ctrl-V): a paste replaces the weeks it holds and keeps the rest."),
+      button("Paste sheet…", "Paste the Excel sheet into a box, then save it (p)", () => this.paste(""), "cal-button oncall__paste"));
+    if (!rota.empty) foot.append(button("Clear rota…", "Remove every week of the rota", () => this.clear(), "cal-button"));
+    parts.push(foot);
+    this.root.replaceChildren(...parts);
+  }
+
+  grid(tree, rota, weeks, today) {
+    const table = element("table", "oncall__grid");
+    const head = element("tr");
+    head.append(element("th", "oncall__role-head", "Role"));
+    for (const week of weeks) {
+      const cell = element("th", `oncall__week${week === this.monday ? " oncall__week--shown" : ""}`, dayText(week, { today }));
+      if (week === weekOf(today)) cell.append(element("span", "oncall__now", " this week"));
+      head.append(cell);
+    }
+    const thead = element("thead");
+    thead.append(head);
+    const body = element("tbody");
+    for (const role of rota.roles()) {
+      const row = element("tr");
+      row.append(element("th", "oncall__role", role));
+      for (const week of weeks) row.append(this.cell(tree, rota.name(week, role), week === this.monday));
+      body.append(row);
+    }
+    table.append(thead, body);
+    return table;
+  }
+
+  cell(tree, name, shown) {
+    const cell = element("td", `oncall__cell${shown ? " oncall__cell--shown" : ""}`);
+    cellPeople(tree, name).forEach((part, index) => {
+      if (index) cell.append(" / ");
+      if (part.person) {
+        const link = button(part.person.title, `Open ${part.person.title}`, () => this.app().guard(this.app().open(part.person.id)), "oncall__person");
+        cell.append(link);
+      } else cell.append(element("span", "oncall__name", part.text));
+    });
+    return cell;
+  }
+
+  /** Asks before saving a pasted sheet (text: what was pasted; "" opens an empty box). */
+  async paste(text) {
+    const app = this.app();
+    const today = this.today();
+    const saved = await formDialog({
+      title: "Paste the on-call sheet",
+      text: "Copy the sheet in Excel: Role, then one column per week (a date in the header row). Each column is the week holding its date.",
+      fields: [{ key: "sheet", label: "Sheet", type: "textarea", value: text, rows: 10,
+        placeholder: "Role\t11/23\t11/30\nPrimary\tTom Reyes\tAna Kim" }],
+      submit: "Save rota",
+      live: ({ sheet }) => {
+        if (!sheet.trim()) return "";
+        const parsed = parseSheet(sheet, today);
+        // A sheet that reads is a preview; one that doesn't is the warning.
+        const text = pasteSummary(parsed, app.onCall, app.tree, localDay(today));
+        return parsed.problem ? text : { text, plain: true };
+      },
+      returnFocus: this.root,
+      run: async ({ sheet }) => {
+        const parsed = parseSheet(sheet, today);
+        if (parsed.problem) throw new Error(parsed.problem);
+        await this.api.paste(parsed.weeks);
+        return parsed;
+      },
+    });
+    if (!saved) return;
+    await this.saved(`On call: ${saved.weeks.length} week${saved.weeks.length === 1 ? "" : "s"} saved`);
+  }
+
+  async clear() {
+    const done = await confirmDialog({ title: "Clear the rota?", text: "Every week of the on-call rota goes. Paste the sheet again to bring it back.",
+      confirm: "Clear rota", danger: true, returnFocus: this.root, run: async () => {
+        await this.api.clear();
+        return true;
+      } });
+    if (done) await this.saved("On call: the rota is cleared");
+  }
+
+  async saved(message) {
+    const app = this.app();
+    this.changes?.send({ type: "changed", what: ["oncall"] });
+    await app.refreshTree();
+    this.draw();
+    app.say(message);
+  }
+}
+
+function button(text, title, run, className) {
+  const node = element("button", className, text);
+  node.type = "button";
+  node.title = title;
+  node.addEventListener("click", run);
+  return node;
+}
+
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}

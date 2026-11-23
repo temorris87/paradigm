@@ -12,6 +12,7 @@ import { addPersonCommand, dropPersonCommand, fieldCommand, newPersonCommand } f
 import { quickTaskCommand, taskCommand } from "../tasks/task-commands.js";
 import { statusCommand } from "../status/status-commands.js";
 import { insertTemplateDialog } from "../templates/template-commands.js";
+import { insertTableDialog } from "./selection-menu.js";
 
 // :project :area :resource :inbox, typed in full (:res is Vim's :resize, :ar is :args).
 const FILING_COMMANDS = HUB_GROUPS.map((group) => ({
@@ -97,17 +98,30 @@ export const NOTE_COMMANDS = [
     run: (app, { arg }) => quickTaskCommand(app, arg) },
   { name: "template", label: "Insert template…", noteOnly: true, min: 8, usage: ":template [{name}]", help: "put a template's text in below the cursor (its - [ ] lines become tasks)",
     run: (app, { arg }) => insertTemplateDialog(app, arg.trim()) },
+  // The editor runs these itself when typed (table-edit.js); the palette runs them here.
+  { name: "table", label: "Insert table…", noteOnly: true, min: 5, usage: ":table [{columns} [{rows}]]", help: "an empty table below the cursor (rows count the header); Tab, Enter move between cells",
+    run: (app, { arg }) => (arg.trim() ? app.editor.tableCommand("table", arg.trim()) : insertTableDialog(app.editor, () => app.focusNote())) },
+  { name: "tsort", label: "Sort the table", noteOnly: true, min: 5, usage: ":tsort[!] [{column}]", help: "sort the table's rows by the cursor's column, or one by number or header (again: the other way; ! down)",
+    run: (app, { arg, bang }) => app.editor.tableCommand("tsort", bang ? "!" : arg.trim()) },
+  { name: "talign", label: "Align a table column", noteOnly: true, min: 6, usage: ":talign left|center|right", help: "align the table column under the cursor",
+    run: (app, { arg }) => app.editor.tableCommand("talign", arg.trim()) },
+  { name: "tcopy", label: "Copy table", noteOnly: true, min: 5, usage: ":tcopy", help: "copy the table under the cursor for Word, Outlook or Teams (formatted) and Excel (cells)",
+    run: (app) => app.editor.tableCommand("tcopy") },
   { name: "dashboard", label: "Show on the dashboard", min: 4, usage: ":dash[board]", help: "show this note's hub on the dashboard (the main window)",
     run: (app) => app.dashboardCommand() },
   { name: "log", label: "Log status…", min: 3, usage: ":log[!]", help: "Log status… of this note's project or area: health and where it is (:log! its history)",
     run: (app, { bang }) => statusCommand(app, { bang }) },
+  { name: "plan", label: "Plan (Gantt chart)", min: 4, usage: ":plan", help: "show the full plan of this note's project or area (its Gantt chart) in the main window",
+    run: (app) => app.showPlan() },
   { name: "timecode", label: "Set time code…", min: 8, usage: ":timecode [{code}]", help: "set this project's or area's timesheet code (with nothing: clear it)",
     run: (app, { arg }) => app.setTimeCode(app.currentId, arg.trim()) },
   { name: "calendar", label: "Week", min: 3, usage: ":cal[endar]", help: "show the Week's plan in the main window",
     run: (app) => app.calendarCommand() },
   { name: "time", label: "Timesheet", min: 4, usage: ":time", help: "show the Week's timesheet in the main window",
     run: (app) => app.timeCommand() },
-  { name: "hub", label: "Go to the sections", min: 3, usage: ":hub", help: "go to the hub's section panel (opens it if collapsed)",
+  { name: "oncall", label: "On call", min: 6, usage: ":oncall", help: "show the on-call rota (the Week's On call) in the main window; paste the Excel sheet there",
+    run: (app) => app.onCallCommand() },
+  { name: "hub", label: "Go to the sections", min: 3, usage: ":hub", help: "go to the sections (in the note window: open their sheet)",
     run: (app) => app.hubCommand() },
   { name: "export", label: "Export as a web page", min: 3, usage: ":exp[ort]", help: "download this note, and the linked notes beside or under it, as one .html file",
     run: (app) => app.exportCommand() },

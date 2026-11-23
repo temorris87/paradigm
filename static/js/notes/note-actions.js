@@ -16,6 +16,7 @@ import { makePhaseDialog, unmakePhase } from "../plan/plan-commands.js";
 import { createFromTemplate, insertTemplateDialog, templateChoices } from "../templates/template-commands.js";
 import { moveToFolderDialog } from "../resources/folder-commands.js";
 import { logStatusDialog } from "../status/status-commands.js";
+import { insertTableDialog } from "./selection-menu.js";
 
 export function openNoteMenu(app, anchor) {
   const id = app.currentId;
@@ -47,6 +48,7 @@ function runItem(app, id, item) {
     case "export": return app.exportCommand().then(() => app.focusNote());
     case "trash": return trashDialog(app, note, item.inside);
     case "insertTemplate": return insertTemplateDialog(app);
+    case "insertTable": return insertTableDialog(app.editor, () => app.focusNote());
     case "makePhase": return makePhaseDialog(app, note);
     case "unmakePhase": return unmakePhase(app, note);
     case "dashboard": return app.dashboardCommand();

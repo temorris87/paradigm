@@ -6,6 +6,7 @@ import { Records } from "../../static/js/records/records-model.js";
 import { StatusLogs, digest, digestHtml, firstSentence, healthOf, sinceLastLog } from "../../static/js/status/status-model.js";
 import { Tasks } from "../../static/js/tasks/tasks-model.js";
 import { outcomeLine } from "../../static/js/hubs/dash-head.js";
+import { PlanStrip } from "../../static/js/hubs/plan-strip.js";
 import { keyReader } from "../../static/js/ui/key-sequence.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
@@ -84,6 +85,23 @@ test("plan strip: phases as wide as their working days, the current one late, to
   const bars = portfolioBars(tree(), plan, 1, "2026-11-09");
   assertEqual(bars.map((bar) => `${bar.label}${bar.muted ? " (muted)" : ""}`).join(), "Cache (muted),Event bus,Gateway");
   assertTrue(bars[1].width > 0 && bars[2].width === 0, "a project with no plan has no bar");
+});
+
+test("plan strip: a project with no phases offers + Phase and Apply plan template…; an area has none", () => {
+  const root = document.createElement("section");
+  const ran = [];
+  const strip = new PlanStrip(root, { onOpen: () => ran.push("open"), onPlan: () => ran.push("plan"),
+    onAddPhase: () => ran.push("phase"), onApplyTemplate: () => ran.push("template") });
+  const ctx = { tree: tree(), plan: new Plan(), today: new Date(2026, 10, 25) };
+  strip.show(ctx, ctx.tree.get(3));
+  assertTrue(!root.hidden, "a project always has its strip");
+  assertEqual(root.querySelector(".plan-strip__empty").textContent, "No phases yet");
+  for (const button of root.querySelectorAll("button")) button.click();
+  assertEqual(ran.join(), "phase,template,plan");
+  strip.show(ctx, { ...ctx.tree.get(3), archived_at: T });
+  assertEqual(root.querySelectorAll(".plan-strip__add").length, 0, "nothing is added to an archived project");
+  strip.show(ctx, ctx.tree.get(1));
+  assertTrue(root.hidden, "an area's plan is its Portfolio");
 });
 
 test("key sequences: gg waits for its second key; a stray second key means nothing", () => {
