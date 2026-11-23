@@ -23,6 +23,12 @@
 //   todayTasks(tree, tasks, sessions, day)    [{ entry, session }] of the blocks that day
 //   hubChoices(tree, tasks)               the hubs with open tasks: the calendar's filter
 //   subtaskText(entry)                    "2/5 subtasks" (done of all), "" for none
+//   parseEstimate(text)                   minutes from "1.5 h", "90 min", "45m", "2h30", "1:30";
+//                                         null for ""; throws on anything else
+//   estimateText(minutes)                 "1.5 h", "45 min", "" for none
+//   nextAction(tree, tasks, owner)        the entry it should do next: the open task flagged
+//                                         on the owner itself, else one flagged inside it, else
+//                                         the first open task of mine (not delegated); null
 import { hubOf, isArchived } from "../notes/hub-groups.js";
 import { hubScope } from "../people/people-model.js";
 
@@ -91,6 +97,14 @@ function withSubtasks(tasks, entry) {
   return { ...entry, subtasks, openSubtasks: subtasks.filter((task) => !task.done).length };
 }
 
+export function nextAction(tree, tasks, owner) {
+  const open = tasksOn(tree, tasks, owner).filter((entry) => !entry.task.done && !entry.archived);
+  return open.find((entry) => entry.task.is_next && entry.task.note_id === owner.id)
+    ?? open.find((entry) => entry.task.is_next)
+    ?? open.find((entry) => entry.task.delegate_id === null)
+    ?? null;
+}
+
 export function openCount(tree, tasks, owner) {
   return tasksOn(tree, tasks, owner).filter((entry) => !entry.task.done).length;
 }
@@ -143,4 +157,27 @@ export function hubChoices(tree, tasks) {
     if (area) hubs.set(area.id, area);
   }
   return [...hubs.values()].sort((a, b) => a.title.localeCompare(b.title));
+}
+
+export function parseEstimate(text) {
+  const raw = String(text ?? "").trim().toLowerCase();
+  if (!raw) return null;
+  let total = null;
+  const clock = /^(\d+):(\d{2})$/.exec(raw);
+  const both = /^(\d+(?:[.,]\d+)?)\s*h(?:ours?|rs?)?\s*(\d+)\s*(?:m|min|mins|minutes?)?$/.exec(raw);
+  const hours = /^(\d+(?:[.,]\d+)?)\s*(?:h|hr|hrs|hour|hours)$/.exec(raw);
+  const mins = /^(\d+)\s*(?:m|min|mins|minutes?)?$/.exec(raw);
+  if (clock) total = Number(clock[1]) * 60 + Number(clock[2]);
+  else if (both) total = Math.round(Number(both[1].replace(",", ".")) * 60) + Number(both[2]);
+  else if (hours) total = Math.round(Number(hours[1].replace(",", ".")) * 60);
+  else if (mins) total = Number(mins[1]);
+  if (!total || total <= 0 || total > 40 * 60) throw new Error(`"${text}" is not an estimate: write it like 30 min, 1.5 h or 2h30`);
+  return total;
+}
+
+export function estimateText(total) {
+  if (!total) return "";
+  if (total < 60) return `${total} min`;
+  const hours = total / 60;
+  return Number.isInteger(hours) ? `${hours} h` : Number.isInteger(hours * 2) ? `${hours.toFixed(1)} h` : `${Math.floor(hours)} h ${total % 60}`;
 }

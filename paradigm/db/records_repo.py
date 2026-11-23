@@ -18,7 +18,7 @@ MAX_ANSWER_LENGTH = 20000
 
 Clock = Callable[[], str]
 
-__all__ = ["RecordRepository", "NotARecord", "NotAQuestion", "HubArchived", "NotInvolved",
+__all__ = ["insert_record", "RecordRepository", "NotARecord", "NotAQuestion", "HubArchived", "NotInvolved",
            "NotAnswered", "NotAHub", "NotAPerson", "BadKind", "BadWhen",
            "BadTitle", "NotFound"]
 
@@ -79,14 +79,7 @@ class RecordRepository:
                 source_id = owner_id
             if source_id is not None and top_note_row(conn, source_id)["id"] != hub["id"]:
                 raise NotAHub('A record comes from a note in its own hub, "{}"'.format(hub["title"]))
-            note_id = conn.execute(
-                "INSERT INTO notes (parent_id, title, body, created_at, updated_at, title_shared) "
-                "VALUES (?, ?, '', ?, ?, 1)",
-                (hub["id"], title, now, now),
-            ).lastrowid
-            conn.execute("INSERT INTO {} (note_id, day) VALUES (?, ?)".format(_TABLES[kind]), (note_id, day))
-            conn.execute("INSERT INTO record_sources (note_id, source_id, quote) VALUES (?, ?, ?)",
-                         (note_id, source_id, quote))
+            note_id = insert_record(conn, hub["id"], kind, title, day, source_id, quote, now)
         return note_id, self.get(note_id)
 
     def set_day(self, record_id: int, day: object) -> Dict:
@@ -111,6 +104,16 @@ class RecordRepository:
                 body = live_note_row(conn, question_id)["body"].rstrip()
                 conn.execute("UPDATE notes SET body = ?, version = version + 1, updated_at = ? WHERE id = ?",
                              ((body + "\n\n" if body else "") + text + "\n", self._clock(), question_id))
+        return self.get(question_id)
+
+    def to_decision(self, question_id: int, day: object) -> Dict:
+        """Turn into decision: the question becomes a decision decided on day, keeping its note
+        (title, text, people, where it came from); its answer text is now the decision's why."""
+        day = clean_day(day)
+        with self._db.transaction() as conn:
+            _question_row(conn, question_id)
+            conn.execute("DELETE FROM questions WHERE note_id = ?", (question_id,))
+            conn.execute("INSERT INTO decisions (note_id, day) VALUES (?, ?)", (question_id, day))
         return self.get(question_id)
 
     def reopen(self, question_id: int) -> Dict:
@@ -159,6 +162,21 @@ _ROWS = (
     "LEFT JOIN notes AS source ON source.id = record_sources.source_id AND source.deleted_at IS NULL "
     "LEFT JOIN meetings ON meetings.note_id = record_sources.source_id"
 )
+
+
+def insert_record(conn: sqlite3.Connection, hub_id: int, kind: str, title: str, day: str, source_id: Optional[int],
+                  quote: str, now: str, people: Iterable[int] = ()) -> int:
+    """A record's note directly under its hub, its row, its source and its people, inside a
+    caller's transaction; the values are clean already. Returns its note's id."""
+    note_id = conn.execute(
+        "INSERT INTO notes (parent_id, title, body, created_at, updated_at, title_shared) VALUES (?, ?, '', ?, ?, 1)",
+        (hub_id, title, now, now),
+    ).lastrowid
+    conn.execute("INSERT INTO {} (note_id, day) VALUES (?, ?)".format(_TABLES[kind]), (note_id, day))
+    conn.execute("INSERT INTO record_sources (note_id, source_id, quote) VALUES (?, ?, ?)", (note_id, source_id, quote))
+    for person_id in people:
+        conn.execute("INSERT OR IGNORE INTO record_people (note_id, person_id) VALUES (?, ?)", (note_id, person_id))
+    return note_id
 
 
 def _clean_quote(quote: object) -> str:

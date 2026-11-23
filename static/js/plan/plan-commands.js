@@ -14,7 +14,8 @@
 //   newPlanTemplateDialog(app, area)
 import { localDay } from "../meetings/meeting-days.js";
 import { confirmDialog, formDialog } from "../ui/dialog.js";
-import { addDays, changeText, phasesOf, slipOf, slipText } from "./plan-model.js";
+import { addDays, changeText, moveImpact, phasesOf, slipOf, slipText } from "./plan-model.js";
+import { topNoteOf } from "../notes/hub-groups.js";
 
 const PHASE_DAYS = 14;
 
@@ -97,6 +98,8 @@ export function editDatesDialog(app, noteId) {
     fields: [...fields, { key: "reason", label: "Why it moved (kept in its history)", optional: true,
       placeholder: "vendor late, scope added…" }],
     submit: "Save dates",
+    // What the move does to the rest of the plan, as the dates change.
+    live: (values) => moveImpact(app.tree, app.plan, noteId, values, topNoteOf(app.tree, noteId)?.due ?? ""),
     run: async (values) => {
       const { reason, ...dates } = values;
       await saveDates(app, noteId, dates, reason.trim());
@@ -218,6 +221,30 @@ export function applyTemplateDialog(app, project) {
       const made = await app.planTemplatesApi.apply(Number(template), project.id, start);
       await changed(app);
       app.say(`Made ${made.phases} phases, ${made.milestones} milestones and ${made.tasks} tasks in "${project.title}"`);
+    },
+    fallbackFocus: () => app.focusNote(),
+  });
+}
+
+/** A template's Apply to a project…: which project (live, with no plan yet first), from when. */
+export function applyToProjectDialog(app, template) {
+  const projects = app.tree.children(null).filter((note) => note.kind === "project" && !note.archived_at)
+    .sort((a, b) => Number(phasesOf(app.tree, app.plan, a.id).length > 0) - Number(phasesOf(app.tree, app.plan, b.id).length > 0)
+      || a.title.localeCompare(b.title));
+  if (!projects.length) throw new Error("E: no live project to apply it to");
+  return formDialog({
+    title: `Apply "${template.title}" to a project`,
+    text: "Its phases, milestones and tasks are made in the project, counting working days from the start. Nothing there is replaced.",
+    fields: [
+      { key: "project", label: "Project", type: "select", options: projects.map((project) => [String(project.id),
+        `${project.title}${phasesOf(app.tree, app.plan, project.id).length ? " (has a plan)" : ""}`]) },
+      { key: "start", label: "Starts on", type: "date", value: nextMonday(app) },
+    ],
+    submit: "Apply",
+    run: async ({ project, start }) => {
+      const made = await app.planTemplatesApi.apply(template.id, Number(project), start);
+      await changed(app);
+      app.say(`Made ${made.phases} phases, ${made.milestones} milestones and ${made.tasks} tasks in "${app.tree.get(Number(project))?.title}"`);
     },
     fallbackFocus: () => app.focusNote(),
   });

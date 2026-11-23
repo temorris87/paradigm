@@ -66,6 +66,9 @@ paradigm/                Python package
                          apply, save); templates.py (/api/template/create: note templates);
                          files.py (/api/files, /api/folders/browse, /api/folder/link|unlink|
                          scan, /api/file/attach|detach|open: OneDrive files);
+                         topics.py (/api/person_topics, /api/person_topic/create|raise|
+                         remove); status.py (/api/status_logs, /api/status_log/create|update|
+                         remove; stale_days from Config);
                          calendar.py (the Outlook import: /api/calendar/status|import|upload|
                          pending|file|ignore); timesheet.py (/api/time/week, /api/time/
                          settings, holiday/add|update|remove, off/add|remove);
@@ -94,7 +97,13 @@ paradigm/                Python package
                          move, with why), 019 note_templates, plan_templates + plan_items +
                          plan_item_tasks (working days from 0), project_plans, 020
                          file_folders + files + file_links, 021 resource_folders +
-                         notes.folder_id; resources holding hub things became areas)
+                         notes.folder_id; resources holding hub things became areas,
+                         022 tasks.is_next: one flagged next action per note, 023
+                         status_logs: dated health + words on a project or area, 024
+                         tasks.snoozed_until: off Today's Up next until that day, 025
+                         tasks.estimate_min, 026 task_sources (a captured T: line) +
+                         tasks.for_person_id (I owe them), 027 person_topics (to raise at
+                         the next 1:1))
                          connection.py (one locked connection, transactions, VACUUM at start
                          when worth it), migrate.py
                          (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py,
@@ -123,6 +132,11 @@ paradigm/                Python package
                          files_repo.py (linked folders, their files, attachments; scan),
                          folders_repo.py (folders in Resources: nest, unique names per
                          parent, trash with their notes, back with a restored note),
+                         status_repo.py (status logs on projects and areas),
+                         topics_repo.py (what to raise with a person; "@Name ?" lines
+                         add them through capture_repo),
+                         capture_repo.py (a meeting's T:/D:/Q: lines into tasks and records,
+                         once each, inside the note's save; injected into NoteRepository),
                          import_repo.py (applies an Outlook .ics: new, moved,
                          cancelled, removed; series go to their hub, the rest wait in To
                          file; attendees matched or made as people; <data>/import/ read at
@@ -166,6 +180,11 @@ static/
   js/boot.js             what both windows start with (connection, navigator, NotesApp)
   js/main.js             the main window: its pages, the dashboard, the Window menu
   js/note-main.js        the note window
+  js/layout/main-keys.js THE main window's own key table (: gt gw)
+  js/layout/navigator-parts.js  the navigator's pinned Today / Week and its save state
+  js/palette/            palette-model.js (groups for what is typed: Recent, Pages, Notes,
+                         Commands with their keys; pure), palette.js (the dialog), recent.js
+                         (the notes opened last, per browser)
   js/layout/navigator.js the panel holding the tree: docked at 1400 px and wider, a drawer
                          over the note below that (inert while closed); NARROW_QUERY is the
                          one breakpoint, kept in step with the CSS
@@ -179,6 +198,8 @@ static/
                          now; pure), mentions.js (@mentions: found by the renderer, with their
                          line and the lines indented under it; which person a name reaches;
                          who mentions a person; rewriting a renamed person's; pure),
+                         capture.js (a meeting's T:/D:/Q: lines: kind, title, a name
+                         first delegates, a name later is who I owe, !day; pure),
                          mention-actions.js (@ completion, opening a mention, the rename
                          rewrite), selection-menu.js (THE right-click menu in the text: Add
                          question… / Add decision… from the selection), link-index.js (the
@@ -204,13 +225,15 @@ static/
                          which items show for which note; pure), note-actions.js (what the
                          menu, its dialogs and the Go to picker do: NotesApp methods),
                          images.js (editor "files" event -> shrink, upload, insert links)
-  js/hubs/               the page around the open note (a hub, person or meeting gets the card,
+  js/hubs/               prep.js (a meeting's Prep box); the page around the open note (a hub, person or meeting gets the card,
                          labels and sections; a decision or question the card and label; any
                          other note its label): hub-page.js (wiring; data-page on .app__note),
                          hub-line.js (the card: "Project ▾ · Active ▾ · due ... · Area: X",
                          People, Next meeting; a meeting's Attendees; a person's details; a
                          record's state, people and From), hub-line-controls.js (the card's
-                         buttons: ▾ ✎ + ×, they only report), hub-actions.js (what the card's
+                         buttons: ▾ ✎ + ×, they only report), dash-head.js (a project's or
+                         area's dashboard head: name, health badge, Outcome, Log status),
+                         plan-strip.js (a project's phases in one strip, Gantt gp), hub-actions.js (what the card's
                          and the sections' buttons do: menus, pickers, dialogs, then the same
                          code as the ex commands; personDialog, personDetailsDialog,
                          answerDialog, newMeetingDialog, newRecordDialog), fields.js (THE field
@@ -225,17 +248,26 @@ static/
                          project-facts.js (status, due, next meeting texts;
                          pure), hub-areas.js (project <-> area; pure), hub-folds.js (folded
                          sections, remembered per kind), hub-keys.js (THE sections key table)
-  js/home/               the Home page (the start page): home-model.js (today's meetings, open
-                         questions, live projects by area, the Inbox; pure), home-sections.js
-                         (THE Home section table; tasks join "today"; pure), home-page.js
-                         (one listbox, sections as groups), home-keys.js (THE Home key table)
+  js/today/              the Today page (the start page, &home): today-facts.js (today's
+                         meetings, open questions, live projects by area, the Inbox; pure),
+                         today-model.js (the Now block, the day's timeline with free gaps,
+                         the ranked Up next, projects' status; pure), today-page.js (three
+                         columns, one listbox), today-actions.js (what its keys run),
+                         today-keys.js (THE Today key table), context-strip.js (the note
+                         window's NOW strip)
+  js/week/               capacity.js (working hours, a day's meetings / focus / free,
+                         free gaps, the first free slot; pure), tray-model.js (the tray's
+                         groups, the "due" strip, the week's totals; pure), week-page.js
+                         (&week: the bar, Plan | Timesheet | Settings, time so far)
   js/pages/              list-page.js (a list page in place of the note: filters, search
                          box, one-focus-stop listbox), page-keys.js (THE key table of the
                          People and Meetings pages)
-  js/people/             api.js, people-model.js (who is on a hub, an area with its projects;
+  js/people/             one-on-one.js (I owe them, to raise, next together; pure),
+                         topic-commands.js (+ Add, Raised, Start 1:1 notes), api.js, people-model.js (who is on a hub, an area with its projects;
                          the People page filters; pure), people-page.js (the People page,
                          a ListPage), people-commands.js
-  js/meetings/           api.js, meeting-days.js (local days, today/tomorrow, times, the
+  js/meetings/           api.js, prep-model.js (a meeting's prep: open questions with its
+                         attendees, what they owe, last time; pure), meeting-days.js (local days, today/tomorrow, times, the
                          Period filter; pure), meetings-model.js (a hub's meetings, an area
                          with its projects', a person's; the page filters; pure),
                          meetings-page.js (a ListPage), meetings-commands.js
@@ -261,13 +293,21 @@ static/
                          render-notes.js (sections, links inside the file; pure), page.js (the
                          file + its own no-script CSP; pure), assets.js (MathML, cleaned SVG,
                          images as data: URLs, in an inert document), download.js, export.js
-  js/ui/                 shared pieces that know nothing about notes: dates.js (THE on-screen
+  js/status/             api.js, status-model.js (health, stale, since last log, the weekly
+                         digest; pure), status-commands.js (Log status…, history, :log,
+                         Copy weekly digest)
+  js/ui/                 shared pieces that know nothing about notes: key-sequence.js
+                         (two-key entries in a key table: gg, gp; pure), clipboard.js
+                         (copyRich: HTML + text), dates.js (THE on-screen
                          day and time format: "Wed 25 Nov", 24-hour, the year only when not
                          this year; pure), menu.js (a popup menu
                          under a button), dialog.js (formDialog, confirmDialog on <dialog>:
                          errors show inside and keep it open), picker.js (a text box over a
                          filtered list; filterItems is pure), ui-keys.js (THE key table of
                          menus, pickers and dialogs), dom.js
+  js/triage/             triage-model.js (the hub a note's links and mentions point to most;
+                         the options; pure), triage-keys.js (THE triage key table), triage.js
+                         (the Inbox one note at a time)
   js/trash/              api.js, trash-model.js (where a note goes back to, what must come
                          back first; pure), trash-page.js (the Trash page, a ListPage)
   js/connection/         connection.js (event stream + beacon), banner.js, tab-id.js (a key
@@ -279,7 +319,8 @@ static/
                          the Window menu says; one window, reused; showMainWindow
   js/plan/               api.js, plan-model.js (phases, milestones, slip against the
                          baseline, history; pure), plan-rows.js (a chart's rows: project,
-                         area, template; pure), plan-commands.js (dialogs: new phase /
+                         area, template; the Plan strip and Portfolio bars; pure),
+                         plan-page.js (&plan: the full Gantt over a dashboard, gp), plan-commands.js (dialogs: new phase /
                          milestone, edit dates + why, history, apply / save templates),
                          template-page.js (a plan template's page in the main window)
   js/gantt/              gantt-model.js (axis, bars, drags; pure), gantt-view.js (the chart:
@@ -295,7 +336,7 @@ static/
   js/tasks/              api.js, tasks-model.js (a page's tasks with subtask counts, never
                          rolled up past their project; waiting on; the calendar's open list
                          of mine and its filter; today's blocks; pure), task-commands.js
-  js/calendar/           api.js (the import), week-model.js (days shown, the weekend rule,
+  js/calendar/           (the Week page's Plan) api.js (the import), week-model.js (days shown, the weekend rule,
                          blocks, side-by-side layout, 15-minute snap; pure), grid-view.js
                          (the week grid), drag.js (pointer drags: drop, move, resize),
                          task-sidebar.js (Tasks and To file), calendar-page.js (the page:
@@ -412,6 +453,12 @@ Update this section when the structure changes.
   links have Role… / Remove (`r`, `x`); an open question has Answer… (`r`). New record types
   become new rows in `hub-sections.js`. `:inarea {area}` puts a project in an area; a note
   that stops being a project or area loses the link.
+- Navigator (2026-11-22): Today ("N overdue") and Week ("N h free" left this week) pinned over
+  the tree, the page shown lit; the Inbox's count as a pill; a dot before each live project
+  for its health (on hold: a ring), with its stale age ("16 d") on the right; folders show
+  how many notes they hold. Its foot: Trash (the main window), and the open note's save state
+  (the note window): Saved, Saving…, Unsaved, Not saved, Offline (changes stay in the window
+  and save when the server is back). `static/js/layout/navigator-parts.js`.
 - The notes tree is reached with `:nav` or the ☰ button in the top bar. Under 1400 px wide it
   is a drawer: it opens over the note and closes on Enter (opening a note), Escape, a click on
   the backdrop, or the focus leaving it. Meetings, decisions and questions are not in it (they
@@ -436,6 +483,15 @@ Update this section when the structure changes.
   (`note_mentions`: name, line, field, and context: the line and the lines indented under it).
   Typing `@` in insert mode offers people (`completion.js`); Enter puts in the full form; the
   last row adds someone new. A click on a rendered mention opens the person.
+- People as 1:1 prep (2026-11-22): a person's dashboard: their head (name, job, organisation,
+  email, how many projects; Next 1:1, the next meeting they attend; Start 1:1 notes: that
+  meeting's agenda gets the topics still to raise, then it opens in the note window, or New
+  meeting "1:1 First" with them), then three columns: Waiting on them, I owe them (my tasks
+  for them: `tasks.for_person_id`, set by a T: line with a name later, `:t`, or Edit…'s For),
+  To raise next 1:1 (topics: + Add, or an "@Name ?" line in any note; Raised (Space), x;
+  then the open questions they are on); then Backlinks | Active, Archived. The People page:
+  Open items (the default) / Everyone pills, columns Name, Role · organisation, On, Waiting on
+  them (late in orange), I owe, To raise, Next together.
 - Meetings: a meeting is a note directly under its hub (its title is its name, never its date;
   its text is the minutes) plus a `meetings` row (day, optional time, agenda) and attendees.
   Meetings in one hub may share a name (`title_shared`); `[[Weekly sync]]` reaches a plain
@@ -447,6 +503,25 @@ Update this section when the structure changes.
   Hubs (an area: its projects' too) have a Meetings section, upcoming first; a person's are
   in Active / Archived. `:meetings` or the Meetings button opens the Meetings page (filters:
   hub, period, title), with the same keys as the People page (`static/js/pages/page-keys.js`).
+- Note window strip and `:t` (2026-11-22): under the note window's breadcrumb, NOW (the task
+  block on now: its time, what is left, a bar moving each minute) and Next: the meeting starting
+  within 2 h (a link to it and its Prep); hidden when neither is near. `:t {text} [@Name]
+  [!day]` puts a task on the open note's hub without leaving the note, read as a T: line (a
+  name first: theirs to do; later: I owe them); while it is typed a hint over the command line
+  says what it will make (`editor.hints`, pd-editor.js).
+- Meeting capture (Tyson, 2026-11-22): in a meeting's Notes, a line "T: text", "D: text" or
+  "Q: text" becomes a task, a decision or a question on the meeting's hub when it is saved, once
+  (`task_sources` / `record_sources` hold the line; editing it later makes a new one, deleting
+  it deletes nothing). In a T: line a name first delegates ("T: @Tom book the room"), a name
+  later is someone I owe ("T: send @Tom the numbers"); `!fri`, `!tomorrow`, `!2026-12-01` set
+  the due date (the coming day, today included). D:/Q: lines take their @names as people. Never
+  inside code. Rendered, a captured line shows a TASK / DECISION / QUESTION badge in place of
+  its prefix and what it made; while typing one a hint under the line says what it will make;
+  the status line counts "N captured · N pending". A meeting's Prep box (under its card):
+  open questions its attendees are on, what they owe (late first), last time (the same name in
+  the same hub before it); Add all to agenda. The Meetings page: Upcoming / Past / Needs notes
+  pills, grouped by day, columns When, Meeting, Hub, With, Prep; `}` `{` jump days, `p` only
+  those with something to prep.
 - Decisions and questions: each is a note directly under its hub (its title says it; its text
   is the Why, or the Answer) plus a row with its day, an answer day for a question, the people
   on it, and where it came from (`record_sources`: the source note or meeting and the quoted
@@ -468,19 +543,38 @@ Update this section when the structure changes.
   notes saved without them after load. They are resolved in the page with `resolve.js`, so a
   backlink is wherever the link goes today. A person's Backlinks use them (`linksInto` in
   `links.js`: notes outside it whose links reach it or a note under it).
-- Home: a page in place of the note (`&home`), and the start page: a URL with no `?note=` opens
-  on it. `:home` or the Home button. Sections top to bottom (`static/js/home/home-sections.js`):
-  Today (today's meetings and task blocks by time, untimed meetings last; "Calendar not
-  imported today" first until today's export is read), Open questions
-  (oldest first), Projects (live ones by area, "No area" last, with the due date, open questions
-  and the next meeting; on hold ones muted), Inbox (newest change first). Archived hubs are left out. One focus stop; its keys
-  (`}`/`{` jump sections) live in `static/js/home/home-keys.js`.
+- Today (Tyson, 2026-11-22; replaced Home): a page in place of the note (`&home` still), and
+  the start page: a URL with no `?note=` opens on it. `:home` reaches it. Three columns
+  (`static/js/today/`): the Now card (the task block on now: time left, a bar moving each
+  minute, Done / Open note / +15 min; else the next block; else "<Day> is clear.") over the
+  day (meetings with their prep, blocks, free gaps of 30 min or more in the working hours,
+  "Log status" when projects are stale); Up next, one list ranked across every project
+  (overdue, follow-ups past due, due today, due within 5 working days, each live project's
+  next action when it has none of those, questions waiting over 7 days; never done, on-hold,
+  archived or snoozed); Projects with their latest status, the Inbox, and whether today's
+  calendar is in. One focus stop, starting on Up next; `j k gg G`, `}` `{`, Space done (a
+  question: Answer…), `s` into the first free slot before it is due (its estimate or 30 min,
+  working days only, the timesheet's holidays skipped), `d` delegate, `z` snooze to tomorrow,
+  `o`/Enter open (`static/js/today/today-keys.js`, also the hint line).
 - Note menu: clicking the open note's name (the last crumb, with ▾) opens its menu: rename,
   move (a picker), new note beside / under, file as, archive or restore, export, move to
-  trash (with a confirm). The table is `static/js/notes/note-menu.js`. The top bar's Go to
-  button (or `:find [text]`) opens a picker over every note: each typed word must appear in
-  the title or the path. Menus, pickers and dialogs share `static/js/ui/` and its keys
-  (`ui-keys.js`).
+  trash (with a confirm); a project's or area's starts with Log status…. The table is
+  `static/js/notes/note-menu.js`. Menus, pickers and dialogs share `static/js/ui/` and its
+  keys (`ui-keys.js`).
+- Top bar and palette (Tyson, 2026-11-22): the main window's bar is ☰, Today | Week, the
+  breadcrumb, the palette's field and Window ▾ (Go to, Home, People, Meetings, Calendar and
+  Time left it). The note window's: ☰, the breadcrumb, Go to…, Dashboard ↗. The palette
+  (`static/js/palette/`; the field, Go to…, `:find`, or `:` anywhere in the main window outside
+  a text box, which opens it on ":") lists Recent (the last 8 opened) and Pages with nothing
+  typed; notes and pages as you type (each word in the title or path); after ":", every note
+  command by its label with its usage and key (`label` in `commands.js`; keys from the key
+  tables' `command` fields), then notes. Enter opens or runs, Shift-Enter opens in the note
+  window, Tab completes a command. Buttons never show `:command` names; the palette's command
+  mode is the one place they appear.
+- Main-window keys (`static/js/layout/main-keys.js`, read in the capture phase): `:` the palette,
+  `gt` Today, `gw` the Week. `g` waits for a second key everywhere (as in Vim): `gg` is the
+  first row in every list (`static/js/ui/key-sequence.js` reads two-key entries; a page-wide
+  key clears a list's waiting `g`).
 - Card controls: what the card shows can be changed there: a hub's kind (▾), a project's
   status (▾) and due date (✎; red once overdue) and area (✎, a picker) and people (+ Add
   person), a person's details (✎), a meeting's date and time and attendees, a record's date,
@@ -496,12 +590,12 @@ Update this section when the structure changes.
   Window ▾ menu can force either. The page can't place the main window itself. In the note
   window, Dashboard (or `:dashboard`) shows the note's hub in the main window; Home,
   `:people`, `:calendar`... show there too (`showMainWindow`; Chrome may refuse to raise it).
-  A hub's dashboard: the card, a project's or an area's Gantt chart, its text rendered
+  A hub's dashboard: its head and card, a project's Plan strip, its text rendered
   (Edit ↗ opens it in the note window), full width, then its sections in two fixed lanes
-  (Tyson, 2026-11-22; `DASHBOARD_LAYOUT` in `hub-sections.js`): Act on the left (Tasks, Open
-  questions, Upcoming meetings; an area's Projects table first) and Know on the right
-  (Decisions, Answered questions, Notes, Files, People, Past meetings; an area's Plan
-  templates). No boxes: a heading with a rule; each row's date in a right-aligned column;
+  (Tyson, 2026-11-22; `DASHBOARD_LAYOUT` in `hub-sections.js`, `wide` over both): Act on the
+  left (Where I am, Tasks, Open questions; an area: Portfolio, Tasks, Open questions, Where I
+  am) and Know on the right (Meetings, Decisions, Answered questions, Notes, Files, People; an
+  area: Weekly digest first, Plan templates); an area's Projects table spans both. No boxes: a heading with a rule; each row's date in a right-aligned column;
   empty sections share one "Nothing yet:" line at the foot of their lane (in the note window
   too). ←/→ cross between the lanes. Under 1400 px the lanes stack. A hub's linked folders
   are read again when its dashboard opens.
@@ -515,7 +609,11 @@ Update this section when the structure changes.
   the follow-up day), leaves the calendar's task list, and is listed in Waiting on (Home and
   the person's page). Roll-up: a project lists its tasks and those of the notes inside it;
   an area lists its own only, and each of its projects in Projects with that project's
-  counts (open tasks, decisions, open questions, next milestone). Questions and decisions
+  counts (open tasks, decisions, open questions, next milestone).
+- Next action: one open task per note is flagged NEXT (`n` or Make next on its row;
+  `tasks.is_next`, one per note). With none flagged, the first open task of mine stands in
+  (`nextAction` in `tasks-model.js`); on a project, its own flag beats one inside it (a
+  phase's). It leads its Tasks section, is selected first, and shows in an area's Projects table. Questions and decisions
   roll up the same way. `- [ ]` in a note is plain Markdown again (a click still ticks it).
 - Plan (Tyson, 2026-11-22): a project's phases are notes (kind "phase", directly under the
   project, in the tree tagged Phase, with notes under them) with a start and an end day; its
@@ -524,12 +622,27 @@ Update this section when the structure changes.
   plain note's menu (and "Make it a plain note"). The first dates are the baseline; every
   move is kept in `schedule_changes` with when and why ("Why it moved" in Edit dates…; a
   drag that ends later asks). The slip shows as "+9 d, moved 3×", red ("keeps slipping")
-  once moved later 3 times; History lists the moves. The main window draws a project's
-  plan as a Gantt chart (weeks, today, the baseline dashed under a bar): drag a bar, either
+  once moved later 3 times; History lists the moves. The main window's Plan page (`&plan`,
+  `gp`) draws a project's plan as a Gantt chart (weeks, today, the baseline dashed under a bar): drag a bar, either
   end, or a diamond; click opens it in the note window; its keys are in
   `static/js/gantt/gantt-keys.js` (`e` Edit dates…, `h` history, Space a milestone done,
   `p` / `m` new). An area's chart has a bar per project. The note window lists the same as
   the project's Plan section; a phase's page has Tasks, Milestones, Files, Notes.
+- Status log (Tyson, 2026-11-22): a project or area keeps dated entries with a health (on
+  track, at risk, blocked) and a few words (`status_logs`), never in its text. Log status… (the
+  head's button, `L` in the sections, `:log`, first on its note menu) has the health as three
+  buttons (`1` `2` `3`), the words, and "since last log" lines to click in (date moves,
+  decisions, answers, done tasks); Ctrl-Enter logs it. The newest entry is its health: the
+  dashboard head's badge, "Where I am" first in Act (the newest boxed, two older, History),
+  an area's Projects table (Health, Latest status, Updated, Next action, Next milestone,
+  Open). On hold beats it; none logged reads "—" / "log one"; stale at `Config.stale_days`
+  (14). An area's dashboard: Projects across both lanes, then Portfolio (a bar per project),
+  Tasks; Weekly digest on the right (Copy: Markdown + HTML).
+- Dashboards (2026-11-22): a project's or area's head (name at `--fs-2xl`, health, Outcome or
+  Purpose on one line, buttons), the card under it as its meta row, a project's Plan strip
+  (phases as wide as their working days; done ✓, current, late underlined red, today's line);
+  the text box only when the text runs past its first line. The full Gantt is its own page,
+  `&plan` (`gp`, or Gantt on the strip; Escape back).
 - Plan templates (kept on an area, its Plan templates section): phases and milestones in
   working days from 0, each with standard tasks and subtasks; edited on their own page in
   the main window (a chart in days: drag; + Phase, + Milestone, + Task). "Apply plan
@@ -549,16 +662,23 @@ Update this section when the structure changes.
 - Time codes: a project or area has one on its card (`Time code: X ✎`, `(from area)` when a
   project books to its area's, else Set time code; `:timecode`). A resource or Inbox note has
   none: its time is listed as not counted.
-- Calendar (Calendar button, `:calendar`): a page in the main window (`&calendar`). Monday to Sunday;
-  Saturday and Sunday show only when something is on them, or with Show weekend. Meetings
-  (an end time, else 30 min; cancelled ones struck through; untimed ones in the All day strip)
-  and task blocks. The sidebar lists open tasks (filter by project or area, an area with its
-  projects; a search box); drag one onto the week for a 30-minute block (again for another);
-  drag a block to move it, its bottom edge to change its length (15-minute steps). Click a
-  block (or right-click) for its menu: open its note (in the note window), done, Edit time…,
-  remove (a task block) or cancel (a meeting). An empty slot makes a meeting there. A block
-  that has passed is time worked (worknotes' rule: scheduled = logged). Windows keep each
-  other up to date over a BroadcastChannel. Its keys live in `js/calendar/calendar-keys.js`.
+- Week (Tyson, 2026-11-22; the calendar and the timesheet became one page): `&week` in the main
+  window (`:calendar`, `gw`; `:time` opens its Timesheet; old `&calendar` / `&time` URLs still
+  land there). Its bar: the week (‹ This week ›, `[` `]` `t`), Plan | Timesheet | Settings, and
+  the week's totals (focus planned, meetings, free). Plan: Monday to Sunday (Saturday and Sunday
+  only when something is on them, or with Show weekend); each day's head has its free hours
+  and a capacity bar (meetings, then focus blocks, as parts of the working day, lunch out);
+  the "due" strip holds tasks due that day ("not placed" when no block comes before it),
+  milestones and untimed meetings. Meetings (an end time, else 30 min; cancelled struck
+  through) and task blocks. The tray ("To plan · N"): Overdue, Due this week, Next actions,
+  Follow-ups, each task with where, when due, how much is placed, and its estimate ("est?";
+  set in Edit…: "1.5 h", "45 min"); a filter by project or area and a search box. Drag one
+  onto the week for a 30-minute block; `s` on a tray row drops its estimate into the first
+  free slot before its due day. Drag a block to move it, its bottom edge to resize (15-minute
+  steps); click (or right-click) for its menu: open, done, Edit time…, remove or cancel. An
+  empty slot makes a meeting there. A block that has passed is time worked. Plan's footer:
+  each code's hours so far, the week projected, Timesheet ↗. Its keys live in
+  `js/calendar/calendar-keys.js`.
 - Outlook import (worknotes' rules): each morning, Outlook File › Save Calendar, Next 7 days,
   Full details, into `<data>/import/` (made at start). It is read at start, when the calendar
   window gets focus, and with Import (or Import a file…, or a drop on the calendar); the file
@@ -570,16 +690,36 @@ Update this section when the structure changes.
   all-day, free, tentative, out of office, working elsewhere. Attendees are matched by email,
   then name, else made as people (rooms, groups and you left out; none past 20). A trashed
   imported meeting is never made again. Home and the calendar remind until today's import.
-- Timesheet (Time button, `:time`): a page in the main window (`&time`). Week: a code per
-  row x Mon-Fri, each day exactly the working day (8.00 h) in quarter hours: holidays, time
-  off and sick time first, then meetings and task blocks inside the working hours (not lunch),
-  overlaps shared evenly, largest-remainder rounding, the rest to the Default code; warnings,
-  not counted, what made each code; Copy puts it on the clipboard as HTML and tab-separated
-  text. Settings: the codes, the working day and lunch, holiday rules (US federal ones seeded;
-  observed Sat->Fri, Sun->Mon), time off and sick days. Its keys live in
-  `js/timesheet/time-keys.js`.
+- Timesheet (the Week page's Timesheet, `:time`): a code per row (with its hub) x Mon-Fri, each
+  day exactly the working day (8.00 h) in quarter hours: holidays, time off and sick time first,
+  then meetings and task blocks inside the working hours (not lunch), overlaps shared evenly,
+  largest-remainder rounding, the rest to the Default code (its total orange past 30% of the
+  week). Days after today are projected (italic). Beside it: Check before you submit, This
+  week off, how it counts; under it, what made the chosen code (click a row). Copy for
+  timesheet puts it on the clipboard as HTML and tab-separated text. Settings: the codes, the
+  working day and lunch, holiday rules (US federal ones seeded; observed Sat->Fri, Sun->Mon),
+  time off and sick days. Its keys live in `js/timesheet/time-keys.js`.
 - Clicking a rendered image opens `<pd-image-viewer>` (its keys live in
   `static/js/images/viewer-keys.js`).
+- Page refresh (2026-11-22): a question's card: its kind as a badge, "open · 21 days", Raise
+  at (the next meeting with its people, "on agenda ✓"), Answer…, Turn into decision (the
+  question becomes a decision, same note: `/api/record/convert`), Make a task to find out. A
+  phase's card says its slip in words with a mini bar over its baseline, and where it last
+  moved and why; its page has Tasks and Milestones side by side. The full plan: a second line
+  under each label (done, "+9 d · moved 3×", the slack left before due), the due date as a
+  mark, a legend, and the chosen phase's date history beside it. A plan template's page: its
+  counts and how many projects use it, Apply to a project…, item cards in two columns. A
+  folder's page: its name large, what it holds, New note (`a`, `folder-keys.js`), New folder,
+  ⋯ (Rename, Move, Move to trash), a filter and the sort, columns Title, Linked from (hubs,
+  from the link index), Edited. Edit dates shows what the move does ("+4 d · 4th move later ·
+  pushes Cutover; 2 d slack left before due"; formDialog's `live`). Delegate: To, then Follow
+  up: Tomorrow / At our next meeting (also on their To raise) / Pick… / none. Inbox triage
+  (File all… under the Inbox, on Today, or `f` there): one note at a time with its start and
+  the suggested hub; `1` under it, `r` a Resources folder, `m` under another note, `p` / `a`
+  a project or area, `t` a task (and the note to the Trash), `x` Trash; Space skips, `o`
+  opens it, `u` undoes the last, Escape stops. The Trash page: "Kept for 7 days…", columns
+  Note (+ the notes under it), Was in, Gone in (orange at a day or less). The banner, with
+  unsaved changes: "changes since HH:MM are kept in this window and will save when it’s back".
 - Trash: trashing a note (its menu, or `:trash`) takes the notes under it too; they stay in the
   Trash for a week, then are deleted for good (with their person, meeting, record rows and
   links) when Paradigm starts or stops. The Trash page (`&trash`; the Trash button at the foot

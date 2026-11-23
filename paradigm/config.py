@@ -30,6 +30,8 @@ class Config:
     max_streams: int = 50
     # A trashed note can be restored for this many days; then it is deleted for good.
     trash_days: int = 7
+    # A project or area with no status logged for this many days is stale (a red dot).
+    stale_days: int = 14
 
     @property
     def import_dir(self) -> Path:

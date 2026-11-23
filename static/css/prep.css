@@ -1,0 +1,80 @@
+/* A meeting's Prep box (static/js/hubs/prep.js): what to bring, from its attendees. */
+.prep {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--nord2);
+  border-radius: 6px;
+}
+
+.prep[hidden] {
+  display: none;
+}
+
+.prep__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+
+.prep__title {
+  color: var(--text-strong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.prep__detail {
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.prep__add {
+  margin-left: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--nord9);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.prep__columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+
+.prep__item {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: var(--sp-0) 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.prep__item:hover .prep__text {
+  text-decoration: underline;
+}
+
+.prep__label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.prep__column--question .prep__label { color: var(--nord15); }
+.prep__column--waiting .prep__label { color: var(--nord12); }
+
+.prep__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

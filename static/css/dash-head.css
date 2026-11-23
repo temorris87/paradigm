@@ -1,0 +1,365 @@
+/* The head of a project's or an area's dashboard (static/js/hubs/dash-head.js), the card under
+   it as its meta row, the Plan strip (plan-strip.js) and the full plan's page
+   (static/js/plan/plan-page.js). Main window only. */
+.dash-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-4);
+}
+
+.dash-head__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.dash-head__title {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.dash-head__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+.dash-head__badge {
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--health);
+  border-radius: 3px;
+  color: var(--health);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.dash-head__stale::before {
+  content: "● ";
+  color: var(--nord11);
+}
+
+.dash-head__stale--never::before {
+  color: var(--text-faint);
+}
+
+.dash-head__outcome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex-shrink: 100;
+}
+
+.dash-head__actions {
+  display: flex;
+  flex: none;
+  gap: var(--sp-2);
+}
+
+.dash-head__button {
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  background: none;
+  color: var(--text-strong);
+  font: inherit;
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+
+.dash-head__button--primary {
+  border-color: var(--nord8);
+  background: var(--nord1);
+}
+
+.dash-head__button:hover:not(:disabled),
+.dash-head__button:focus-visible {
+  border-color: var(--nord8);
+  outline: none;
+}
+
+.dash-head__button:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.dash-head__key,
+.plan-strip__key {
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+/* Under the head, the card is its meta row: the same buttons, without the box. */
+.dash-head:not([hidden]) + .hub-line {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: var(--fs-sm);
+}
+
+/* The Plan strip: label, the phases as wide as their working days, Gantt ↗. */
+.plan-strip {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr) 6rem;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--nord2);
+  border-radius: 6px;
+}
+
+.plan-strip__label {
+  color: var(--text-strong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.plan-strip__track {
+  position: relative;
+  display: flex;
+  gap: 3px;
+}
+
+.plan-strip__phase {
+  flex-basis: 0;
+  min-width: 0;
+  height: 30px;
+  padding: 0 var(--sp-2);
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--text-strong);
+  font: inherit;
+  font-size: var(--fs-xs);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.plan-strip__phase--done {
+  background: var(--nord3);
+}
+
+.plan-strip__phase--current {
+  background: var(--nord10);
+}
+
+.plan-strip__phase--future {
+  border-color: var(--nord10);
+  background: var(--nord1);
+}
+
+.plan-strip__phase--late {
+  box-shadow: inset 0 -3px 0 var(--nord11);
+}
+
+.plan-strip__phase:hover,
+.plan-strip__phase:focus-visible {
+  outline: 1px solid var(--nord8);
+}
+
+.plan-strip__today {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  left: calc(var(--at) * 100%);
+  width: 2px;
+  background: var(--nord12);
+  pointer-events: none;
+}
+
+.plan-strip__gantt {
+  justify-self: end;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--nord9);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+/* The full plan's page. */
+.plan-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.plan-page[hidden] {
+  display: none;
+}
+
+.plan-page__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-4);
+}
+
+.plan-page__title {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+}
+
+.plan-page__back {
+  padding: var(--sp-0) var(--sp-3);
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  background: none;
+  color: var(--nord9);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+@media (max-width: 1399.98px) {
+  .dash-head {
+    flex-direction: column;
+  }
+}
+
+/* A person's head: the next 1:1 over Start 1:1 notes. */
+.dash-head__email {
+  color: var(--nord8);
+}
+
+.dash-head__next {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-right: var(--sp-3);
+}
+
+.dash-head__next-label {
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.dash-head__next-when {
+  color: var(--text-strong);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+
+/* A person's Waiting on, I owe and To raise: three columns over the lanes. */
+[data-page="person"] .hub__lane--wide {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  column-gap: var(--sp-6);
+}
+
+[data-page="person"] .hub__lane--wide .hub__empties {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1399.98px) {
+  [data-page="person"] .hub__lane--wide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The full plan: the chart and its legend | the chosen phase's date history. */
+.plan-page__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  align-items: start;
+  gap: var(--sp-4);
+}
+
+.plan-page__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.plan-page__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+
+.plan-page__key {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.plan-page__swatch {
+  display: inline-block;
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.plan-page__key--bar .plan-page__swatch { background: var(--nord10); }
+.plan-page__key--baseline .plan-page__swatch { border-bottom: 1px dashed var(--text-dim); height: 0; }
+.plan-page__key--today .plan-page__swatch { width: 2px; height: 10px; background: var(--nord12); }
+.plan-page__key--due .plan-page__swatch { width: 0; height: 10px; border-left: 1px dashed var(--nord11); }
+
+.plan-page__history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border-left: 1px solid var(--nord2);
+  background: var(--nord1);
+  border-radius: 0 6px 6px 0;
+}
+
+.plan-page__history-title {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.plan-page__move {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  column-gap: var(--sp-2);
+  font-size: var(--fs-sm);
+}
+
+.plan-page__move-day {
+  grid-row: span 2;
+  color: var(--text-dim);
+}
+
+.plan-page__move-why {
+  color: var(--text-dim);
+}
+
+.plan-page__move--baseline .plan-page__move-what {
+  color: var(--text-dim);
+}
+
+.plan-page__history-empty,
+.plan-page__history-foot {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+}
+
+@media (max-width: 1399.98px) {
+  .plan-page__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

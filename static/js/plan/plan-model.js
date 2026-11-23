@@ -15,6 +15,10 @@
 //                                           changes, how many moved it later
 //   slipText(slip)                          "+9 d, moved 3×" ("" when it never moved)
 //   changeText(change)                      "12 Nov: end 28 Nov → 5 Dec — vendor late"
+//   moveImpact(tree, plan, id, { start?, end?, day? }, due?)   what a move does: "+4 d · 4th move
+//                                           later · pushes Dual-write and Cutover; 2 d slack left
+//                                           before due" ("" when nothing moves)
+//   slipWords(slip)                         "9 days later than planned, moved 3 times" ("" never moved)
 //   projectSpan(tree, plan, projectId)      { start, end } over its phases and milestones, or null
 //   nextMilestone(tree, plan, projectId, today)   the first milestone not done, or null
 //   daysBetween(a, b) / addDays(day, n) / shortDay(day)   day strings 'YYYY-MM-DD'
@@ -111,6 +115,14 @@ export function slipText(slip) {
   return `${days}, moved ${slip.moves}×`;
 }
 
+export function slipWords(slip) {
+  if (!slip.moves) return "";
+  const n = Math.abs(slip.days);
+  const days = slip.days > 0 ? `${n} day${n === 1 ? "" : "s"} later than planned` : slip.days < 0
+    ? `${n} day${n === 1 ? "" : "s"} earlier than planned` : "back on its first dates";
+  return `${days}, moved ${slip.moves === 1 ? "once" : `${slip.moves} times`}`;
+}
+
 export function changeText(change, today = null) {
   const when = change.changed_at ? shortDay(change.changed_at.slice(0, 10), today) : "";
   const field = { start: "start", end: "end", day: "day" }[change.field] ?? change.field;
@@ -136,4 +148,34 @@ export function projectSlipping(tree, plan, projectId) {
   const ids = [...phasesOf(tree, plan, projectId).map(({ note }) => note.id),
     ...milestonesOf(tree, plan, projectId).map(({ note }) => note.id)];
   return ids.some((id) => slipOf(plan, id).keepsSlipping);
+}
+
+export function moveImpact(tree, plan, id, values, due = "") {
+  const phase = plan.phase(id);
+  const milestone = plan.milestone(id);
+  const oldEnd = phase ? phase.end : milestone?.day;
+  const newEnd = phase ? values.end : values.day;
+  if (!oldEnd || !newEnd || newEnd === oldEnd) return "";
+  const shift = daysBetween(oldEnd, newEnd);
+  const parts = [`${shift > 0 ? "+" : ""}${shift} d`];
+  if (shift > 0) {
+    const later = slipOf(plan, id).later + 1;
+    const nth = later === 1 ? "1st" : later === 2 ? "2nd" : later === 3 ? "3rd" : `${later}th`;
+    parts.push(`${nth} move later`);
+  }
+  let tail = "";
+  const projectId = phase ? tree.parentId(id) : null;
+  if (phase && projectId !== null && shift > 0) {
+    // Phases that start before the new end, but didn't overlap it before, get pushed.
+    const pushed = phasesOf(tree, plan, projectId).filter(({ note, phase: other }) => note.id !== id
+      && other.start > oldEnd && other.start <= newEnd).map(({ note }) => note.title);
+    if (pushed.length) tail = `pushes ${pushed.length === 1 ? pushed[0] : `${pushed.slice(0, -1).join(", ")} and ${pushed[pushed.length - 1]}`}`;
+  }
+  if (due) {
+    const span = projectId !== null ? projectSpan(tree, plan, projectId) : null;
+    const end = [span?.end ?? "", newEnd].sort()[1];
+    const slack = daysBetween(end, due);
+    tail = [tail, slack >= 0 ? `${slack} d slack left before due` : `${-slack} d past the due date`].filter(Boolean).join("; ");
+  }
+  return [parts.join(" · "), tail].filter(Boolean).join(" · ");
 }

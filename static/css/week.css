@@ -1,0 +1,366 @@
+/* The Week page (static/js/week/week-page.js, &week): its bar (the week, Plan | Timesheet |
+   Settings, the week's totals), then Plan (calendar.css: the tray and the grid, with the
+   footer of hours so far) or the timesheet (timesheet.css), as tall as the window. */
+.week-view {
+  --cal-hour: 40px; /* grid-view.js sets the real value on the grid (hourPxFor) */
+  --cal-gutter: 3.5rem;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 4.5rem);
+  min-height: 30rem;
+  border: 1px solid var(--nord2);
+  border-radius: 6px;
+  overflow: hidden;
+  line-height: 1.4;
+}
+
+.week-view[hidden] {
+  display: none;
+}
+
+.week-view:focus,
+.week-plan:focus,
+.week-time:focus {
+  outline: none;
+}
+
+/* What it holds fills it: no border or height of their own. */
+.week-view .cal-view,
+.week-view .time-view {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+}
+
+.week-view .cal-view[hidden],
+.week-view .time-view[hidden] {
+  display: none;
+}
+
+.week-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--nord2);
+}
+
+.week-bar .cal-button {
+  padding: var(--sp-0) var(--sp-3);
+}
+
+.week-bar__range {
+  margin: 0 var(--sp-3) 0 0;
+  color: var(--nord13);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+
+.week-bar__views {
+  margin-left: var(--sp-3);
+}
+
+.week-bar__views .segmented__item {
+  font-size: var(--fs-sm);
+}
+
+.week-bar__summary {
+  margin: 0 0 0 auto;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.week-bar__value {
+  font-weight: 600;
+}
+
+.week-bar__value--focus { color: var(--nord14); }
+.week-bar__value--meetings { color: var(--nord9); }
+.week-bar__value--free { color: var(--text-strong); }
+
+.week-bar__primary {
+  margin-left: auto;
+  border-color: var(--nord8);
+}
+
+/* The calendar's own bar under it holds Show weekend, the import and its status. */
+.week-view .cal-bar {
+  padding: var(--sp-1) var(--sp-4);
+  background: none;
+}
+
+.week-view .cal-bar .cal-button {
+  padding: var(--sp-0) var(--sp-2);
+  font-size: var(--fs-sm);
+}
+
+/* ---- Plan's footer: time so far ---- */
+.week-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-4);
+  padding: var(--sp-2) var(--sp-4);
+  border-top: 1px solid var(--nord2);
+  background: var(--nord1);
+  font-size: var(--fs-sm);
+}
+
+.week-foot:empty {
+  display: none;
+}
+
+.week-foot__label {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.week-foot__name {
+  color: var(--nord8);
+  font-family: var(--font-mono);
+}
+
+.week-foot__projected {
+  margin-left: auto;
+  color: var(--text-dim);
+}
+
+.week-foot__open {
+  padding: var(--sp-0) var(--sp-3);
+  font-size: var(--fs-sm);
+}
+
+/* ---- a day's head: its free hours and its capacity ---- */
+.cal-dayhead {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-2) var(--sp-2);
+}
+
+.cal-dayhead__line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+
+.cal-dayhead__free {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+
+.cal-capacity {
+  display: flex;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--nord2);
+}
+
+.cal-capacity__meetings,
+.cal-capacity__focus {
+  width: calc(var(--part) * 100%);
+}
+
+.cal-capacity__meetings { background: var(--nord10); }
+.cal-capacity__focus { background: var(--nord14); }
+
+/* ---- the "due" strip ---- */
+.cal-chip {
+  padding: 1px var(--sp-1);
+  overflow: hidden;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  background: none;
+  font: inherit;
+  font-size: var(--fs-xs);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.cal-chip--due,
+.cal-chip--milestone { color: var(--nord13); }
+.cal-chip--unplaced { color: var(--nord12); }
+
+/* ---- the tray ---- */
+.cal-side__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.cal-group + .cal-group {
+  margin-top: var(--sp-3);
+}
+
+.cal-group__label {
+  margin: 0 0 var(--sp-1);
+  padding: 0 var(--sp-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cal-group--overdue .cal-group__label { color: var(--nord11); }
+.cal-group--week .cal-group__label { color: var(--nord13); }
+.cal-group--next .cal-group__label { color: var(--nord8); }
+.cal-group--follow .cal-group__label { color: var(--nord12); }
+
+.cal-group__rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cal-task {
+  justify-content: space-between;
+}
+
+.cal-task:focus {
+  outline: none;
+  background: var(--nord2);
+  box-shadow: inset 0 0 0 1px var(--nord9);
+}
+
+.cal-task__estimate {
+  flex: none;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.cal-task__estimate--none {
+  color: var(--text-faint);
+}
+
+.cal-task__tone--placed { color: var(--nord14); }
+.cal-task__tone--unplaced { color: var(--nord12); }
+
+.cal-side__hint {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.cal-side__key {
+  font-family: var(--font-mono);
+  color: var(--text-strong);
+}
+
+/* ---- the timesheet (2c): grid and what made a code | checks, time off, how it counts ---- */
+.time-week {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 440px);
+  align-items: start;
+  gap: var(--sp-6);
+}
+
+.time-week[hidden] {
+  display: none;
+}
+
+.time-grid {
+  border: 1px solid var(--nord2);
+  border-radius: 6px;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+}
+
+.time-grid th,
+.time-grid td {
+  border: none;
+  border-top: 1px solid var(--nord2);
+}
+
+.time-grid thead th {
+  border-top: none;
+}
+
+.time-grid tbody tr {
+  cursor: pointer;
+}
+
+.time-grid__row--selected th,
+.time-grid__row--selected td {
+  background: var(--nord2);
+}
+
+.time-grid__num--projected {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.time-grid__code-name {
+  font-family: var(--font-mono);
+  color: var(--text-strong);
+}
+
+.time-grid__hub {
+  margin-left: var(--sp-2);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+
+.time-grid__total--heavy {
+  color: var(--nord12);
+}
+
+.time-made {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.time-made__row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 72px;
+  gap: var(--sp-2);
+  padding: var(--sp-1) 0;
+  font-size: var(--fs-sm);
+}
+
+.time-made__row--projected {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.time-made__hours {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.time-week__side .time-heading:first-child {
+  margin-top: 0;
+}
+
+.time-explainer {
+  margin: var(--sp-4) 0 0;
+  padding: var(--sp-3);
+  border-radius: 6px;
+  background: var(--nord1);
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+@media (max-width: 1399.98px) {
+  .time-week {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Held here, the timesheet's own bar is only its status: hidden while it says nothing. */
+.week-view .time-bar:has(.time-bar__status:empty) {
+  display: none;
+}
+
+.time-grid thead th {
+  white-space: nowrap;
+}

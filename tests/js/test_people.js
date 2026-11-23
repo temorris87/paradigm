@@ -203,6 +203,8 @@ function withPeoplePage(body) {
   const page = peoplePage(section, { onOpen: (id) => opened.push(id), onLeave: () => { left += 1; } });
   try {
     page.show(ctx());
+    // These tests read the whole directory: Everyone (Open items is the default).
+    [...section.querySelectorAll(".list-page__pill")].find((pill) => pill.textContent.startsWith("Everyone")).click();
     body({ section, page, opened, left: () => left });
   } finally {
     section.remove();
@@ -216,7 +218,7 @@ test("people page: lists, filters by the dropdowns and the name box", () => with
   assertEqual(titles(section), "Bob Smith,Cy Young,Jane Doe");
   assertEqual(section.querySelector(".list-page__count").textContent, "· 3");
   const row = section.querySelector("[role=option]:last-child");
-  assertEqual(row.querySelector(".people__work").textContent, "Northwind · Data engineer");
+  assertEqual(row.querySelector(".people__work").textContent, "Data engineer · Northwind");
   assertEqual(row.querySelector(".people__hubs").textContent, "Operations (Sponsor), Rollout (Lead)");
   const hubSelect = section.querySelector("[data-filter=hubId]");
   assertEqual([...hubSelect.options].map((o) => o.textContent).join(), "any,Operations,Pilot,Rollout");
@@ -261,7 +263,7 @@ test("person page: the card and the Active, Archived and Backlinks sections", ()
     hub.show(ctx(), 10);
     assertEqual(line.textContent, "Person·jane@example.com·Northwind·Data engineer✎");
     // Sections with rows (and folded ones) first; the empty ones share the Nothing yet line.
-    assertEqual([...section.querySelectorAll(".hub__label, .hub__empty-label")].map((t) => t.textContent).join(), "Active,Archived,Waiting on,Backlinks");
+    assertEqual([...section.querySelectorAll(".hub__label, .hub__empty-label")].map((t) => t.textContent).join(), "Active,Archived,Waiting on Jane,I owe Jane,To raise next 1:1,Backlinks");
     hub.show(ctx(), 13);
     assertEqual(line.textContent, "Person·Add details");
     hub.show(ctx(), 12);
@@ -271,5 +273,21 @@ test("person page: the card and the Active, Archived and Backlinks sections", ()
   } finally {
     page.remove();
     localStorage.removeItem("paradigm.hub.folds");
+  }
+});
+
+test("people page: Open items by default; the 1:1 counts", async () => {
+  const { personCounts } = await import("../../static/js/people/people-page.js");
+  const section = document.createElement("section");
+  document.body.append(section);
+  try {
+    const page = peoplePage(section, { onOpen() {}, onLeave() {} });
+    page.show(ctx());
+    assertEqual([...section.querySelectorAll(".list-page__pill")].map((pill) => pill.textContent).join(), "Open items · 0,Everyone · 3");
+    assertEqual(section.querySelectorAll("[role=option]").length, 0, "no one has anything open here");
+    const counts = personCounts({ ...ctx(), topics: [{ id: 1, person_id: 10, text: "x", raised_at: "" }] }, 10, new Date(2026, 10, 23));
+    assertEqual([counts.waiting, counts.owe, counts.raise].join(), "0,0,1");
+  } finally {
+    section.remove();
   }
 });

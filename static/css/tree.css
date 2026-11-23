@@ -114,3 +114,53 @@
   flex: 0 1 auto;
   color: var(--text-dim);
 }
+
+/* The Inbox's count: notes waiting to be filed. */
+.tree__count--pill {
+  padding: 0 var(--sp-1);
+  border-radius: 8px;
+  background: var(--nord13);
+  color: var(--nord0);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+/* A project's health before its title (status log); on hold is an empty ring. */
+.tree__health {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-right: var(--sp-1);
+  border-radius: 50%;
+  background: var(--health);
+  align-self: center;
+}
+
+.tree__health.health--none {
+  background: var(--nord3);
+}
+
+.tree__health.health--on_hold {
+  border: 1px solid var(--text-faint);
+  background: none;
+}
+
+.tree__stale {
+  color: var(--nord11);
+}
+
+.tree__folder-count {
+  color: var(--text-faint);
+}
+
+/* Under the Inbox: File all… (the triage dialog). */
+.tree__file-all {
+  margin: var(--sp-0) 0 0 2.4rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--nord9);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}

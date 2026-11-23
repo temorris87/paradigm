@@ -1,5 +1,5 @@
-// What the Home page lists, read from the notes tree, the meetings and the records. Only live
-// notes count: anything in an archived hub is left out. today is a Date (passed in). Pure.
+// What Today and the dashboards read about the day: meetings, open questions, live projects
+// by area, the Inbox. Only live notes count: anything in an archived hub is left out. Pure.
 //
 //   todayMeetings(tree, meetings, today)   [meeting entry]: timed ones by time, then untimed
 //   openQuestions(tree, records)           [record entry], oldest first

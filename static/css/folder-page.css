@@ -47,8 +47,69 @@
 
 .folder-page__title {
   margin: 0;
-  font-size: var(--fs-lg);
-  color: var(--nord13);
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  color: var(--text-strong);
+  line-height: 1.2;
+}
+
+.folder-page__summary {
+  margin: var(--sp-1) 0 0;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.folder-page__button--primary {
+  border-color: var(--nord8);
+}
+
+.folder-page__key {
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+.folder-page__tools {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.folder-page__filter,
+.folder-page__sort {
+  padding: var(--sp-0) var(--sp-2);
+  border: 1px solid var(--nord3);
+  border-radius: 3px;
+  background: var(--nord1);
+  color: var(--text-strong);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+
+/* Title, Linked from, Edited: the same grid as the rows. */
+.folder-page__columns,
+.folder-page__list .folder-page__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px 120px;
+  gap: var(--sp-3);
+}
+
+.folder-page__columns {
+  padding: 0 var(--sp-2);
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+}
+
+.folder-page__name,
+.folder-page__linked {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-page__linked {
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
 }
 
 .folder-page__buttons {
@@ -111,7 +172,6 @@
 }
 
 .folder-page__detail {
-  margin-left: auto;
   font-size: var(--fs-sm);
   color: var(--text-dim);
 }

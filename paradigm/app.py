@@ -19,6 +19,8 @@ from paradigm.api.session import SessionApi
 from paradigm.api.tasks import TasksApi
 from paradigm.api.templates import TemplatesApi
 from paradigm.api.timesheet import TimesheetApi
+from paradigm.api.status import StatusApi
+from paradigm.api.topics import TopicsApi
 from paradigm.api.trash import TrashApi
 from paradigm.config import Config, parse_args
 from paradigm.db.connection import Database
@@ -36,6 +38,9 @@ from paradigm.db.records_repo import RecordRepository
 from paradigm.db.tasks_repo import TaskRepository
 from paradigm.db.templates_repo import TemplateRepository
 from paradigm.db.time_repo import TimeRepository
+from paradigm.db.status_repo import StatusRepository
+from paradigm.db.capture_repo import store_captures
+from paradigm.db.topics_repo import TopicRepository
 from paradigm.db.folders_repo import FolderRepository
 from paradigm.db.trash_repo import TrashRepository
 from paradigm.instance import PortState, probe
@@ -130,7 +135,7 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
     try:
         db = open_database(config)
         server.on_close.append(db.close)
-        notes = NoteRepository(db)
+        notes = NoteRepository(db, capture=store_captures)
         images = ImageRepository(db)
         trash = TrashRepository(db, keep_days=config.trash_days)
         imports = ImportRepository(db, config.import_dir)
@@ -172,6 +177,8 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
     FilesApi(FileRepository(db)).register(server.router)
     CalendarApi(imports).register(server.router)
     TimesheetApi(TimeRepository(db)).register(server.router)
+    StatusApi(StatusRepository(db), config.stale_days).register(server.router)
+    TopicsApi(TopicRepository(db)).register(server.router)
 
 
 def import_calendar(imports: ImportRepository) -> None:

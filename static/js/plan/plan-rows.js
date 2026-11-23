@@ -72,3 +72,56 @@ export function templateRows(template) {
   if (loose.length) rows.push({ key: `items:${template.id}`, id: template.id, kind: "milestone", label: "Milestones", start: NaN, end: NaN, marks: loose.map(markOf) });
   return rows;
 }
+
+/** Weekdays from one day to another, both counted (at least 1). */
+export function weekdaysBetween(start, end) {
+  let count = 0;
+  for (let n = dayNumber(start); n <= dayNumber(end); n += 1) {
+    const weekday = new Date(n * 86400000).getUTCDay();
+    if (weekday !== 0 && weekday !== 6) count += 1;
+  }
+  return Math.max(1, count);
+}
+
+/** The dashboard's Plan strip: a project's phases side by side, each as wide as its working
+ * days: done, current (late: it ends past its baseline) or to come, and where today falls
+ * (null: outside the plan). Null when it has no phases. */
+export function planStrip(tree, plan, projectId, today) {
+  const phases = phasesOf(tree, plan, projectId);
+  if (!phases.length) return null;
+  const milestones = milestonesOf(tree, plan, projectId);
+  const segments = phases.map(({ note, phase }) => {
+    const slip = slipOf(plan, note.id);
+    const state = phase.end < today ? "done" : phase.start <= today ? "current" : "future";
+    const late = state !== "done" && slip.days > 0;
+    const marked = milestones.some((entry) => entry.phase?.id === note.id && !entry.milestone.done_day);
+    const label = state === "done" ? `${note.title} ✓` : late ? `${note.title} · ${slip.moves ? slipText(slip) : `+${slip.days} d`}` : `${note.title}${marked ? " ◆" : ""}`;
+    return { id: note.id, title: note.title, label, state, late, start: phase.start, end: phase.end,
+      days: weekdaysBetween(phase.start, phase.end) };
+  });
+  const total = segments.reduce((sum, segment) => sum + segment.days, 0);
+  let before = 0;
+  let todayAt = null;
+  for (const segment of segments) {
+    if (today < segment.start && todayAt === null && before > 0) todayAt = before / total;
+    if (today >= segment.start && today <= segment.end) {
+      const into = today === segment.start ? 0 : weekdaysBetween(segment.start, today) - 0.5;
+      todayAt = (before + Math.min(into, segment.days)) / total;
+    }
+    before += segment.days;
+  }
+  return { segments, total, todayAt };
+}
+
+/** An area's Portfolio: a bar per live project over the span of all their plans, in parts of
+ * one (left, width), late when it keeps slipping, muted when on hold. */
+export function portfolioBars(tree, plan, areaId, today) {
+  const rows = areaRows(tree, plan, areaId, today);
+  const spans = rows.filter((row) => !Number.isNaN(row.start));
+  if (!spans.length) return rows.map((row) => ({ ...row, left: 0, width: 0 }));
+  const first = Math.min(...spans.map((row) => row.start), dayNumber(today));
+  const last = Math.max(...spans.map((row) => row.end), dayNumber(today));
+  const length = Math.max(1, last - first + 1);
+  return rows.map((row) => Number.isNaN(row.start) ? { ...row, left: 0, width: 0, today: (dayNumber(today) - first) / length }
+    : { ...row, left: (row.start - first) / length, width: (row.end - row.start + 1) / length, today: (dayNumber(today) - first) / length });
+}

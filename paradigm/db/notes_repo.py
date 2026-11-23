@@ -5,6 +5,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 from paradigm.db.connection import Database
 from paradigm.db.links_repo import store_links
+from paradigm.notes.days import local_today
 from paradigm.notes.hubs import (HUB_KINDS, BadKind, BadProjectField, clean_due, clean_kind, clean_status,
                                  clean_time_code)
 from paradigm.notes.mentions import Mention
@@ -120,9 +121,12 @@ _WITH_PERSON = ("SELECT notes.*, people.note_id IS NOT NULL AS is_person, "
 
 
 class NoteRepository:
-    def __init__(self, db: Database, clock: Clock = utc_now):
+    def __init__(self, db: Database, clock: Clock = utc_now, capture: Optional[Callable] = None):
+        """capture: what a save does with a meeting's T:/D:/Q: lines, inside its transaction
+        (capture_repo.store_captures; injected, since that code knows records and tasks)."""
         self._db = db
         self._clock = clock
+        self._capture = capture
 
     def tree(self) -> List[Dict]:
         """Every live note without its body: enough to draw the tree and resolve links."""
@@ -172,9 +176,13 @@ class NoteRepository:
         return self.get(note_id)
 
     def save(self, note_id: int, body: str, base_version: int, force: bool = False,
-             links: Optional[List[str]] = None, mentions: Optional[List[Mention]] = None) -> Dict:
+             links: Optional[List[str]] = None, mentions: Optional[List[Mention]] = None,
+             captures: Optional[List[Dict]] = None) -> Dict:
         """links, mentions: as for create, stored with the version the note ends on. On
-        a meeting they are its whole text's: the agenda's too."""
+        a meeting they are its whole text's: the agenda's too. captures: a meeting's T:/D:/Q:
+        lines, made into tasks and records once each; the answer says how many were new
+        ("captured")."""
+        captured = 0
         with self._db.transaction() as conn:
             row = _live_row(conn, note_id)
             if row["version"] != base_version and not force:
@@ -185,7 +193,9 @@ class NoteRepository:
                 version += 1
             if links is not None:
                 store_links(conn, note_id, version, links, mentions or [])
-        return self.get(note_id)
+            if captures and self._capture:
+                captured = self._capture(conn, note_id, captures, self._clock(), local_today())
+        return {**self.get(note_id), "captured": captured}
 
     def rename(self, note_id: int, title: object) -> Dict:
         title = clean_title(title)
@@ -350,7 +360,7 @@ def _summary(row: sqlite3.Row) -> Dict:
     return {"id": row["id"], "parent_id": row["parent_id"], "title": row["title"],
             "kind": _kind(row), "area_id": row["area_id"], "folder_id": row["folder_id"], "archived_at": row["archived_at"],
             "status": row["status"], "due": row["due"], "time_code": row["time_code"], "version": row["version"],
-            "updated_at": row["updated_at"]}
+            "updated_at": row["updated_at"], "empty": not (row["body"] or "").strip()}
 
 
 # The record kinds a note can carry, besides being a person or a template. Each lives inside

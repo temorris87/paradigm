@@ -33,3 +33,79 @@
     transition: none;
   }
 }
+
+/* Today and Week, pinned over the tree; the page shown lit. */
+.navigator__pins {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-0);
+}
+
+.navigator__pins:empty {
+  display: none;
+}
+
+.navigator__pin {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-md);
+  text-align: left;
+  cursor: pointer;
+}
+
+.navigator__pin:hover,
+.navigator__pin:focus-visible {
+  background: var(--nord2);
+  outline: none;
+}
+
+.navigator__pin--active {
+  background: var(--nord2);
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.navigator__pin-detail {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+}
+
+.navigator__pin-detail--late {
+  color: var(--nord11);
+  font-weight: 600;
+}
+
+/* The foot: Trash (the main window), the save state (the note window). */
+.navigator__foot {
+  display: flex;
+  align-items: center;
+  margin-top: auto;
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--nord2);
+}
+
+.navigator__save {
+  margin-left: auto;
+  padding: 0 var(--sp-2);
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.navigator__save::first-letter {
+  color: var(--save, var(--nord14));
+}
+
+.navigator__save--saved { --save: var(--nord14); }
+.navigator__save--saving,
+.navigator__save--unsaved { --save: var(--nord13); }
+.navigator__save--offline,
+.navigator__save--failed { --save: var(--nord11); }

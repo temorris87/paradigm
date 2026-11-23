@@ -1,24 +1,25 @@
-/* The People page's columns (the page itself: list-page.css). Name, then work, then hubs;
-   on a narrow window the hubs go under the name. */
+/* The People page's columns (the page itself: list-page.css): Name, Role · organisation, On,
+   Waiting on them, I owe, To raise, Next together. On a narrow window the counts wrap. */
 .people .list-page__row {
-  grid-template-columns: minmax(10rem, 0.9fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.6fr);
+  grid-template-columns: minmax(8rem, 1.2fr) minmax(0, 1.3fr) minmax(0, 1.4fr) 120px 100px 100px 150px;
 }
 
 .people__work,
-.people__email,
-.people__hubs {
-  color: var(--nord4);
+.people__hubs,
+.people__count,
+.people__next {
+  color: var(--text-dim);
   font-size: var(--fs-sm);
+}
+
+.people__count--late {
+  color: var(--nord12);
 }
 
 @media (max-width: 1000px) {
   .people .list-page__row {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     row-gap: var(--sp-0);
-  }
-
-  .people__email {
-    display: none;
   }
 
   .people__hubs {

@@ -2,7 +2,7 @@
 // it says which items show and how they read; note-actions.js runs them.
 //
 //   noteMenuItems(tree, id, { window }) -> [{ key, label, ... } | { group } | "separator"]
-//     keys: rename, move, moveToFolder (a resource), newBeside, newUnder, file (with filing: a
+//     keys: logStatus (a project or area, first, under the hub's name as a group label), rename, move, moveToFolder (a resource), newBeside, newUnder, file (with filing: a
 //           HUB_GROUPS entry, checked),
 //           insertTemplate (the note window: a template's text at the cursor), makePhase (a plain
 //           note directly in a project), unmakePhase (a phase back to a plain note), dashboard
@@ -17,7 +17,12 @@ export function noteMenuItems(tree, id, { window = "note" } = {}) {
   const person = note.kind === "person";
   const template = note.kind === "template";
   const nested = tree.parentId(id) !== null;
-  const items = [{ key: "rename", label: "Rename…" }];
+  const items = [];
+  if (!nested && (note.kind === "project" || note.kind === "area") && !note.archived_at) {
+    items.push({ group: note.title }, { key: "logStatus", label: note.kind === "area" ? "Log area status…" : "Log status…", hint: "L" },
+      "separator");
+  }
+  items.push({ key: "rename", label: "Rename…", hint: ":rename" });
   if (!person && !template) items.push({ key: "move", label: "Move…" });
   if (note.kind === "resource" && !nested) items.push({ key: "moveToFolder", label: "Move to folder…" });
   // A meeting, decision or question has no notes under it: its page holds its text.

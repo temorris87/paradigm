@@ -139,21 +139,24 @@ test("meeting page: the card and its sections", () => {
   }
 });
 
-test("meetings page: lists and filters by period", () => {
+test("meetings page: Upcoming, Past and Needs notes, grouped by day, with prep", () => {
   const section = document.createElement("section");
   document.body.append(section);
   try {
     const page = meetingsPage(section, { onOpen: () => {}, onLeave: () => {}, today: () => TODAY });
-    page.show(ctx());
+    page.show({ ...ctx(), records: { all: () => [], get: () => ({}) } });
     const shown = () => [...section.querySelectorAll(".meetings__title")].map((n) => n.textContent).join();
-    assertEqual(shown(), "Kickoff,Review,Planning");
+    const groups = () => [...section.querySelectorAll(".list-page__group")].map((n) => n.textContent).join(" | ");
+    assertEqual(shown(), "Review,Kickoff", "upcoming: soonest first, today's included");
+    assertEqual(groups(), "TODAY · SAT 21 NOV | TUE 24 NOV");
     const first = section.querySelector("[role=option]");
-    assertEqual([...first.children].map((n) => n.textContent).join("|"), "Tue 24 Nov 14:00|Kickoff|Rollout|Bob Lee, Jane Doe");
-    const period = section.querySelector("[data-filter=period]");
-    assertEqual(period.options[0].textContent, "any time");
-    period.value = "lastWeek";
-    period.dispatchEvent(new Event("change"));
-    assertEqual(section.querySelector(".list-page__empty").textContent, "No meetings match");
+    assertEqual([...first.children].map((n) => n.textContent).slice(0, 3).join("|"), "09:30|Review|Operations");
+    const pills = [...section.querySelectorAll(".list-page__pill")];
+    assertEqual(pills.map((pill) => pill.textContent).join(), "Upcoming,Past,Needs notes · 0", "notes here are not marked empty");
+    pills[1].click();
+    assertEqual(shown(), "Planning", "past: latest first; an archived hub's left out");
+    page.list.dispatchEvent(new KeyboardEvent("keydown", { key: "p", bubbles: true }));
+    assertEqual(section.querySelector(".list-page__empty").textContent, "No meetings here", "p: only those with prep");
   } finally {
     section.remove();
   }

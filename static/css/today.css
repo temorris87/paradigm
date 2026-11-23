@@ -1,0 +1,442 @@
+/* The Today page (static/js/today/today-page.js), drawn in place of the dashboard while
+   .app__note carries data-view="home" (list-page.css hides the dashboard). Three columns:
+   Now and the day, Up next, Projects and the Inbox; one column under 1400 px (Now, Up next,
+   the day, Projects, Inbox). The whole grid is one listbox. */
+.today {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.today[hidden] {
+  display: none;
+}
+
+.today__grid {
+  display: grid;
+  /* 500 px · the rest · 420 px on the ultrawide main window (about 1950 px beside the
+     docked navigator); in proportion on a smaller one, so Up next never gets squeezed. */
+  grid-template-columns: minmax(0, 25fr) minmax(0, 46fr) minmax(0, 21fr);
+  align-items: start;
+  gap: var(--sp-6);
+  outline: none;
+}
+
+.today__col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  min-width: 0;
+}
+
+.today__col--next {
+  min-height: 100%;
+}
+
+.today__heading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-1);
+  padding-bottom: var(--sp-1);
+  border-bottom: 1px solid var(--nord2);
+  color: var(--text-strong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.today__detail {
+  color: var(--text-faint);
+  font-size: var(--fs-sm);
+  font-weight: 400;
+}
+
+.today__empty {
+  margin: var(--sp-1) var(--sp-2);
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.today__key {
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+/* Any row: the listbox's options. */
+.today__grid [role="option"] {
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.today__grid [role="option"]:hover {
+  background: var(--nord1);
+}
+
+.today__grid [aria-selected="true"] {
+  background: var(--nord2);
+  color: var(--nord6);
+}
+
+.today__grid:focus [aria-selected="true"] {
+  box-shadow: inset 0 0 0 1px var(--nord9);
+}
+
+/* ---- Now ---- */
+.today-now {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4) var(--sp-4);
+  border: 1px solid var(--nord3);
+  border-radius: 6px;
+  background: var(--nord1);
+}
+
+.today-now--empty {
+  border-style: dashed;
+  background: none;
+}
+
+.today-now__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+}
+
+.today-now__label {
+  color: var(--nord14);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.today-now__label--empty {
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.today-now__time {
+  color: var(--text-dim);
+}
+
+.today-now__left {
+  margin-left: auto;
+  color: var(--text-strong);
+}
+
+.today-now__bar {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--nord2);
+}
+
+.today-now__fill {
+  width: calc(var(--done) * 100%);
+  height: 100%;
+  border-radius: 2px;
+  background: var(--nord14);
+}
+
+.today-now__title {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.today-now__title--done {
+  text-decoration: line-through;
+  color: var(--text-dim);
+}
+
+.today-now__meta {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.today-now__late {
+  color: var(--nord11);
+}
+
+.today-now__link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--nord9);
+  font: inherit;
+  cursor: pointer;
+}
+
+.today-now__buttons {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.today-now__button {
+  padding: var(--sp-0) var(--sp-3);
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  background: none;
+  color: var(--text-strong);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.today-now__button--done {
+  border-color: var(--nord14);
+}
+
+.today-now__button:hover,
+.today-now__button:focus-visible {
+  border-color: var(--nord8);
+  outline: none;
+}
+
+/* ---- the day ---- */
+.today-day__row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: var(--sp-3);
+  padding: var(--sp-1) var(--sp-2);
+  font-size: var(--fs-sm);
+}
+
+.today-day__time {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.today-day__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.today-day__detail {
+  color: var(--text-dim);
+}
+
+.today-day__row--meeting .today-day__title {
+  color: var(--nord8);
+}
+
+.today-day__row--meeting .today-day__detail {
+  color: var(--text-dim);
+}
+
+.today-day__row--past,
+.today-day__row--past .today-day__title,
+.today-day__row--past .today-day__time,
+.today-day__row--muted .today-day__title {
+  color: var(--text-faint);
+}
+
+.today-day__row--current {
+  background: var(--nord2);
+  color: var(--nord6);
+}
+
+.today-day__row--free {
+  border: 1px dashed var(--nord3);
+}
+
+.today-day__row--free .today-day__title,
+.today-day__row--free .today-day__time {
+  color: var(--nord9);
+}
+
+.today-day__row--suggest .today-day__detail {
+  color: var(--text-faint);
+}
+
+/* ---- Up next ---- */
+.today-next {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.today-next__heading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-1);
+  padding-bottom: var(--sp-1);
+  border-bottom: 1px solid var(--nord2);
+  color: var(--text-strong);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+
+.today-next__rows {
+  flex: 1;
+}
+
+.today-next__row {
+  display: grid;
+  grid-template-columns: 112px 18px minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: var(--sp-3);
+  padding: var(--sp-1) var(--sp-2);
+}
+
+.today-next__reason {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.today-next__row--overdue .today-next__reason { color: var(--nord11); }
+.today-next__row--followup .today-next__reason { color: var(--nord12); }
+.today-next__row--due .today-next__reason { color: var(--nord13); }
+.today-next__row--next .today-next__reason { color: var(--nord8); }
+.today-next__row--asked .today-next__reason { color: var(--nord15); }
+
+.today-next__glyph {
+  color: var(--text-dim);
+}
+
+.today-next__detail,
+.today-next__estimate {
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.today-next__place,
+.today-next__estimate {
+  white-space: nowrap;
+}
+
+.today-next__place {
+  color: var(--nord9);
+  font-size: var(--fs-sm);
+}
+
+.today-next__place--placed {
+  color: var(--nord14);
+}
+
+.today-next__keys {
+  margin: var(--sp-4) 0 0;
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--nord2);
+  color: var(--text-faint);
+  font-size: var(--fs-sm);
+  line-height: 2;
+  white-space: pre-wrap;
+}
+
+/* ---- Projects, Inbox, the import ---- */
+.today-projects,
+.today-inbox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.today-projects__row {
+  padding: var(--sp-1) var(--sp-2);
+}
+
+.today-projects__top {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+
+.today-projects__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.today-projects__row--hold .today-projects__title {
+  color: var(--text-faint);
+}
+
+.today-projects__health {
+  color: var(--health);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.today-projects__line {
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.today-projects__day {
+  color: var(--text-faint);
+}
+
+.today-projects__dot {
+  color: var(--nord11);
+}
+
+.today-projects__log {
+  color: var(--nord9);
+}
+
+.today__file-all {
+  margin-left: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--nord9);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.today-inbox__row {
+  padding: var(--sp-1) var(--sp-2);
+}
+
+.today-import {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--nord2);
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.today-import[hidden] {
+  display: none;
+}
+
+.today-import__dot {
+  color: var(--nord13);
+}
+
+.today-import__dot--done {
+  color: var(--nord14);
+}
+
+/* One column: Now, Up next, the day, Projects, Inbox. */
+@media (max-width: 1399.98px) {
+  .today__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .today__col {
+    display: contents;
+  }
+
+  .today-now { order: 1; }
+  .today-next { order: 2; }
+  .today-day { order: 3; }
+  .today-projects { order: 4; }
+  .today-inbox { order: 5; }
+  .today-import { order: 6; }
+}

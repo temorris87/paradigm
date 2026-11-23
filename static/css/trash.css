@@ -2,8 +2,22 @@
    then on a second line how many notes come with it and its days. The button opening it sits
    at the foot of the notes panel. */
 .trash .list-page__row {
-  grid-template-columns: minmax(8rem, 1fr) minmax(0, 1.5fr);
-  row-gap: var(--sp-0);
+  grid-template-columns: minmax(8rem, 1.4fr) minmax(0, 1.5fr) 8rem;
+}
+
+.trash__subtitle {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.trash__gone {
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.trash__gone--soon {
+  color: var(--nord12);
 }
 
 .trash__where,
@@ -23,7 +37,6 @@
 
 .navigator__trash {
   align-self: flex-start;
-  margin-top: auto;
   padding: var(--sp-0) var(--sp-3);
   border: none;
   border-radius: 4px;

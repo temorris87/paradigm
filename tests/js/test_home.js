@@ -1,9 +1,5 @@
-import { HOME_KEYS, homeAction } from "../../static/js/home/home-keys.js";
-import { daysSince, inboxNotes, openQuestions, projectFacts, projectsByArea, todayMeetings } from "../../static/js/home/home-model.js";
-import { HomePage } from "../../static/js/home/home-page.js";
-import { homeSections } from "../../static/js/home/home-sections.js";
+import { daysSince, inboxNotes, openQuestions, projectFacts, projectsByArea, todayMeetings } from "../../static/js/today/today-facts.js";
 import { Meetings } from "../../static/js/meetings/meetings-model.js";
-import { NOTE_COMMANDS } from "../../static/js/notes/commands.js";
 import { PAGE_VIEWS, PageViews } from "../../static/js/notes/page-views.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
 import { People } from "../../static/js/people/people-model.js";
@@ -84,72 +80,7 @@ test("home: the Inbox, newest change first, archived left out", () => {
   assertEqual(inboxNotes(new NoteTree(NOTES)).map((n) => n.title).join(), "Fresh,Loose");
 });
 
-test("home: the section table's headings, details and rows", () => {
-  const sections = homeSections(ctx(), TODAY);
-  assertEqual(sections.map((s) => `${s.heading} · ${s.detail}`).join("|"), "Today · Sat 21 Nov|Open questions · 2|Waiting on · 0|Projects · 4|Inbox · 2");
-  const cells = (row) => row.cells.map(([, text]) => text).join("|");
-  assertEqual(cells(sections[0].rows[0]), "08:00|Sync|Billing · 1 attendee");
-  assertEqual(cells(sections[0].rows[2]), "|Review|Rollout · no attendees");
-  assertEqual(cells(sections[1].rows[0]), "Which region?|Rollout · asked 2 Nov, 19 d ago");
-  assertEqual(cells(sections[1].rows[1]), "Budget?|Rollout · asked 20 Nov, 1 d ago · from Standup");
-  const projects = sections.find((each) => each.key === "projects").rows;
-  assertEqual(projects.map(cells).join(";"),
-    "Operations;Billing|next Sat 21 Nov 08:00;Rollout|2 open questions · next Sat 21 Nov 09:30;No area;Orphan|;Solo|");
-  assertTrue(projects[0].group && projects[3].group && projects[3].id === null && projects[1].indent);
-  const empty = homeSections({ tree: new NoteTree([]), meetings: new Meetings(), records: new Records() }, TODAY);
-  assertEqual(empty.map((s) => `${s.detail}:${s.rows.length}:${s.empty}`).join("|"),
-    "Sat 21 Nov:0:Nothing on the calendar today|0:0:No open questions|0:0:Nothing delegated|0:0:No active projects|0:0:Inbox is empty");
-});
-
-test("home: the key table and :home", () => {
-  assertEqual(homeAction({ key: "}" }), "nextSection");
-  assertEqual(homeAction({ key: "j", ctrlKey: true }), null);
-  assertEqual(homeAction({ key: "Tab" }), null, "Tab is never bound");
-  assertTrue(HOME_KEYS.every((row) => row.help));
-  assertEqual(PAGE_VIEWS[0].key, "home");
-  assertEqual(NOTE_COMMANDS.find((c) => c.name === "home")?.usage, ":home");
-});
-
-test("home: the page moves over rows across sections, skips No area, opens and leaves", () => {
-  const section = document.createElement("section");
-  document.body.append(section);
-  try {
-    const opened = [];
-    let left = 0;
-    const page = new HomePage(section, { onOpen: (id) => opened.push(id), onLeave: () => left++, today: () => TODAY });
-    page.show(ctx());
-    const key = (k) => page.list.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true }));
-    const activeText = () => document.getElementById(page.list.getAttribute("aria-activedescendant")).textContent;
-    assertEqual(section.querySelectorAll("[role=option]").length, 3 + 2 + 5 + 2, "No area is not an option");
-    assertEqual(activeText(), "08:00SyncBilling · 1 attendee");
-    key("}");
-    assertEqual(activeText(), "Which region?Rollout · asked 2 Nov, 19 d ago");
-    key("j");
-    key("{");
-    assertEqual(activeText(), "Which region?Rollout · asked 2 Nov, 19 d ago", "{ goes to its own section's start first");
-    key("{");
-    assertEqual(activeText(), "08:00SyncBilling · 1 attendee");
-    key("G");
-    assertEqual(activeText(), "Loose");
-    key("k");
-    key("k");
-    key("k");
-    assertEqual(activeText(), "Orphan", "j/k skip the No area heading");
-    key("Enter");
-    assertEqual(opened.join(), "9");
-    page.show(ctx());
-    assertEqual(activeText(), "Orphan", "a redraw keeps the row");
-    key("Escape");
-    assertEqual(left, 1);
-    section.querySelector(".home__row--group[role=option]").click();
-    assertEqual(opened.join(), "9,1", "an area's row opens the area");
-    assertEqual(section.querySelector(".home__section--today .home__heading").textContent, "Today · Sat 21 Nov");
-  } finally {
-    section.remove();
-  }
-});
-
-test("home: a page view like the others", () => {
+test("today: a page view like the others, still &home", () => {
   const main = document.createElement("main");
   const pages = Object.fromEntries(["home", "people"].map((key) => [key, { section: document.createElement("section"), focus() {}, show() {} }]));
   const history = { state: null, pushState() {}, replaceState() {}, back() {} };
@@ -158,4 +89,5 @@ test("home: a page view like the others", () => {
   views.show("home", "replace");
   assertEqual(main.dataset.view, "home");
   assertTrue(!pages.home.section.hidden && pages.people.section.hidden);
+  assertEqual(PAGE_VIEWS[0].label, "Today");
 });

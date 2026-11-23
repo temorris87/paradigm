@@ -12,22 +12,28 @@
 //       { key: "hub", label: "Hub", type: "select", options: [["3", "Acme"]] },
 //       { key: "name", label: "Person", suggestions: ["Jane Doe"] },          // a <datalist>
 //       { key: "answer", label: "Answer", type: "textarea" },                  // several lines
-//     ],
+//       { key: "health", label: "Health", type: "choice", value: "at_risk",   // buttons, one on;
+//         options: [["on_track", "On track", "1"], ...] },                     // the key picks it
+//       { key: "text", type: "textarea", add: { label: "Since last log:", lines: ["..."] } },
+//     ],                                // add: lines a click puts in the text box
 //     submit: "Rename",                 // or (values) => "Add new person": the label follows the fields
 //     danger: false,                    // a red submit button (trash)
+//     live: (values) => "...",          // a line under the fields, worked out again as they
+//                                       // change (Edit dates' knock-on effect)
 //     run: async (values) => ...,       // throws: its message shows here and the dialog stays
 //   });                                 // -> what run returned, or null when cancelled
 //
 //   await confirmDialog({ title, text, confirm: "Move to trash", danger: true, run })
 //
-// Escape (ui-keys.js) or Cancel closes it with nothing changed; Enter submits, as on any form.
+// Escape (ui-keys.js) or Cancel closes it with nothing changed; Enter submits, as on any form,
+// and Ctrl-Enter too (from a text box with several lines).
 // Text fields are required unless optional. Afterwards the focus goes back to returnFocus, or
 // where it was; when that element is gone (or was the page itself), fallbackFocus() decides.
 import { element, openModal, restoreFocus, uniqueId } from "./dom.js";
 import { uiAction } from "./ui-keys.js";
 
 export function formDialog({ title, text = "", lines = [], fields = [], submit = "OK", danger = false, run = async (values) => values,
-  returnFocus = null, fallbackFocus = () => {} }) {
+  returnFocus = null, fallbackFocus = () => {}, live = null }) {
   return new Promise((resolve) => {
     const before = document.activeElement;
     const dialog = element("dialog", "dialog");
@@ -45,6 +51,8 @@ export function formDialog({ title, text = "", lines = [], fields = [], submit =
     }
     const inputs = new Map(fields.map((field) => [field.key, fieldInput(field)]));
     for (const field of fields) form.append(labelled(field, inputs.get(field.key)));
+    const liveLine = live ? element("p", "dialog__live") : null;
+    if (liveLine) form.append(liveLine);
     const error = element("p", "dialog__error");
     error.setAttribute("role", "alert");
     error.hidden = true;
@@ -61,6 +69,10 @@ export function formDialog({ title, text = "", lines = [], fields = [], submit =
     const values = () => Object.fromEntries([...inputs].map(([key, input]) => [key, input.value]));
     const label = () => {
       ok.textContent = typeof submit === "function" ? submit(values()) : submit;
+      if (liveLine) {
+        liveLine.textContent = live(values()) ?? "";
+        liveLine.hidden = !liveLine.textContent;
+      }
     };
     label();
     form.addEventListener("input", () => {
@@ -82,14 +94,20 @@ export function formDialog({ title, text = "", lines = [], fields = [], submit =
       finish(null);
     });
     dialog.addEventListener("keydown", (event) => {
-      if (uiAction(event, "dialog") !== "close") return;
+      const action = uiAction(event, "dialog");
+      if (action === "submit") {
+        event.preventDefault();
+        form.requestSubmit();
+        return;
+      }
+      if (action !== "close") return;
       event.preventDefault();
       event.stopPropagation();
       finish(null);
     });
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const missing = fields.find((field) => field.type !== "select" && !field.optional && !inputs.get(field.key).value.trim());
+      const missing = fields.find((field) => field.type !== "select" && !field.optional && !String(inputs.get(field.key).value).trim());
       if (missing) {
         show(error, `${missing.label} is needed`);
         inputs.get(missing.key).focus();
@@ -115,6 +133,7 @@ export function confirmDialog({ title, text, lines = [], confirm = "OK", danger 
 }
 
 function fieldInput(field) {
+  if (field.type === "choice") return choiceInput(field);
   if (field.type === "textarea") {
     const area = element("textarea", "dialog__input dialog__input--area");
     area.rows = field.rows ?? 4;
@@ -151,11 +170,72 @@ function fieldInput(field) {
   return input;
 }
 
+/** A row of buttons of which one is on (role radio), standing in for an input: value, focus. */
+function choiceInput(field) {
+  const group = element("div", "dialog__choices");
+  group.setAttribute("role", "radiogroup");
+  let value = field.value ?? field.options?.[0]?.[0] ?? "";
+  const buttons = (field.options ?? []).map(([option, text, key]) => {
+    const button = element("button", `dialog__choice dialog__choice--${option}`);
+    button.type = "button";
+    button.setAttribute("role", "radio");
+    button.dataset.value = option;
+    button.append(text);
+    if (key) {
+      button.append(" ", element("kbd", "dialog__choice-key", key));
+      button.dataset.key = key;
+    }
+    button.addEventListener("click", () => pick(option));
+    return button;
+  });
+  const pick = (option) => {
+    value = option;
+    for (const button of buttons) {
+      const on = button.dataset.value === option;
+      button.setAttribute("aria-checked", String(on));
+      button.tabIndex = on ? 0 : -1;
+    }
+    group.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+  // A choice's key picks it while the focus isn't in a text box (typing "1" stays text).
+  group.addEventListener("keydown", (event) => {
+    const button = buttons.find((each) => each.dataset.key === event.key);
+    if (!button || event.ctrlKey || event.altKey || event.metaKey) return;
+    event.preventDefault();
+    pick(button.dataset.value);
+    button.focus();
+  });
+  group.append(...buttons);
+  Object.defineProperty(group, "value", { get: () => value });
+  group.focus = () => (buttons.find((button) => button.dataset.value === value) ?? buttons[0])?.focus();
+  pick(value);
+  return group;
+}
+
 function labelled(field, input) {
-  const label = element("label", "dialog__field");
-  label.append(element("span", "dialog__label", field.label), input);
+  const label = element(field.type === "choice" ? "div" : "label", "dialog__field");
+  label.append(element("span", "dialog__label", field.label ?? ""), input);
   if (input.list$) label.append(input.list$);
+  if (field.add?.lines?.length) label.append(addLines(field.add, input));
   return label;
+}
+
+/** "Since last log — click to add:" and its lines: a click adds one to the text box. */
+function addLines({ label, lines }, input) {
+  const box = element("div", "dialog__adds");
+  box.append(element("p", "dialog__adds-label", label));
+  for (const line of lines) {
+    const button = element("button", "dialog__add", `+ ${line}`);
+    button.type = "button";
+    button.addEventListener("click", () => {
+      const text = input.value.replace(/\s+$/, "");
+      input.value = text ? `${text}\n${line}` : line;
+      button.disabled = true;
+      input.focus();
+    });
+    box.append(button);
+  }
+  return box;
 }
 
 function show(node, text) {

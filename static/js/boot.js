@@ -18,16 +18,19 @@ import { peopleApi } from "./people/api.js";
 import { planApi, planTemplatesApi } from "./plan/api.js";
 import { recordsApi } from "./records/api.js";
 import { foldersApi } from "./resources/api.js";
+import { statusApi } from "./status/api.js";
 import { tasksApi } from "./tasks/api.js";
 import { templatesApi } from "./templates/api.js";
+import { timeApi } from "./timesheet/api.js";
 import { trashApi } from "./trash/api.js";
 
 export const APIS = { api: notesApi, imagesApi, peopleApi, meetingsApi, recordsApi, trashApi, linksApi, tasksApi, calendarApi,
-  planApi, planTemplatesApi, filesApi, templatesApi, foldersApi };
+  planApi, planTemplatesApi, filesApi, templatesApi, foldersApi, statusApi, timeApi };
 
 export function boot({ role, kind, options }) {
   const connection = new Connection({ tabId: tabId(sessionStorage, kind) });
-  mountBanner(connection);
+  let app = null;
+  mountBanner(connection, { unsaved: () => Boolean(app?.session.dirty || app?.agenda?.dirty) });
   window.addEventListener("pagehide", () => connection.sendClosing());
   connection.start();
 
@@ -35,7 +38,6 @@ export function boot({ role, kind, options }) {
   const viewer = document.querySelector("pd-image-viewer");
   for (const box of document.querySelectorAll("pd-editor")) box.addEventListener("image", (event) => viewer.open(event.detail));
 
-  let app = null;
   const navigator = new Navigator({
     panel: document.querySelector(".app__sidebar"),
     button: document.querySelector(".topbar__nav"),
@@ -64,6 +66,11 @@ export function boot({ role, kind, options }) {
       field: document.querySelector(".app__agenda"),
     },
     goTo: document.querySelector(".topbar__goto"),
+    pins: document.querySelector(".navigator__pins"),
+    prep: document.querySelector(".prep"),
+    contextStrip: document.querySelector(".context-strip"),
+    saveState: document.querySelector(".navigator__save"),
+    connection,
     ...APIS,
     ...options(() => app),
   });

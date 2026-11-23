@@ -15,14 +15,16 @@
   <link rel="stylesheet" href="/css/markdown.css">
   <link rel="stylesheet" href="/css/hub.css">
   <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/dash-head.css">
   <link rel="stylesheet" href="/css/gantt.css">
   <link rel="stylesheet" href="/css/list-page.css">
-  <link rel="stylesheet" href="/css/home.css">
+  <link rel="stylesheet" href="/css/today.css">
   <link rel="stylesheet" href="/css/people.css">
   <link rel="stylesheet" href="/css/meetings.css">
   <link rel="stylesheet" href="/css/trash.css">
   <link rel="stylesheet" href="/css/calendar.css">
   <link rel="stylesheet" href="/css/timesheet.css">
+  <link rel="stylesheet" href="/css/week.css">
   <link rel="stylesheet" href="/css/plan-template.css">
   <link rel="stylesheet" href="/css/folder-page.css">
   <link rel="stylesheet" href="/css/image-viewer.css">
@@ -33,19 +35,23 @@
   <!-- The main window: dashboards and pages, wide. Notes are written in the note window. -->
   <div class="app" data-role="main">
     <main class="app__note">
-      <header class="topbar">
+      <header class="topbar topbar--main">
         <button type="button" class="topbar__nav" aria-controls="navigator" aria-label="Notes" title="Notes">☰</button>
+        <div class="segmented topbar__views" role="group" aria-label="Pages">
+          <button type="button" class="segmented__item topbar__today" title="Now, the day, Up next, projects, the Inbox (gt)">Today</button>
+          <button type="button" class="segmented__item topbar__week" title="Plan the week; the timesheet (gw)">Week</button>
+        </div>
         <nav class="crumbs" aria-label="Where this is"></nav>
-        <button type="button" class="topbar__page topbar__goto" title="Find a note by its title and open it">Go to</button>
-        <button type="button" class="topbar__page topbar__home" title="Today, open questions, waiting on, projects and the Inbox">Home</button>
-        <button type="button" class="topbar__page topbar__people" title="Everyone in People">People</button>
-        <button type="button" class="topbar__page topbar__meetings" title="Every meeting">Meetings</button>
-        <button type="button" class="topbar__page topbar__calendar" title="The week's meetings and task blocks">Calendar</button>
-        <button type="button" class="topbar__page topbar__time" title="The week's hours by time code">Time</button>
+        <button type="button" class="topbar__palette" title="Go to a note or a page, or run a command (:)">
+          <span class="topbar__palette-text topbar__palette-text--long">Go to a note, page or command…</span>
+          <span class="topbar__palette-text topbar__palette-text--short">Go to or run…</span>
+          <kbd class="topbar__key">:</kbd>
+        </button>
         <button type="button" class="topbar__page topbar__window" aria-haspopup="menu" title="Where the note window opens">Window ▾</button>
       </header>
+      <header class="dash-head" hidden></header>
       <div class="hub-line" hidden></div>
-      <section class="dash-chart" aria-label="Plan" hidden></section>
+      <section class="plan-strip" aria-label="Plan" hidden></section>
       <section class="dash-text" aria-labelledby="dash-text-label" hidden>
         <div class="dash-text__head">
           <span class="field-label__name dash-text__label" id="dash-text-label"></span>
@@ -64,30 +70,38 @@
         <pd-editor class="app__editor" aria-label="Note"></pd-editor>
       </div>
       <section class="hub" aria-label="Sections" hidden></section>
-      <section class="home" aria-label="Home" hidden></section>
+      <section class="home" aria-label="Today" hidden></section>
       <section class="people" aria-label="People" hidden></section>
       <section class="meetings" aria-label="Meetings" hidden></section>
       <section class="trash" aria-label="Trash" hidden></section>
-      <section class="cal-view" aria-label="Calendar" tabindex="-1" hidden>
-        <header class="cal-bar"></header>
-        <div class="cal">
-          <aside class="cal-side" aria-label="Tasks and imported meetings"></aside>
-          <section class="cal-week" aria-label="The week"></section>
+      <section class="week-view" aria-label="Week" tabindex="-1" hidden>
+        <header class="week-bar"></header>
+        <div class="week-plan cal-view">
+          <header class="cal-bar"></header>
+          <div class="cal">
+            <aside class="cal-side" aria-label="Tasks to plan and imported meetings"></aside>
+            <section class="cal-week" aria-label="The week"></section>
+          </div>
+          <footer class="week-foot" aria-label="Time so far"></footer>
+        </div>
+        <div class="week-time time-view" hidden>
+          <header class="time-bar"></header>
+          <div class="time-main"></div>
         </div>
       </section>
-      <section class="time-view" aria-label="Timesheet" tabindex="-1" hidden>
-        <header class="time-bar"></header>
-        <div class="time-main"></div>
-      </section>
       <section class="plan-template-view" aria-label="Plan template" hidden></section>
+      <section class="plan-view" aria-label="Plan" hidden></section>
       <section class="folder-view" aria-label="Folder" hidden></section>
       <div class="status-line" role="status"></div>
     </main>
     <div class="navigator__backdrop" hidden></div>
     <nav class="app__sidebar" id="navigator" aria-label="Notes">
       <h1 class="app__title">Paradigm</h1>
+      <div class="navigator__pins" role="group" aria-label="Pages"></div>
       <ul class="tree" aria-label="Notes"></ul>
-      <button type="button" class="navigator__trash" title="Notes trashed in the last week: restore them from here">Trash</button>
+      <footer class="navigator__foot">
+        <button type="button" class="navigator__trash" title="Notes trashed in the last week: restore them from here">Trash</button>
+      </footer>
     </nav>
   </div>
   <pd-image-viewer></pd-image-viewer>

@@ -108,6 +108,7 @@ test("tree view: j k move, h l close and open, Enter opens, Escape leaves", () =
   press(ul, "G");
   assertEqual(focusedGroup(), "archive", "G: the last group (the Archive)");
   press(ul, "g");
+  press(ul, "g");
   press(ul, "j");
   press(ul, "j");
   assertEqual(focusedId(), 1);

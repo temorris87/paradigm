@@ -13,6 +13,12 @@
 //     columns: ["Name", ...]               optional: a heading over each cell's column
 //     empty: "No one matches",
 //     add: { label: "New person", run() },  optional: a button in the bar (and the a key)
+//     pills: { key, choices(ctx) -> [[value, text]] }   optional: quick filters as pills, one
+//                                          on (the first unless chosen); the value is in filters
+//     groupOf(row) -> { key, label, className? }   optional: rows under day (or other)
+//                                          headings; } and { jump between them
+//     onAction(action, filters) -> true    optional: a page key the list doesn't know (the
+//                                          Meetings page's p); true: draw again
 //     onOpen(id), onLeave() });
 //   page.show(ctx)    draw (again) with the filters as they are
 //   page.focus()      the list
@@ -28,7 +34,8 @@ export class ListPage {
     this.section = section;
     this.spec = spec;
     this.ctx = null;
-    this.values = Object.fromEntries([...spec.filters.map((f) => [f.key, ""]), [spec.search.key, ""]]);
+    this.values = Object.fromEntries([...spec.filters.map((f) => [f.key, ""]), [spec.search.key, ""],
+      ...(spec.pills ? [[spec.pills.key, ""]] : [])]);
     this.rows = [];
     this.active = 0;
     section.classList.add("list-page", `list-page--${spec.name}`);
@@ -53,7 +60,14 @@ export class ListPage {
       if (row) this.openRow(Number(row.dataset.index));
     });
     const bar = element("div", "list-page__bar");
-    bar.append(heading, filters);
+    bar.append(heading);
+    if (spec.pills) {
+      this.pills = element("div", "list-page__pills");
+      this.pills.setAttribute("role", "group");
+      this.pills.setAttribute("aria-label", "Show");
+      bar.append(this.pills);
+    }
+    bar.append(filters);
     if (spec.add) {
       const add = element("button", "list-page__add", `+ ${spec.add.label}`);
       add.type = "button";
@@ -91,6 +105,7 @@ export class ListPage {
     this.say("");
     const activeId = this.rows[this.active]?.id;
     this.fillOptions();
+    this.drawPills();
     this.rows = this.spec.rows(ctx, this.values);
     this.active = Math.max(0, this.rows.findIndex((row) => row.id === activeId));
     this.draw();
@@ -112,8 +127,25 @@ export class ListPage {
     }
   }
 
+  drawPills() {
+    if (!this.spec.pills) return;
+    const { key, choices } = this.spec.pills;
+    const list = choices(this.ctx, this.values);
+    if (!list.some(([value]) => value === this.values[key])) this.values[key] = list[0]?.[0] ?? "";
+    this.pills.replaceChildren(...list.map(([value, text]) => {
+      const pill = element("button", "list-page__pill", text);
+      pill.type = "button";
+      pill.setAttribute("aria-pressed", String(value === this.values[key]));
+      pill.addEventListener("click", () => {
+        this.setFilter(key, value);
+        this.drawPills();
+      });
+      return pill;
+    }));
+  }
+
   setFilter(key, value) {
-    this.values[key] = value;
+    if (key) this.values[key] = value;
     this.rows = this.spec.rows(this.ctx, this.values);
     this.active = 0;
     this.draw();
@@ -122,9 +154,19 @@ export class ListPage {
   draw() {
     const total = this.rows.length;
     this.count.textContent = `· ${total}`;
-    this.list.replaceChildren(...(total
-      ? this.rows.map((row, index) => this.row(row, index))
-      : [element("li", "list-page__empty", this.spec.empty)]));
+    const nodes = [];
+    let group = null;
+    this.rows.forEach((row, index) => {
+      const heading = this.spec.groupOf?.(row);
+      if (heading && heading.key !== group) {
+        group = heading.key;
+        const li = element("li", `list-page__group ${heading.className ?? ""}`.trim(), heading.label);
+        li.setAttribute("role", "presentation");
+        nodes.push(li);
+      }
+      nodes.push(this.row(row, index));
+    });
+    this.list.replaceChildren(...(total ? nodes : [element("li", "list-page__empty", this.spec.empty)]));
     this.markActive();
   }
 
@@ -164,7 +206,22 @@ export class ListPage {
       case "search": return this.searchBox.focus();
       case "add": return this.spec.add?.run();
       case "leave": return this.spec.onLeave();
+      case "nextGroup": return this.moveTo(this.groupStart(1));
+      case "previousGroup": return this.moveTo(this.groupStart(-1));
+      case "pending": return undefined;
+      default:
+        if (this.spec.onAction?.(action, this.values)) this.setFilter("", undefined);
+        return undefined;
     }
+  }
+
+  /** The first row of the next (1) or previous (-1) group; its own group's first going back. */
+  groupStart(direction) {
+    if (!this.spec.groupOf) return this.active;
+    const keys = this.rows.map((row) => this.spec.groupOf(row).key);
+    const starts = keys.map((key, index) => index).filter((index) => index === 0 || keys[index - 1] !== keys[index]);
+    if (direction > 0) return starts.find((index) => index > this.active) ?? this.active;
+    return starts.filter((index) => index < this.active).pop() ?? this.active;
   }
 
   onSearchKey(event) {

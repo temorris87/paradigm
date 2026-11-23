@@ -12,7 +12,7 @@ export const FIELDS = {
   person: { main: { label: "Notes", hint: "anything worth remembering about them" } },
   meeting: {
     agenda: { label: "Agenda", hint: "what to cover" },
-    main: { label: "Notes", hint: `the minutes; ${FROM_TEXT}` },
+    main: { label: "Notes", hint: "lines starting T: D: Q: become a task, decision or question on save · @name assigns · !wed sets due" },
   },
   phase: { main: { label: "Notes", hint: "what this phase covers, and what done looks like for it" } },
   milestone: { main: { label: "Notes", hint: "what has to be true on this day" } },

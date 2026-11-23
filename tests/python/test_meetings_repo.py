@@ -62,7 +62,7 @@ class MeetingRepositoryTest(unittest.TestCase):
         note_id, meeting = self.meetings.create(hub, "  Kickoff ", "2026-11-24", "14:00")
         self.assertEqual(meeting, {"id": note_id, "day": "2026-11-24", "time": "14:00", "end_time": "",
                                    "cancelled": False, "location": "", "join_url": "", "attendees": [],
-                                   "agenda_version": 1})
+                                   "agenda_version": 1, "agenda": ""})
         note = self.notes.get(note_id)
         self.assertEqual((note["title"], note["parent_id"], note["kind"]), ("Kickoff", hub, "meeting"))
         self.assertEqual((note["agenda"], note["agenda_version"]), ("", 1))

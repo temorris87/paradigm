@@ -3,6 +3,9 @@
 // highlight is; it reports a click with the highlight's data.
 //
 //   markHighlights(node, highlights)   wraps the first match of each highlight in node
+//     highlight: { text, label, title, data, capture?, meta? }; capture ("task", "decision",
+//     "question"): the badge goes before the text, in its colour, in place of the "T:" the
+//     line starts with; meta: words after it ("→ Priya Shah · due Wed")
 //
 // A highlight's text is raw Markdown, so it is matched against the rendered text by its
 // words: its first line, Markdown marks dropped, spaces squeezed.
@@ -70,5 +73,35 @@ function markFirst(node, words, index, highlight) {
   badge.dataset.highlight = String(index);
   badge.textContent = highlight.label;
   if (highlight.title) badge.title = highlight.title;
-  marks[marks.length - 1].after(badge);
+  if (!highlight.capture) {
+    marks[marks.length - 1].after(badge);
+    return;
+  }
+  badge.classList.add("pd-highlight__badge--capture", `pd-highlight__badge--${highlight.capture}`);
+  for (const mark of marks) mark.classList.add("pd-highlight--capture");
+  // The "T: " before the text: the badge says it now. The text may start inside a link (a
+  // mention), so look for the text just before it in reading order.
+  const before = textBefore(node, marks[0]);
+  if (before) before.data = before.data.replace(/(^|\s)[TDQ]:\s*$/, "$1");
+  const first = marks[0].parentElement?.closest("a") && marks[0].parentElement.closest("a").contains(marks[0])
+    && marks[0].parentElement.closest("a").textContent.startsWith(marks[0].textContent) ? marks[0].parentElement.closest("a") : marks[0];
+  first.before(badge);
+  if (highlight.meta) {
+    const meta = node.ownerDocument.createElement("span");
+    meta.className = "pd-highlight__meta";
+    meta.textContent = highlight.meta;
+    marks[marks.length - 1].after(meta);
+  }
+}
+
+/** The text node that comes just before an element, inside node, or null. */
+function textBefore(node, element) {
+  const walker = node.ownerDocument.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+  let previous = null;
+  for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+    if (element.contains(text)) return previous;
+    // Wrapping a whole text node leaves an empty one where it was.
+    if (text.data) previous = text;
+  }
+  return null;
 }

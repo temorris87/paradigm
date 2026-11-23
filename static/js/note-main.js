@@ -1,5 +1,6 @@
 // The note window (/note.html): one note at a time, written here, with its card and sections.
-// Home, People, a hub's dashboard... show in the main window.
+// Today, People, a hub's dashboard... show in the main window (the navigator's Today and Week,
+// the palette).
 import { boot } from "./boot.js";
 import { setNotePath } from "./notes/app.js";
 
@@ -10,8 +11,5 @@ const $ = (selector) => document.querySelector(selector);
 boot({
   role: "note",
   kind: "note",
-  options: (app) => {
-    $(".topbar__home").addEventListener("click", () => app().showView("home", "push"));
-    return { buttons: { dashboard: $(".topbar__dashboard") } };
-  },
+  options: () => ({ buttons: { dashboard: $(".topbar__dashboard") } }),
 });

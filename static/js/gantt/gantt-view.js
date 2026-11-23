@@ -3,7 +3,8 @@
 // what it is given and reports what the pointer and keys did; the page decides the rest.
 //
 //   const chart = new GanttView(element, { label, onOpen(row, mark?), onDrop(row, mark, { start, end }),
-//                                          onAction(action, row) });
+//                                          onAction(action, row), onActive(row) });
+//     row.note: a second line under its label, in its tone (row.noteTone: done | late | warn)
 //   chart.draw({ rows, mode: "dates" | "offsets", today, tools: [button nodes], empty })
 //   chart.focus()
 //
@@ -22,9 +23,9 @@ const DRAG_THRESHOLD_PX = 4;
 const LABEL_CHARS_PX = 6.5;
 
 export class GanttView {
-  constructor(root, { label = "Plan", onOpen = () => {}, onDrop = () => {}, onAction = () => {} } = {}) {
+  constructor(root, { label = "Plan", onOpen = () => {}, onDrop = () => {}, onAction = () => {}, onActive = () => {} } = {}) {
     this.root = root;
-    this.handlers = { onOpen, onDrop, onAction };
+    this.handlers = { onOpen, onDrop, onAction, onActive };
     this.rows = [];
     this.active = 0;
     root.classList.add("gantt");
@@ -87,6 +88,7 @@ export class GanttView {
     label.dataset.index = String(index);
     label.append(element("span", "gantt__name", row.label));
     if (row.badge) label.append(element("span", `gantt__badge${row.late ? " gantt__badge--late" : ""}`, row.badge));
+    if (row.note) label.append(element("span", `gantt__note-line gantt__note-line--${row.noteTone ?? "dim"}`, row.note));
     label.title = [row.label, row.detail, row.badge].filter(Boolean).join("\n");
     label.addEventListener("click", () => {
       this.active = index;
@@ -193,6 +195,7 @@ export class GanttView {
       this.list.setAttribute("aria-activedescendant", node.id);
       node.scrollIntoView?.({ block: "nearest" });
     }
+    this.handlers.onActive(this.rows[this.active] ?? null);
   }
 
   /** The row under the keyboard (the page's Edit dates… uses it). */

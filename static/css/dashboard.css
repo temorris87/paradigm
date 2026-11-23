@@ -6,7 +6,8 @@
   padding: var(--sp-4) var(--sp-5) 3rem;
 }
 
-.dash-chart[hidden],
+.dash-head[hidden],
+.plan-strip[hidden],
 .dash-text[hidden] {
   display: none;
 }
@@ -95,4 +96,9 @@
   [data-role="main"] .hub__list--lanes {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* An area's Projects table spans both lanes, over them. */
+[data-role="main"] .hub__lane--wide {
+  grid-column: 1 / -1;
 }

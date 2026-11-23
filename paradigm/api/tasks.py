@@ -1,11 +1,17 @@
 """Endpoints for tasks and the blocks of time they are scheduled in (017_task_records.sql).
 
 GET  /api/tasks                -> {tasks: [{id, note_id, parent_id, title, notes, due, delegate_id,
-                                  follow_up, done, done_day, position}]}   live tasks only
+                                  follow_up, done, done_day, position, is_next,
+                                  snoozed_until, estimate_min, for_person_id, source_id, quote}]}
+                                  source_id, quote: the meeting and line it was captured from   live tasks only
 POST /api/task/create          {note_id, title, parent_id?, due?, notes?}  -> task
-POST /api/task/update          {id, title?, notes?, due?, follow_up?}      -> task
+POST /api/task/update          {id, title?, notes?, due?, follow_up?, snoozed_until?, estimate_min?}
+                               -> task (estimate_min: minutes, null for none)
+                               (snoozed_until: off Today's Up next until that day; '' none)
 POST /api/task/delegate        {id, person_id|null, follow_up?}            -> task
+POST /api/task/for             {id, person_id|null}                        -> task (I owe them)
 POST /api/task/done            {id, done}                                  -> task
+POST /api/task/next            {id, next}                                  -> task (one per note)
 POST /api/task/move            {id, before_id|null}                        -> task
 POST /api/task/remove          {id}                                        -> {removed: [ids]}
 GET  /api/sessions?from=D&to=D -> {sessions: [{id, task_id, day, start, end}]}
@@ -34,7 +40,9 @@ class TasksApi:
         router.add("POST", "/api/task/create", _answer(self.create))
         router.add("POST", "/api/task/update", _answer(self.update))
         router.add("POST", "/api/task/delegate", _answer(self.delegate))
+        router.add("POST", "/api/task/for", _answer(self.for_person))
         router.add("POST", "/api/task/done", _answer(self.done))
+        router.add("POST", "/api/task/next", _answer(self.next))
         router.add("POST", "/api/task/move", _answer(self.move))
         router.add("POST", "/api/task/remove", _answer(self.remove))
         router.add("GET", "/api/sessions", _answer(self.sessions))
@@ -60,12 +68,23 @@ class TasksApi:
         return self._tasks.delegate(int_field(payload, "id"), optional_int_field(payload, "person_id"),
                                     payload.get("follow_up", ""))
 
+    def for_person(self, req: BaseHTTPRequestHandler) -> Dict:
+        payload = read_json(req)
+        return self._tasks.set_for(int_field(payload, "id"), optional_int_field(payload, "person_id"))
+
     def done(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)
         done = payload.get("done")
         if not isinstance(done, bool):
             raise BadRequest("done must be true or false")
         return self._tasks.set_done(int_field(payload, "id"), done)
+
+    def next(self, req: BaseHTTPRequestHandler) -> Dict:
+        payload = read_json(req)
+        flag = payload.get("next")
+        if not isinstance(flag, bool):
+            raise BadRequest("next must be true or false")
+        return self._tasks.set_next(int_field(payload, "id"), flag)
 
     def move(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)

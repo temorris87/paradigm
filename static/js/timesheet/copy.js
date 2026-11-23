@@ -5,6 +5,7 @@
 //   gridText(report)        tab-separated lines
 //   gridHtml(report)        a <table>
 import { dateOf } from "../meetings/meeting-days.js";
+import { copyRich } from "../ui/clipboard.js";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -37,14 +38,6 @@ export function gridHtml(report) {
     + `<tbody>${rows.map((cells) => `<tr>${cells.map((text, index) => cell("td", text, index)).join("")}</tr>`).join("")}</tbody></table>`;
 }
 
-export async function copyGrid(report, clipboard = navigator.clipboard) {
-  const text = gridText(report);
-  if (typeof ClipboardItem === "function" && clipboard?.write) {
-    await clipboard.write([new ClipboardItem({
-      "text/html": new Blob([gridHtml(report)], { type: "text/html" }),
-      "text/plain": new Blob([text], { type: "text/plain" }),
-    })]);
-  } else {
-    await clipboard.writeText(text);
-  }
+export function copyGrid(report, clipboard = navigator.clipboard) {
+  return copyRich(gridHtml(report), gridText(report), clipboard);
 }

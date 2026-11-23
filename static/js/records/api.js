@@ -19,4 +19,5 @@ export const recordsApi = {
   // -> { record, added: [person ids that were not on it] }
   involve: (id, personIds) => call("/api/record/with", { payload: { id, person_ids: personIds } }),
   uninvolve: (id, personId) => call("/api/record/unwith", { payload: { id, person_id: personId } }),
+  convert: (id, day) => call("/api/record/convert", { payload: { id, day } }),
 };

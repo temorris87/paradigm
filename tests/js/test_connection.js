@@ -104,13 +104,19 @@ test("stop closes the stream and cancels timers", () => {
 test("banner shows while lost and hides when connected", () => {
   const { connection } = setup();
   const parent = document.createElement("div");
-  const banner = mountBanner(connection, parent);
+  let unsaved = false;
+  const banner = mountBanner(connection, { unsaved: () => unsaved }, parent);
   assertTrue(banner.hidden, "hidden at first");
   connection.dispatchEvent(new Event("lost"));
   assertEqual(banner.hidden, false);
   assertTrue(banner.textContent.includes("paradigm.py"), "names the launcher");
+  assertTrue(banner.textContent.endsWith("retrying…"));
   connection.dispatchEvent(new Event("connected"));
   assertTrue(banner.hidden, "hidden again");
+  unsaved = true;
+  connection.dispatchEvent(new Event("lost"));
+  assertTrue(/changes since \d\d:\d\d are kept in this window and will save when it’s back/.test(banner.textContent), banner.textContent);
+  connection.dispatchEvent(new Event("connected"));
 });
 
 test("tab id is kept in storage", () => {

@@ -13,7 +13,8 @@
 //     labels: { main, agenda, agendaField }: the label elements over the text boxes, and the
 //             agenda's wrapper (shown on a meeting only)
 //     controls: the card's buttons (hub-actions.js hubLineControls)
-//     tabActions: { add(sectionKey, owner), row(key, sectionKey, owner, row) } (hub-actions.js);
+//     tabActions: { add(sectionKey, owner), row(key, sectionKey, owner, row), command(action, owner) }
+//             (hub-actions.js); command: "logStatus", "plan";
 //             row keys besides the row's buttons: "addSubtask", "openFile", "openTemplate"
 //     at: { field, line } when a row points into the text (a mention)
 //   hub.show(ctx, currentId)    after every redraw; ctx: { tree, people, meetings, records, tasks, sessions,
@@ -67,6 +68,8 @@ export class HubPage {
       // A split section ("openQuestions") adds and acts as the section it is cut from.
       onAdd: (sectionDef) => this.tabActions.add(sectionDef.base ?? sectionDef.key, this.hub),
       onRowAction: (sectionDef, row, key) => this.tabActions.row(key, sectionDef.base ?? sectionDef.key, this.hub, row),
+      // Keys about the page's owner, not a row: L (Log status…), gp (the full plan).
+      onCommand: (action) => this.tabActions.command?.(action, this.hub),
       onLeave: () => this.onLeave(),
       renderSnippet,
     });
@@ -95,8 +98,8 @@ export class HubPage {
     this.hub = note && note.kind !== "template" ? note : null;
     const shown = (sections) => sections.filter((section) => section && !this.hideSections.has(section.key));
     const lanes = this.dashboard ? dashboardFor(this.hub) : null;
-    this.lanes = lanes && { act: shown(lanes.act), know: shown(lanes.know) };
-    this.sections = this.lanes ? [...this.lanes.act, ...this.lanes.know] : shown(sectionsFor(this.hub));
+    this.lanes = lanes && { wide: shown(lanes.wide), act: shown(lanes.act), know: shown(lanes.know) };
+    this.sections = this.lanes ? [...this.lanes.wide, ...this.lanes.act, ...this.lanes.know] : shown(sectionsFor(this.hub));
     this.page.dataset.page = this.hub?.kind ?? "note";
     this.showLabels(note);
     showHubLine(this.line, this.ctx, carded ? note : null, (id) => this.onOpen(id), this.controls);
@@ -119,7 +122,7 @@ export class HubPage {
     return {
       key: section.key,
       base: section.base ?? null,
-      label: section.label,
+      label: typeof section.label === "function" ? section.label(hub) : section.label,
       columns: section.columns ?? null,
       detail: section.detail ? section.detail(rows) : String(rows.length),
       folded: isFolded(this.folds, hub.kind, section),
@@ -127,19 +130,23 @@ export class HubPage {
       more: Math.max(0, rows.length - limit),
       empty: section.empty(hub),
       add: section.add?.label ?? null,
+      addPlain: Boolean(section.add?.plain),
     };
   }
 
   redraw() {
     if (!this.hasPanel) return;
     const drawn = (sections) => sections.map((section) => this.drawn(section));
-    this.panel.draw(this.lanes ? { act: drawn(this.lanes.act), know: drawn(this.lanes.know) } : drawn(this.sections));
+    this.panel.draw(this.lanes ? { wide: drawn(this.lanes.wide), act: drawn(this.lanes.act), know: drawn(this.lanes.know) }
+      : drawn(this.sections));
   }
 
   onRow(sectionDef, row) {
     if (row.addSubtask !== undefined) return this.tabActions.row("addSubtask", sectionDef.key, this.hub, row);
     if (row.file !== undefined) return this.tabActions.row("openFile", sectionDef.key, this.hub, row);
     if (row.template !== undefined) return this.tabActions.row("openTemplate", sectionDef.key, this.hub, row);
+    if (row.statusEntry !== undefined || row.statusHistory) return this.tabActions.row("statusHistory", sectionDef.key, this.hub, row);
+    if (row.digest) return this.tabActions.add("digest", this.hub);
     // A task opens in place: its subtasks, notes and + Add subtask (Waiting on opens the note).
     if (row.task !== undefined && sectionDef.key === "tasks" && row.depth === 0) {
       if (this.expanded.has(row.task)) this.expanded.delete(row.task);

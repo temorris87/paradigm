@@ -2,8 +2,12 @@
 // working day), how they were made, and the settings (codes, hours, holidays, time off). The
 // sums are the server's (paradigm/timesheet/report.py); this page shows them and copies them.
 //
-//   const page = new TimePage({ root, bar, main, api: timeApi, changes, isShown(), today: () => new Date() });
+//   const page = new TimePage({ root, bar, main, api: timeApi, changes, isShown(), today: () => new Date(),
+//                               onMove?(days) });
+//     onMove: the week page (week/week-page.js) holds it: the week, the tabs and Copy are its,
+//             and this page's bar keeps only the status
 //   page.show() / page.focus()      when its page comes into view (loads it the first time)
+//   page.setMonday(day) / page.showTab("week" | "settings") / page.copy()
 import { addDays, dateOf, localDay } from "../meetings/meeting-days.js";
 import { confirmDialog } from "../ui/dialog.js";
 import { copyGrid, hoursText } from "./copy.js";
@@ -17,7 +21,8 @@ const HOUR_FIELDS = [["day_start", "Working day starts"], ["day_end", "Working d
   ["lunch_start", "Lunch starts"], ["lunch_end", "Lunch ends"]];
 
 export class TimePage {
-  constructor({ root, bar, main, api, changes, isShown = () => true, today = () => new Date() }) {
+  constructor({ root, bar, main, api, changes, isShown = () => true, today = () => new Date(), onMove = null }) {
+    this.onMove = onMove;
     this.root = root;
     this.isShown = isShown;
     this.started = false;
@@ -72,7 +77,8 @@ export class TimePage {
     // The week's own controls (‹ This week › and its title) show on the Week tab only.
     const weekControls = [make("‹", "The week before ([)", () => this.moveWeek(-7)), make("This week", "This week (t)", () => this.thisWeek()),
       make("›", "The week after (])", () => this.moveWeek(7)), week];
-    bar.replaceChildren(...weekControls, weekTab, settingsTab, copy, status);
+    if (this.onMove) bar.replaceChildren(status);
+    else bar.replaceChildren(...weekControls, weekTab, settingsTab, copy, status);
     return { week, weekTab, settingsTab, copy, status, weekControls };
   }
 
@@ -88,13 +94,20 @@ export class TimePage {
   }
 
   moveWeek(days) {
+    if (this.onMove) return this.onMove(days);
     this.monday = localDay(addDays(dateOf(this.monday), days));
-    this.run(this.load());
+    return this.run(this.load());
   }
 
   thisWeek() {
+    if (this.onMove) return this.onMove(0);
     this.monday = mondayOf(localDay(this.today()));
-    this.run(this.load());
+    return this.run(this.load());
+  }
+
+  setMonday(monday) {
+    this.monday = monday;
+    if (this.started) this.run(this.load());
   }
 
   async load() {
@@ -108,56 +121,88 @@ export class TimePage {
 
   drawWeek() {
     const report = this.report;
+    const today = localDay(this.today());
+    if (!(this.code in report.details)) this.code = Object.keys(report.details)[0] ?? null;
+    // Days after today are what the calendar says will happen: projected, not logged yet.
+    const projected = report.days.map((day) => day > today);
     const table = element("table", "time-grid");
     const head = element("tr", "");
-    head.append(element("th", "", "Code"), ...report.days.map((day) => element("th", "time-grid__num", screenDay(day))),
+    head.append(element("th", "", "Code"), ...report.days.map((day, index) => element("th", numClass(projected[index]), screenDay(day))),
       element("th", "time-grid__num", "Total"));
+    const hubs = codeHubs(report);
+    // The Default code past 30% of the week: too much of it isn't booked to anything.
+    const heavy = report.total > 0 ? (report.rows.find((row) => row.code === report.default_code)?.total ?? 0) / report.total > 0.3 : false;
     const body = report.rows.map((row) => {
       const line = element("tr", row.code === report.default_code ? "time-grid__default" : "");
-      line.append(element("th", "time-grid__code", row.code), ...row.hours.map((hours) => element("td", "time-grid__num", hoursText(hours))),
-        element("td", "time-grid__num time-grid__total", row.total.toFixed(2)));
+      const code = element("th", "time-grid__code");
+      code.append(element("span", "time-grid__code-name", row.code));
+      if (hubs[row.code]) code.append(element("span", "time-grid__hub", hubs[row.code]));
+      const total = element("td", `time-grid__num time-grid__total${heavy && row.code === report.default_code ? " time-grid__total--heavy" : ""}`,
+        row.total.toFixed(2));
+      line.append(code, ...row.hours.map((hours, index) => element("td", numClass(projected[index]), hoursText(hours))), total);
+      line.tabIndex = -1;
+      line.addEventListener("click", () => this.pickCode(row.code));
+      if (row.code === this.code) line.classList.add("time-grid__row--selected");
       return line;
     });
     const totals = element("tr", "time-grid__totals");
-    totals.append(element("th", "", "Total"), ...report.totals.map((hours) => element("td", "time-grid__num", hours.toFixed(2))),
+    totals.append(element("th", "", "Total"), ...report.totals.map((hours, index) => element("td", numClass(projected[index]), hours.toFixed(2))),
       element("td", "time-grid__num time-grid__total", report.total.toFixed(2)));
     const thead = element("thead", "");
     thead.append(head);
     const tbody = element("tbody", "");
     tbody.append(...body, totals);
     table.append(thead, tbody);
-    const parts = [table];
-    parts.push(element("p", "time-note", report.unbooked_hours
+    const main = element("div", "time-week__main");
+    main.append(table, element("p", "time-note", report.unbooked_hours
       ? `${report.unbooked_hours.toFixed(2)} h with nothing on the calendar went to ${report.default_code}.`
-      : "Every hour of the working days is on the calendar."));
-    if (report.warnings.length) parts.push(listSection("Check", report.warnings.map((text) => [text]), "time-warnings"));
-    if (report.pto.length) {
-      parts.push(listSection("Time off", report.pto.map((entry) => [`${screenDay(entry.day)}: ${entry.name}`,
-        `${KIND_LABELS[entry.kind]} · ${entry.hours.toFixed(2)} h`])));
-    }
+      : "Every hour of the working days is on the calendar."), this.whatMade(report, projected));
+    const side = element("div", "time-week__side");
+    const checks = [...report.warnings];
+    if (heavy) checks.push(`${report.default_code} is over 30% of the week: book more of it to projects`);
+    side.append(listSection("Check before you submit", checks.length ? checks.map((text) => [text])
+      : [["Nothing to check", "every day adds up to the working day"]], checks.length ? "time-warnings" : ""));
+    side.append(listSection("This week off", report.pto.length
+      ? report.pto.map((entry) => [`${screenDay(entry.day)}: ${entry.name}`, `${KIND_LABELS[entry.kind]} · ${entry.hours.toFixed(2)} h`])
+      : [["Nothing", "Add time off… in Settings"]]));
     if (report.not_counted.length) {
-      parts.push(listSection("Not counted", report.not_counted.map((entry) => [`${screenDay(entry.day)}: ${entry.label}`,
+      side.append(listSection("Not counted", report.not_counted.map((entry) => [`${screenDay(entry.day)}: ${entry.label}`,
         [entry.hub, entry.reason, entry.minutes ? `${entry.minutes} min` : ""].filter(Boolean).join(" · ")])));
     }
-    const details = element("section", "time-details");
-    details.append(element("h2", "time-heading", "What made each code"));
-    for (const [code, items] of Object.entries(report.details)) {
-      const box = element("details", "time-code");
-      const total = items.reduce((sum, item) => sum + item.minutes, 0);
-      box.append(element("summary", "", `${code} · ${(total / 60).toFixed(2)} h on the calendar`));
-      const list = element("ul", "time-list");
-      list.append(...items.map((item) => {
-        const row = element("li", "");
-        row.append(element("span", "time-list__main", `${screenDay(item.day)}: ${item.label}`),
-          element("span", "time-list__meta", [item.kind === "meeting" ? "meeting" : "task", item.hub, `${item.minutes} min`].filter(Boolean).join(" · ")));
-        return row;
-      }));
-      box.append(list);
-      details.append(box);
+    side.append(element("p", "time-explainer", "Each day is exactly the working day, in quarter hours: holidays and time off "
+      + "first, then meetings and task blocks inside the working hours (overlaps shared), the rest to the Default code. Days "
+      + "after today (in italics) are what the calendar says will happen."));
+    this.weekView.replaceChildren(main, side);
+  }
+
+  /** What made the chosen code (the first with hours, until one is clicked): its meetings and blocks. */
+  whatMade(report, projected) {
+    const codes = Object.keys(report.details);
+    if (!codes.includes(this.code)) this.code = codes[0] ?? null;
+    const part = element("section", "time-details");
+    if (!this.code) {
+      part.append(element("p", "time-note", "Nothing on the calendar this week counts yet."));
+      return part;
     }
-    if (!Object.keys(report.details).length) details.append(element("p", "time-note", "Nothing on the calendar this week counts yet."));
-    parts.push(details);
-    this.weekView.replaceChildren(...parts);
+    const heading = element("h2", "time-heading", "What made ");
+    heading.append(element("span", "time-grid__code-name", this.code));
+    part.append(heading);
+    const later = new Set(report.days.filter((day, index) => projected[index]));
+    const list = element("ul", "time-made");
+    list.append(...report.details[this.code].map((item) => {
+      const row = element("li", `time-made__row${later.has(item.day) ? " time-made__row--projected" : ""}`);
+      row.append(element("span", "time-made__day", screenDay(item.day)),
+        element("span", "time-made__label", [item.label, item.hub].filter(Boolean).join(" · ")),
+        element("span", "time-made__hours", `${(item.minutes / 60).toFixed(2)} h`));
+      return row;
+    }));
+    part.append(list);
+    return part;
+  }
+
+  pickCode(code) {
+    this.code = code;
+    this.drawWeek();
   }
 
   async copy() {
@@ -283,6 +328,19 @@ export class TimePage {
     this.bar.status.textContent = text;
     this.bar.status.classList.toggle("time-bar__status--error", error);
   }
+}
+
+function numClass(projected) {
+  return `time-grid__num${projected ? " time-grid__num--projected" : ""}`;
+}
+
+/** Each code's hub, as its meetings and blocks name it most. */
+function codeHubs(report) {
+  return Object.fromEntries(Object.entries(report.details).map(([code, items]) => {
+    const counts = new Map();
+    for (const item of items) if (item.hub) counts.set(item.hub, (counts.get(item.hub) ?? 0) + item.minutes);
+    return [code, [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? ""];
+  }));
 }
 
 function mondayOf(day) {

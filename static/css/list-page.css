@@ -6,7 +6,8 @@
 .app__note[data-view] .field-label,
 .app__note[data-view] .hub-line,
 .app__note[data-view] .hub,
-.app__note[data-view] .dash-chart,
+.app__note[data-view] .dash-head,
+.app__note[data-view] .plan-strip,
 .app__note[data-view] .dash-text {
   display: none;
 }
@@ -167,4 +168,49 @@
   .list-page__head {
     display: none;
   }
+}
+
+/* Quick filters as pills (the Meetings page's Upcoming / Past / Needs notes; People's). */
+.list-page__pills {
+  display: flex;
+  align-self: center;
+  gap: var(--sp-1);
+}
+
+.list-page__pill {
+  padding: var(--sp-0) var(--sp-3);
+  border: 1px solid var(--nord3);
+  border-radius: 12px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.list-page__pill[aria-pressed="true"] {
+  border-color: var(--nord8);
+  color: var(--text-strong);
+}
+
+.list-page__pill:focus-visible {
+  outline: 1px solid var(--nord9);
+}
+
+/* A day's heading over its rows (Meetings): today's in yellow. */
+.list-page__group {
+  margin-top: var(--sp-3);
+  padding: 0 var(--sp-2) var(--sp-0);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.list-page__group:first-child {
+  margin-top: var(--sp-1);
+}
+
+.list-page__group--today {
+  color: var(--nord13);
 }

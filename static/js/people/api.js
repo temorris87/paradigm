@@ -13,4 +13,10 @@ export const peopleApi = {
   // -> { person, created }: again on the same hub changes the role
   link: (hubId, personId, role) => call("/api/person/link", { payload: { hub_id: hubId, person_id: personId, role } }),
   unlink: (hubId, personId) => call("/api/person/unlink", { payload: { hub_id: hubId, person_id: personId } }),
+  // To raise at the next 1:1 (paradigm/api/topics.py):
+  // -> [{ id, person_id, text, source_note_id, source_line, created_at, raised_at }]
+  topics: async () => (await call("/api/person_topics")).topics,
+  addTopic: (personId, text) => call("/api/person_topic/create", { payload: { person_id: personId, text } }),
+  raiseTopic: (id, raised) => call("/api/person_topic/raise", { payload: { id, raised } }),
+  removeTopic: (id) => call("/api/person_topic/remove", { payload: { id } }),
 };

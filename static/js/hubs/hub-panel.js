@@ -4,12 +4,14 @@
 // the user asked for; HubPage decides the rest.
 //
 //   const panel = new HubPanel(sectionElement, { onRow(section, row), onToggle(section),
-//     onMore(section), onAdd(section), onRowAction(section, row, key), onLeave(),
+//     onMore(section), onAdd(section), onRowAction(section, row, key), onCommand(action), onLeave(),
 //     renderSnippet(markdown) -> html });
 //   panel.draw(sections)            one lane (the note window)
-//   panel.draw({ act, know })       two lanes side by side (the main window's dashboard)
-//     each section: { key, label, detail, folded, rows, empty, add, more, columns? }
-//     add: the button's label or null; more: how many rows "Show all" would add (0: none);
+//   panel.draw({ wide, act, know })  two lanes side by side (the main window's dashboard),
+//                                   under the wide sections (full width)
+//     each section: { key, label, detail, folded, rows, empty, add, addPlain, more, columns? }
+//     add: the button's label or null (addPlain: without the "+"); more: how many rows
+//     "Show all" would add (0: none);
 //     columns: a table's column names (its rows carry cells)
 //   panel.focus()
 //
@@ -20,7 +22,7 @@
 import { hubAction } from "./hub-keys.js";
 
 const MAX_DEPTH = 6;
-const KEYS_OF = { remove: "x", role: "r", answer: "r", done: "Space", edit: "e", delegate: "d", takeBack: "d", history: "h" };
+const KEYS_OF = { remove: "x", role: "r", answer: "r", done: "Space", edit: "e", delegate: "d", takeBack: "d", history: "h", next: "n" };
 
 export class HubPanel {
   constructor(section, handlers) {
@@ -49,13 +51,16 @@ export class HubPanel {
     const hadFocus = this.hasFocus();
     const activeId = this.options[this.active]?.id;
     const lanes = Array.isArray(layout) ? [{ key: "page", label: "Sections", sections: layout }]
-      : [{ key: "act", label: "To act on", sections: layout.act }, { key: "know", label: "To look up", sections: layout.know }];
+      : [...(layout.wide?.length ? [{ key: "wide", label: "Overview", sections: layout.wide }] : []),
+        { key: "act", label: "To act on", sections: layout.act }, { key: "know", label: "To look up", sections: layout.know }];
     this.sections = lanes.flatMap((lane) => lane.sections);
     this.options = [];
     this.list.classList.toggle("hub__list--lanes", lanes.length > 1);
     this.list.replaceChildren(...lanes.map((lane, index) => this.lane(lane, index)));
     const again = this.options.findIndex((option) => option.id === activeId);
-    this.active = Math.max(0, again);
+    // A first draw starts on the next action, the row most likely acted on.
+    const next = activeId === undefined ? this.options.findIndex((option) => option.row?.next) : -1;
+    this.active = Math.max(0, again >= 0 ? again : next);
     this.markActive();
     if (hadFocus) this.focus();
   }
@@ -97,7 +102,7 @@ export class HubPanel {
     group.setAttribute("aria-labelledby", label.id);
     heading.append(element("span", "hub__twisty", section.folded ? "▸" : "▾"), label,
       element("span", "hub__count", section.detail));
-    if (section.add) heading.append(button("hub__add", `+ ${section.add}`, `${section.add} (a)`, "add"));
+    if (section.add) heading.append(button("hub__add", section.addPlain ? section.add : `+ ${section.add}`, `${section.add} (a)`, "add"));
     group.append(heading);
     if (section.folded) return group;
     if (!section.rows.length) {
@@ -123,16 +128,25 @@ export class HubPanel {
 
   row(section, row) {
     const classes = ["hub__row", `hub__row--depth-${Math.min(row.depth ?? 0, MAX_DEPTH)}`, row.muted && "hub__row--muted",
-      row.late && "hub__row--late", row.addSubtask && "hub__row--add", row.date && "hub__row--dated"];
+      row.late && "hub__row--late", row.addSubtask && "hub__row--add", row.date && "hub__row--dated", row.box && "hub__row--box",
+      row.health && `hub__row--health health--${row.health}`, row.statusHistory && "hub__row--add", row.bar && "hub__row--bar",
+      row.pre !== undefined && "hub__row--pre"];
     const node = this.option(element("div", classes.filter(Boolean).join(" ")), { type: "row", section, row });
     const line = element("div", "hub__line");
     if (row.task !== undefined && row.depth === 0 && !row.addSubtask) {
+      line.append(element("span", "hub__next", row.next ? "NEXT" : ""));
       line.append(element("span", "hub__twisty hub__twisty--task", row.expanded ? "▾" : "▸"));
     }
     if (row.task !== undefined && !row.addSubtask) line.append(element("span", "hub__box", row.done ? "☑" : "☐"));
+    if (row.pre !== undefined) {
+      node.append(element("pre", "hub__pre", row.pre));
+      return node;
+    }
     line.append(element("span", "hub__title", row.title));
-    if (section.columns && row.cells) line.append(...row.cells.map((cell) => element("span", "hub__cell", cell)));
-    else line.append(element("span", "hub__detail", row.detail ?? ""));
+    if (row.bar) line.append(barOf(row.bar));
+    if (section.columns && row.cells) {
+      line.append(...row.cells.map((cell, index) => element("span", `hub__cell ${row.cellClasses?.[index] ?? ""}`.trim(), cell)));
+    } else line.append(element("span", "hub__detail", row.detail ?? ""));
     // The date sits in a column of its own at the end, so a section's dates line up.
     if (!section.columns) line.append(element("span", "hub__date", row.date ?? ""));
     if (row.actions?.length) {
@@ -205,6 +219,9 @@ export class HubPanel {
       case "edit": return this.rowAction(option, ["edit"]);
       case "delegate": return this.rowAction(option, ["delegate", "takeBack"]);
       case "history": return this.rowAction(option, ["history"]);
+      case "makeNext": return option?.row?.task !== undefined ? this.handlers.onRowAction(option.section, option.row, "next") : undefined;
+      case "logStatus":
+      case "plan": return this.handlers.onCommand?.(action);
       case "editor": return this.handlers.onLeave();
       default: return undefined;
     }
@@ -265,6 +282,22 @@ export class HubPanel {
   hasFocus() {
     return this.section.contains(document.activeElement);
   }
+}
+
+/** A Portfolio bar: where the project's plan sits in the span of them all, and today. */
+function barOf({ left, width, today }) {
+  const track = element("span", "hub__bar");
+  const fill = element("span", "hub__bar-fill");
+  // Inline style="" is refused by the CSP; CSSOM properties are not.
+  fill.style.setProperty("--left", String(left));
+  fill.style.setProperty("--width", String(width));
+  track.append(fill);
+  if (today !== undefined && today >= 0 && today <= 1) {
+    const now = element("span", "hub__bar-today");
+    now.style.setProperty("--at", String(today));
+    track.append(now);
+  }
+  return track;
 }
 
 function button(className, text, title, action) {

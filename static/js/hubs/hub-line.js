@@ -13,14 +13,14 @@
 //   Question ▾ open · asked 2026-11-24 · in Rollout · with Jane Doe × + Add person
 //     From: Kickoff "Who owns the feed?"
 // "Archived ·" comes first when archived. Empty when no such note is open.
-import { attendeesOf } from "../meetings/meetings-model.js";
+import { allMeetings, attendeesOf } from "../meetings/meetings-model.js";
 import { whenText } from "../meetings/meeting-days.js";
 import { RECORD_LABELS, groupForKind, hubOf, isArchived, isRecordKind } from "../notes/hub-groups.js";
 import { peopleOn } from "../people/people-model.js";
 import { isOpen, peopleOf } from "../records/records-model.js";
-import { projectFacts } from "../home/home-model.js";
+import { projectFacts } from "../today/today-facts.js";
 import { areaOf, projectsIn } from "./hub-areas.js";
-import { Plan, nextMilestone, shortDay, slipOf, slipText } from "../plan/plan-model.js";
+import { Plan, dayNumber, nextMilestone, shortDay, slipOf, slipText, slipWords } from "../plan/plan-model.js";
 import { openCount } from "../tasks/tasks-model.js";
 import { localDay } from "../meetings/meeting-days.js";
 import { NO_CONTROLS, factButton, miniButton } from "./hub-line-controls.js";
@@ -39,11 +39,11 @@ export function showHubLine(line, ctx, hub, onOpen, controls = NO_CONTROLS) {
   const first = [filable
     ? factButton("hub-line__kind", label, "File it as a project, an area, a resource or in the Inbox",
       (button) => controls.file(button, hub), { caret: true })
-    : span("hub-line__kind", label)];
+    : span(hub.kind === "decision" || hub.kind === "question" ? `hub-line__kind hub-line__badge hub-line__badge--${hub.kind}` : "hub-line__kind", label)];
   if (isArchived(tree, hub.id)) first.unshift(span("hub-line__archived", "Archived"), separator());
-  const [more, second] = detailsOf(ctx, hub, onOpen, controls);
+  const [more, ...rest] = detailsOf(ctx, hub, onOpen, controls);
   if (more.length) first.push(separator(), ...more);
-  line.replaceChildren(row(first), ...(second?.length ? [row(second)] : []));
+  line.replaceChildren(row(first), ...rest.filter((each) => each?.length).map(row));
 }
 
 function detailsOf(ctx, hub, onOpen, controls) {
@@ -133,8 +133,10 @@ function planDetails(ctx, note, onOpen, controls) {
   if (parent) parts.push(separator(), span("hub-line__text", "in "), linkTo(parent, isArchived(tree, parent.id), onOpen));
   const slip = slipOf(plan, note.id);
   if (slip.moves) {
-    parts.push(separator(), factButton(`hub-line__slip${slip.keepsSlipping ? " hub-line__slip--late" : ""}`,
-      `${slipText(slip)}${slip.keepsSlipping ? " · keeps slipping" : ""}`, "Its date history", () => controls.history(note)));
+    // A phase says it in words (the design's "9 days later than planned, moved 3 times").
+    const words = plan.phase(note.id) ? slipWords(slip) : `${slipText(slip)}${slip.keepsSlipping ? " · keeps slipping" : ""}`;
+    parts.push(separator(), factButton(`hub-line__slip${slip.keepsSlipping || slip.days > 0 ? " hub-line__slip--late" : ""}`,
+      words, "Its date history (h)", () => controls.history(note)));
   } else {
     parts.push(separator(), span("hub-line__text hub-line__text--none", "on its first dates"));
   }
@@ -142,7 +144,35 @@ function planDetails(ctx, note, onOpen, controls) {
     const open = openCount(tree, ctx.tasks, note);
     if (open) parts.push(separator(), span("hub-line__text", `${open} open task${open === 1 ? "" : "s"}`));
   }
-  return [parts, []];
+  const phase = plan.phase(note.id);
+  return [parts, phase ? phaseBar(plan, note, phase, today) : []];
+}
+
+/** A phase's mini bar (its dates over its baseline, and today) and where it moved from. */
+function phaseBar(plan, note, phase, today) {
+  const first = [phase.start, phase.baseline_start, today].sort()[0];
+  const last = [phase.end, phase.baseline_end, today].sort()[2];
+  const span0 = dayNumber(first);
+  const length = Math.max(1, dayNumber(last) - span0 + 1);
+  const at = (day) => (dayNumber(day) - span0) / length;
+  const bar = document.createElement("span");
+  bar.className = "hub-line__bar";
+  const piece = (className, from, to) => {
+    const node = document.createElement("span");
+    node.className = className;
+    // CSSOM, never style="" (the CSP).
+    node.style.setProperty("--left", String(at(from)));
+    node.style.setProperty("--width", String((dayNumber(to) - dayNumber(from) + 1) / length));
+    return node;
+  };
+  bar.append(piece("hub-line__bar-baseline", phase.baseline_start, phase.baseline_end), piece("hub-line__bar-fill", phase.start, phase.end),
+    piece("hub-line__bar-today", today, today));
+  const changes = plan.changesOf(note.id);
+  const lastMove = changes[changes.length - 1];
+  const words = [`Baseline ended ${dayText(phase.baseline_end, { today })}`,
+    lastMove ? `Last move: ${dayText(lastMove.changed_at?.slice(0, 10) ?? "", { today })}${lastMove.reason ? ` — “${lastMove.reason}”` : ""}` : ""]
+    .filter(Boolean).join(" · ");
+  return [bar, span("hub-line__text hub-line__text--dim", words)];
 }
 
 function areaDetails(ctx, area, controls) {
@@ -222,11 +252,13 @@ function meetingDetails({ tree, meetings }, meeting, onOpen, controls) {
   return [first, second];
 }
 
-function recordDetails({ tree, records }, note, onOpen, controls) {
+function recordDetails({ tree, records, meetings, today: now }, note, onOpen, controls) {
   const record = records.get(note.id);
+  const today = localDay(now ?? new Date());
   const day = (text) => factButton("hub-line__when", text, "Change the date", () => controls.day(note));
+  const age = Math.max(0, Math.round((Date.parse(today) - Date.parse(record.day)) / 86400000));
   const parts = note.kind === "question"
-    ? [factButton("hub-line__state", isOpen(record) ? "open" : `answered ${shortDay(record.answered, localDay(new Date()))}`,
+    ? [factButton("hub-line__state", isOpen(record) ? `open · ${age} day${age === 1 ? "" : "s"}` : `answered ${shortDay(record.answered, localDay(new Date()))}`,
       isOpen(record) ? "Answer it, or mark it answered" : "Reopen it, or change the answer date", (button) => controls.answer(button, note), { caret: true }),
     separator(), span("hub-line__text", "asked "), day(dayText(record.day))]
     : [day(dayText(record.day))];
@@ -251,7 +283,32 @@ function recordDetails({ tree, records }, note, onOpen, controls) {
     if (record.quote) second.push(span("hub-line__quote", ` “${oneLine(record.quote)}”`));
     if (record.quote && !record.quote_found) second.push(span("hub-line__text hub-line__text--none", " (that text has changed since)"));
   }
-  return [parts, second];
+  const rows = [parts, second];
+  if (note.kind === "question" && isOpen(record)) {
+    // Where to raise it: the next meeting with any of its people (else in its hub).
+    const raise = meetings ? raiseAt(tree, meetings, record, hub, today) : null;
+    const third = [];
+    if (raise) {
+      third.push(span("hub-line__label", "Raise at:"), linkTo(raise.note, false, onOpen),
+        span("hub-line__text", ` ${dayText(raise.meeting.day, { today })}${raise.meeting.time ? ` ${raise.meeting.time}` : ""}`));
+      if (String(raise.meeting.agenda ?? "").toLowerCase().includes(note.title.toLowerCase())) {
+        third.push(span("hub-line__ok", " on agenda ✓"));
+      }
+    }
+    third.push(factButton("hub-line__action hub-line__action--answer", "Answer…", "Write the answer and mark it answered", () => controls.answerNow(note)),
+      factButton("hub-line__action", "Turn into decision", "It was decided: a decision now, same note", () => controls.toDecision(note)),
+      factButton("hub-line__action", "Make a task to find out", "A task in its hub: find out the answer", () => controls.findOut(note)));
+    rows.push(third);
+  }
+  return rows;
+}
+
+/** The next meeting (today or later) with any of a record's people, else in its hub. */
+function raiseAt(tree, meetings, record, hub, today) {
+  const upcoming = allMeetings(tree, meetings).filter(({ meeting, archived }) => !archived && !meeting.cancelled && meeting.day >= today)
+    .sort((a, b) => `${a.meeting.day} ${a.meeting.time}`.localeCompare(`${b.meeting.day} ${b.meeting.time}`));
+  return upcoming.find(({ meeting }) => meeting.attendees.some((id) => record.people.includes(id)))
+    ?? upcoming.find((entry) => hub && entry.hub.id === hub.id) ?? null;
 }
 
 function personDetails(person, note, controls) {

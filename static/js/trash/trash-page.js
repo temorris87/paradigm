@@ -19,11 +19,11 @@ export function trashPage(section, { onRestore, onLeave }) {
       rows = trashRows(trash, tree, filters);
       return rows;
     },
+    columns: ["Note", "Was in", "Gone in"],
     cells: (row) => [
-      ["trash__title", row.title],
+      ["trash__title", `${row.title}${row.inside ? ` + ${row.inside}` : ""}`],
       ["trash__where", row.blocked ?? row.where],
-      ["trash__inside", row.inside],
-      ["trash__when", row.when],
+      [`trash__gone${row.soon ? " trash__gone--soon" : ""}`, row.goneIn],
     ],
     empty: "The Trash is empty",
     onOpen: (id) => {
@@ -33,5 +33,10 @@ export function trashPage(section, { onRestore, onLeave }) {
     },
     onLeave,
   });
+  // Under the heading: how long things stay, and what Enter does.
+  const note = document.createElement("p");
+  note.className = "trash__subtitle";
+  note.textContent = "Kept for 7 days, then deleted for good. Enter restores a note and opens it, back where it was.";
+  section.querySelector(".list-page__bar")?.after(note);
   return page;
 }

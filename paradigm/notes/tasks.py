@@ -40,3 +40,15 @@ def clean_optional_day(raw: object) -> str:
         return clean_day(raw)
     except BadWhen as error:
         raise BadTask(str(error)) from None
+
+
+MAX_ESTIMATE_MINUTES = 40 * 60
+
+
+def clean_estimate(raw: object):
+    """Whole minutes (1 to a working week), or None for no estimate."""
+    if raw is None or raw == "":
+        return None
+    if isinstance(raw, bool) or not isinstance(raw, int) or not 0 < raw <= MAX_ESTIMATE_MINUTES:
+        raise BadTask("An estimate is a number of minutes, up to {} hours".format(MAX_ESTIMATE_MINUTES // 60))
+    return raw

@@ -3,10 +3,12 @@
 GET  /api/notes            the tree: every note without its body
 GET  /api/note?id=N        one note with its body
 POST /api/note/create      {parent_id|null, title, body?, links?, mentions?}
-POST /api/note/save        {id, body, version, force?, links?, mentions?}  409 {error, version}
-                           if stale. links: the [[wiki link]] texts in body, mentions its
-                           @mentions [{field, line, name, context}], as the page reads them
-                           (paradigm/api/links.py); links left out, the note's index goes stale
+POST /api/note/save        {id, body, version, force?, links?, mentions?, captures?}  409 {error,
+                           version} if stale. links: the [[wiki link]] texts in body, mentions
+                           its @mentions [{field, line, name, context}], as the page reads them
+                           (paradigm/api/links.py); links left out, the note's index goes stale.
+                           captures: a meeting's T:/D:/Q: lines (paradigm/db/capture_repo.py)
+                           -> the note + captured: how many became tasks or records now
 POST /api/note/rename      {id, title}
 POST /api/note/move        {id, parent_id|null}           a hub moved under a note stops being one;
                                                           a person stays at the top level;
@@ -28,6 +30,7 @@ from paradigm.db.notes_repo import (AreaArchived, BadKind, BadProjectField, BadT
                                     StaysInAHub, IsAPerson, LastNote, NoNotesUnder, NoteError, NoteRepository,
                                     NotAnArea, NotAProject, NotArchived, NotFound, NotTopLevel, TitleTaken,
                                     WouldCycle)
+from paradigm.db.capture_repo import BadCapture
 from paradigm.notes.links import BadLinks, clean_links
 from paradigm.notes.mentions import BadMentions, Mention, clean_mentions
 from paradigm.web.requests import (BadRequest, bool_field, int_field, optional_int_field,
@@ -38,7 +41,7 @@ from paradigm.web.router import Router
 _STATUS = {NotFound: 404, Conflict: 409, TitleTaken: 409, HasChildren: 409, LastNote: 409,
            WouldCycle: 400, NotAProject: 400, NotAnArea: 400, AreaArchived: 400, NotTopLevel: 400,
            NotArchived: 400, IsAPerson: 400, StaysInAHub: 400, NoNotesUnder: 400, BadTitle: 400, BadKind: 400,
-           BadProjectField: 400, BadLinks: 400, BadMentions: 400, BadRequest: 400}
+           BadProjectField: 400, BadLinks: 400, BadMentions: 400, BadRequest: 400, BadCapture: 400}
 
 
 class NotesApi:
@@ -81,7 +84,7 @@ class NotesApi:
         payload = read_json(req)
         return self._notes.save(int_field(payload, "id"), str_field(payload, "body"),
                                 int_field(payload, "version"), bool_field(payload, "force"), _links(payload),
-                                _mentions(payload))
+                                _mentions(payload), payload.get("captures"))
 
     def rename(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)

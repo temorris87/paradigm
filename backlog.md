@@ -92,3 +92,42 @@ Features in build order. "build feature" takes the first unchecked item.
 - [x] Simpler resources and calmer dashboards: resources are plain notes in folders (not hubs);
   project and area dashboards in two fixed lanes, Act and Know, under the full-width text
   (done 2026-11-22)
+- [x] Next action: one flagged open task per project, area or phase (`n` on a task row; with
+  none flagged, the first open task). Shown as NEXT on the dashboard, in an area's Projects
+  table and in the Week tray. Migration 022 `tasks.is_next` (1e, 1f, 2h) (done 2026-11-22)
+- [x] Status log: `:log`, `L` and Log status… make a dated entry with a health (on track / at
+  risk / blocked) on a project or area. "Where I am" comes first in Act; the latest log shows
+  in the header badge, the area table ("updated N d ago", red at 14 d) and the navigator dot.
+  History, and "since last log" suggestions taken from date moves, decisions and done tasks.
+  Migration 023 `status_logs` (1e, 1f, 2l) (done 2026-11-22)
+- [x] Today replaces Home: a Now card, a day timeline with free gaps, one ranked Up next
+  (overdue → follow-ups due → due today → due soon → next actions → questions waiting over
+  7 d), project status and the Inbox. Keys `j k Space s d z o`. Empty-day state (1c, 2m) (done 2026-11-22)
+- [x] Week: Calendar and Time become one page with Plan / Timesheet / Settings. Each day gets
+  a capacity bar (meetings, focus, free), the tray is grouped Overdue / Due this week / Next
+  actions / Follow-ups with estimates, the "due" strip shows due tasks and milestones, and a
+  footer shows time so far. `s` drops a task into the first free slot before its due day.
+  Migration 024 `tasks.estimate_min` (1d, 2c) (done 2026-11-22)
+- [x] Top bar and palette: the top bar becomes Today | Week, a palette field and Window ▾.
+  `:` opens the palette: Recent, Pages and every command with its key, all read from the
+  central key tables. Go to, People, Meetings, Calendar, Time and Trash leave the bar; the
+  palette must reach everything they did first (1c, 2a) (done 2026-11-22)
+- [x] Navigator: Today and Week pinned at the top with counts, the Inbox count as a pill with
+  File all…, a health dot and stale age on projects, note counts on folders, and a save state
+  in the footer (2b) (done 2026-11-22)
+- [x] Meeting capture: on save, `T:` `D:` `Q:` lines become a task, decision or question
+  (`@Name`, `!day`), with an inline badge and a parse hint while typing. In a `T:` line, a
+  name first in the sentence delegates the task to them ("T: @Tom send the numbers");
+  anywhere else it is a task I owe them ("T: send @Tom the numbers"). A Prep box on meetings
+  lists open questions with the attendees, follow-ups waiting on them, and what happened last
+  time. The Meetings page is grouped by day with a Prep column (1g, 2d) (done 2026-11-22)
+- [x] Note window context strip (Now block, time left, next meeting with a prep link) and
+  `:t {text} [@Name] [!day]` for a quick task (1h) (done 2026-11-22)
+- [x] People as 1:1 prep: "I owe them" (`tasks.for_person_id`) and "To raise next 1:1"
+  (`person_topics`; `@Name ?` lines add one), plus Start 1:1 notes. The People page gets Open
+  items / Everyone and counts for each. Migration 025 (1i, 2e) (done 2026-11-22)
+- [x] Page refresh: question and decision page (Raise at, turn into decision), phase page
+  (slip in words), full plan with date history, plan template page, folder page with Linked
+  from, Inbox triage dialog, Delegate with "at our 1:1", Edit dates showing the knock-on
+  effect, Trash with "Gone in", and the disconnected banner copy (only promise kept changes
+  once `note-session.js` can keep them through a disconnect). New token `--fs-2xl` (2f–2m) (done 2026-11-22)

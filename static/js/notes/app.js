@@ -24,13 +24,19 @@
 // open under them). A URL with no note opens on Home.
 //   await app.start();
 import { exportNote } from "../export/export.js";
-import { HomePage } from "../home/home-page.js";
+import { TodayPage } from "../today/today-page.js";
+import { todayActions } from "../today/today-actions.js";
 import { hubLineControls, hubTabActions, newMeetingDialog, personDetailsDialog } from "../hubs/hub-actions.js";
 import { HubPage } from "../hubs/hub-page.js";
 import { showBreadcrumb } from "./breadcrumb.js";
 import { registerNoteCommands, runNoteCommand } from "./commands.js";
 import { headingLine } from "./headings.js";
-import { groupOf, hubOf, isArchived, isHub, isPerson, topNoteOf } from "./hub-groups.js";
+import { groupOf, hubOf, isArchived, isHub, isMeeting, isPerson, topNoteOf } from "./hub-groups.js";
+import { captureLines, captureText, parseTaskText, toPayload, topicLines } from "./capture.js";
+import { PrepBox } from "../hubs/prep.js";
+import { triageInbox } from "../triage/triage.js";
+import { ContextStrip } from "../today/context-strip.js";
+import { dayText } from "../ui/dates.js";
 import { AgendaField } from "./agenda.js";
 import { mentionCompletions, openMention, rewriteMentionsOf } from "./mention-actions.js";
 import { personForMention } from "./mentions.js";
@@ -38,7 +44,9 @@ import { openSelectionMenu } from "./selection-menu.js";
 import { renderMarkdown } from "../markdown/index.js";
 import { recordsFrom } from "../records/records-model.js";
 import { NoteImages } from "./images.js";
-import { goToNote, newNoteDialog, openNoteMenu, whereText } from "./note-actions.js";
+import { newNoteDialog, openNoteMenu, whereText } from "./note-actions.js";
+import { openPalette } from "../palette/palette.js";
+import { rememberOpened } from "../palette/recent.js";
 import { LinkIndex, indexTexts } from "./link-index.js";
 import { NoteSession } from "./note-session.js";
 import { resolveLink, splitTarget } from "./resolve.js";
@@ -64,6 +72,9 @@ import { scanFolders } from "../files/file-commands.js";
 import { newTemplateDialog } from "../templates/template-commands.js";
 import { Folders } from "../resources/folders-model.js";
 import { addInFolderMenu } from "../resources/folder-commands.js";
+import { StatusLogs, healthOf } from "../status/status-model.js";
+import { navCounts } from "../today/today-model.js";
+import { drawPins, drawSaveState, saveStateOf } from "../layout/navigator-parts.js";
 
 // The blocks of time loaded for the pages (a task's next block, Home's Today).
 const SESSIONS_BACK_DAYS = 7;
@@ -74,7 +85,8 @@ const UNSAVED = "E37: No write since last change (:w to save, or ! to drop the c
 export class NotesApp {
   constructor({ role = "note", editor, tree, crumbs, navigator, hub, agenda = {}, home, people, meetings, trash, goTo, api, trashApi,
                 imagesApi, peopleApi, meetingsApi, recordsApi, linksApi, tasksApi = null, calendarApi = null,
-                planApi = null, planTemplatesApi = null, filesApi = null, templatesApi = null, foldersApi = null, extraPages = {},
+                planApi = null, planTemplatesApi = null, filesApi = null, templatesApi = null, foldersApi = null, statusApi = null,
+                timeApi = null, extraPages = {}, pins = null, saveState = null, connection = null, prep = null, contextStrip = null,
                 buttons = {}, status = null, dashboard = null, location = window.location, history = window.history,
                 today = () => new Date(), changes = new Changes() }) {
     this.role = role;
@@ -85,12 +97,25 @@ export class NotesApp {
     this.filesApi = filesApi;
     this.templatesApi = templatesApi;
     this.foldersApi = foldersApi;
+    this.statusApi = statusApi;
+    this.timeApi = timeApi;
+    this.pins = pins;
+    this.contextStrip = contextStrip ? new ContextStrip(contextStrip, { onOpen: (id) => this.guard(this.open(id)) }) : null;
+    // The strip's bar and "left" move on with the clock.
+    if (this.contextStrip) setInterval(() => this.drawContext(), 60 * 1000);
+    this.prep = prep ? new PrepBox(prep, { onOpen: (id) => this.guard(this.openFromHub(id)),
+      onAddAll: (lines) => this.guard(this.addToAgenda(lines)) }) : null;
+    this.saveStateNode = saveState;
+    this.offline = false;
+    this.timeSettings = null;
+    this.statusLogs = new StatusLogs();
     this.folders = new Folders();
     this.folderId = null; // the folder page's (the main window)
     this.plan = new Plan();
     this.planTemplates = [];
     this.files = new Files();
     this.templateId = null;
+    this.weekView = "plan"; // the Week page's Plan, Timesheet or Settings
     this.editor = editor;
     this.tasksApi = tasksApi;
     this.calendarApi = calendarApi;
@@ -118,10 +143,12 @@ export class NotesApp {
     this.linkIndex = new LinkIndex({ api: linksApi, onChange: () => this.redraw() });
     // A meeting's index holds its agenda's links and mentions too: each save sends both.
     this.session = new NoteSession({
-      api: { ...api, save: this.announcing(this.linkIndex.saver(api.save, (note) => ({ body: note.body, agenda: this.agenda.textFor(note.id) }))) },
+      api: { ...api, save: this.announcing(this.capturing(this.linkIndex.saver(api.save,
+        (note) => ({ body: note.body, agenda: this.agenda.textFor(note.id) })))) },
       onChange: () => {
         this.editor.modified = this.session.dirty;
         this.markEmptyFields();
+        this.showSaveState();
       },
       onError: (error) => this.fail(error),
     });
@@ -131,8 +158,22 @@ export class NotesApp {
       field: agenda.field ?? null,
       api: meetingsApi ?? {},
       saver: (save) => this.announcing(this.linkIndex.saver(save, (note) => ({ body: this.editor.value, agenda: note.body }))),
-      onChange: () => this.markEmptyFields(),
+      onChange: () => {
+        this.markEmptyFields();
+        this.showSaveState();
+      },
       onError: (error) => this.fail(error),
+    });
+    // The server went away and came back: what wasn't saved meanwhile is saved now.
+    connection?.addEventListener("lost", () => {
+      this.offline = true;
+      this.showSaveState();
+    });
+    connection?.addEventListener("connected", () => {
+      const was = this.offline;
+      this.offline = false;
+      this.showSaveState();
+      if (was) this.guard(this.saveAfterReconnect());
     });
     this.labels = hub.labels ?? {};
     this.treeView = new TreeView(tree, {
@@ -146,6 +187,10 @@ export class NotesApp {
         this.showFolder(id);
       },
       onAddInFolder: (id, anchor) => addInFolderMenu(this, id, anchor),
+      onFileAll: () => {
+        this.navigator.hide({ refocus: false });
+        this.guard(triageInbox(this));
+      },
     });
     // The main window draws a project's plan as a chart over its sections, not as a list.
     this.dashboard?.attach(this);
@@ -161,8 +206,8 @@ export class NotesApp {
     const onPage = { onOpen: (id) => this.guard(this.open(id)), onLeave: () => this.leaveView() };
     // The pages drawn in place of a dashboard live in the main window only.
     const pages = role === "main" ? {
-      home: new HomePage(home.section, { ...onPage, today }),
-      people: peoplePage(people.section, { ...onPage, onAdd: () => this.guard(newPersonDialog(this)) }),
+      home: new TodayPage(home.section, { ...onPage, today, actions: todayActions(this) }),
+      people: peoplePage(people.section, { ...onPage, today, onAdd: () => this.guard(newPersonDialog(this)) }),
       meetings: meetingsPage(meetings.section, { ...onPage, today, onAdd: () => this.guard(newMeetingDialog(this)) }),
       trash: trashPage(trash.section, { onRestore: (id) => this.restoreFromTrash(id), onLeave: onPage.onLeave }),
       ...extraPages,
@@ -176,9 +221,16 @@ export class NotesApp {
         else this.showView(key, "push");
       });
     }
-    goTo?.addEventListener("click", () => this.guard(goToNote(this)));
-    buttons.calendar?.addEventListener("click", () => this.calendarCommand());
-    buttons.time?.addEventListener("click", () => this.timeCommand());
+    goTo?.addEventListener("click", () => this.guard(openPalette(this)));
+    buttons.today?.addEventListener("click", () => {
+      this.navigator.hide({ refocus: false });
+      this.showView("home", "push");
+    });
+    buttons.week?.addEventListener("click", () => {
+      this.navigator.hide({ refocus: false });
+      this.calendarCommand();
+    });
+    buttons.palette?.addEventListener("click", () => this.guard(openPalette(this)));
     buttons.dashboard?.addEventListener("click", () => this.dashboardCommand());
     this.images = new NoteImages({ editor, api: imagesApi, currentId: () => this.currentId });
     registerNoteCommands(editor);
@@ -248,7 +300,12 @@ export class NotesApp {
       if (message.key === "folder") {
         await this.refreshTree();
         this.showFolder(message.folderId);
-      } else if (this.views.pages[message.key]) {
+      } else if (this.views.pages[message.key] || ["calendar", "time"].includes(message.key)) {
+        // A page about one hub (its plan) opens that hub's dashboard under it first.
+        if (message.id !== undefined) {
+          await this.refreshTree();
+          if (this.tree.has(message.id)) await this.open(message.id);
+        }
         this.showView(message.key, "push");
       }
     } else if (message.type === "changed") {
@@ -267,6 +324,22 @@ export class NotesApp {
       && note.agenda_version !== this.agenda.session.note?.version;
     if (note.version === this.session.note?.version && !agendaChanged) return;
     await this.open(id, { discard: true, history: "none" });
+  }
+
+  /** A meeting's save sends its T:/D:/Q: lines (capture.js); what they made shows at once. */
+  capturing(save) {
+    return async (note, options) => {
+      const meeting = isMeeting(this.tree, note.id);
+      const found = [...(meeting ? captureLines(note.body, this.tree, this.today()) : []), ...topicLines(note.body, this.tree)];
+      const captures = found.length ? found.map(toPayload) : undefined;
+      const result = await save({ ...note, captures }, options);
+      if (result?.captured) {
+        this.changes.send({ type: "changed", what: ["tasks", "records", "topics"] });
+        await this.refreshTree();
+        this.say(`${result.captured} captured`);
+      }
+      return result;
+    };
   }
 
   /** A save that tells the other windows once it is stored. */
@@ -310,6 +383,7 @@ export class NotesApp {
     if (id === undefined) return;
     if (params.has("template")) this.templateId = Number(params.get("template"));
     if (params.has("folder")) this.folderId = Number(params.get("folder"));
+    this.weekView = params.has("time") ? "timesheet" : ["timesheet", "settings"].includes(params.get("week")) ? params.get("week") : "plan";
     const view = this.views.fromUrl(params) ?? (asked !== null && this.isDashboard(id) ? null : "home");
     await this.open(id, { history: view ? "none" : history });
     if (view) this.showView(view, history === "replace" ? "replace" : "none");
@@ -331,14 +405,18 @@ export class NotesApp {
 
   async refreshTree() {
     const today = this.today();
-    const [notes, people, meetings, records, trash, , tasks, sessions, importStatus, plan, planTemplates, files, folders] = await Promise.all([
+    const [notes, people, meetings, records, trash, , tasks, sessions, importStatus, plan, planTemplates, files, folders, status, timeSettings, topics] = await Promise.all([
       this.api.list(), this.peopleApi.list(), this.meetingsApi.list(), this.recordsApi.list(),
       this.trashApi.list(), this.linkIndex.refresh(), this.tasksApi?.list() ?? [],
       this.tasksApi?.sessions(localDay(addDays(today, -SESSIONS_BACK_DAYS)), localDay(addDays(today, SESSIONS_AHEAD_DAYS))) ?? [],
       this.calendarApi?.status().catch(() => null) ?? null,
       this.planApi?.list() ?? undefined, this.planTemplatesApi?.list() ?? [], this.filesApi?.list() ?? undefined,
-      this.foldersApi?.list() ?? [],
+      this.foldersApi?.list() ?? [], this.statusApi?.list() ?? null, this.timeApi?.settings().catch(() => null) ?? null,
+      this.peopleApi.topics?.() ?? [],
     ]);
+    this.topics = topics;
+    this.timeSettings = timeSettings;
+    this.statusLogs = new StatusLogs(status?.logs ?? [], status?.stale_days);
     this.folders = new Folders(folders);
     this.plan = new Plan(plan);
     this.planTemplates = planTemplates;
@@ -372,6 +450,7 @@ export class NotesApp {
       this.redraw();
       this.focusNote();
     }
+    if (result) rememberOpened(id);
     // A hub's linked folders are read again when its dashboard opens: new files show up.
     if (result && fresh && this.role === "main" && this.filesApi && isHub(this.tree, id)) this.guard(scanFolders(this, id));
     return result;
@@ -417,13 +496,21 @@ export class NotesApp {
   redraw() {
     const id = this.currentId;
     // While a page (Home, Calendar...) is shown, no tree row is the current one.
-    this.treeView.show(this.tree, id, { marked: !this.views.shown, folders: this.folders });
+    const now = this.today();
+    const health = new Map(this.tree.children(null).filter((note) => note.kind === "project" && !note.archived_at)
+      .map((note) => {
+        const state = healthOf(this.statusLogs, note, now);
+        return [note.id, { key: state.key, stale: state.stale || (state.never && state.key !== "on_hold"), age: state.age }];
+      }));
+    this.treeView.show(this.tree, id, { marked: !this.views.shown, folders: this.folders, health });
+    this.drawPins(now);
     showBreadcrumb(this.crumbs, this.tree, id, (target) => this.guard(this.open(target)),
       (button) => openNoteMenu(this, button));
     const ctx = { tree: this.tree, people: this.people, meetings: this.meetings, records: this.records,
       links: this.linkIndex.links, mentions: this.linkIndex.mentions, trash: this.trash, tasks: this.tasks,
       sessions: this.sessions, importStatus: this.importStatus, plan: this.plan, planTemplates: this.planTemplates,
-      files: this.files, templateId: this.templateId, folders: this.folders, folderId: this.folderId, today: this.today() };
+      files: this.files, templateId: this.templateId, folders: this.folders, folderId: this.folderId, statusLogs: this.statusLogs,
+      timeSettings: this.timeSettings, topics: this.topics ?? [], today: this.today() };
     const trashed = this.trash.entries.length;
     if (this.trashButton) this.trashButton.textContent = trashed ? `Trash · ${trashed}` : "Trash";
     this.hubPage.show(ctx, id);
@@ -439,7 +526,43 @@ export class NotesApp {
       box.markdownOptions = options;
       box.highlights = highlights;
     }
+    this.editor.hints = { ...this.captureHints(id), cmdline: (text) => this.cmdlineHint(text) };
+    this.prep?.show(ctx, this.tree.get(id) ?? null);
+    this.drawContext();
     this.markEmptyFields();
+  }
+
+  /** The navigator's Today and Week rows, with what is overdue and what is free this week. */
+  drawPins(now) {
+    if (!this.pins) return;
+    const counts = navCounts({ tree: this.tree, meetings: this.meetings, records: this.records, tasks: this.tasks,
+      sessions: this.sessions, timeSettings: this.timeSettings }, now);
+    const active = this.role === "main" && (this.views.shown === "home" || this.views.shown === "week") ? this.views.shown : null;
+    drawPins(this.pins, { ...counts, active,
+      onToday: () => {
+        this.navigator.hide({ refocus: false });
+        this.showView("home", "push");
+      },
+      onWeek: () => {
+        this.navigator.hide({ refocus: false });
+        this.calendarCommand();
+      } });
+  }
+
+  /** The navigator's foot (the note window): whether the open note's changes are saved. */
+  showSaveState() {
+    if (!this.saveStateNode || !this.session) return;
+    const sessions = [this.session, this.agenda?.session].filter(Boolean);
+    drawSaveState(this.saveStateNode, saveStateOf({
+      dirty: sessions.some((each) => each.dirty), saving: sessions.some((each) => each.saving),
+      failed: sessions.some((each) => each.failed), offline: this.offline, conflict: sessions.some((each) => each.conflict),
+    }));
+  }
+
+  async saveAfterReconnect() {
+    if (this.session.dirty && !this.session.conflict) await this.session.save();
+    if (this.agenda?.dirty) await this.agenda.save();
+    if (!this.session.dirty) this.say("Back: your changes are saved");
   }
 
   markdownOptions() {
@@ -452,16 +575,84 @@ export class NotesApp {
     };
   }
 
-  /** The text the open note's decisions and questions were made from, for its badges. */
+  /** The text the open note's decisions and questions were made from, for its badges; on a
+   * meeting, its captured T:/D:/Q: lines get theirs before the text, with what they made. */
   highlightsOf(id) {
     if (id === null) return [];
     const labels = { decision: "Decision", question: "Question" };
-    return recordsFrom(this.tree, this.records, id).filter((record) => record.quote).map((record) => ({
-      text: record.quote,
-      label: record.kind === "question" && record.answered ? "Answered" : labels[record.kind],
-      title: `${labels[record.kind]}: ${this.tree.get(record.id).title} (click to open)`,
-      data: record.id,
-    }));
+    const today = this.today();
+    const lines = isMeeting(this.tree, id) ? captureLines(this.editor.value, this.tree, today) : [];
+    const captured = new Map(lines.map((line) => [line.quote, line]));
+    const records = recordsFrom(this.tree, this.records, id).filter((record) => record.quote).map((record) => {
+      const line = captured.get(record.quote);
+      return {
+        text: record.quote,
+        label: record.kind === "question" && record.answered ? "Answered" : labels[record.kind],
+        title: `${labels[record.kind]}: ${this.tree.get(record.id).title} (click to open)`,
+        data: record.id,
+        ...(line ? { capture: record.kind, meta: line.people.length ? `with ${line.people.map((person) => person.title).join(", ")}` : "" } : {}),
+      };
+    });
+    const tasks = this.tasks.all().filter((task) => task.source_id === id && captured.has(task.quote)).map((task) => {
+      const delegate = this.tree.get(task.delegate_id);
+      const owed = this.tree.get(task.for_person_id);
+      return {
+        text: task.quote, label: "Task", capture: "task", data: null,
+        title: `Task on ${this.tree.get(task.note_id)?.title ?? "the hub"}: ${task.title}`,
+        meta: [delegate ? `→ ${delegate.title}` : owed ? `for ${owed.title}` : "", task.due ? `due ${dayText(task.due, { today })}` : ""]
+          .filter(Boolean).join(" · "),
+      };
+    });
+    return [...records, ...tasks];
+  }
+
+  drawContext() {
+    this.contextStrip?.show({ tree: this.tree, meetings: this.meetings, tasks: this.tasks, sessions: this.sessions }, this.today());
+  }
+
+  /** The Prep box's Add all to agenda: lines at the end of the open meeting's agenda. */
+  async addToAgenda(lines) {
+    const box = this.agendaEditor;
+    if (!box || this.agenda.id !== this.currentId) throw new Error("E: open the meeting to add to its agenda");
+    const text = box.value.replace(/\s+$/, "");
+    const fresh = lines.filter((line) => !text.includes(line));
+    if (!fresh.length) return this.say("Already on the agenda");
+    box.value = text ? `${text}\n${fresh.join("\n")}` : fresh.join("\n");
+    box.dispatchEvent(new CustomEvent("change", { detail: { value: box.value } }));
+    this.say(`${fresh.length} added to the agenda`);
+    return undefined;
+  }
+
+  /** While :t is typed: what task it will make, and where. */
+  cmdlineHint(text) {
+    const match = /^:t!?\s+(.+)$/.exec(text);
+    if (!match || this.currentId === null) return "";
+    const parsed = parseTaskText(match[1], this.tree, this.today());
+    if (!parsed.title) return "";
+    const owner = hubOf(this.tree, this.currentId) ?? this.tree.get(this.currentId);
+    return `${captureText({ kind: "task", ...parsed }, this.today())} · on ${owner?.title ?? "this note"}: “${parsed.title}”`;
+  }
+
+  /** On a meeting: what its capture lines made ("3 captured · 1 pending") and, while one is
+   * typed, what it will make. */
+  captureHints(id) {
+    if (id === null || !isMeeting(this.tree, id)) return {};
+    const today = this.today();
+    const hub = hubOf(this.tree, id);
+    const made = new Set([...recordsFrom(this.tree, this.records, id).map((record) => record.quote),
+      ...this.tasks.all().filter((task) => task.source_id === id).map((task) => task.quote)]);
+    return {
+      status: (text) => {
+        const lines = captureLines(text, this.tree, today);
+        if (!lines.length) return "";
+        const done = lines.filter((line) => made.has(line.quote)).length;
+        return [`${done} captured`, lines.length > done ? `${lines.length - done} pending` : ""].filter(Boolean).join(" · ");
+      },
+      line: (text) => {
+        const [line] = captureLines(text, this.tree, today);
+        return line ? `${captureText(line, today)}${hub ? ` · on ${hub.title}` : ""}` : "";
+      },
+    };
   }
 
   /** The labels over the text boxes show their hint while the box is empty. */
@@ -656,12 +847,12 @@ export class NotesApp {
     if (!(await box.replaceLine(line, setBox(text, !state)))) throw new Error("E: leave insert mode first (Escape), then tick it");
   }
 
-  /** :calendar, the Calendar button: the calendar page in the main window. */
+  /** :calendar, gw: the Week page's Plan in the main window. */
   calendarCommand() {
     this.showView("calendar", "push");
   }
 
-  /** :time, the Time button: the weekly timesheet page in the main window. */
+  /** :time: the Week page's Timesheet in the main window. */
   timeCommand() {
     this.showView("time", "push");
   }
@@ -697,6 +888,19 @@ export class NotesApp {
     this.changes.send({ type: "changed", what: ["notes"] });
     if (gone !== null && this.views.shown === "folder" && !this.folders.has(this.folderId)) this.showView("home", "push");
     this.say(message);
+  }
+
+  /** gp, Gantt ↗: the full plan of a project or an area (of the hub a note is in), in the
+   * main window over its dashboard. */
+  async showPlan(id = this.currentId) {
+    const top = id === null || id === undefined ? null : topNoteOf(this.tree, id);
+    if (!top || (top.kind !== "project" && top.kind !== "area")) throw new Error("E: a plan belongs to a project or an area");
+    if (this.role !== "main") {
+      showMainWindow({ type: "view", key: "plan", id: top.id }, this.changes);
+      return;
+    }
+    if (this.currentId !== top.id) await this.open(top.id);
+    this.showView("plan", "push");
   }
 
   /** A plan template's page (the main window). */
@@ -794,8 +998,14 @@ export class NotesApp {
       showMainWindow({ type: "view", key }, this.changes);
       return;
     }
+    // The calendar and the timesheet are the Week page's Plan and Timesheet now.
+    if (key === "calendar" || key === "time") {
+      this.weekView = key === "time" ? "timesheet" : "plan";
+      key = "week";
+    }
     // A page about one thing keeps which one in its URL flag.
-    const flag = key === "folder" ? `folder=${this.folderId}` : key === "template" ? `template=${this.templateId}` : key;
+    const flag = key === "folder" ? `folder=${this.folderId}` : key === "template" ? `template=${this.templateId}`
+      : key === "week" && this.weekView !== "plan" ? `week=${this.weekView}` : key;
     this.views.show(key, history, flag);
     this.redraw();
   }

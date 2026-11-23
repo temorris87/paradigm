@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="/css/tree.css">
   <link rel="stylesheet" href="/css/breadcrumb.css">
   <link rel="stylesheet" href="/css/topbar.css">
+  <link rel="stylesheet" href="/css/prep.css">
+  <link rel="stylesheet" href="/css/context-strip.css">
   <link rel="stylesheet" href="/css/navigator.css">
   <link rel="stylesheet" href="/css/markdown.css">
   <link rel="stylesheet" href="/css/hub.css">
@@ -25,11 +27,12 @@
       <header class="topbar">
         <button type="button" class="topbar__nav" aria-controls="navigator" aria-label="Notes" title="Notes">☰</button>
         <nav class="crumbs" aria-label="Where this note is"></nav>
-        <button type="button" class="topbar__page topbar__goto" title="Find a note by its title and open it">Go to</button>
-        <button type="button" class="topbar__page topbar__dashboard" title="This note's hub on the dashboard (the main window)">Dashboard</button>
-        <button type="button" class="topbar__page topbar__home" title="Home, in the main window">Home</button>
+        <button type="button" class="topbar__page topbar__goto" title="The palette: go to a note or a page, or run a command">Go to…</button>
+        <button type="button" class="topbar__page topbar__dashboard" title="This note's hub on the dashboard (the main window)">Dashboard ↗</button>
       </header>
+      <section class="context-strip" aria-label="Now" hidden></section>
       <div class="hub-line" hidden></div>
+      <section class="prep" aria-label="Prep" hidden></section>
       <!-- A meeting's agenda: a second text box over the minutes (hidden on other notes). -->
       <div class="app__agenda" hidden>
         <div class="field-label field-label--agenda" id="agenda-label"></div>
@@ -42,7 +45,11 @@
     <div class="navigator__backdrop" hidden></div>
     <nav class="app__sidebar" id="navigator" aria-label="Notes">
       <h1 class="app__title">Paradigm</h1>
+      <div class="navigator__pins" role="group" aria-label="Pages"></div>
       <ul class="tree" aria-label="Notes"></ul>
+      <footer class="navigator__foot">
+        <span class="navigator__save" role="status" title="Whether this note's changes are saved"></span>
+      </footer>
     </nav>
   </div>
   <pd-image-viewer></pd-image-viewer>

@@ -13,6 +13,8 @@ POST /api/record/date         {id, day}                      -> record
 POST /api/record/answer       {id, day, text?}               -> record (questions only; text is
                                                                 added to the question's note)
 POST /api/record/reopen       {id}                           -> record (questions only)
+POST /api/record/convert      {id, day}                      -> record: a question becomes a
+                                                                decision, its note kept
 POST /api/record/with         {id, person_ids}               -> {record, added: [person ids]}
 POST /api/record/unwith       {id, person_id}                -> record
 """
@@ -44,6 +46,7 @@ class RecordsApi:
         router.add("POST", "/api/record/date", _answer(self.date))
         router.add("POST", "/api/record/answer", _answer(self.answer))
         router.add("POST", "/api/record/reopen", _answer(self.reopen))
+        router.add("POST", "/api/record/convert", _answer(self.convert))
         router.add("POST", "/api/record/with", _answer(self.involve))
         router.add("POST", "/api/record/unwith", _answer(self.uninvolve))
 
@@ -67,6 +70,10 @@ class RecordsApi:
 
     def reopen(self, req: BaseHTTPRequestHandler) -> Dict:
         return self._records.reopen(int_field(read_json(req), "id"))
+
+    def convert(self, req: BaseHTTPRequestHandler) -> Dict:
+        payload = read_json(req)
+        return self._records.to_decision(int_field(payload, "id"), payload.get("day"))
 
     def involve(self, req: BaseHTTPRequestHandler) -> Dict:
         payload = read_json(req)

@@ -1,7 +1,9 @@
 // The Trash read together with the notes tree: where each trashed note would go back to, and
 // whether it can go back yet. Pure.
 //
-//   trashRows(trash, tree, { title }) -> [{ id, title, where, when, inside, blocked }]
+//   trashRows(trash, tree, { title }, today?) -> [{ id, title, where, when, inside, blocked, goneIn,
+//                                     soon }]: goneIn "6 days" until it is deleted for good;
+//                                     soon: a day or less left
 //     trash: what trashApi.list() answered ({ entries, days }); title: the search box
 import { dayOf } from "../hubs/hub-sections.js";
 import { groupForKind, isRecordKind } from "../notes/hub-groups.js";
@@ -11,7 +13,8 @@ import { dayText } from "../ui/dates.js";
 
 export const NO_TRASH = Object.freeze({ entries: [], days: 7 });
 
-export function trashRows(trash, tree, { title = "" } = {}) {
+export function trashRows(trash, tree, { title = "" } = {}, today = new Date()) {
+  const now = dayOf(today.toISOString?.() ?? today);
   const wanted = titleKey(title.trim());
   return trash.entries
     .filter((entry) => !wanted || titleKey(entry.title).includes(wanted))
@@ -22,6 +25,7 @@ export function trashRows(trash, tree, { title = "" } = {}) {
       when: `trashed ${dayText(dayOf(entry.deleted_at), { weekday: false })} · gone for good ${dayText(dayOf(entry.purge_at), { weekday: false })}`,
       inside: entry.inside === 0 ? "" : entry.inside === 1 ? "1 note under it" : `${entry.inside} notes under it`,
       blocked: blockedText(entry),
+      ...goneIn(dayOf(entry.purge_at), now),
     }));
 }
 
@@ -39,4 +43,10 @@ export function whereBack(entry, tree) {
 /** Why it can't come back yet, or null. */
 export function blockedText(entry) {
   return isRecordKind(entry.kind) && entry.parent_state !== "live" ? `restore ${entry.parent_title ?? "its hub"} first` : null;
+}
+
+/** How long until it goes for good: { goneIn: "6 days", soon: false }. */
+function goneIn(purge, today) {
+  const days = Math.max(0, Math.round((Date.parse(purge) - Date.parse(today)) / 86400000));
+  return { goneIn: days === 0 ? "today" : days === 1 ? "1 day" : `${days} days`, soon: days <= 1 };
 }

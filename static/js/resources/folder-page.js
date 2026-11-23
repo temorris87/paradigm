@@ -1,6 +1,8 @@
-// A folder's page, in the main window (&folder=ID): where it is, its buttons (New note…, New
-// folder…, Rename…, Move…, Move to trash…), then its folders and its notes. A folder opens
-// here; a note opens in the note window.
+// A folder's page, in the main window (&folder=ID): where it is, its name and what it holds
+// (reference material, not tracked work), New note (a) and New folder, ⋯ (Rename…, Move…,
+// Move to trash…), a filter and the sort, then its folders and its notes with what links to
+// each (hubs, from the link index) and when it was last edited. A folder opens here; a note
+// opens in the note window. Its keys: folder-keys.js.
 //
 //   const page = new FolderPage(section, { app: () => notesApp, onLeave() });
 //   page.show(ctx)      ctx.tree, ctx.folders, ctx.folderId
@@ -10,6 +12,10 @@ import { dayOf } from "../hubs/hub-sections.js";
 import { moveFolderDialog, newFolderDialog, newResourceDialog, renameFolderDialog,
   trashFolderDialog } from "./folder-commands.js";
 import { countIn, notesIn } from "./folders-model.js";
+import { linksInto } from "../notes/links.js";
+import { hubOf } from "../notes/hub-groups.js";
+import { openMenu } from "../ui/menu.js";
+import { folderAction } from "./folder-keys.js";
 
 export class FolderPage {
   constructor(section, { app, onLeave }) {
@@ -20,12 +26,38 @@ export class FolderPage {
     this.head = element("header", "folder-page__head");
     this.list = element("ul", "folder-page__list");
     this.list.setAttribute("aria-label", "In this folder");
-    section.replaceChildren(this.head, this.list);
+    this.filter = "";
+    this.sort = "edited";
+    this.tools = element("div", "folder-page__tools");
+    const box = element("input", "folder-page__filter");
+    Object.assign(box, { type: "search", placeholder: "Filter by title", autocomplete: "off" });
+    box.addEventListener("input", () => {
+      this.filter = box.value;
+      if (this.ctx) this.show(this.ctx);
+    });
+    const sort = element("select", "folder-page__sort");
+    sort.setAttribute("aria-label", "Sort");
+    for (const [value, text] of [["edited", "Sort: last edited"], ["title", "Sort: title"]]) {
+      const option = element("option", "", text);
+      option.value = value;
+      sort.append(option);
+    }
+    sort.addEventListener("change", () => {
+      this.sort = sort.value;
+      if (this.ctx) this.show(this.ctx);
+    });
+    this.tools.append(box, sort);
+    const columns = element("div", "folder-page__columns");
+    columns.setAttribute("aria-hidden", "true");
+    columns.append(element("span", "", "Title"), element("span", "", "Linked from"), element("span", "", "Edited"));
+    section.replaceChildren(this.head, this.tools, columns, this.list);
     section.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && !event.target.closest("dialog")) {
-        event.preventDefault();
-        onLeave();
-      }
+      if (event.target.closest("dialog, input, select")) return;
+      const action = folderAction(event);
+      if (!action) return;
+      event.preventDefault();
+      if (action === "leave") onLeave();
+      if (action === "newNote" && this.folder) this.app().guard(newResourceDialog(this.app(), this.folder.id));
     });
   }
 
@@ -46,23 +78,38 @@ export class FolderPage {
         button(above.title, "Open this folder", () => app.showFolder(above.id), "folder-page__crumb-link"));
     }
     const run = (promise) => app.guard(promise);
-    this.head.replaceChildren(path, element("h2", "folder-page__title", folder.title),
-      element("div", "folder-page__buttons", null, [
-        button("New note…", "A note in this folder", () => run(newResourceDialog(app, folder.id))),
-        button("New folder…", "A folder inside this one", () => run(newFolderDialog(app, folder.id))),
-        button("Rename…", "Rename this folder", () => run(renameFolderDialog(app, folder.id))),
-        button("Move…", "Into another folder", () => run(moveFolderDialog(app, folder.id))),
-        button("Move to trash…", "This folder, the folders in it and their notes", () => run(trashFolderDialog(app, folder.id)),
-          "folder-page__button folder-page__button--danger"),
-      ]));
-    const kids = folders.children(folder.id).map((each) => row(`${each.title} /`, countText(countIn(tree, folders, each.id)),
+    this.ctx = ctx;
+    this.folder = folder;
+    const kidsOf = folders.children(folder.id);
+    const notesHere = notesIn(tree, folders, folder.id);
+    const more = button("⋯", "Rename, move or trash the folder", () => openMenu(more, [
+      { label: "Rename…", run: () => run(renameFolderDialog(app, folder.id)) },
+      { label: "Move…", run: () => run(moveFolderDialog(app, folder.id)) },
+      "separator",
+      { label: "Move to trash…", danger: true, run: () => run(trashFolderDialog(app, folder.id)) },
+    ], { label: folder.title }), "folder-page__button folder-page__more");
+    const newNote = button("New note ", "A note in this folder (a)", () => run(newResourceDialog(app, folder.id)),
+      "folder-page__button folder-page__button--primary");
+    newNote.append(element("kbd", "folder-page__key", "a"));
+    const titleLine = element("div", "folder-page__titles");
+    titleLine.append(element("h2", "folder-page__title", folder.title), element("p", "folder-page__summary",
+      [countText(notesHere.length), kidsOf.length ? `${kidsOf.length} folder${kidsOf.length === 1 ? "" : "s"}` : "", "reference material, not tracked work"]
+        .filter(Boolean).join(" · ")));
+    this.head.replaceChildren(path, titleLine, element("div", "folder-page__buttons", null, [newNote,
+      button("New folder…", "A folder inside this one", () => run(newFolderDialog(app, folder.id))), more]));
+    const words = this.filter.toLowerCase().split(/\s+/).filter(Boolean);
+    const shown = (title) => words.every((word) => title.toLowerCase().includes(word));
+    const kids = kidsOf.filter((each) => shown(each.title)).map((each) => row(`${each.title} /`, "", countText(countIn(tree, folders, each.id)),
       "folder-page__row folder-page__row--folder", () => app.showFolder(each.id)));
-    const notes = notesIn(tree, folders, folder.id).map((note) => row(note.title, dayText(dayOf(note.updated_at), { weekday: false }),
+    const ordered = [...notesHere].filter((note) => shown(note.title)).sort(this.sort === "title"
+      ? (a, b) => a.title.localeCompare(b.title) : (a, b) => String(b.updated_at ?? "").localeCompare(String(a.updated_at ?? "")));
+    const notes = ordered.map((note) => row(note.title, linkedFrom(ctx, note), dayText(dayOf(note.updated_at), { weekday: false }),
       "folder-page__row", () => run(app.open(note.id))));
     this.list.replaceChildren(...kids, ...notes);
     if (!kids.length && !notes.length) {
       const empty = element("li", "folder-page__empty");
-      empty.append("Nothing in it yet: ", button("+ New note", "A note in this folder", () => run(newResourceDialog(app, folder.id))));
+      if (words.length) empty.append("Nothing matches");
+      else empty.append("Nothing in it yet: ", button("+ New note", "A note in this folder", () => run(newResourceDialog(app, folder.id))));
       this.list.append(empty);
     }
   }
@@ -76,10 +123,22 @@ function countText(n) {
   return n === 1 ? "1 note" : `${n} notes`;
 }
 
-function row(title, detail, className, onClick) {
+/** "Event bus ×2, Gateway": the hubs whose notes link to it (the link index), with counts. */
+function linkedFrom({ tree, links }, note) {
+  if (!links) return "";
+  const counts = new Map();
+  for (const { note: from } of linksInto(tree, links, note)) {
+    const hub = hubOf(tree, from.id) ?? from;
+    counts.set(hub.title, (counts.get(hub.title) ?? 0) + 1);
+  }
+  return [...counts].map(([title, n]) => (n > 1 ? `${title} ×${n}` : title)).join(", ");
+}
+
+function row(title, linked, detail, className, onClick) {
   const li = element("li", "folder-page__item");
-  const node = button(title, "", onClick, className);
-  node.append(element("span", "folder-page__detail", detail));
+  const node = button("", "", onClick, className);
+  node.append(element("span", "folder-page__name", title), element("span", "folder-page__linked", linked),
+    element("span", "folder-page__detail", detail));
   li.append(node);
   return li;
 }

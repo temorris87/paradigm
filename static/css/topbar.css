@@ -1,4 +1,5 @@
-/* The bar above the note: the navigator button, then the breadcrumb. */
+/* The bar above the note. The main window: ☰, Today | Week, the breadcrumb, the palette's
+   field, Window ▾. The note window: ☰, the breadcrumb, Go to…, Dashboard ↗. */
 .topbar {
   display: flex;
   align-items: center;
@@ -37,7 +38,7 @@
   outline-offset: 1px;
 }
 
-/* The Home, People and Meetings buttons (:home, :people, :meetings), at the right end of the bar. */
+/* The buttons at the right end of the bar (Window ▾; the note window's Go to… and Dashboard ↗). */
 .topbar__page {
   flex: none;
   padding: var(--sp-0) var(--sp-3);
@@ -50,12 +51,7 @@
   cursor: pointer;
 }
 
-.topbar__page:hover,
-.app__note[data-view="home"] .topbar__home,
-.app__note[data-view="people"] .topbar__people,
-.app__note[data-view="meetings"] .topbar__meetings,
-.app__note[data-view="calendar"] .topbar__calendar,
-.app__note[data-view="time"] .topbar__time {
+.topbar__page:hover {
   background: var(--nord2);
   color: var(--nord6);
 }
@@ -63,4 +59,87 @@
 .topbar__page:focus-visible {
   outline: 1px solid var(--nord9);
   outline-offset: 1px;
+}
+
+/* The main window's bar: a rule under it, Today | Week, then the breadcrumb. */
+.topbar--main {
+  gap: var(--sp-3);
+  margin: calc(-1 * var(--sp-4)) calc(-1 * var(--sp-5)) 0;
+  padding: var(--sp-3) var(--sp-5);
+  border-bottom: 1px solid var(--nord2);
+}
+
+.topbar--main .crumbs {
+  margin-left: var(--sp-4);
+}
+
+/* The page shown lights its half (data-view is the page; "week" the Week). */
+.app__note[data-view="home"] .topbar__today,
+.app__note[data-view="week"] .topbar__week {
+  background: var(--nord2);
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+/* The palette's field: a button dressed as one; : opens it from anywhere. */
+.topbar__palette {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--sp-2);
+  max-width: 420px;
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--nord2);
+  border-radius: 4px;
+  background: none;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: var(--fs-md);
+  text-align: left;
+  cursor: text;
+}
+
+.app__note[data-view="home"] .topbar__palette {
+  max-width: 560px;
+}
+
+.topbar__palette:hover,
+.topbar__palette:focus-visible {
+  border-color: var(--nord3);
+  outline: none;
+}
+
+.topbar__palette-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar__palette-text--long,
+.app__note[data-view="home"] .topbar__palette-text--short {
+  display: none;
+}
+
+.app__note[data-view="home"] .topbar__palette-text--long {
+  display: inline;
+}
+
+.topbar__key {
+  padding: 0 var(--sp-1);
+  border: 1px solid var(--nord3);
+  border-radius: 3px;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+.topbar__window {
+  margin-left: auto;
+}
+
+/* On Today the crumb would only say "Today": the switch says it already. */
+.app__note[data-view="home"] .topbar--main .crumbs {
+  visibility: hidden;
 }

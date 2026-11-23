@@ -284,3 +284,61 @@
   vertical-align: 0.1em;
   cursor: pointer;
 }
+
+/* The host's words in the status line ("3 captured · 1 pending"). */
+.pd-status__note {
+  color: var(--text-dim);
+}
+
+/* The host's hint: under the cursor's line (what a capture line will make), or over the
+   command line (what :t will do). */
+.pd-hint {
+  position: absolute;
+  z-index: 4;
+  max-width: 36rem;
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  background: var(--nord2);
+  color: var(--text-dim);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.pd-hint[hidden] {
+  display: none;
+}
+
+.pd-hint--cmdline {
+  left: var(--sp-3);
+  bottom: 2em;
+}
+
+/* A captured line's badge, before its text (TASK, DECISION, QUESTION), and its meta after. */
+.pd-highlight__badge--capture {
+  margin: 0 var(--sp-1) 0 0;
+  padding: 0 var(--sp-1);
+  border-radius: 3px;
+  color: var(--nord0);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.pd-highlight__badge--task { background: var(--nord14); }
+.pd-highlight__badge--decision { background: var(--nord8); }
+.pd-highlight__badge--question { background: var(--nord15); }
+
+.pd-highlight--capture {
+  text-decoration: none;
+}
+
+.pd-highlight__meta {
+  margin-left: var(--sp-2);
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}

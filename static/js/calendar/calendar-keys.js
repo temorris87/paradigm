@@ -8,6 +8,7 @@ export const CALENDAR_KEYS = [
   { keys: ["w"], action: "weekend", help: "show or hide Saturday and Sunday" },
   { keys: ["i"], action: "import", help: "import the calendar files waiting in the folder" },
   { keys: ["Enter"], action: "open", help: "open the chosen block's note" },
+  { keys: ["s"], action: "schedule", help: "put the tray's task under the focus in the first free slot before it is due" },
   { keys: ["Delete", "x"], action: "remove", help: "take the chosen task block off the calendar" },
   { keys: ["Escape"], action: "deselect", help: "choose no block" },
 ];

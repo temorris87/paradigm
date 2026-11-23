@@ -23,6 +23,10 @@
 //   editor.highlights = [{ text, label, title, data }]   // marks text in rendered blocks with
 //                                     // a badge; a click sends "highlight" (detail.data)
 //   <pd-editor compact>               // the status line shows only while it has the focus
+//   editor.hints = { status(text), line(lineText), cmdline(text) }   // the host's words: status
+//                                     // at the status line's right ("3 captured"); line under
+//                                     // the cursor's line in insert mode; cmdline over the
+//                                     // command line while typing one. Each returns "" for none
 //
 // Live preview (on by default, :set nopreview turns it off): Markdown blocks away from the
 // cursor are drawn rendered; the block holding the cursor shows its raw text.
@@ -107,6 +111,10 @@ export class PdEditor extends HTMLElement {
       onRun: () => this.input.focus(),
     });
     this.view = new EditorView({ text: this.textArea, status: this.statusLine, preview });
+    this.hintBox = element("div", "pd-hint");
+    this.hintBox.hidden = true;
+    this.frame.append(this.hintBox);
+    this.hints = {};
     this.chooseLayout();
     this.queue = [];
     this.busy = false;
@@ -518,9 +526,33 @@ export class PdEditor extends HTMLElement {
 
   render() {
     this.frame.classList.toggle("pd-editor--focused", this.shadowRoot.activeElement === this.input);
-    this.view.render(this.vim, { syntax: this.getAttribute("syntax") !== "plain", modified: this.modified });
+    const note = this.hints?.status?.(this.vim.text) ?? "";
+    this.view.render(this.vim, { syntax: this.getAttribute("syntax") !== "plain", modified: this.modified, note });
     syncDiagramSheets(this.shadowRoot); // styles for diagrams just shown; none for those gone
     this.placeInput();
+    this.showHint();
+  }
+
+  /** The host's hint: over the command line, or under the cursor's line in insert mode. */
+  showHint() {
+    const vim = this.vim;
+    const cmdline = vim.mode === "cmdline";
+    const text = cmdline ? this.hints?.cmdline?.(vim.cmdline.type + vim.cmdline.text) ?? ""
+      : vim.mode === "insert" ? this.hints?.line?.(vim.buf.line(vim.cursor.line)) ?? "" : "";
+    this.hintBox.hidden = !text;
+    this.hintBox.classList.toggle("pd-hint--cmdline", cmdline);
+    if (!text) return;
+    this.hintBox.textContent = text;
+    const frame = this.frame.getBoundingClientRect();
+    if (cmdline) {
+      this.hintBox.style.left = "";
+      this.hintBox.style.top = "";
+      return;
+    }
+    const box = this.view.cursorBox();
+    if (!box) return;
+    this.hintBox.style.left = `${Math.max(0, box.left - frame.left)}px`;
+    this.hintBox.style.top = `${box.bottom - frame.top + 4}px`;
   }
 
   // Keep the hidden textarea at the cursor, so an IME shows its window in the right place.

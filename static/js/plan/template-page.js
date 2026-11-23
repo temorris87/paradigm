@@ -8,6 +8,7 @@
 import { GanttView } from "../gantt/gantt-view.js";
 import { confirmDialog, formDialog } from "../ui/dialog.js";
 import { templateRows } from "./plan-rows.js";
+import { applyToProjectDialog } from "./plan-commands.js";
 
 export class TemplatePage {
   constructor(section, { app, onLeave }) {
@@ -45,10 +46,16 @@ export class TemplatePage {
     }
     const area = ctx.tree.get(template.area_id);
     const back = button("‹ " + (area?.title ?? "Area"), "Back to the area's dashboard", () => this.run(this.app().open(template.area_id)));
-    this.head.replaceChildren(back, element("h2", "plan-template__title", template.title),
-      element("span", "plan-template__note", "Days are working days from the start: weekends and the timesheet's holidays are skipped when it is applied."),
+    const used = (ctx.plan?.applied ? [...ctx.plan.applied.values()] : []).filter((each) => each.template_id === template.id).length;
+    const apply = button("Apply to a project…", "Make its phases, milestones and tasks in a project", () => this.run(applyToProjectDialog(this.app(), template)));
+    apply.classList.add("plan-template__button--primary");
+    const titles = element("div", "plan-template__titles");
+    titles.append(element("h2", "plan-template__title", template.title),
+      element("p", "plan-template__summary", `Plan template · ${summary(template)} · used by ${used} project${used === 1 ? "" : "s"}`));
+    this.head.replaceChildren(back, titles, apply,
       button("Rename…", "Rename the template", () => this.run(this.rename())),
-      button("Delete…", "Delete the template (projects made from it keep their plans)", () => this.run(this.remove())));
+      button("Delete…", "Delete the template (projects made from it keep their plans)", () => this.run(this.remove())),
+      element("span", "plan-template__note", "Days are working days from the start: weekends and the timesheet's holidays are skipped when it is applied."));
     this.chartBox.hidden = false;
     this.chart.draw({
       rows: templateRows(template), mode: "offsets",
@@ -245,6 +252,16 @@ function button(text, title, onClick) {
   node.title = title;
   node.addEventListener("click", onClick);
   return node;
+}
+
+/** "4 phases, 2 milestones, 12 tasks · 30 working days" */
+function summary(template) {
+  const phases = template.items.filter((item) => item.kind === "phase").length;
+  const milestones = template.items.length - phases;
+  const tasks = template.items.reduce((sum, item) => sum + item.tasks.length, 0);
+  const days = template.items.length ? Math.max(...template.items.map((item) => item.end)) + 1 : 0;
+  const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  return `${plural(phases, "phase")}, ${plural(milestones, "milestone")}, ${plural(tasks, "task")} · ${days} working days`;
 }
 
 function element(tag, className, text) {

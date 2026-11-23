@@ -12,6 +12,7 @@
 export const NO_CONTROLS = Object.freeze({
   file() {}, area() {}, status() {}, due() {}, addPerson() {}, details() {}, when() {}, addAttendee() {},
   dropAttendee() {}, day() {}, answer() {}, addWith() {}, dropWith() {}, dates() {}, history() {}, milestoneState() {},
+  answerNow() {}, toDecision() {}, findOut() {},
 });
 
 /** A fact drawn as a button: "Project ▾", "Tue 2026-11-24 14:00". */

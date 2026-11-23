@@ -47,7 +47,7 @@ test("hub sections: each kind's sections, top to bottom", () => {
   assertEqual(keys("area"), "projects,tasks,questions,decisions,meetings,files,templates,notes,people");
   assertEqual(keys("resource"), "tasks,files", "a resource: as a plain note");
   assertEqual(keys("meeting"), "tasks,questions,decisions,files");
-  assertEqual(keys("person"), "waiting,active,archived,backlinks");
+  assertEqual(keys("person"), "waiting,owe,raise,active,archived,backlinks");
   assertEqual(keys(null), "tasks,files", "a plain note: its tasks and files");
   assertEqual(sectionsFor({ kind: "decision" }).length, 0);
 });
@@ -187,7 +187,7 @@ test("hub page: the area on the card opens it", () => withPage(({ line, hub, ope
   assertEqual(opened.join(), "1");
 }));
 
-test("hub page: j k g G move over headings and rows, Enter opens, Escape leaves", () => withPage(({ section, hub, opened, left }) => {
+test("hub page: j k gg G move over headings and rows, Enter opens, Escape leaves", () => withPage(({ section, hub, opened, left }) => {
   hub.show({ tree: tree() }, 2);
   hub.focus();
   assertEqual(rowTitles(section), "Budget,Kickoff,Minutes");
@@ -204,6 +204,8 @@ test("hub page: j k g G move over headings and rows, Enter opens, Escape leaves"
   assertEqual(active(section), "Notes", "{ goes to the section's own heading first");
   press("G");
   assertEqual(active(section), "People");
+  press("g");
+  assertEqual(active(section), "People", "g waits for its second key");
   press("g");
   assertEqual(active(section), "Notes");
   press("j");
@@ -226,6 +228,7 @@ test("hub page: Enter or z on a heading folds it; folds are remembered per kind"
   hub.show({ tree: tree() }, 2);
   assertEqual(headings(section), "Notes+", "the fold is remembered per kind");
   hub.focus();
+  press("g");
   press("g");
   press("z");
   assertEqual(headings(section), "Notes");
@@ -306,7 +309,7 @@ test("hub card: its buttons call the controls with the hub", () => {
 
 test("hub sections: add buttons; link rows can be changed", () => {
   const withAdd = HUB_SECTIONS.filter((each) => each.add).map((each) => each.key).join();
-  assertEqual(withAdd, "projects,questions,openQuestions,plan,milestones,tasks,files,templates,decisions,notes,meetings,upcomingMeetings,people,active");
+  assertEqual(withAdd, "where,digest,projects,questions,openQuestions,plan,milestones,tasks,raise,files,templates,decisions,notes,meetings,upcomingMeetings,people,active");
   const projectRows = section("projects").rows({ tree: tree(), today: TODAY }, tree().get(1));
   assertEqual(projectRows.map((row) => row.actions.map((action) => action.key).join("+")).join(), "remove,remove");
 });
@@ -340,18 +343,19 @@ test("hub page: a adds in the section, x and r work only on rows offering them",
 test("dashboard: every lane's section is in the table; a project's and an area's lanes", () => {
   const keys = new Set(HUB_SECTIONS.map((each) => each.key));
   for (const [kind, lanes] of Object.entries(DASHBOARD_LAYOUT)) {
-    for (const key of [...lanes.act, ...lanes.know]) assertTrue(keys.has(key), `${kind}: ${key}`);
+    for (const key of [...(lanes.wide ?? []), ...lanes.act, ...lanes.know]) assertTrue(keys.has(key), `${kind}: ${key}`);
   }
   const lanes = (kind) => Object.values(dashboardFor({ kind })).map((lane) => lane.map((each) => each.key).join()).join(" | ");
-  assertEqual(lanes("project"), "tasks,openQuestions,upcomingMeetings | decisions,answeredQuestions,notes,files,people,pastMeetings");
-  assertTrue(lanes("area").startsWith("projects,"), "an area's Projects come first");
+  assertEqual(lanes("project"), " | where,tasks,openQuestions | meetings,decisions,answeredQuestions,notes,files,people");
+  assertTrue(lanes("area").startsWith("projects | portfolio,"), "an area's Projects come first, across both lanes");
   assertEqual(dashboardFor({ kind: "meeting" }), null, "the note window's single list for the rest");
   assertTrue(!lanes("project").includes("plan"), "the chart shows the plan");
 });
 
-test("dashboard: an area's Projects as a table: status, due, next milestone, counts", () => {
+test("dashboard: an area's Projects as a table: health, latest status, updated, next action, milestone, open", () => {
   const rows = section("projects").rows({ tree: tree(), today: TODAY }, tree().get(1));
-  assertEqual(rows.map((row) => row.cells.join("|")).join(" / "), "Active|||| / On hold|1 Nov|||");
+  assertEqual(rows.map((row) => row.cells.join("|")).join(" / "), "—|log one|||| / On hold|log one||||");
+  assertEqual(rows[0].cellClasses.slice(0, 2).join(), "health health--none,hub__cell--action");
   assertEqual(section("projects").columns.length, rows[0].cells.length);
 });
 
@@ -369,14 +373,15 @@ test("dashboard: two lanes; arrows cross between them; split sections act as the
     hub.show({ tree: tree(), today: TODAY }, 2);
     const lanes = [...section.querySelectorAll(".hub__lane")];
     assertEqual(lanes.length, 2);
-    assertEqual(empties(lanes[0]), "Tasks,Open questions,Upcoming meetings");
+    assertEqual(empties(lanes[0]), "Where I am,Tasks,Open questions");
     assertEqual(headings(lanes[1]), "Notes", "Know: Notes has rows; folded ones keep a heading");
     hub.focus();
-    assertEqual(active(section), "Tasks");
+    assertEqual(active(section), "Where I am");
     press("ArrowRight");
     assertEqual(active(section), "Notes");
     press("ArrowLeft");
-    assertEqual(active(section), "Tasks");
+    assertEqual(active(section), "Where I am");
+    press("j");
     press("j");
     press("a");
     assertEqual(calls.pop(), "add questions 2", "Open questions adds a question");

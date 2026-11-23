@@ -1,17 +1,18 @@
-// The calendar's sidebar: open tasks to drag onto the week, and the imported events waiting
-// for a hub (To file). It draws what it is given and reports what was done; CalendarPage
-// decides the rest.
+// The Week page's tray: the open tasks to plan, grouped (Overdue, Due this week, Next actions,
+// Follow-ups: week/tray-model.js), each with where it is, when it is due, how much of it is
+// placed and its estimate, to drag onto the week (or s: the first free slot); and the
+// imported events waiting for a hub (To file). It draws what it is given and reports what was
+// done; CalendarPage decides the rest.
 //
 //   const side = new TaskSidebar(element, { onTaskDown(entry, event), onToggle(entry), onOpen(entry),
 //                                           onFile(ids, hubId), onIgnore(ids), onFilter() });
-//   side.draw({ tree, tasks, pending, hubs })    hubs: [note] the live hubs, for To file
+//   side.draw({ tree, tasks, sessions, pending, hubs, today, monday })   hubs: the live hubs
 //   side.filter -> { hubId, text }; side.show("tasks" | "file")
+//   side.focusedTask() -> task id of the tray row with the focus, or null
 import { whenText } from "../meetings/meeting-days.js";
 import { groupForKind } from "../notes/hub-groups.js";
-import { hubChoices, openTasks } from "../tasks/tasks-model.js";
-import { dayText } from "../ui/dates.js";
-
-const MAX_DEPTH = 4;
+import { hubChoices } from "../tasks/tasks-model.js";
+import { trayGroups } from "../week/tray-model.js";
 
 export class TaskSidebar {
   constructor(root, handlers) {
@@ -21,7 +22,7 @@ export class TaskSidebar {
     this.filter = { hubId: null, text: "" };
     this.tabs = element("div", "cal-side__tabs");
     this.tabs.setAttribute("role", "tablist");
-    this.tasksTab = tabButton("Tasks", () => this.show("tasks"));
+    this.tasksTab = tabButton("To plan", () => this.show("tasks"));
     this.fileTab = tabButton("To file", () => this.show("file"));
     this.tabs.append(this.tasksTab, this.fileTab);
     this.hubSelect = element("select", "cal-side__hub");
@@ -40,11 +41,12 @@ export class TaskSidebar {
     this.filters = element("div", "cal-side__filters");
     this.filters.append(this.hubSelect, this.search);
     this.list = element("ul", "cal-side__list");
-    this.list.setAttribute("aria-label", "Open tasks: drag one onto the week");
+    this.list.setAttribute("aria-label", "Tasks to plan: drag one onto the week, or s for the first free slot");
     this.fileList = element("ul", "cal-side__list cal-side__list--file");
     this.fileList.setAttribute("aria-label", "Imported meetings waiting for a hub");
-    this.hint = element("p", "cal-side__hint", "Drag a task onto the week. Drag a block's bottom edge to make it longer or shorter.");
-    root.replaceChildren(this.tabs, this.filters, this.hint, this.list, this.fileList);
+    this.hint = element("p", "cal-side__hint");
+    this.hint.append("Drag onto the week, or ", element("kbd", "cal-side__key", "s"), " to drop into the first free slot before its due day.");
+    root.replaceChildren(this.tabs, this.filters, this.list, this.fileList, this.hint);
     this.show("tasks");
   }
 
@@ -58,11 +60,17 @@ export class TaskSidebar {
     this.fileList.hidden = tab !== "file";
   }
 
-  draw({ tree, tasks, pending, hubs }) {
+  draw({ tree, tasks, sessions = [], pending, hubs, today, monday }) {
     this.drawHubFilter(tree, tasks);
-    this.drawTasks(tree, tasks);
+    const count = this.drawTasks({ tree, tasks, sessions }, today, monday);
     this.drawPending(pending, hubs);
-    this.fileTab.textContent = pending.length ? `To file · ${pending.length}` : "To file";
+    this.tasksTab.textContent = `To plan · ${count}`;
+    this.fileTab.textContent = `To file · ${pending.length}`;
+  }
+
+  focusedTask() {
+    const row = document.activeElement?.closest?.(".cal-task");
+    return row && this.list.contains(row) ? Number(row.dataset.task) : null;
   }
 
   drawHubFilter(tree, tasks) {
@@ -73,31 +81,41 @@ export class TaskSidebar {
     this.hubSelect.value = this.filter.hubId === null ? "" : String(this.filter.hubId);
   }
 
-  drawTasks(tree, tasks) {
-    const entries = openTasks(tree, tasks, this.filter);
-    if (!entries.length) {
+  drawTasks(data, today, monday) {
+    const groups = trayGroups(data, today, monday, this.filter);
+    if (!groups.length) {
       this.list.replaceChildren(element("li", "cal-side__empty", this.filter.text || this.filter.hubId !== null
-        ? "No open task matches" : "No open tasks of yours. Add one in a project's or a meeting's Tasks."));
-      return;
+        ? "No open task matches" : "Nothing to plan: no task of yours is overdue, due this week or a next action."));
+      return 0;
     }
-    this.list.replaceChildren(...entries.map((entry) => {
-      const row = element("li", `cal-task cal-task--depth-${Math.min(entry.depth, MAX_DEPTH)}${entry.task.done ? " cal-task--done" : ""}`);
-      const box = element("input", "cal-task__box");
-      Object.assign(box, { type: "checkbox", checked: entry.task.done, title: entry.task.done ? "Open it again" : "Done" });
-      box.setAttribute("aria-label", `Done: ${entry.task.title}`);
-      box.addEventListener("change", () => this.handlers.onToggle(entry));
-      const grip = element("div", "cal-task__grip");
-      grip.append(element("span", "cal-task__title", entry.task.title || "(no text)"),
-        element("span", "cal-task__meta", [entry.hub?.title, entry.note.id !== entry.hub?.id ? entry.note.title : "",
-          entry.task.due ? `due ${dayText(entry.task.due, { relative: true })}` : ""].filter(Boolean).join(" · ")));
-      grip.title = "Drag onto the week to schedule it; click to open its note";
-      grip.addEventListener("pointerdown", (event) => {
-        if (event.button === 0) this.handlers.onTaskDown(entry, event);
-      });
-      // A done task listed only for its open subtasks heads them: no box to tick.
-      row.append(entry.task.done ? element("span", "cal-task__box cal-task__box--none") : box, grip);
-      return row;
+    const focused = this.focusedTask();
+    this.list.replaceChildren(...groups.map((group) => {
+      const item = element("li", `cal-group cal-group--${group.key}`);
+      const label = element("h3", "cal-group__label", group.label);
+      const rows = element("ul", "cal-group__rows");
+      rows.append(...group.items.map(({ entry, meta, estimate }) => {
+        const row = element("li", "cal-task");
+        row.tabIndex = 0;
+        row.dataset.task = String(entry.task.id);
+        const grip = element("div", "cal-task__grip");
+        const line = element("span", "cal-task__meta");
+        meta.forEach(([text, tone], index) => {
+          if (index) line.append(" · ");
+          line.append(tone ? element("span", `cal-task__tone cal-task__tone--${tone}`, text) : text);
+        });
+        grip.append(element("span", "cal-task__title", entry.task.title || "(no text)"), line);
+        grip.title = "Drag onto the week to schedule it; click to open its note";
+        grip.addEventListener("pointerdown", (event) => {
+          if (event.button === 0) this.handlers.onTaskDown(entry, event);
+        });
+        row.append(grip, element("span", `cal-task__estimate${estimate ? "" : " cal-task__estimate--none"}`, estimate || "est?"));
+        return row;
+      }));
+      item.append(label, rows);
+      return item;
     }));
+    if (focused !== null) this.list.querySelector(`[data-task="${focused}"]`)?.focus();
+    return groups.reduce((sum, group) => sum + group.items.length, 0);
   }
 
   drawPending(pending, hubs) {

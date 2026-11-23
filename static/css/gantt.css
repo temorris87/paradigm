@@ -261,3 +261,14 @@
   padding: var(--sp-3) var(--sp-2);
   color: var(--nord3);
 }
+
+/* A row's second line under its label: done, its slip, the slack left before due. */
+.gantt__note-line {
+  display: block;
+  font-size: var(--fs-xs);
+}
+
+.gantt__note-line--done { color: var(--nord14); }
+.gantt__note-line--late { color: var(--nord11); }
+.gantt__note-line--warn { color: var(--nord12); }
+.gantt__note-line--dim { color: var(--text-dim); }

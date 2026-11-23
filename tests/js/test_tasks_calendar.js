@@ -8,7 +8,6 @@ import { NoteTree } from "../../static/js/notes/tree-model.js";
 import { HUB_SECTIONS } from "../../static/js/hubs/hub-sections.js";
 import { Tasks, hubChoices, openCount, openTasks, subtaskText, tasksOn, todayTasks, waitingOn } from "../../static/js/tasks/tasks-model.js";
 import { gridHtml, gridText } from "../../static/js/timesheet/copy.js";
-import { homeSections } from "../../static/js/home/home-sections.js";
 import { isWideScreen, noteWindowBox, noteWindowUrl } from "../../static/js/windows/note-window.js";
 import { assertEqual as same, assertTrue, test } from "./harness.js";
 
@@ -152,20 +151,6 @@ test("timesheet: the grid copies as text and HTML", () => {
   assertEqual(gridText(report).split("\n")[0], "Code\tMon 11/23\tTue 11/24\tWed 11/25\tThu 11/26\tFri 11/27\tTotal");
   assertEqual(gridText(report).split("\n")[1], "A<1\t1.50\t\t\t\t\t1.50");
   assertTrue(gridHtml(report).includes("<th>A&lt;1</th>") || gridHtml(report).includes("<td>A&lt;1</td>"));
-});
-
-test("home: Today holds the day's task blocks by time, and the import reminder", () => {
-  const meetings = new Meetings([{ id: 5, day: "2026-11-24", time: "10:00", end_time: "11:00", cancelled: false, attendees: [] }]);
-  const sessions = [{ id: 1, task_id: 12, day: "2026-11-24", start: "09:00", end: "09:30" }, { id: 2, task_id: 10, day: "2026-11-24", start: "13:00", end: "14:00" }];
-  const ctx = { tree: tree(), meetings, records: { all: () => [], get: () => ({}) }, tasks: tasks(), sessions,
-    importStatus: { imported_today: false, waiting: 1 } };
-  const today = homeSections(ctx, new Date(2026, 10, 24))[0];
-  assertEqual(today.rows.map((row) => row.cells.map(([, text]) => text)[1] ?? row.cells[0][1]),
-    ["Calendar not imported today (1 file waiting: open the calendar to import)", "☐ Label boxes", "Sync", "☐ Book van"]);
-  const waiting = homeSections(ctx, new Date(2026, 10, 24)).find((section) => section.key === "waiting");
-  assertEqual(waiting.rows.map((row) => row.cells[0][1]), ["Order boxes"]);
-  assertTrue(waiting.rows[0].late);
-  assertEqual(today.rows[2].cells[0][1], "10:00–11:00");
 });
 
 test("the Time page loads its week the first time it is shown", async () => {

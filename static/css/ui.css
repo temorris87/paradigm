@@ -181,6 +181,85 @@
   color: var(--nord0);
 }
 
+/* A choice: equal buttons, one on (Log status' health). Each in its own colour when on. */
+.dialog__choices {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: var(--sp-1);
+}
+
+.dialog__choice {
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  background: var(--nord0);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.dialog__choice:focus-visible {
+  outline: 1px solid var(--nord9);
+}
+
+.dialog__choice[aria-checked="true"] {
+  --choice: var(--nord8);
+  border-color: var(--choice);
+  color: var(--choice);
+  font-weight: 600;
+}
+
+.dialog__choice--on_track[aria-checked="true"] { --choice: var(--nord14); }
+.dialog__choice--at_risk[aria-checked="true"] { --choice: var(--nord12); }
+.dialog__choice--blocked[aria-checked="true"] { --choice: var(--nord11); }
+
+.dialog__choice-key {
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+/* Lines a click adds to the text box above: "+ Design moved +4 d". */
+.dialog__adds {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: var(--sp-1);
+}
+
+.dialog__adds-label {
+  margin: 0;
+  color: var(--text-dim);
+}
+
+.dialog__add {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--nord9);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dialog__add:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.dialog__add:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.dialog__button-key {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--nord4);
+}
+
 .picker {
   width: min(36rem, calc(100vw - 2rem));
 }
@@ -278,4 +357,241 @@
 
 .dialog__line + .dialog__line {
   margin-top: var(--sp-1);
+}
+
+/* A segmented control: one of a few, side by side in one pill (Today | Week; Plan |
+   Timesheet | Settings). The chosen one is aria-selected (or aria-current). */
+.segmented {
+  display: inline-flex;
+  gap: var(--sp-0);
+  padding: var(--sp-0);
+  border-radius: 5px;
+  background: var(--nord1);
+}
+
+.segmented__item {
+  padding: var(--sp-0) var(--sp-3);
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+
+.segmented__item[aria-selected="true"],
+.segmented__item[aria-current="page"] {
+  background: var(--nord2);
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.segmented__item:hover,
+.segmented__item:focus-visible {
+  color: var(--text-strong);
+  outline: none;
+}
+
+.segmented__item:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--nord9);
+}
+
+/* The palette (static/js/palette/palette.js): a wide picker with groups and keys. */
+.palette {
+  width: min(45rem, calc(100vw - 2rem));
+  padding: 0;
+}
+
+.palette__input {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--nord2);
+}
+
+.palette__prompt {
+  color: var(--text-faint);
+}
+
+.palette__box {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-strong);
+  font: inherit;
+  font-size: var(--fs-md);
+  outline: none;
+}
+
+.palette__context {
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.palette__list {
+  max-height: min(28rem, 60vh);
+  margin: 0;
+  padding: var(--sp-2);
+}
+
+.palette__group {
+  margin: var(--sp-2) var(--sp-2) var(--sp-1);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+
+.palette__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+}
+
+.palette__row .picker__detail {
+  flex: 1 100 auto;
+  text-align: right;
+}
+
+.palette__hint {
+  flex: none;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+.palette__row--command .palette__hint {
+  color: var(--nord7);
+}
+
+.palette__keys {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-4);
+  border-top: 1px solid var(--nord2);
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  white-space: pre-wrap;
+}
+
+.palette__key {
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+}
+
+/* A dialog's live line (Edit dates: what the move does to the rest). */
+.dialog__live {
+  margin: 0;
+  color: var(--nord11);
+  font-size: var(--fs-sm);
+}
+
+.dialog__live[hidden] {
+  display: none;
+}
+
+/* Inbox triage (static/js/triage/triage.js): a note at a time, what it is, what to do. */
+.triage {
+  width: min(42.5rem, calc(100vw - 2rem));
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.triage:not([open]) {
+  display: none;
+}
+
+.triage:focus {
+  outline: none;
+}
+
+.triage__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+}
+
+.triage__count {
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.triage__ticks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-0);
+}
+
+.triage__tick {
+  width: 28px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--nord3);
+}
+
+.triage__tick--done {
+  background: var(--nord8);
+}
+
+.triage__preview {
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: 6px;
+  background: var(--nord0);
+}
+
+.triage__preview p {
+  margin: 0;
+}
+
+.triage__title {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.triage__excerpt {
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+
+.triage__meta,
+.triage__suggested {
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.triage__suggested {
+  margin: 0;
+}
+
+.triage__options {
+  margin: 0;
+  padding: 0;
+}
+
+.triage__option {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+}
+
+.triage__option--danger .picker__title {
+  color: var(--nord11);
+}
+
+.triage__key {
+  min-width: 1rem;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+.triage__keys {
+  margin: 0;
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--nord2);
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  white-space: pre-wrap;
 }

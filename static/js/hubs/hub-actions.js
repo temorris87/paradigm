@@ -13,7 +13,7 @@
 import { localDay } from "../meetings/meeting-days.js";
 import { addAttendees, dropAttendee, makeMeeting, setMeetingWhen } from "../meetings/meetings-commands.js";
 import { newNoteDialog } from "../notes/note-actions.js";
-import { HUB_GROUPS, groupForKind, isArchived, isHub } from "../notes/hub-groups.js";
+import { HUB_GROUPS, groupForKind, hubOf, isArchived, isHub } from "../notes/hub-groups.js";
 import { linkPerson, peopleNamed, unlinkPerson } from "../people/people-commands.js";
 import { allPeople, filterOptions, findPerson } from "../people/people-model.js";
 import { addPeopleTo, answerQuestion, defaultDay, dropPersonFrom, makeRecord, reopenQuestion,
@@ -24,7 +24,9 @@ import { formDialog } from "../ui/dialog.js";
 import { openMenu } from "../ui/menu.js";
 import { pickFrom } from "../ui/picker.js";
 import { areaOf, projectsIn } from "./hub-areas.js";
-import { delegateDialog, editTaskDialog, newTaskDialog, removeTaskDialog, setTaskDone, takeBack } from "../tasks/task-commands.js";
+import { copyDigest, logStatusDialog, statusHistoryDialog, statusHubOf } from "../status/status-commands.js";
+import { addTopicDialog, raiseTopic, removeTopic } from "../people/topic-commands.js";
+import { addTask, delegateDialog, editTaskDialog, newTaskDialog, removeTaskDialog, setNextAction, setTaskDone, takeBack } from "../tasks/task-commands.js";
 import { editDatesDialog, historyDialog, newMilestoneDialog, newPhaseDialog, newPlanTemplateDialog,
   setMilestoneDone } from "../plan/plan-commands.js";
 import { addFileDialog, detachFile, openFile } from "../files/file-commands.js";
@@ -110,6 +112,20 @@ export function hubLineControls(app) {
       run: (day) => setRecordDay(app, note.id, day),
     }),
 
+    answerNow: (question) => app.guard(answerDialog(app, question)),
+    toDecision: (question) => app.guard(confirmDialog({
+      title: "Turn into decision",
+      text: `"${question.title}" was decided: make it a decision, today? Its note, people and where it came from stay; its answer is now its why.`,
+      confirm: "Make it a decision",
+      run: async () => {
+        await app.recordsApi.convert(question.id, localDay(app.today()));
+        app.changes.send({ type: "changed", what: ["records"] });
+        await app.refreshTree();
+        app.say(`"${question.title}" is a decision now`);
+      },
+      fallbackFocus: () => app.focusNote(),
+    })),
+    findOut: (question) => app.guard(addTask(app, hubOf(app.tree, question.id)?.id ?? question.id, `Find out: ${question.title}`)),
     answer: (button, question) => {
       const record = app.records.get(question.id);
       const today = localDay(app.today());
@@ -229,6 +245,9 @@ function countProjects(tree, areaId) {
 export function hubTabActions(app) {
   const back = { fallbackFocus: () => app.focusNote() };
   const add = {
+    where: (hub) => logStatusDialog(app, hub),
+    raise: (person) => addTopicDialog(app, person),
+    digest: (area) => copyDigest(app, area),
     notes: (owner) => newNoteDialog(app, owner.id, { heading: `New note in "${owner.title}"` }),
     people: (hub) => addPersonTo(app, hub),
     projects: (area) => addProject(app, area, back),
@@ -260,6 +279,7 @@ export function hubTabActions(app) {
     tasks: (owner, row) => removeTaskDialog(app, row.task),
     files: (owner, row) => detachFile(app, row.file, row.owner),
     templates: (area, row) => removeTemplateDialog(app, row.template),
+    raise: (person, row) => removeTopic(app, row.topic),
   };
   const roleOn = (hub, person, role) => formDialog({
     title: `${person.title}'s role on ${hub.title}`,
@@ -270,15 +290,24 @@ export function hubTabActions(app) {
   });
   return {
     add: (tabKey, owner) => app.guard(add[tabKey]?.(owner)),
+    // Keys about the page's owner: L, gp.
+    command: (action, owner) => {
+      if (action === "logStatus") return app.guard(logStatusDialog(app, statusHubOf(app, owner?.id)));
+      if (action === "plan") return app.guard(app.showPlan(owner?.id));
+      return undefined;
+    },
     row: (key, tabKey, owner, row) => {
       if (key === "remove") return app.guard(remove[tabKey]?.(owner, row));
       if (key === "answer") return app.guard(answerDialog(app, app.tree.get(row.id)));
       if (key === "done" && row.milestone !== undefined) return app.guard(setMilestoneDone(app, row.milestone, !row.done));
+      if (key === "done" && row.topic !== undefined) return app.guard(raiseTopic(app, row.topic, true));
       if (key === "done") return app.guard(setTaskDone(app, row.task, !row.done));
       if (key === "edit") return app.guard(editTaskDialog(app, row.task));
       if (key === "delegate") return app.guard(delegateDialog(app, row.task));
       if (key === "takeBack") return app.guard(takeBack(app, row.task));
+      if (key === "next") return app.guard(setNextAction(app, owner, row.task));
       if (key === "history") return app.guard(historyDialog(app, row.id));
+      if (key === "statusHistory") return app.guard(statusHistoryDialog(app, owner));
       if (key === "addSubtask") return app.guard(newTaskDialog(app, owner, app.tasks.get(row.addSubtask)));
       if (key === "openFile") return app.guard(openFile(app, row.file));
       if (key === "openTemplate") return app.showTemplate(row.template);
@@ -308,14 +337,14 @@ function removeTemplateDialog(app, templateId) {
 
 /** New meeting: on a hub (or a note in one) it goes in that hub; elsewhere (a person, the
  * Meetings page) a Hub dropdown asks, and a person attends it. */
-export function newMeetingDialog(app, owner = null) {
+export function newMeetingDialog(app, owner = null, { title = "" } = {}) {
   const hub = owner && isHub(app.tree, owner.id) ? owner : null;
   const person = owner?.kind === "person" ? owner : null;
   return formDialog({
     title: hub ? `New meeting in "${hub.title}"` : person ? `New meeting with ${person.title}` : "New meeting",
     fields: [
       ...(hub ? [] : [hubField(app)]),
-      { key: "title", label: "Title" },
+      { key: "title", label: "Title", value: title },
       { key: "day", label: "Date", type: "date", value: localDay(app.today()) },
       { key: "time", label: "Time (leave it empty for none)", type: "time", optional: true },
     ],

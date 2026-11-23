@@ -17,7 +17,8 @@ const tree = () => new NoteTree(NOTES);
 const keys = (id) => noteMenuItems(tree(), id).map((item) => (item === "separator" ? "|" : item.key ?? `[${item.group}]`)).join(" ");
 
 test("note menu: a hub can be renamed, moved, filed, archived, exported and trashed", () => {
-  assertEqual(keys(1), "rename move newBeside newUnder insertTemplate dashboard | [File as] file file file file | archive export | trash");
+  assertEqual(keys(1), "[Acme] logStatus | rename move newBeside newUnder insertTemplate dashboard | [File as] file file file file | archive export | trash",
+    "a project's Log status… comes first");
   const checked = noteMenuItems(tree(), 1).filter((item) => item.checked).map((item) => item.label);
   assertEqual(checked.join(), "Project");
   assertEqual(noteMenuItems(tree(), 1).find((item) => item.key === "trash").inside, 3);

@@ -6,7 +6,7 @@
 //   dueText(project, today)        "due Tue 2026-12-15", "overdue since ...", or ""
 //   isOverdue(project, today)
 //   projectFactsText(ctx, project) "due ... · 2 open questions · next Mon 2026-11-30 10:00"
-import { projectFacts } from "../home/home-model.js";
+import { projectFacts } from "../today/today-facts.js";
 import { localDay, whenText } from "../meetings/meeting-days.js";
 
 export const PROJECT_STATUSES = [

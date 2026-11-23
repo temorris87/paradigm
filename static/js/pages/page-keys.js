@@ -3,26 +3,27 @@
 // binds keys there. "list" keys work on the list, "search" keys in the search box (where
 // every other key types). Keys with Ctrl, Alt or Cmd held are left to the browser, and Tab
 // moves the focus on, as everywhere.
+import { keyReader } from "../ui/key-sequence.js";
+
 export const PAGE_KEYS = [
   { scope: "list", keys: ["j", "ArrowDown"], action: "next", help: "next row" },
   { scope: "list", keys: ["k", "ArrowUp"], action: "previous", help: "previous row" },
-  { scope: "list", keys: ["g", "Home"], action: "first", help: "first row" },
+  { scope: "list", keys: ["gg", "Home"], action: "first", help: "first row" },
   { scope: "list", keys: ["G", "End"], action: "last", help: "last row" },
   { scope: "list", keys: ["Enter"], action: "open", help: "open the row's note" },
   { scope: "list", keys: ["/"], action: "search", help: "go to the search box" },
+  { scope: "list", keys: ["}"], action: "nextGroup", help: "the next day's first row (Meetings)" },
+  { scope: "list", keys: ["{"], action: "previousGroup", help: "this day's first row, then the day before (Meetings)" },
+  { scope: "list", keys: ["p"], action: "prepOnly", help: "Meetings: only those with something to prep, or all again" },
   { scope: "list", keys: ["a"], action: "add", help: "the page's New button (New person, New meeting)" },
   { scope: "list", keys: ["Escape"], action: "leave", help: "back to the note" },
   { scope: "search", keys: ["Enter", "Escape", "ArrowDown"], action: "list", help: "back to the list" },
 ];
 
-const BY_SCOPE = new Map();
-for (const { scope, keys, action } of PAGE_KEYS) {
-  if (!BY_SCOPE.has(scope)) BY_SCOPE.set(scope, new Map());
-  for (const key of keys) BY_SCOPE.get(scope).set(key, action);
-}
+const READERS = new Map([...new Set(PAGE_KEYS.map((entry) => entry.scope))]
+  .map((scope) => [scope, keyReader(PAGE_KEYS.filter((entry) => entry.scope === scope))]));
 
-/** The action a keydown means in a scope ("list" or "search"), or null. */
+/** The action a keydown means in a scope ("list" or "search"; "pending" partway through gg), or null. */
 export function pageAction(event, scope) {
-  if (event.ctrlKey || event.altKey || event.metaKey) return null;
-  return BY_SCOPE.get(scope)?.get(event.key) ?? null;
+  return READERS.get(scope)?.(event) ?? null;
 }

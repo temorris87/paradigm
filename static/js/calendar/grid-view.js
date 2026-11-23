@@ -1,16 +1,21 @@
-// The calendar's week grid: a column per day shown, an "all day" strip for meetings with no
-// time, and the blocks placed by time. It draws what it is given and reports what the pointer
-// did; CalendarPage decides the rest.
+// The calendar's week grid: a column per day shown, each headed by its day, its free hours and
+// a capacity bar (meetings, then focus blocks, as parts of the working day); a "due" strip
+// for what is due that day (tasks, milestones) and meetings with no time; and the blocks
+// placed by time. It draws what it is given and reports what the pointer did; CalendarPage
+// decides the rest.
 //
 //   const grid = new GridView(element, { onBlockDown(block, event, part), onSlotClick(day, minute),
-//                                        onBlockMenu(block, node) });
-//   grid.draw({ days, blocks, today, now, selected })   part: "body" | "end" (the bottom edge)
+//                                        onBlockMenu(block, node), onChip(chip) });
+//   grid.draw({ days, blocks, today, now, selected, capacity?, chips? })
+//     part: "body" | "end" (the bottom edge); capacity: { day: { workMin, meetingMin, focusMin,
+//     freeMin } }; chips: { day: [{ key, kind, label, noteId }] } (week/tray-model.js dueChips)
 //   grid.slotAt(clientX, clientY)  -> { day, minute } over the timed grid, or null
 //   grid.showGhost(day, start, end, title) / grid.hideGhost()
 //   grid.scrollToMinute(minute)
 //   grid.blockNode(key)
 import { dateOf } from "../meetings/meeting-days.js";
 import { DAY_MINUTES, clock, layoutDay } from "./week-model.js";
+import { hoursText } from "../week/capacity.js";
 
 // Pixels per hour: at least this, more when the window is tall, so that FIT_FROM to FIT_TO
 // (the working day with an hour either side) fills the grid's height. calendar.css reads the
@@ -52,7 +57,7 @@ export class GridView {
   }
 
   draw(state) {
-    const { days, blocks, today, now, selected = null } = state;
+    const { days, blocks, today, now, selected = null, capacity = {}, chips = {} } = state;
     this.last = state;
     const minute = this.scroller.scrollTop / this.hourPx * 60;
     if (this.scroller.clientHeight) this.hourPx = hourPxFor(this.scroller.clientHeight);
@@ -63,13 +68,26 @@ export class GridView {
     this.head.replaceChildren(element("div", "cal-corner"), ...days.map((day) => {
       const date = dateOf(day);
       const node = element("div", `cal-dayhead${day === today ? " cal-dayhead--today" : ""}`);
-      node.append(element("span", "cal-dayhead__name", WEEKDAYS[date.getDay()]),
+      const line = element("div", "cal-dayhead__line");
+      line.append(element("span", "cal-dayhead__name", WEEKDAYS[date.getDay()]),
         element("span", "cal-dayhead__date", String(date.getDate())));
+      const room = capacity[day];
+      if (room?.workMin) line.append(element("span", "cal-dayhead__free", `${hoursText(room.freeMin)} free`));
+      node.append(line);
+      if (room?.workMin) node.append(capacityBar(room));
       node.title = day;
       return node;
     }));
-    this.allDay.replaceChildren(element("div", "cal-corner cal-corner--label", "All day"), ...days.map((day) => {
+    this.allDay.replaceChildren(element("div", "cal-corner cal-corner--label", "due"), ...days.map((day) => {
       const cell = element("div", "cal-allday__cell");
+      for (const chip of chips[day] ?? []) {
+        const node = element("button", `cal-chip cal-chip--${chip.kind}`, chip.label);
+        node.type = "button";
+        node.tabIndex = -1;
+        node.title = chip.label;
+        node.addEventListener("click", () => this.handlers.onChip?.(chip));
+        cell.append(node);
+      }
       for (const block of blocks.filter((each) => each.day === day && !each.timed)) cell.append(this.blockNode(block, selected, false));
       return cell;
     }));
@@ -172,6 +190,19 @@ export class GridView {
   blockNodeFor(key) {
     return this.nodes.get(key) ?? null;
   }
+}
+
+/** The day's capacity: meetings, then focus blocks, as parts of its working day. */
+function capacityBar({ workMin, meetingMin, focusMin }) {
+  const bar = element("div", "cal-capacity");
+  bar.title = `${hoursText(meetingMin)} meetings · ${hoursText(focusMin)} focus · ${hoursText(Math.max(0, workMin - meetingMin - focusMin))} free`;
+  for (const [kind, total] of [["meetings", meetingMin], ["focus", focusMin]]) {
+    const part = element("span", `cal-capacity__${kind}`);
+    // CSSOM, never style="" (the CSP).
+    part.style.setProperty("--part", String(Math.min(1, total / workMin)));
+    bar.append(part);
+  }
+  return bar;
 }
 
 function element(tag, className, text) {

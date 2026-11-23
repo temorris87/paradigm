@@ -143,7 +143,8 @@ class MeetingRepository:
 def _meeting(row: sqlite3.Row, attendees: List[int]) -> Dict:
     return {"id": row["note_id"], "day": row["day"], "time": row["time"], "end_time": row["end_time"],
             "cancelled": bool(row["cancelled"]), "location": row["location"], "join_url": row["join_url"],
-            "attendees": attendees, "agenda_version": row["agenda_version"]}
+            "attendees": attendees, "agenda_version": row["agenda_version"],
+            "agenda": row["agenda"] if "agenda" in row.keys() else ""}
 
 
 def _kept_length(row: sqlite3.Row, time: str) -> str:

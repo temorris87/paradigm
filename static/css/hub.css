@@ -189,8 +189,7 @@
 .hub__section--table .hub__line,
 .hub__columns {
   display: grid;
-  grid-template-columns: minmax(8rem, 2fr) minmax(4.5rem, 0.7fr) minmax(5rem, 0.7fr) minmax(8rem, 1.6fr)
-    minmax(4.5rem, 0.6fr) minmax(5.5rem, 0.6fr) auto;
+  grid-template-columns: minmax(8rem, 200px) 92px minmax(0, 2.2fr) 100px minmax(0, 1.4fr) 150px 70px auto;
   column-gap: var(--sp-3);
 }
 
@@ -487,6 +486,16 @@
   width: 0.8rem;
 }
 
+/* NEXT: the task its page should do next, in a column of its own before the box. */
+.hub__next {
+  flex: none;
+  width: 3rem;
+  color: var(--nord8);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
 .hub__row--add .hub__title {
   color: var(--nord9);
   font-size: var(--fs-sm);
@@ -495,4 +504,217 @@
 /* A phase's or milestone's slip on its card: red once it keeps slipping. */
 .hub-line__slip--late {
   color: var(--nord11);
+}
+
+/* Health, wherever it shows (a status entry, the Projects table, a badge): its colour only. */
+.health--on_track { --health: var(--nord14); }
+.health--at_risk { --health: var(--nord12); }
+.health--blocked { --health: var(--nord11); }
+.health--on_hold,
+.health--none { --health: var(--text-faint); }
+
+.hub__row--health .hub__title,
+.hub__cell.health {
+  color: var(--health);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.hub__cell--action {
+  color: var(--nord9);
+}
+
+.hub__cell--late {
+  color: var(--nord11);
+}
+
+/* Where I am: the newest entry in a box, its words in full under its health and day. */
+.hub__row--box {
+  padding: var(--sp-2) var(--sp-3);
+  margin-bottom: var(--sp-1);
+  border-radius: 6px;
+  background: var(--nord1);
+}
+
+.hub__row--box .hub__snippet {
+  margin: var(--sp-1) 0 0;
+  padding: 0;
+  border: none;
+  color: var(--text);
+  font-size: var(--fs-md);
+}
+
+/* Its health and day side by side, as one heading. */
+.hub__row--box .hub__line {
+  justify-content: flex-start;
+}
+
+.hub__row--box .hub__detail {
+  flex: none;
+  text-align: left;
+}
+
+/* Older entries: day, health, first sentence. */
+.hub__row--health:not(.hub__row--box) .hub__line {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr) auto;
+}
+
+.hub__row--health:not(.hub__row--box) .hub__date {
+  order: -1;
+  text-align: left;
+  color: var(--text-dim);
+}
+
+/* A Portfolio bar: the project's plan in the span of them all. */
+.hub__row--bar .hub__line {
+  display: grid;
+  grid-template-columns: minmax(8rem, 12rem) minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.hub__bar {
+  position: relative;
+  height: 18px;
+  border-radius: 3px;
+  background: var(--nord1);
+}
+
+.hub__bar-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--left) * 100%);
+  width: max(4px, calc(var(--width) * 100%));
+  border-radius: 3px;
+  background: var(--nord9);
+}
+
+.hub__row--late .hub__bar-fill {
+  box-shadow: inset 0 -3px 0 var(--nord11);
+}
+
+/* On hold: dimmed as the design asks; the bar is a shape, not text, so opacity is fine. */
+.hub__row--muted .hub__bar-fill {
+  opacity: 0.5;
+}
+
+.hub__bar-today {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: calc(var(--at) * 100%);
+  width: 2px;
+  background: var(--nord12);
+}
+
+.hub__row--bar.hub__row--late .hub__detail::before {
+  content: none;
+}
+
+/* The weekly digest, as it will paste. */
+.hub__pre {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: 6px;
+  background: var(--nord1);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* A decision's or question's card: its kind as a badge, where to raise an open question, and
+   its buttons (Answer…, Turn into decision, Make a task to find out). */
+.hub-line__badge {
+  padding: 0 var(--sp-1);
+  border-radius: 3px;
+  color: var(--nord0);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.hub-line__badge--question { background: var(--nord15); }
+.hub-line__badge--decision { background: var(--nord8); }
+
+.hub-line__ok {
+  color: var(--nord14);
+}
+
+.hub-line__action {
+  padding: var(--sp-0) var(--sp-3);
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  font-size: var(--fs-sm);
+}
+
+.hub-line__action--answer {
+  border-color: var(--nord14);
+}
+
+/* A phase's mini bar: its dates over its baseline (dashed under), and today. */
+.hub-line__bar {
+  position: relative;
+  display: inline-block;
+  width: min(24rem, 100%);
+  height: 14px;
+  margin-right: var(--sp-3);
+  border-radius: 3px;
+  background: var(--nord2);
+  vertical-align: middle;
+}
+
+.hub-line__bar-fill,
+.hub-line__bar-baseline,
+.hub-line__bar-today {
+  position: absolute;
+  left: calc(var(--left) * 100%);
+  width: calc(var(--width) * 100%);
+}
+
+.hub-line__bar-fill {
+  top: 0;
+  bottom: 3px;
+  border-radius: 3px;
+  background: var(--nord10);
+}
+
+.hub-line__bar-baseline {
+  bottom: 0;
+  border-bottom: 1px dashed var(--text-dim);
+}
+
+.hub-line__bar-today {
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--nord12);
+}
+
+.hub-line__text--dim {
+  color: var(--text-dim);
+}
+
+/* A phase's page: Tasks and Milestones side by side, then the rest. */
+[data-page="phase"] .hub__lane--page {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  column-gap: var(--sp-5);
+}
+
+[data-page="phase"] .hub__lane--page .hub__empties {
+  grid-column: 1 / -1;
+}
+
+.hub-line__action {
+  margin-left: var(--sp-1);
+}
+
+.hub-line__action--answer {
+  margin-left: var(--sp-3);
 }

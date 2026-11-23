@@ -12,3 +12,8 @@
 .connection-banner[hidden] {
   display: none;
 }
+
+.connection-banner__retry {
+  margin-left: var(--sp-4);
+  font-weight: 400;
+}

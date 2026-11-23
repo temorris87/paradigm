@@ -19,10 +19,26 @@
   gap: var(--sp-3);
 }
 
+.plan-template__titles {
+  flex: 1 1 24rem;
+}
+
 .plan-template__title {
   margin: 0;
-  font-size: var(--fs-lg);
-  color: var(--nord13);
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  color: var(--text-strong);
+  line-height: 1.2;
+}
+
+.plan-template__summary {
+  margin: var(--sp-1) 0 0;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.plan-template__button--primary {
+  border-color: var(--nord8);
 }
 
 .plan-template__note {
@@ -33,7 +49,7 @@
 
 .plan-template__items {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(26rem, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sp-3);
   align-items: start;
 }
@@ -90,4 +106,29 @@
 .plan-template__item-head .plan-template__button {
   padding: 0 var(--sp-2);
   font-size: var(--fs-xs);
+}
+
+/* Each item card: "Phase" in teal, its name, its days; tasks indented; + Task in blue. */
+.plan-template__kind {
+  color: var(--nord7);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.plan-template__item--milestone .plan-template__kind {
+  color: var(--nord13);
+}
+
+.plan-template__item-title {
+  font-weight: 600;
+}
+
+.plan-template__tasks {
+  padding-left: var(--sp-4);
+}
+
+@media (max-width: 1399.98px) {
+  .plan-template__items {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

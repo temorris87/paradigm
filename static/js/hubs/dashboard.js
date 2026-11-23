@@ -1,39 +1,42 @@
-// The main window's dashboard of a hub or a person: its text, rendered (the note window
-// edits it: Edit ↗), and a project's or an area's plan as a Gantt chart, over the card and
-// sections HubPage draws. A project's chart moves its phases and milestones (each drop is a
-// recorded change); an area's has a bar per project.
+// The main window's dashboard of a hub or a person, over the card and sections HubPage draws:
+// a project's or an area's head (dash-head.js: name, health, Outcome, Log status), a
+// project's Plan strip (plan-strip.js; gp opens the full chart, plan/plan-page.js), and its
+// text, rendered (the note window edits it: Edit ↗). A project's or area's text shows in full
+// only past its first line, which the head already shows.
 //
-//   const dashboard = new Dashboard({ text, chart });   text: { box, label, body, edit }
+//   const dashboard = new Dashboard({ head, strip, text });   text: { box, label, body, edit, more }
 //   dashboard.attach(app)      the NotesApp it works for (its plan, commands, renderer)
 //   dashboard.show(ctx, note, body, pageShown)    after every redraw
-//   dashboard.hasChart / dashboard.focus()
-import { GanttView } from "../gantt/gantt-view.js";
-import { valueOf } from "../gantt/gantt-model.js";
+//   dashboard.hasChart / dashboard.focus()        never a chart here now (kept for the app)
 import { drawDiagrams } from "../diagrams/mermaid.js";
 import { renderMarkdown } from "../markdown/index.js";
 import { ensureMathFonts, typesetMath } from "../math/typeset.js";
-import { localDay } from "../meetings/meeting-days.js";
 import { isHub, isPerson } from "../notes/hub-groups.js";
-import { applyTemplateDialog, dropDates, editDatesDialog, historyDialog, newMilestoneDialog, newPhaseDialog,
-  saveTemplateDialog, setMilestoneDone } from "../plan/plan-commands.js";
-import { areaRows, projectRows } from "../plan/plan-rows.js";
+import { copyDigest, logStatusDialog } from "../status/status-commands.js";
+import { startOneOnOne } from "../people/topic-commands.js";
+import { DashHead } from "./dash-head.js";
 import { fieldsFor } from "./fields.js";
+import { PlanStrip } from "./plan-strip.js";
 
 // Past this height (rem) the rendered text folds under Show more.
 const FOLD_REM = 24;
 
 export class Dashboard {
-  constructor({ text, chart }) {
+  constructor({ head, strip, text }) {
     this.text = text;
-    this.chartBox = chart;
     this.note = null;
     this.hasChart = false;
     this.app = null;
-    this.chart = new GanttView(chart, {
-      label: "Plan",
-      onOpen: (row, mark) => this.open(row, mark),
-      onDrop: (row, mark, span) => this.drop(row, mark, span),
-      onAction: (action, row) => this.action(action, row),
+    const run = (work) => this.app.guard(work());
+    this.head = new DashHead(head, {
+      onLog: (note) => run(() => logStatusDialog(this.app, note)),
+      onDigest: (note) => run(() => copyDigest(this.app, note)),
+      onEdit: (note) => run(() => this.app.openInNoteWindow(note.id)),
+      onOneOnOne: (person) => run(() => startOneOnOne(this.app, person)),
+    });
+    this.strip = new PlanStrip(strip, {
+      onOpen: (id) => run(() => this.app.open(id)),
+      onPlan: () => run(() => this.app.showPlan(this.note?.id)),
     });
     // Long text is folded under "Show more" (never a scroll box inside the scrolling page);
     // opened stays opened for that note until another note is shown.
@@ -60,11 +63,14 @@ export class Dashboard {
 
   show(ctx, note, body, pageShown) {
     const shown = Boolean(note) && !pageShown && (isHub(ctx.tree, note.id) || isPerson(ctx.tree, note.id));
-    this.text.box.hidden = !shown;
     this.note = shown ? note : null;
-    this.hasChart = shown && (note.kind === "project" || note.kind === "area");
-    this.chartBox.hidden = !this.hasChart;
-    if (!shown) return;
+    this.head.show(ctx, shown ? note : null, body);
+    this.strip.show(ctx, shown ? note : null);
+    // A hub's head shows its first line; the text box only when there is more than that.
+    const headed = shown && (note.kind === "project" || note.kind === "area");
+    const more = body.trim().split("\n").filter((line) => line.trim()).length > 1;
+    this.text.box.hidden = !shown || (headed && !more);
+    if (this.text.box.hidden) return;
     const fields = fieldsFor(note);
     this.text.label.textContent = fields.main.label;
     this.text.body.innerHTML = body.trim() ? renderMarkdown(body, this.app.markdownOptions())
@@ -75,7 +81,6 @@ export class Dashboard {
     typesetMath(this.text.body);
     drawDiagrams(this.text.body);
     this.fold();
-    if (this.hasChart) this.drawChart(ctx, note);
   }
 
   fold() {
@@ -89,81 +94,7 @@ export class Dashboard {
     more.textContent = open ? "Show less" : "Show more";
   }
 
-  drawChart(ctx, note) {
-    const today = localDay(ctx.today ?? new Date());
-    const archived = Boolean(note.archived_at);
-    if (note.kind === "area") {
-      this.chart.draw({ rows: areaRows(ctx.tree, ctx.plan, note.id, today), today, tools: [],
-        empty: "No projects in this area yet" });
-      return;
-    }
-    const tools = archived ? [] : [
-      tool("+ Phase", "A stretch of the work, with its tasks and notes (p)", () => newPhaseDialog(this.app, note)),
-      tool("+ Milestone", "A dated point to reach (m)", () => newMilestoneDialog(this.app, note)),
-      tool("Apply plan template…", "Make phases, milestones and tasks from a template on the area", () => applyTemplateDialog(this.app, note)),
-      tool("Save as plan template…", "Keep this plan on the area, to start other projects from", () => saveTemplateDialog(this.app, note)),
-    ].map((button) => this.wire(button));
-    const applied = ctx.plan.appliedTo(note.id);
-    if (applied) tools.push(span("gantt__note", `from “${applied.title}”`));
-    this.chart.draw({ rows: projectRows(ctx.tree, ctx.plan, note.id, today, { draggable: !archived }), today, tools,
-      empty: "No phases yet: + Phase, or Apply plan template…" });
-  }
-
-  wire(button) {
-    button.addEventListener("click", () => this.app.guard(button.run()));
-    return button;
-  }
-
-  open(row, mark) {
-    if (mark) return this.app.guard(this.app.open(mark.id));
-    if (row.kind === "milestone") return undefined;
-    return this.app.guard(this.app.open(row.id));
-  }
-
-  drop(row, mark, span) {
-    const app = this.app;
-    if (mark) return app.guard(dropDates(app, mark.id, { day: valueOf(this.chart.axis, span.start) }));
-    return app.guard(dropDates(app, row.id, { start: valueOf(this.chart.axis, span.start), end: valueOf(this.chart.axis, span.end) }));
-  }
-
-  action(action, row) {
-    const app = this.app;
-    const note = this.note;
-    if (!note || note.kind !== "project") return undefined;
-    const planned = row && row.kind === "phase" ? row.id : row?.marks?.length === 1 ? row.marks[0].id : null;
-    switch (action) {
-      case "newPhase": return app.guard(newPhaseDialog(app, note));
-      case "newMilestone": return app.guard(newMilestoneDialog(app, row?.kind === "phase" ? app.tree.get(row.id) : note));
-      case "edit": return planned !== null ? app.guard(editDatesDialog(app, planned)) : undefined;
-      case "history": return planned !== null ? app.guard(historyDialog(app, planned)) : undefined;
-      case "done": {
-        const milestone = row?.marks?.find((each) => !each.done) ?? row?.marks?.[0];
-        return milestone ? app.guard(setMilestoneDone(app, milestone.id, !milestone.done)) : undefined;
-      }
-      default: return undefined;
-    }
-  }
-
-  focus() {
-    this.chart.focus();
-  }
-}
-
-function tool(text, title, run) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "gantt__tool";
-  button.textContent = text;
-  button.title = title;
-  button.run = run;
-  return button;
-}
-
-function span(className, text) {
-  const node = document.createElement("span");
-  node.className = className;
-  node.textContent = text;
-  return node;
+  focus() {}
 }
 
 function escapeHtml(text) {

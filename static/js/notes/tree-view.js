@@ -8,9 +8,11 @@
 //
 //   const view = new TreeView(ulElement, { onOpen(id), onLeave(), onAdd(group, anchor),
 //     onAddUnder(id), onOpenFolder(id), onAddInFolder(id, anchor) });
-//   view.show(tree, currentId, { marked?, folders? })  draw (the open note's group, folders and
-//                                  ancestors are expanded); marked false: a page is shown, no
-//                                  row is current; folders: a Folders (resources/folders-model.js)
+//   view.show(tree, currentId, { marked?, folders?, health? })  draw (the open note's group,
+//                                  folders and ancestors are expanded); marked false: a page is
+//                                  shown, no row is current; folders: a Folders
+//                                  (resources/folders-model.js); health: Map of project id ->
+//                                  { key, stale, age } (a dot before its title, "16 d" once stale)
 //   view.focus()
 //
 // Each row has a key: a note's id (a number), "group:<key>" for a group heading, or
@@ -35,7 +37,8 @@ const folderIdOf = (key) => Number(key.slice("folder:".length));
 
 export class TreeView {
   constructor(root, { onOpen, onLeave, onAdd = () => {}, onAddUnder = () => {}, onOpenFolder = () => {},
-    onAddInFolder = () => {} }) {
+    onAddInFolder = () => {}, onFileAll = null }) {
+    this.onFileAll = onFileAll;
     this.root = root;
     this.onOpen = onOpen;
     this.onLeave = onLeave;
@@ -60,8 +63,9 @@ export class TreeView {
     });
   }
 
-  show(tree, openId, { marked = true, folders = this.folders } = {}) {
+  show(tree, openId, { marked = true, folders = this.folders, health = new Map() } = {}) {
     this.tree = tree;
+    this.health = health;
     this.folders = folders;
     this.marked = marked;
     // A meeting, decision or question isn't in the tree: its hub stands for it.
@@ -126,7 +130,8 @@ export class TreeView {
     li.setAttribute("aria-expanded", String(open));
     if (!rows.length) li.classList.add("tree__item--empty");
     const count = document.createElement("span");
-    count.className = "tree__count";
+    // The Inbox's count is a pill: notes waiting to be filed.
+    count.className = `tree__count${group.kind === null && hubs.length ? " tree__count--pill" : ""}`;
     count.textContent = String(hubs.length);
     const row = this.row(rows.length ? (open ? "▾" : "▸") : "", group.heading, "tree__heading", count);
     if (group !== ARCHIVE_GROUP) {
@@ -141,6 +146,20 @@ export class TreeView {
     }
     li.append(row);
     if (open && rows.length) li.append(this.group(rows, 2, Boolean(group.showsKind)));
+    // Under the Inbox: File all… (the triage dialog), for the mouse; f on Today does it too.
+    if (open && group.kind === null && hubs.length && this.onFileAll) {
+      const file = document.createElement("button");
+      file.type = "button";
+      file.tabIndex = -1;
+      file.className = "tree__file-all";
+      file.textContent = "File all…";
+      file.title = "Go through the Inbox one note at a time";
+      file.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.onFileAll();
+      });
+      li.append(file);
+    }
     return li;
   }
 
@@ -156,9 +175,20 @@ export class TreeView {
     mark.className = "tree__folder-mark";
     mark.setAttribute("aria-hidden", "true");
     mark.textContent = "/";
-    li.append(this.row(rows.length ? (open ? "▾" : "▸") : "", folder.title, "tree__title tree__title--folder", mark));
+    const count = document.createElement("span");
+    count.className = "tree__kind tree__folder-count";
+    count.textContent = String(this.notesUnder(folder.id));
+    const row = this.row(rows.length ? (open ? "▾" : "▸") : "", folder.title, "tree__title tree__title--folder", mark);
+    row.append(count);
+    li.append(row);
     if (open) li.append(this.group(rows, level + 1));
     return li;
+  }
+
+  /** How many notes a folder holds, its folders' included. */
+  notesUnder(id) {
+    return notesIn(this.tree, this.folders, id).length
+      + this.folders.children(id).reduce((sum, folder) => sum + this.notesUnder(folder.id), 0);
   }
 
   // withKind: an archived hub says what it was ("Project"), since its group is the Archive.
@@ -175,7 +205,20 @@ export class TreeView {
       kind.className = "tree__kind";
       kind.textContent = note.kind === "phase" ? "Phase" : groupForKind(note.kind).label;
     }
-    li.append(this.row(kids.length ? (open ? "▾" : "▸") : "", note.title, "tree__title", kind));
+    const health = this.health?.get(note.id);
+    if (health && !kind && health.stale) {
+      kind = document.createElement("span");
+      kind.className = "tree__kind tree__stale";
+      kind.textContent = health.age === null ? "no status" : `${health.age} d`;
+    }
+    const row = this.row(kids.length ? (open ? "▾" : "▸") : "", note.title, "tree__title", kind);
+    if (health) {
+      const dot = document.createElement("span");
+      dot.className = `tree__health health--${health.key}`;
+      dot.setAttribute("aria-hidden", "true");
+      row.insertBefore(dot, row.querySelector(".tree__title"));
+    }
+    li.append(row);
     if (open) li.append(this.group(kids.map((each) => ({ note: each })), level + 1));
     return li;
   }

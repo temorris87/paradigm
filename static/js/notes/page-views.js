@@ -14,17 +14,17 @@
 //
 // Each page has section, show(ctx) and focus(), and may have enter() (called when it comes
 // into view: the calendar loads then, not on every redraw): a ListPage
-// (static/js/pages/list-page.js), the Home page (static/js/home/home-page.js)...; main carries
+// (static/js/pages/list-page.js), the Today page (static/js/today/today-page.js)...; main carries
 // data-view while one shows, for the CSS that hides the dashboard.
 export const PAGE_VIEWS = [
-  { key: "home", label: "Home" },
+  { key: "home", label: "Today" },
   { key: "people", label: "People" },
   { key: "meetings", label: "Meetings" },
   { key: "trash", label: "Trash" },
-  { key: "calendar", label: "Calendar" },
-  { key: "time", label: "Time" },
+  { key: "week", label: "Week" },
   { key: "template", label: "Plan template" },
   { key: "folder", label: "Folder" },
+  { key: "plan", label: "Plan" },
 ];
 
 /** A page's name ("Home"), for the tab's title. */
@@ -42,6 +42,8 @@ export class PageViews {
   }
 
   fromUrl(params) {
+    // The calendar and the timesheet became the Week page: their old flags still reach it.
+    if ((params.has("calendar") || params.has("time")) && this.pages.week) return "week";
     return PAGE_VIEWS.find(({ key }) => params.has(key) && this.pages[key])?.key ?? null;
   }
 
@@ -55,7 +57,8 @@ export class PageViews {
     // Only a push is marked: leaving a page that was loaded with the flag must not go Back
     // out of Paradigm.
     if (history === "replace") this.history.replaceState({}, "", url);
-    const entering = this.shown !== key || flag !== key;
+    // The Week page enters again to switch between its Plan and Timesheet.
+    const entering = this.shown !== key || flag !== key || key === "week";
     this.setShown(key);
     if (entering) this.pages[key].enter?.();
     this.pages[key].focus();

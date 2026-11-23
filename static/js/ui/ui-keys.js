@@ -15,6 +15,13 @@ export const UI_KEYS = [
   { scope: "picker", keys: ["Enter"], action: "choose", help: "take the match" },
   { scope: "picker", keys: ["Escape"], action: "close", help: "close without choosing" },
   { scope: "dialog", keys: ["Escape"], action: "close", help: "close without changing anything" },
+  { scope: "palette", keys: ["ArrowDown", "C-n"], action: "next", help: "next row", hint: "move", label: "↑↓" },
+  { scope: "palette", keys: ["ArrowUp", "C-p"], action: "previous", help: "previous row" },
+  { scope: "palette", keys: ["Enter"], action: "choose", help: "open the note or page, run the command", hint: "open / run" },
+  { scope: "palette", keys: ["S-Enter"], action: "chooseInNote", help: "open the note in the note window", hint: "open in note window", label: "Shift-Enter" },
+  { scope: "palette", keys: ["Tab"], action: "complete", help: "complete the command's name, to type its arguments", hint: "complete" },
+  { scope: "palette", keys: ["Escape"], action: "close", help: "close the palette", hint: "close" },
+  { scope: "dialog", keys: ["C-Enter"], action: "submit", help: "do it, from a text box with several lines too" },
 ];
 
 const BY_SCOPE = new Map();
@@ -23,9 +30,16 @@ for (const { scope, keys, action } of UI_KEYS) {
   for (const key of keys) BY_SCOPE.get(scope).set(key, action);
 }
 
-/** The action a keydown means in a scope ("menu", "picker" or "dialog"), or null. Enter in a
- * form dialog submits it as any web form does. */
+/** The action a keydown means in a scope ("menu", "picker", "dialog" or "palette"), or null.
+ * Enter in a form dialog submits it as any web form does. Ctrl is "C-" in the table, Shift on
+ * a named key "S-"; other chords are the browser's. */
 export function uiAction(event, scope) {
-  if (event.ctrlKey || event.altKey || event.metaKey) return null;
-  return BY_SCOPE.get(scope)?.get(event.key) ?? null;
+  if (event.altKey || event.metaKey) return null;
+  const key = event.ctrlKey ? `C-${event.key}` : event.shiftKey && event.key.length > 1 ? `S-${event.key}` : event.key;
+  return BY_SCOPE.get(scope)?.get(key) ?? null;
+}
+
+/** [[key, words]] of a scope's hint line, from the table. */
+export function uiHints(scope) {
+  return UI_KEYS.filter((entry) => entry.scope === scope && entry.hint).map((entry) => [entry.label ?? entry.keys[0], entry.hint]);
 }

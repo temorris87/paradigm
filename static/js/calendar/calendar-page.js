@@ -1,11 +1,17 @@
-// The calendar page, in the main window (&calendar): a week of meetings and task blocks, the
-// open tasks to drag onto it, and the Outlook import. It loads what it shows from the server
-// and tells the other windows what it changed (connection/changes.js); a note opens in the
-// note window (openNote).
+// The Week page's Plan (in the main window, &week; static/js/week/week-page.js holds it): a
+// week of meetings and task blocks with each day's capacity and what is due, the tray of tasks
+// to plan onto it, and the Outlook import. It loads what it shows from the server and tells
+// the other windows what it changed (connection/changes.js); a note opens in the note window
+// (openNote).
 //
-//   const page = new CalendarPage({ root, bar, side, week, api: { notes, meetings, tasks, calendar },
-//                                   changes, openNote(id), isShown(), today: () => new Date() });
+//   const page = new CalendarPage({ root, bar, side, week, api: { notes, meetings, tasks, calendar,
+//                                   plan?, time? }, changes, openNote(id), isShown(), today,
+//                                   onMove?(days), onDrawn?() });
+//     onMove: the week page moves the week (days: -7, 7, or 0 for this one); without it the
+//             page has its own ‹ Today › in its bar
 //   page.show() / page.focus()      when its page comes into view (loads it the first time)
+//   page.setMonday(day)             show that week
+//   page.data, page.settings, page.days()    what it shows (the week page's summary)
 // Its keys work while the focus is inside root (calendar-keys.js).
 //
 // What the pointer does (week-model.js, grid-view.js, drag.js):
@@ -27,13 +33,23 @@ import { trackDrag } from "./drag.js";
 import { GridView } from "./grid-view.js";
 import { TaskSidebar } from "./task-sidebar.js";
 import { DAY_MINUTES, DEFAULT_LENGTH, STEP, calendarBlocks, clock, shownDays, snap, weekDays, weekOf } from "./week-model.js";
+import { Plan } from "../plan/plan-model.js";
+import { planningSettings } from "../today/today-model.js";
+import { dayCapacity, firstFreeSlot, isWorkingDay } from "../week/capacity.js";
+import { dueChips } from "../week/tray-model.js";
+
+// Blocks are read this far ahead of today too: how much of a task is placed already.
+const PLACED_AHEAD_DAYS = 60;
 
 const START_HOUR = 7;
 const SHORTEST = STEP;
 
 export class CalendarPage {
   constructor({ root, bar, side, week, api, changes, openNote = () => {}, isShown = () => true, today = () => new Date(),
-                location = window.location }) {
+                location = window.location, onMove = null, onDrawn = () => {} }) {
+    this.onMove = onMove;
+    this.onDrawn = onDrawn;
+    this.settings = {};
     this.root = root;
     this.openNoteIn = openNote;
     this.isShown = isShown;
@@ -44,7 +60,7 @@ export class CalendarPage {
     this.monday = weekOf(localDay(today()));
     this.weekend = false;
     this.selected = null;
-    this.data = { tree: new NoteTree(), meetings: new Meetings(), tasks: new Tasks(), sessions: [], pending: [] };
+    this.data = { tree: new NoteTree(), meetings: new Meetings(), tasks: new Tasks(), sessions: [], pending: [], plan: new Plan() };
     this.blocks = [];
     this.status = null;
     this.location = location;
@@ -61,6 +77,7 @@ export class CalendarPage {
       onBlockDown: (block, event, part) => this.blockDown(block, event, part),
       onSlotClick: (day, minute) => this.run(this.newMeetingAt(day, snap(minute - STEP / 2))),
       onBlockMenu: (block, node) => this.blockMenu(block, node),
+      onChip: (chip) => this.run(this.openNote(chip.noteId)),
     });
     root.addEventListener("keydown", (event) => this.onKey(event));
     // Coming back to the window: the import folder may hold today's export by now.
@@ -97,13 +114,30 @@ export class CalendarPage {
 
   // ---- loading and drawing ----------------------------------------------------------
 
+  setMonday(monday) {
+    this.monday = monday;
+    this.selected = null;
+    if (this.started) this.run(this.load());
+  }
+
+  days() {
+    return weekDays(this.monday);
+  }
+
   async load() {
     const days = weekDays(this.monday);
-    const [notes, meetings, tasks, sessions, pending, status] = await Promise.all([
+    const today = localDay(this.today());
+    const first = days[0] < today ? days[0] : today;
+    const ahead = localDay(addDays(dateOf(today), PLACED_AHEAD_DAYS));
+    const last = days[6] > ahead ? days[6] : ahead;
+    const [notes, meetings, tasks, sessions, pending, status, plan, time] = await Promise.all([
       this.api.notes.list(), this.api.meetings.list(), this.api.tasks.list(),
-      this.api.tasks.sessions(days[0], days[6]), this.api.calendar.pending(), this.api.calendar.status(),
+      this.api.tasks.sessions(first, last), this.api.calendar.pending(), this.api.calendar.status(),
+      this.api.plan?.list() ?? undefined, this.api.time?.settings().catch(() => null) ?? null,
     ]);
-    this.data = { tree: new NoteTree(notes), meetings: new Meetings(meetings), tasks: new Tasks(tasks), sessions, pending };
+    this.data = { tree: new NoteTree(notes), meetings: new Meetings(meetings), tasks: new Tasks(tasks), sessions, pending,
+      plan: new Plan(plan) };
+    this.settings = planningSettings(time);
     this.status = status;
     this.draw();
   }
@@ -113,18 +147,22 @@ export class CalendarPage {
     this.blocks = calendarBlocks(this.data, days);
     const shown = shownDays(days, this.blocks, this.weekend, localDay(this.today()));
     const now = this.today();
+    const capacity = Object.fromEntries(shown.filter((day) => isWorkingDay(day, this.settings))
+      .map((day) => [day, dayCapacity(this.data, day, this.settings)]));
     this.grid.draw({ days: shown, blocks: this.blocks, today: localDay(now), now: now.getHours() * 60 + now.getMinutes(),
-      selected: this.selected });
-    this.bar.week.textContent = weekLabel(days);
+      selected: this.selected, capacity, chips: dueChips(this.data, days) });
+    if (this.bar.week) this.bar.week.textContent = weekLabel(days);
     this.bar.weekend.setAttribute("aria-pressed", String(this.weekend));
     // Off, a weekend day still shows when something is on it; on, both always show.
     this.bar.weekend.textContent = this.weekend ? "Hide weekend" : "Show weekend";
     this.drawStatus();
     this.drawSide();
+    this.onDrawn();
   }
 
   drawSide() {
-    this.side.draw({ tree: this.data.tree, tasks: this.data.tasks, pending: this.data.pending, hubs: liveHubs(this.data.tree) });
+    this.side.draw({ tree: this.data.tree, tasks: this.data.tasks, sessions: this.data.sessions, pending: this.data.pending,
+      hubs: liveHubs(this.data.tree), today: localDay(this.today()), monday: this.monday });
   }
 
   drawStatus(message = "") {
@@ -152,27 +190,32 @@ export class CalendarPage {
     });
     const status = element("span", "cal-bar__status");
     status.setAttribute("role", "status");
-    bar.replaceChildren(
+    // Held by the week page, the week's own controls are its; alone, the page has them.
+    const navigation = this.onMove ? [] : [
       make("‹", "The week before ([)", () => this.moveWeek(-7)),
       make("Today", "This week (t)", () => this.goToday()),
       make("›", "The week after (])", () => this.moveWeek(7)),
-      week, weekend,
+      week];
+    bar.replaceChildren(
+      ...navigation, weekend,
       make("Import", "Import the calendar files in the import folder (i)", () => this.run(this.importAndLoad({ quiet: false }))),
       make("Import a file…", "Pick a calendar file (.ics) saved from Outlook", () => picker.click()),
       picker, status,
     );
-    return { week, weekend, status };
+    return { week: this.onMove ? null : week, weekend, status };
   }
 
   // ---- the week ---------------------------------------------------------------------
 
   moveWeek(days) {
+    if (this.onMove) return this.onMove(days);
     this.monday = localDay(addDays(dateOf(this.monday), days));
     this.selected = null;
     this.run(this.load());
   }
 
   goToday() {
+    if (this.onMove) return this.onMove(0);
     this.monday = weekOf(localDay(this.today()));
     this.run(this.load());
   }
@@ -246,6 +289,25 @@ export class CalendarPage {
     if (block.kind === "task") await this.api.tasks.moveSession(block.id, day, clock(start), clock(end));
     else if (block.kind === "meeting") await this.api.meetings.update(block.id, day, clock(start), clock(end));
     await this.changed(["tasks", "meetings"]);
+  }
+
+  /** s: the task's estimate (or 30 min) in the first free slot from now on, before its due day. */
+  async schedule(taskId) {
+    const task = this.data.tasks.get(taskId);
+    if (!task) return;
+    const now = this.today();
+    const day = localDay(now);
+    const length = task.estimate_min || DEFAULT_LENGTH;
+    const until = task.due && task.due >= day ? task.due : "";
+    const slot = firstFreeSlot(this.data, { length, from: { day, minute: now.getHours() * 60 + now.getMinutes() }, until,
+      settings: this.settings });
+    if (!slot) {
+      this.say(`No free ${length} min${until ? " before it is due" : " in the next two weeks"} for "${task.title}"`);
+      return;
+    }
+    await this.api.tasks.addSession(taskId, slot.day, clock(slot.start), clock(slot.end));
+    await this.changed(["tasks"]);
+    this.say(`"${task.title}" placed ${whenText({ day: slot.day, time: clock(slot.start), end_time: clock(slot.end) })}`);
   }
 
   // ---- a block's menu -------------------------------------------------------------------
@@ -401,6 +463,10 @@ export class CalendarPage {
       case "import": return this.run(this.importAndLoad({ quiet: false }));
       case "open": return block && block.noteId !== null ? this.run(this.openNote(block.noteId)) : undefined;
       case "remove": return block?.kind === "task" ? this.run(this.removeBlock(block)) : undefined;
+      case "schedule": {
+        const taskId = this.side.focusedTask();
+        return taskId !== null ? this.run(this.schedule(taskId)) : this.say("Choose a task in the tray first (Tab to it), then s");
+      }
       case "deselect": return this.select(null);
       default: return undefined;
     }

@@ -5,6 +5,7 @@
 //   session.edited(text)        the editor's text changed: save it after a quiet moment
 //   await session.save({ force })  save now (force: overwrite a copy saved elsewhere)
 //   session.dirty / .conflict   unsaved changes / another tab saved this note meanwhile
+//   session.saving / .failed    a save is on its way / the last one failed (the server is away?)
 //
 // Saves run one at a time. Each names the version it started from; if the server has a newer
 // one, it answers 409, the session holds a conflict and stops saving by itself until a
@@ -32,6 +33,11 @@ export class NoteSession {
     this.conflict = null;
     this.inflight = null;
     this.timer = null;
+    this.failed = false;
+  }
+
+  get saving() {
+    return this.inflight !== null;
   }
 
   get dirty() {
@@ -90,14 +96,17 @@ export class NoteSession {
     const note = this.note;
     const body = this.text;
     this.inflight = this.api.save({ id: note.id, body, version: note.version, force });
+    this.onChange();
     try {
       const result = await this.inflight;
+      this.failed = false;
       if (this.note === note) {
         note.version = result.version;
         this.saved = body;
         this.conflict = null;
       }
     } catch (error) {
+      this.failed = error.status !== 409;
       if (error.status === 409 && this.note === note) {
         this.conflict = { version: error.payload?.version };
         throw new SaveConflict();

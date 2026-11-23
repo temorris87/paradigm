@@ -8,9 +8,14 @@
 // counts (the Projects section).
 //
 //   sectionsFor(note)          the sections for a hub, person or meeting note, in page order
-//   dashboardFor(note)         the main window's two lanes { act: [...], know: [...] }, or null
+//   dashboardFor(note)         the main window's lanes { wide: [...], act: [...], know: [...] }, or null
 //   section.rows(ctx, note)    [{ id, title, depth, detail, date?, cells?, muted?, late?, actions?,
-//                              snippet?, at?, task?, file?, template?, addSubtask? }]
+//                              snippet?, at?, task?, file?, template?, addSubtask?, next?,
+//                              health?, statusEntry?, statusHistory?, box?, bar?, pre?,
+//                              cellClasses? }]
+//                              box: drawn boxed (the newest status); bar: { left, width,
+//                              today } in parts of one (Portfolio); pre: text kept as written
+//                              (the digest); health: on_track | at_risk | blocked (its colour)
 //                              date: its day, in a column of its own at the row's end;
 //                              cells: a table row's columns (an area's Projects)
 //                              ctx: { tree, people, meetings, records, links, mentions, tasks,
@@ -23,6 +28,7 @@
 //                              "edit", "delegate", "takeBack", "history" (hub-actions.js runs
 //                              them); snippet: Markdown shown under the row (a mention's
 //                              context, a task's notes); at: { field, line } to open it at
+//   section.label              its name, or (owner) -> name ("Waiting on Priya")
 //   section.detail(rows)       beside the heading ("3 open")
 //   section.empty(note)        what it says when it has no rows
 //   section.add                { label } of its add button (hub-actions.js), or null
@@ -38,11 +44,14 @@ import { Links, linksInto } from "../notes/links.js";
 import { mentionsOf } from "../notes/mentions.js";
 import { hubLinks, peopleOn, rolesText, workText } from "../people/people-model.js";
 import { isOpen, peopleOf, recordsOn } from "../records/records-model.js";
-import { openCount, subtaskText, tasksOn, waitingOn } from "../tasks/tasks-model.js";
+import { nextAction, openCount, subtaskText, tasksOn, waitingOn } from "../tasks/tasks-model.js";
 import { Files, fileDir, filesOn } from "../files/files-model.js";
 import { Plan, milestonesOf, nextMilestone, phasesOf, shortDay, slipOf, slipText } from "../plan/plan-model.js";
-import { projectFactsText, statusLabel, statusText } from "./project-facts.js";
-import { dayText } from "../ui/dates.js";
+import { projectFactsText, statusText } from "./project-facts.js";
+import { dayText, daysAgo } from "../ui/dates.js";
+import { StatusLogs, digest, firstSentence, healthLabel, healthOf } from "../status/status-model.js";
+import { portfolioBars } from "../plan/plan-rows.js";
+import { firstName, owedTo, toRaise } from "../people/one-on-one.js";
 
 const REMOVE = Object.freeze({ key: "remove", label: "Remove" });
 const ROLE = Object.freeze({ key: "role", label: "Role…" });
@@ -54,6 +63,8 @@ const DELEGATE = Object.freeze({ key: "delegate", label: "Delegate…" });
 const TAKE_BACK = Object.freeze({ key: "takeBack", label: "Take back" });
 const DELETE = Object.freeze({ key: "remove", label: "Delete" });
 const HISTORY = Object.freeze({ key: "history", label: "History" });
+const MAKE_NEXT = Object.freeze({ key: "next", label: "Make next" });
+const RAISED = Object.freeze({ key: "done", label: "Raised" });
 const LIMIT = 5;
 
 // Which sections each kind shows, top to bottom ("note": a plain note).
@@ -66,30 +77,64 @@ export const SECTION_ORDER = {
   phase: ["tasks", "milestones", "files", "notes"],
   milestone: ["tasks", "files"],
   note: ["tasks", "files"],
-  person: ["waiting", "active", "archived", "backlinks"],
+  person: ["waiting", "owe", "raise", "active", "archived", "backlinks"],
 };
 
 // The main window's dashboard: two lanes under the card, the chart and the text. Act holds
 // what needs doing, Know what is looked up; each section keeps its place, full or empty.
+// wide: full width over the two lanes (an area's Projects table).
 export const DASHBOARD_LAYOUT = {
   project: {
-    act: ["tasks", "openQuestions", "upcomingMeetings"],
-    know: ["decisions", "answeredQuestions", "notes", "files", "people", "pastMeetings"],
+    act: ["where", "tasks", "openQuestions"],
+    know: ["meetings", "decisions", "answeredQuestions", "notes", "files", "people"],
   },
   area: {
-    act: ["projects", "tasks", "openQuestions", "upcomingMeetings"],
-    know: ["decisions", "answeredQuestions", "templates", "notes", "files", "people", "pastMeetings"],
+    wide: ["projects"],
+    act: ["portfolio", "tasks", "openQuestions", "where"],
+    know: ["digest", "meetings", "decisions", "answeredQuestions", "templates", "notes", "files", "people"],
   },
+  // A person as 1:1 prep: three columns over the lanes (dashboard.css).
   person: {
-    act: ["waiting", "active"],
-    know: ["backlinks", "archived"],
+    wide: ["waiting", "owe", "raise"],
+    act: ["backlinks"],
+    know: ["active", "archived"],
   },
 };
 
-// A project's columns in an area's Projects table.
-export const PROJECT_CELLS = ["Status", "Due", "Next milestone", "Open tasks", "Open questions"];
+// A project's columns in an area's Projects table ("Open": tasks · questions, "4 · 1?").
+export const PROJECT_CELLS = ["Health", "Latest status", "Updated", "Next action", "Next milestone", "Open"];
 
 export const HUB_SECTIONS = [
+  {
+    key: "where",
+    label: "Where I am",
+    // Its status log: the newest entry in full, two older ones on a line each, then History.
+    rows: (ctx, hub) => statusRows(ctx, hub),
+    detail: () => "status log",
+    empty: () => "Nothing logged yet: Log status (L) says where it stands",
+    add: { label: "Log status" },
+  },
+  {
+    key: "portfolio",
+    label: "Portfolio",
+    // A bar per project across the span of their plans (gp: the full chart).
+    rows: (ctx, area) => portfolioBars(ctx.tree, plan(ctx), area.id, localDay(ctx.today ?? new Date())).map((row) => ({
+      id: row.id, title: row.label, depth: 0, detail: row.detail || row.badge, bar: { left: row.left, width: row.width, today: row.today },
+      late: row.late, muted: row.muted,
+    })),
+    detail: () => "plans side by side",
+    empty: () => "No projects in this area yet",
+    add: null,
+  },
+  {
+    key: "digest",
+    label: "Weekly digest",
+    // The week in a few lines from the projects' status logs, to paste in an update.
+    rows: (ctx, area) => [{ id: area.id, title: "", depth: 0, pre: digest(ctx, area, ctx.today ?? new Date()), digest: true }],
+    detail: () => "from status logs",
+    empty: () => "",
+    add: { label: "Copy", plain: true },
+  },
   {
     key: "projects",
     label: "Projects",
@@ -99,13 +144,14 @@ export const HUB_SECTIONS = [
         id: project.id, title: project.title, depth: 0,
         detail: [statusText(project), projectCounts(ctx, project), projectFactsText(ctx, project)].filter(Boolean).join(" · "),
         cells: projectCells(ctx, project),
+        cellClasses: projectCellClasses(ctx, project),
         muted: project.status === "on_hold",
         late: projectLate(ctx, project),
         actions: [{ key: "remove", label: "Take out" }],
       })),
       ...archivedProjectsIn(ctx.tree, area.id).map((project) => ({
         id: project.id, title: project.title, depth: 0, detail: "archived",
-        cells: ["archived", "", "", "", ""], date: shortDay(dayOf(project.archived_at), localDay(ctx.today ?? new Date())), muted: true,
+        cells: ["archived", "", "", "", "", ""], date: shortDay(dayOf(project.archived_at), localDay(ctx.today ?? new Date())), muted: true,
       })),
     ],
     detail: (rows) => counted(rows.filter((row) => !row.muted).length, "live"),
@@ -169,15 +215,52 @@ export const HUB_SECTIONS = [
     label: "Tasks",
     // Its tasks and those of the notes inside it (never a project's on its area); subtasks
     // show as a count until the row is opened (Enter), then under it with + Add subtask.
-    rows: (ctx, owner) => tasksOn(ctx.tree, ctx.tasks, owner).flatMap((entry) => taskRows(ctx, owner, entry)),
+    rows: (ctx, owner) => {
+      const next = nextAction(ctx.tree, ctx.tasks, owner)?.task.id;
+      // The next action leads; the rest keep their order.
+      const entries = tasksOn(ctx.tree, ctx.tasks, owner);
+      const ordered = [...entries.filter((entry) => entry.task.id === next), ...entries.filter((entry) => entry.task.id !== next)];
+      return ordered.flatMap((entry) => taskRows(ctx, owner, entry, next));
+    },
     detail: (rows) => counted(rows.filter((row) => row.depth === 0 && row.task && !row.done).length, "open"),
     empty: (owner) => owner.kind === "meeting" ? "No action items from this meeting yet" : "No tasks yet",
     add: { label: "New task" },
     limit: 12,
   },
   {
+    key: "owe",
+    label: (person) => `I owe ${firstName(person)}`,
+    // Open tasks of mine done for them, with where each is on the calendar.
+    rows: (ctx, person) => owedTo(ctx.tree, ctx.tasks, person.id).map((entry) => {
+      const today = localDay(ctx.today ?? new Date());
+      const place = nextBlockText(ctx, entry.task.id);
+      return {
+        id: entry.note.id, title: entry.task.title, depth: 0, task: entry.task.id, done: false,
+        detail: [entry.task.due ? `due ${shortDay(entry.task.due, today)}` : "no due date", place || "not placed",
+          entry.hub && entry.hub.id !== entry.note.id ? entry.hub.title : ""].filter(Boolean).join(" · "),
+        late: Boolean(entry.task.due && entry.task.due < today),
+        actions: [DONE, EDIT],
+      };
+    }),
+    detail: (rows) => String(rows.length),
+    empty: (person) => `Nothing you owe ${firstName(person)}`,
+    add: null,
+  },
+  {
+    key: "raise",
+    label: "To raise next 1:1",
+    // Topics not raised yet ("@Name ?" lines, or + Add), then open questions they are on.
+    rows: (ctx, person) => toRaise(ctx, person.id).map((item) => ({
+      id: item.id, title: item.title, depth: 0, detail: item.detail, topic: item.topic,
+      actions: item.topic !== undefined ? [RAISED, REMOVE] : [],
+    })),
+    detail: (rows) => String(rows.length),
+    empty: (person) => `Nothing to raise with ${firstName(person)}. Write @${person.title.split(/\s+/)[0]} ? in any note, or + Add.`,
+    add: { label: "Add" },
+  },
+  {
     key: "waiting",
-    label: "Waiting on",
+    label: (person) => (person?.kind === "person" ? `Waiting on ${firstName(person)}` : "Waiting on"),
     // What they are doing for me: open tasks delegated to them, soonest follow-up first.
     rows: (ctx, person) => waitingOn(ctx.tree, ctx.tasks, person.id).map((entry) => waitingRow(ctx, entry, false)),
     detail: (rows) => String(rows.length),
@@ -353,7 +436,8 @@ export function sectionsFor(note) {
 export function dashboardFor(note) {
   const layout = note ? DASHBOARD_LAYOUT[note.kind] : null;
   if (!layout) return null;
-  return { act: layout.act.map((key) => BY_KEY.get(key)), know: layout.know.map((key) => BY_KEY.get(key)) };
+  const sections = (keys = []) => keys.map((key) => BY_KEY.get(key));
+  return { wide: sections(layout.wide), act: sections(layout.act), know: sections(layout.know) };
 }
 
 function questionRows(ctx, owner) {
@@ -515,7 +599,7 @@ function milestoneRow(ctx, { note, milestone, phase }) {
   };
 }
 
-function taskRows(ctx, owner, entry) {
+function taskRows(ctx, owner, entry, nextId = null) {
   const { task, note, archived } = entry;
   const open = ctx.expanded?.has(task.id) ?? false;
   const subtasks = entry.subtasks ?? [];
@@ -534,7 +618,10 @@ function taskRows(ctx, owner, entry) {
     done: task.done,
     expanded: open,
     snippet: open && task.notes ? task.notes : "",
-    actions: archived ? [] : [task.done ? UNDONE : DONE, EDIT, task.delegate_id === null ? DELEGATE : TAKE_BACK, DELETE],
+    // NEXT: its owner's next action (flagged, or the first open one standing in).
+    next: task.id === nextId,
+    actions: archived ? [] : [task.done ? UNDONE : DONE, ...(task.done || task.id === nextId ? [] : [MAKE_NEXT]), EDIT,
+      task.delegate_id === null ? DELEGATE : TAKE_BACK, DELETE],
   };
   if (!open) return [row];
   const subs = subtasks.map((sub) => ({
@@ -601,14 +688,39 @@ function projectCounts(ctx, project) {
   return parts.join(" · ");
 }
 
-/** An area's Projects table: status, due, next milestone, open tasks, open questions. */
+/** An area's Projects table: health, latest status, updated, next action, next milestone, open. */
 function projectCells(ctx, project) {
   const today = localDay(ctx.today ?? new Date());
   const next = nextMilestone(ctx.tree, plan(ctx), project.id);
   const tasks = ctx.tasks ? openCount(ctx.tree, ctx.tasks, project) : 0;
   const questions = ctx.records ? recordsOn(ctx.tree, ctx.records, project, "question").filter((entry) => isOpen(entry.record)).length : 0;
-  return [statusLabel(project), project.due ? shortDay(project.due, today) : "",
-    next ? `◆ ${next.note.title} ${shortDay(next.milestone.day, today)}` : "", tasks ? String(tasks) : "", questions ? String(questions) : ""];
+  const action = ctx.tasks ? nextAction(ctx.tree, ctx.tasks, project) : null;
+  const health = healthOf(ctx.statusLogs ?? new StatusLogs(), project, today);
+  return [health.label, health.entry ? firstSentence(health.entry.text) : "log one", health.entry ? daysAgo(health.entry.day, today) : "",
+    action?.task.title ?? "", next ? `◆ ${next.note.title} ${shortDay(next.milestone.day, today)}` : "",
+    [tasks ? String(tasks) : "", questions ? `${questions}?` : ""].filter(Boolean).join(" · ")];
+}
+
+/** Each cell's look: the health in its colour, "log one" as an action, a stale day in red. */
+function projectCellClasses(ctx, project) {
+  const health = healthOf(ctx.statusLogs ?? new StatusLogs(), project, localDay(ctx.today ?? new Date()));
+  return [`health health--${health.key}`, health.entry ? "" : "hub__cell--action", health.stale ? "hub__cell--late" : "", "", "", ""];
+}
+
+/** Where I am: the newest entry boxed, two older ones a line each, then History (n). */
+function statusRows(ctx, hub) {
+  const today = localDay(ctx.today ?? new Date());
+  const entries = (ctx.statusLogs ?? new StatusLogs()).of(hub.id);
+  return [
+    ...entries.slice(0, 3).map((entry, index) => ({
+      id: hub.id, title: healthLabel(entry.health), depth: 0, health: entry.health, statusEntry: entry.id,
+      date: index ? dayText(entry.day, { today }) : "",
+      detail: index ? firstSentence(entry.text) : `${dayText(entry.day, { today })} · ${daysAgo(entry.day, today)}`,
+      snippet: index ? "" : entry.text,
+      box: index === 0,
+    })),
+    ...(entries.length > 3 ? [{ id: hub.id, title: `History (${entries.length})`, depth: 0, detail: "", statusHistory: true }] : []),
+  ];
 }
 
 function projectLate(ctx, project) {
