@@ -14,6 +14,8 @@
 //   dragged(row, part, delta)      { start, end } after dragging by delta days: part "body"
 //                                  moves both, "start" / "end" moves one (never past the other)
 //   fitDayPx(axis, width)          pixels per day so the axis fills width (between 4 and 48)
+//   ticksFor(axis, dayPx)          the ticks that fit (each a label's width past the last; a
+//                                  month's first preferred), so labels never run into each other
 import { dayNumber, dayString } from "../plan/plan-model.js";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -47,6 +49,22 @@ export function chartAxis(rows, { mode = "dates", today = null, minDays = 28 } =
     ticks.push({ at, label: `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`, major: monthStart });
   }
   return { mode, first, last, days: last - first + 1, ticks, today: todayNumber };
+}
+
+// The room one tick's label needs ("28 Sep", "Day 40"), in pixels.
+export const TICK_PX = 56;
+
+export function ticksFor(axis, dayPx) {
+  // Keep a tick only when it is a label's width past the last one kept; a month's first tick
+  // is kept in place of a plain one when both would fit the same gap.
+  const room = TICK_PX / Math.max(dayPx, 0.01);
+  const kept = [];
+  for (const tick of axis.ticks) {
+    const last = kept[kept.length - 1];
+    if (!last || tick.at - last.at >= room) kept.push(tick);
+    else if (tick.major && !last.major && (kept.length < 2 || tick.at - kept[kept.length - 2].at >= room)) kept[kept.length - 1] = tick;
+  }
+  return kept;
 }
 
 /** 0 for Monday ... 6 for Sunday. */

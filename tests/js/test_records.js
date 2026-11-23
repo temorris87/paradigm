@@ -79,11 +79,11 @@ test("records: decisions newest first; a hub's, an area's, a meeting's, a person
   assertEqual(peopleOf(c.tree, c.records, 30).map((p) => p.title).join(), "Bob Lee,Jane Doe", "by name, missing skipped");
   const rows = tab("decisions").rows(c, c.tree.get(1));
   assertEqual(rows.map((r) => r.detail).join("|"),
-    "2026-11-18 · Jane Doe", "an area's own only");
+    "18 Nov · Jane Doe", "an area's own only");
   const mine = tab("decisions").rows(c, c.tree.get(10));
-  assertEqual(mine[2].detail, "2025-01-01 · Old plan · Jane Doe · archived");
+  assertEqual(mine[2].detail, "1 Jan 2025 · Old plan · Jane Doe · archived");
   assertTrue(mine[2].muted && !mine[0].muted);
-  assertEqual(tab("decisions").rows(c, c.tree.get(20))[0].detail, "2026-11-24", "a meeting doesn't name itself");
+  assertEqual(tab("decisions").rows(c, c.tree.get(20))[0].detail, "24 Nov", "a meeting doesn't name itself");
 });
 
 test("records: questions open first (oldest first), then answered (newest answer first)", () => {
@@ -91,7 +91,7 @@ test("records: questions open first (oldest first), then answered (newest answer
   assertEqual(titles(recordsOn(c.tree, c.records, c.tree.get(2), "question")), "Which region?,Who owns the feed?,Who pays?,Budget?,Hosting?");
   const rows = tab("questions").rows(c, c.tree.get(2));
   assertEqual(rows.map((r) => r.detail).join("|"),
-    "asked 2026-11-10|asked 2026-11-19 · Jane Doe|asked 2026-11-23 · from Plan|answered 2026-11-25 · from Kickoff|answered 2026-11-02");
+    "asked 10 Nov|asked 19 Nov · Jane Doe|asked 23 Nov · from Plan|answered 25 Nov · from Kickoff|answered 2 Nov");
   assertEqual(rows.map((r) => Boolean(r.muted)).join(), "false,false,false,true,true");
   assertEqual(rows.map((r) => r.actions.map((a) => a.key).join()).join("|"), "answer|answer|answer||", "open ones can be answered");
   assertEqual(tab("questions").detail(rows), "3 open");
@@ -195,14 +195,14 @@ test("hub page: a decision has a card and no sections", () => {
     hub.show(ctx(), 30);
     assertTrue(!line.hidden && section.hidden && !hub.hasPanel && !hub.editorHidden);
     assertEqual(page.dataset.page, "decision");
-    assertEqual(line.textContent, "Decision·2026-11-20·in Rollout·with Bob Lee×, Jane Doe×+ Add person");
+    assertEqual(line.textContent, "Decision·Fri 20 Nov·in Rollout·with Bob Lee×, Jane Doe×+ Add person");
     hub.show(ctx(), 31);
     const rows = [...line.querySelectorAll(".hub-line__row")].map((row) => row.textContent);
     assertEqual(rows[1], "From:2026-11-24 Kickoff “We ship in **March**”");
     hub.show(ctx(), 45);
     assertEqual([...line.querySelectorAll(".hub-line__row")][1].textContent, "From:Plan “Who pays?” (that text has changed since)");
     hub.show(ctx(), 42);
-    assertEqual(line.querySelector(".hub-line__row").textContent, "Question·answered 2026-11-25▾·asked 2026-11-24·in Rollout·no one yet+ Add person");
+    assertEqual(line.querySelector(".hub-line__row").textContent, "Question·answered 25 Nov▾·asked Tue 24 Nov·in Rollout·no one yet+ Add person");
     hub.show(ctx(), 2);
     assertTrue(!section.hidden && hub.hasPanel);
   } finally {

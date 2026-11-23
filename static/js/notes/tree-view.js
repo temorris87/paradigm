@@ -4,7 +4,8 @@
 // A project's phases are, tagged "Phase".
 //
 //   const view = new TreeView(ulElement, { onOpen(id), onLeave(), onAdd(group), onAddUnder(id) });
-//   view.show(tree, currentId)     draw (the open note's group and ancestors are expanded)
+//   view.show(tree, currentId, { marked? })  draw (the open note's group and ancestors are
+//                                  expanded); marked false: a page is shown, no row is current
 //   view.focus()
 //
 // Each row has a key: a note's id (a number) or "group:<key>" for a group heading. Which
@@ -43,8 +44,9 @@ export class TreeView {
     });
   }
 
-  show(tree, openId) {
+  show(tree, openId, { marked = true } = {}) {
     this.tree = tree;
+    this.marked = marked;
     // A meeting, decision or question isn't in the tree: its hub stands for it.
     const currentId = isRecordKind(tree.get(openId)?.kind) ? tree.parentId(openId) : openId;
     // A note just opened, or the open note moved: show where it is now.
@@ -110,7 +112,7 @@ export class TreeView {
     const kids = this.kids(note.id);
     const open = kids.length > 0 && this.expanded.has(note.id);
     const li = this.treeItem(note.id, level);
-    li.setAttribute("aria-selected", String(note.id === this.current));
+    li.setAttribute("aria-selected", String(this.marked !== false && note.id === this.current));
     li.dataset.id = String(note.id);
     if (kids.length) li.setAttribute("aria-expanded", String(open));
     let kind = null;

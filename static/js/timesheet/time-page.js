@@ -4,9 +4,10 @@
 //
 //   const page = new TimePage({ root, bar, main, api: timeApi, changes, isShown(), today: () => new Date() });
 //   page.show() / page.focus()      when its page comes into view (loads it the first time)
-import { addDays, dateOf, localDay, whenText } from "../meetings/meeting-days.js";
+import { addDays, dateOf, localDay } from "../meetings/meeting-days.js";
 import { confirmDialog } from "../ui/dialog.js";
-import { copyGrid, dayHeading, hoursText } from "./copy.js";
+import { copyGrid, hoursText } from "./copy.js";
+import { dayText } from "../ui/dates.js";
 import { timeAction } from "./time-keys.js";
 
 const KIND_LABELS = { holiday: "Holiday", time_off: "Time off", sick: "Sick" };
@@ -62,24 +63,27 @@ export class TimePage {
       return node;
     };
     const week = element("h1", "time-bar__week");
-    const weekTab = make("Week", "The week's hours", () => this.show("week"));
-    const settingsTab = make("Settings", "Codes, working hours, holidays and time off", () => this.show("settings"));
+    const weekTab = make("Week", "The week's hours", () => this.showTab("week"));
+    const settingsTab = make("Settings", "Codes, working hours, holidays and time off", () => this.showTab("settings"));
     for (const tab of [weekTab, settingsTab]) tab.classList.add("time-tab");
     const copy = make("Copy", "Copy the grid: paste it into the timesheet, Excel or an email (c)", () => this.run(this.copy()));
     const status = element("span", "time-bar__status");
     status.setAttribute("role", "status");
-    bar.replaceChildren(make("‹", "The week before ([)", () => this.moveWeek(-7)), make("This week", "This week (t)", () => this.thisWeek()),
-      make("›", "The week after (])", () => this.moveWeek(7)), week, weekTab, settingsTab, copy, status);
-    return { week, weekTab, settingsTab, copy, status };
+    // The week's own controls (‹ This week › and its title) show on the Week tab only.
+    const weekControls = [make("‹", "The week before ([)", () => this.moveWeek(-7)), make("This week", "This week (t)", () => this.thisWeek()),
+      make("›", "The week after (])", () => this.moveWeek(7)), week];
+    bar.replaceChildren(...weekControls, weekTab, settingsTab, copy, status);
+    return { week, weekTab, settingsTab, copy, status, weekControls };
   }
 
-  show(tab) {
+  showTab(tab) {
     this.tab = tab;
     this.weekView.hidden = tab !== "week";
     this.settingsView.hidden = tab !== "settings";
     this.bar.weekTab.setAttribute("aria-pressed", String(tab === "week"));
     this.bar.settingsTab.setAttribute("aria-pressed", String(tab === "settings"));
     this.bar.copy.disabled = tab !== "week";
+    for (const node of this.bar.weekControls) node.hidden = tab !== "week";
     if (tab === "settings") this.run(this.loadSettings());
   }
 
@@ -95,9 +99,9 @@ export class TimePage {
 
   async load() {
     this.report = await this.api.week(this.monday);
-    this.bar.week.textContent = `Week of ${whenText({ day: this.monday })}`;
+    this.bar.week.textContent = `Week of ${dayText(this.monday, { today: localDay(this.today()) })}`;
     this.drawWeek();
-    this.show(this.tab);
+    this.showTab(this.tab);
   }
 
   // ---- the week ---------------------------------------------------------------------
@@ -106,7 +110,7 @@ export class TimePage {
     const report = this.report;
     const table = element("table", "time-grid");
     const head = element("tr", "");
-    head.append(element("th", "", "Code"), ...report.days.map((day) => element("th", "time-grid__num", dayHeading(day))),
+    head.append(element("th", "", "Code"), ...report.days.map((day) => element("th", "time-grid__num", screenDay(day))),
       element("th", "time-grid__num", "Total"));
     const body = report.rows.map((row) => {
       const line = element("tr", row.code === report.default_code ? "time-grid__default" : "");
@@ -128,11 +132,11 @@ export class TimePage {
       : "Every hour of the working days is on the calendar."));
     if (report.warnings.length) parts.push(listSection("Check", report.warnings.map((text) => [text]), "time-warnings"));
     if (report.pto.length) {
-      parts.push(listSection("Time off", report.pto.map((entry) => [`${dayHeading(entry.day)}: ${entry.name}`,
+      parts.push(listSection("Time off", report.pto.map((entry) => [`${screenDay(entry.day)}: ${entry.name}`,
         `${KIND_LABELS[entry.kind]} · ${entry.hours.toFixed(2)} h`])));
     }
     if (report.not_counted.length) {
-      parts.push(listSection("Not counted", report.not_counted.map((entry) => [`${dayHeading(entry.day)}: ${entry.label}`,
+      parts.push(listSection("Not counted", report.not_counted.map((entry) => [`${screenDay(entry.day)}: ${entry.label}`,
         [entry.hub, entry.reason, entry.minutes ? `${entry.minutes} min` : ""].filter(Boolean).join(" · ")])));
     }
     const details = element("section", "time-details");
@@ -144,7 +148,7 @@ export class TimePage {
       const list = element("ul", "time-list");
       list.append(...items.map((item) => {
         const row = element("li", "");
-        row.append(element("span", "time-list__main", `${dayHeading(item.day)}: ${item.label}`),
+        row.append(element("span", "time-list__main", `${screenDay(item.day)}: ${item.label}`),
           element("span", "time-list__meta", [item.kind === "meeting" ? "meeting" : "task", item.hub, `${item.minutes} min`].filter(Boolean).join(" · ")));
         return row;
       }));
@@ -173,7 +177,10 @@ export class TimePage {
     form.append(element("h2", "time-heading", "Codes and hours"));
     const inputs = {};
     for (const [key, label, hint] of CODE_FIELDS) inputs[key] = field(form, label, "text", settings[key], hint);
-    for (const [key, label] of HOUR_FIELDS) inputs[key] = field(form, label, "time", settings[key]);
+    for (const [key, label] of HOUR_FIELDS) {
+      inputs[key] = field(form, label, "time", settings[key]);
+      inputs[key].step = 900; // quarter hours, as the report counts
+    }
     const observed = element("input", "");
     Object.assign(observed, { type: "checkbox", checked: settings.observed === "1" });
     const observedLabel = element("label", "time-check");
@@ -194,12 +201,12 @@ export class TimePage {
 
     const holidaysPart = element("section", "time-part");
     holidaysPart.append(element("h2", "time-heading", "Holidays"),
-      element("p", "time-note", "Rules: Jul 4 · 4th Thu of Nov · last Mon of May · 4th Thu of Nov + 1 · 2026-12-24 (one day only)"));
+      element("p", "time-note", "Rules look like: Jul 4 · 4th Thu of Nov · last Mon of May · 4th Thu of Nov + 1 · 2026-12-24 (one day only)"));
     const holidayList = element("ul", "time-list");
     holidayList.append(...holidays.map((holiday) => {
       const row = element("li", holiday.ok ? "" : "time-list--bad");
       row.append(element("span", "time-list__main", holiday.name), element("span", "time-list__meta", holiday.ok ? holiday.rule : `${holiday.rule} (can't read this rule)`),
-        smallButton("Remove", `Remove ${holiday.name}`, () => this.run(confirmDialog({ title: `Remove ${holiday.name}?`, confirm: "Remove", danger: true,
+        removeButton(`Remove ${holiday.name}`, () => this.run(confirmDialog({ title: `Remove ${holiday.name}?`, confirm: "Remove", danger: true,
           run: async () => this.drawSettings(await this.api.removeHoliday(holiday.id)) }))));
       return row;
     }));
@@ -214,7 +221,7 @@ export class TimePage {
       this.run(this.api.addHoliday(name.value, rule.value).then((all) => this.drawSettings(all)));
     });
     const next = element("p", "time-note", upcoming.length
-      ? `Next: ${upcoming.slice(0, 6).map((entry) => `${entry.name} ${dayHeading(entry.day)}`).join(" · ")}` : "No holidays in the next year");
+      ? `Next: ${upcoming.slice(0, 6).map((entry) => `${entry.name} ${screenDay(entry.day)}`).join(" · ")}` : "No holidays in the next year");
     holidaysPart.append(holidayList, addHoliday, next);
 
     const offPart = element("section", "time-part");
@@ -225,7 +232,7 @@ export class TimePage {
       const days = entry.first === entry.last ? entry.first : `${entry.first} to ${entry.last}`;
       row.append(element("span", "time-list__main", `${KIND_LABELS[entry.kind]}: ${days}`),
         element("span", "time-list__meta", [entry.hours ? `${entry.hours} h a day` : "whole days", entry.note].filter(Boolean).join(" · ")),
-        smallButton("Remove", "Remove it", () => this.run(this.api.removeTimeOff(entry.id).then((all) => {
+        removeButton("Remove it", () => this.run(this.api.removeTimeOff(entry.id).then((all) => {
           this.drawSettings(all);
           return this.load();
         }))));
@@ -306,6 +313,14 @@ function field(form, label, type, value, placeholder = "") {
   return input;
 }
 
+/** A quiet × at the end of a settings row: shown on hover and when it has the focus. */
+function removeButton(title, onClick) {
+  const node = smallButton("×", title, onClick);
+  node.classList.add("time-button--remove");
+  node.setAttribute("aria-label", title);
+  return node;
+}
+
 function smallButton(text, title, onClick) {
   const node = element("button", "time-button time-button--small", text);
   Object.assign(node, { type: "button", title });
@@ -324,4 +339,9 @@ function element(tag, className, text) {
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+/** A day on screen: "Mon 9 Nov" (the clipboard copy keeps copy.js's "Mon 11/9"). */
+function screenDay(day) {
+  return dayText(day);
 }

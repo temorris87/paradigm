@@ -9,6 +9,7 @@
 import { whenText } from "../meetings/meeting-days.js";
 import { groupForKind } from "../notes/hub-groups.js";
 import { hubChoices, openTasks } from "../tasks/tasks-model.js";
+import { dayText } from "../ui/dates.js";
 
 const MAX_DEPTH = 4;
 
@@ -88,12 +89,13 @@ export class TaskSidebar {
       const grip = element("div", "cal-task__grip");
       grip.append(element("span", "cal-task__title", entry.task.title || "(no text)"),
         element("span", "cal-task__meta", [entry.hub?.title, entry.note.id !== entry.hub?.id ? entry.note.title : "",
-          entry.task.due ? `due ${entry.task.due}` : ""].filter(Boolean).join(" · ")));
+          entry.task.due ? `due ${dayText(entry.task.due, { relative: true })}` : ""].filter(Boolean).join(" · ")));
       grip.title = "Drag onto the week to schedule it; click to open its note";
       grip.addEventListener("pointerdown", (event) => {
         if (event.button === 0) this.handlers.onTaskDown(entry, event);
       });
-      row.append(box, grip);
+      // A done task listed only for its open subtasks heads them: no box to tick.
+      row.append(entry.task.done ? element("span", "cal-task__box cal-task__box--none") : box, grip);
       return row;
     }));
   }

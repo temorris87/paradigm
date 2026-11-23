@@ -10,7 +10,7 @@ import { confirmDialog, formDialog } from "../ui/dialog.js";
 import { openMenu } from "../ui/menu.js";
 import { pickFrom } from "../ui/picker.js";
 import { groupOf, isHub, isRecordKind, RECORD_LABELS } from "./hub-groups.js";
-import { whenText } from "../meetings/meeting-days.js";
+import { localDay, whenText } from "../meetings/meeting-days.js";
 import { noteMenuItems } from "./note-menu.js";
 import { makePhaseDialog, unmakePhase } from "../plan/plan-commands.js";
 import { createFromTemplate, insertTemplateDialog, templateChoices } from "../templates/template-commands.js";
@@ -107,15 +107,40 @@ export async function goToNote(app, query = "") {
   if (picked?.item) await app.open(picked.item.id);
 }
 
-/** Every note, in tree order, with where it is ("Projects › Acme"); a meeting with its date
- * ("Meeting · Tue 2026-11-24 · Projects › Acme"), since meetings may share a name. */
-export function goToItems(tree, meetings = null) {
-  return tree.inOrder().map((note) => {
+/** Every note, in tree order, with where it is ("Projects › Acme"); then meetings, decisions
+ * and questions. A meeting series (one hub, one name) is one item that opens the next one
+ * (else the latest): "Meeting · 9 · next Tue 24 Nov 10:00 · Projects › Acme". */
+export function goToItems(tree, meetings = null, today = new Date()) {
+  const notes = [];
+  const records = [];
+  const series = new Map();
+  for (const note of tree.inOrder()) {
     const where = whereText(tree, note.id);
-    if (!isRecordKind(note.kind)) return { id: note.id, title: note.title, detail: where };
-    const when = note.kind === "meeting" && meetings ? whenText(meetings.get(note.id)) : "";
-    return { id: note.id, title: note.title, detail: [RECORD_LABELS[note.kind], when, where].filter(Boolean).join(" · ") };
-  });
+    if (!isRecordKind(note.kind)) {
+      notes.push({ id: note.id, title: note.title, detail: where });
+    } else if (note.kind === "meeting" && meetings) {
+      const key = `${tree.parentId(note.id)}\u0000${note.title.toLowerCase()}`;
+      if (!series.has(key)) {
+        series.set(key, { title: note.title, where, list: [] });
+        records.push(series.get(key));
+      }
+      series.get(key).list.push({ id: note.id, meeting: meetings.get(note.id) });
+    } else {
+      records.push({ id: note.id, title: note.title, detail: [RECORD_LABELS[note.kind], where].join(" · ") });
+    }
+  }
+  const day = localDay(today);
+  return [...notes, ...records.map((item) => (item.list ? seriesItem(item, day, today) : item))];
+}
+
+function seriesItem({ title, where, list }, day, today) {
+  const when = (entry) => `${entry.meeting.day} ${entry.meeting.time || "99:99"}`;
+  const sorted = [...list].sort((a, b) => when(a).localeCompare(when(b)));
+  const next = sorted.find((entry) => entry.meeting.day >= day && !entry.meeting.cancelled);
+  const pick = next ?? sorted[sorted.length - 1];
+  const count = list.length > 1 ? `${list.length} · ` : "";
+  const label = `${next ? "next " : list.length > 1 ? "last " : ""}${whenText(pick.meeting, today)}`;
+  return { id: pick.id, title, detail: `${RECORD_LABELS.meeting} · ${count}${label} · ${where}` };
 }
 
 /**

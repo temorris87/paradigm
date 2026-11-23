@@ -2,7 +2,7 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  padding: 0.6rem 1.5rem;
+  padding: var(--sp-3) var(--sp-5);
   background: var(--nord11);
   color: var(--nord6);
   font-weight: 600;

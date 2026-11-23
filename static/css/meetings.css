@@ -12,13 +12,13 @@
 .meetings__hub,
 .meetings__attendees {
   color: var(--nord4);
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
 }
 
 @media (max-width: 1000px) {
   .meetings .list-page__row {
     grid-template-columns: 9.5rem minmax(0, 1fr) minmax(0, 0.6fr);
-    row-gap: 0.05rem;
+    row-gap: var(--sp-0);
   }
 
   .meetings__attendees {

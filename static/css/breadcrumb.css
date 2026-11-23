@@ -3,7 +3,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.4rem;
+  gap: var(--sp-2);
   min-height: 1.5em;
   color: var(--nord4);
 }
@@ -35,10 +35,10 @@
 .crumbs__menu {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.3rem;
+  gap: var(--sp-1);
   max-width: 100%;
-  padding: 0 0.3rem;
-  margin: 0 -0.3rem;
+  padding: 0 var(--sp-1);
+  margin: 0 calc(-1 * var(--sp-1));
   border: none;
   border-radius: 3px;
   background: none;

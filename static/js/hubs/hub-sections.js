@@ -37,6 +37,7 @@ import { openCount, subtaskText, tasksOn, waitingOn } from "../tasks/tasks-model
 import { Files, fileDir, filesOn } from "../files/files-model.js";
 import { Plan, milestonesOf, nextMilestone, phasesOf, shortDay, slipOf, slipText } from "../plan/plan-model.js";
 import { projectFactsText, statusText } from "./project-facts.js";
+import { dayText } from "../ui/dates.js";
 
 const REMOVE = Object.freeze({ key: "remove", label: "Remove" });
 const ROLE = Object.freeze({ key: "role", label: "Role…" });
@@ -76,7 +77,7 @@ export const HUB_SECTIONS = [
         actions: [{ key: "remove", label: "Take out" }],
       })),
       ...archivedProjectsIn(ctx.tree, area.id).map((project) => ({
-        id: project.id, title: project.title, depth: 0, detail: `archived ${dayOf(project.archived_at)}`, muted: true,
+        id: project.id, title: project.title, depth: 0, detail: `archived ${shortDay(dayOf(project.archived_at), localDay(ctx.today ?? new Date()))}`, muted: true,
       })),
     ],
     detail: (rows) => counted(rows.filter((row) => !row.muted).length, "live"),
@@ -93,7 +94,7 @@ export const HUB_SECTIONS = [
         id: entry.note.id,
         title: entry.note.title,
         depth: 0,
-        detail: [open ? `asked ${entry.record.day}` : `answered ${entry.record.answered}`,
+        detail: [open ? `asked ${shortDay(entry.record.day, localDay(ctx.today ?? new Date()))}` : `answered ${shortDay(entry.record.answered, localDay(ctx.today ?? new Date()))}`,
           ...whereText(ctx, owner, entry)].filter(Boolean).join(" · "),
         muted: entry.archived || !open,
         actions: open && !entry.archived ? [ANSWER] : [],
@@ -189,7 +190,7 @@ export const HUB_SECTIONS = [
       id: entry.note.id,
       title: entry.note.title,
       depth: 0,
-      detail: [entry.record.day, ...whereText(ctx, owner, entry)].filter(Boolean).join(" · "),
+      detail: [shortDay(entry.record.day, localDay(ctx.today ?? new Date())), ...whereText(ctx, owner, entry)].filter(Boolean).join(" · "),
       muted: entry.archived,
     })),
     detail: (rows) => String(rows.length),
@@ -209,7 +210,7 @@ export const HUB_SECTIONS = [
       id: note.id,
       title: note.title,
       depth: tree.ancestors(note.id).length - 1,
-      detail: dayOf(note.updated_at),
+      detail: changedDay(note.updated_at),
     })),
     detail: (rows) => String(rows.length),
     empty: (hub) => `No notes in this ${hub.kind} yet`,
@@ -266,7 +267,7 @@ export const HUB_SECTIONS = [
         id: note.id,
         title: note.title,
         depth: 0,
-        detail: [under.length ? `to ${under.join(", ")}` : "", hub && hub.id !== note.id ? hub.title : "", dayOf(note.updated_at),
+        detail: [under.length ? `to ${under.join(", ")}` : "", hub && hub.id !== note.id ? hub.title : "", changedDay(note.updated_at),
           archived ? "archived" : ""].filter(Boolean).join(" · "),
         muted: archived,
       };
@@ -339,7 +340,7 @@ function referencedIn(ctx, person) {
   const onRecords = ["question", "decision"].flatMap((kind) => recordsOn(tree, records, person, kind).map((entry) => ({
     id: entry.note.id, title: entry.note.title, depth: 0, archived: entry.archived,
     detail: [kind === "question" ? (isOpen(entry.record) ? "Question · open" : "Question · answered") : "Decision",
-      entry.record.day, entry.hub.title].filter(Boolean).join(" · "),
+      shortDay(entry.record.day, localDay(ctx.today ?? new Date())), entry.hub.title].filter(Boolean).join(" · "),
     actions: kind === "question" && isOpen(entry.record) && !entry.archived ? [ANSWER] : [],
   })));
   return [...hubs, ...met, ...onRecords];
@@ -351,7 +352,7 @@ function backlinks(ctx, person) {
     id: note.id,
     title: note.title,
     depth: 0,
-    detail: [field === "agenda" ? "agenda" : "", hubOf(tree, note.id)?.title ?? "", dayOf(note.updated_at),
+    detail: [field === "agenda" ? "agenda" : "", hubOf(tree, note.id)?.title ?? "", changedDay(note.updated_at),
       archived ? "archived" : ""].filter(Boolean).join(" · "),
     muted: archived,
     snippet: dedent(context),
@@ -362,7 +363,7 @@ function backlinks(ctx, person) {
     id: note.id,
     title: note.title,
     depth: 0,
-    detail: ["links here", hubOf(tree, note.id)?.title ?? "", dayOf(note.updated_at), archived ? "archived" : ""]
+    detail: ["links here", hubOf(tree, note.id)?.title ?? "", changedDay(note.updated_at), archived ? "archived" : ""]
       .filter(Boolean).join(" · "),
     muted: archived,
   }));
@@ -421,7 +422,7 @@ function milestoneRow(ctx, { note, milestone, phase }) {
   return {
     id: note.id, title: `◆ ${note.title}`, depth: 0, kind: "milestone",
     detail: [shortDay(milestone.day, today), phase ? `in ${phase.title}` : "", slipText(slip),
-      done ? `reached ${milestone.done_day}` : milestone.day < today ? "overdue" : ""].filter(Boolean).join(" · "),
+      done ? `reached ${shortDay(milestone.done_day, today)}` : milestone.day < today ? "overdue" : ""].filter(Boolean).join(" · "),
     muted: done,
     late: !done && (milestone.day < today || slip.keepsSlipping),
     done,
@@ -439,7 +440,7 @@ function taskRows(ctx, owner, entry) {
     title: task.title || "(no text)",
     depth: 0,
     detail: [subtaskText(entry), delegateText(ctx, task), dueText(ctx, task), note.id !== owner.id ? `in ${note.title}` : "",
-      nextBlockText(ctx, task.id), task.done ? `done ${task.done_day}`.trim() : "", archived ? "archived" : ""]
+      nextBlockText(ctx, task.id), task.done ? `done ${shortDay(task.done_day, localDay(ctx.today ?? new Date()))}`.trim() : "", archived ? "archived" : ""]
       .filter(Boolean).join(" · "),
     muted: task.done || archived,
     late: isLate(ctx, task),
@@ -454,7 +455,7 @@ function taskRows(ctx, owner, entry) {
     id: note.id,
     title: sub.title,
     depth: 1,
-    detail: [delegateText(ctx, sub), dueText(ctx, sub), sub.done ? `done ${sub.done_day}` : ""].filter(Boolean).join(" · "),
+    detail: [delegateText(ctx, sub), dueText(ctx, sub), sub.done ? `done ${shortDay(sub.done_day, localDay(ctx.today ?? new Date()))}` : ""].filter(Boolean).join(" · "),
     muted: sub.done || archived,
     late: isLate(ctx, sub),
     task: sub.id,
@@ -528,6 +529,11 @@ function templateSummary(template) {
 
 function counted(n, word) {
   return `${n} ${word}`;
+}
+
+/** When a note last changed, on screen: "20 Oct" ("20 Oct 2025" in another year). */
+function changedDay(iso) {
+  return dayText(dayOf(iso), { weekday: false });
 }
 
 /** "2026-11-21": the local day of an ISO time ("" when there is none). */

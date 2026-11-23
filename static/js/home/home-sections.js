@@ -9,9 +9,10 @@
 //   homeSections(ctx, today)  -> [{ key, heading, detail, rows, empty }]
 import { localDay, whenText } from "../meetings/meeting-days.js";
 import { attendeesOf, attendeesText, shortTitle } from "../meetings/meetings-model.js";
-import { daysSince, inboxNotes, openQuestions, projectsByArea, todayMeetings } from "./home-model.js";
+import { daysSince, inboxNotes, nextMeeting, openQuestions, projectsByArea, todayMeetings } from "./home-model.js";
 import { projectFactsText, statusText } from "../hubs/project-facts.js";
 import { todayTasks, waitingOn } from "../tasks/tasks-model.js";
+import { dayText } from "../ui/dates.js";
 
 export const HOME_SECTIONS = [
   {
@@ -21,7 +22,12 @@ export const HOME_SECTIONS = [
     // The day's meetings and task blocks by time (untimed meetings last); a reminder first
     // while today's calendar hasn't been imported.
     rows: (ctx, today) => [...importReminder(ctx, today), ...todayRows(ctx, today)],
-    empty: "Nothing on the calendar today",
+    // An empty day points at the next meeting, so a weekend Home still says what is coming.
+    empty: ({ tree, meetings }, today) => {
+      const next = meetings ? nextMeeting(tree, meetings, today) : null;
+      return next ? `Nothing today · next: ${whenText(next.meeting, today)} ${shortTitle(next.note, next.meeting)}`
+        : "Nothing on the calendar today";
+    },
   },
   {
     key: "questions",
@@ -49,7 +55,7 @@ export const HOME_SECTIONS = [
         cells: [
           ["home__title", task.title],
           ["home__meta", [`→ ${tree.get(task.delegate_id)?.title ?? "someone"}`, hub?.title,
-            task.follow_up ? `${late ? "follow up was due" : "follow up"} ${task.follow_up}` : ""].filter(Boolean).join(" · ")],
+            task.follow_up ? `${late ? "follow up was due" : "follow up"} ${dayText(task.follow_up, { today, relative: true })}` : ""].filter(Boolean).join(" · ")],
         ],
         late,
       };
@@ -87,7 +93,7 @@ export const HOME_SECTIONS = [
 export function homeSections(ctx, today) {
   return HOME_SECTIONS.map(({ key, heading, detail, rows, empty }) => {
     const list = rows(ctx, today);
-    return { key, heading, detail: detail(list, today), rows: list, empty };
+    return { key, heading, detail: detail(list, today), rows: list, empty: typeof empty === "function" ? empty(ctx, today) : empty };
   });
 }
 
@@ -128,7 +134,7 @@ function counted(rows) {
 function askedText(day, today) {
   const days = daysSince(day, today);
   if (days === null) return "";
-  const ago = days === 0 ? "today" : days === 1 ? "1 day" : `${days} days`;
-  return `asked ${day} (${ago})`;
+  const ago = days === 0 ? "today" : `${days} d ago`;
+  return `asked ${dayText(day, { today, weekday: false })}, ${ago}`;
 }
 

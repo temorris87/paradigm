@@ -10,6 +10,7 @@
 //     options(ctx) -> { [filter key]: [[value, text]] }
 //     rows(ctx, filters) -> [{ id, ... }]   what matches, in the order shown
 //     cells(row, ctx) -> [[className, text]]
+//     columns: ["Name", ...]               optional: a heading over each cell's column
 //     empty: "No one matches",
 //     add: { label: "New person", run() },  optional: a button in the bar (and the a key)
 //     onOpen(id), onLeave() });
@@ -63,7 +64,13 @@ export class ListPage {
     this.message = element("p", "list-page__message");
     this.message.setAttribute("role", "status");
     this.message.hidden = true;
-    section.replaceChildren(bar, this.message, this.list);
+    // The column headings: the same grid as the rows, outside the listbox (the keys skip it).
+    const head = spec.columns ? element("div", "list-page__row list-page__head") : null;
+    if (head) {
+      head.setAttribute("aria-hidden", "true");
+      head.append(...spec.columns.map((text, index) => element("span", "list-page__cell", text)));
+    }
+    section.replaceChildren(...[bar, this.message, head, this.list].filter(Boolean));
   }
 
   say(text) {

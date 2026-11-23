@@ -43,9 +43,11 @@ export function peoplePage(section, { onOpen, onLeave, onAdd = () => {} }) {
     },
     rows: ({ tree, people }, { hubId, ...rest }) =>
       filterPeople(tree, people, { ...rest, hubId: hubId === "" ? null : Number(hubId) }),
+    columns: ["Name", "Organisation and job", "Email", "Hubs"],
     cells: (note, { tree, people }) => [
       ["people__title", note.title],
       ["people__work", workText(people.get(note.id))],
+      ["people__email", people.get(note.id).email ?? ""],
       ["people__hubs", hubLinks(tree, people, note.id).filter((link) => !link.archived)
         .map(({ hub, role }) => (role ? `${hub.title} (${role})` : hub.title)).join(", ")],
     ],

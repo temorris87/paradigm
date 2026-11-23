@@ -15,7 +15,7 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--sp-2);
   min-height: 0;
 }
 
@@ -27,13 +27,13 @@
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 0.5rem 1rem;
+  gap: var(--sp-2) var(--sp-4);
 }
 
 .list-page__heading {
   margin: 0;
   flex: 1 0 auto;
-  font-size: 1.1rem;
+  font-size: var(--fs-lg);
   font-weight: 600;
   color: var(--nord13);
 }
@@ -46,14 +46,14 @@
 .list-page__filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--sp-2);
 }
 
 .list-page__label {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
-  font-size: 0.8rem;
+  gap: var(--sp-0);
+  font-size: var(--fs-sm);
   color: var(--nord4);
 }
 
@@ -61,13 +61,13 @@
 .list-page__search {
   min-width: 8rem;
   max-width: 14rem;
-  padding: 0.15rem 0.35rem;
+  padding: var(--sp-0) var(--sp-2);
   border: 1px solid var(--nord3);
   border-radius: 3px;
   background: var(--nord1);
   color: var(--nord6);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: var(--fs-md);
 }
 
 .list-page__filter:focus-visible,
@@ -85,14 +85,14 @@
   overflow: auto;
   outline: none;
   border-top: 1px solid var(--nord2);
-  padding-top: 0.25rem;
+  padding-top: var(--sp-1);
 }
 
 .list-page__row {
   display: grid;
-  gap: 0.75rem;
+  gap: var(--sp-3);
   align-items: baseline;
-  padding: 0.2rem 0.5rem;
+  padding: var(--sp-1) var(--sp-2);
   border-radius: 3px;
   cursor: pointer;
 }
@@ -118,20 +118,20 @@
 }
 
 .list-page__empty {
-  padding: 0.5rem;
+  padding: var(--sp-2);
   color: var(--nord3);
 }
 
 /* The page's New button (New person, New meeting). */
 .list-page__add {
   align-self: flex-end;
-  padding: 0.15rem 0.7rem;
+  padding: var(--sp-0) var(--sp-3);
   border: 1px solid var(--nord3);
   border-radius: 4px;
   background: none;
   color: var(--nord9);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: var(--fs-md);
   cursor: pointer;
 }
 
@@ -146,9 +146,25 @@
 .list-page__message {
   margin: 0;
   color: var(--nord13);
-  font-size: 0.9rem;
+  font-size: var(--fs-md);
 }
 
 .list-page__message[hidden] {
   display: none;
+}
+
+/* The column headings over a list page's rows. */
+.list-page__head {
+  padding-bottom: var(--sp-1);
+  border-bottom: 1px solid var(--nord2);
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: default;
+}
+
+@media (max-width: 1000px) {
+  .list-page__head {
+    display: none;
+  }
 }

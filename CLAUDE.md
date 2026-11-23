@@ -147,10 +147,12 @@ static/
   vendor/katex-0.19.1/   KaTeX exactly as audited (package paths kept; checked against
                          docs/security/katex-0.19.1.sha256 by tests/python/test_vendor.py)
   vendor/mermaid-12.3.0/ Mermaid exactly as audited (same check, mermaid-12.3.0.sha256)
-  css/                   dashboard.css (the main window's dashboard: sections in columns),
+  css/                   dashboard.css (the main window's dashboard: sections flowing down
+                         columns, long text folded under Show more),
                          gantt.css, plan-template.css,
-                         nord.css (palette variables), base.css (the page grid; one column
-                         under 1400 px), one file per component (topbar.css, navigator.css...)
+                         nord.css (palette variables and THE design tokens: --font-ui,
+                         --font-mono, --fs-xs..xl, --sp-0..6, --text/-dim/-faint), base.css (the
+                         page grid, color-scheme dark; one column under 1400 px), one file per component (topbar.css, navigator.css...)
                          (export.css styles only the exported file, never the app)
                          (editor.css is loaded inside <pd-editor>'s shadow root;
                          markdown.css styles rendered notes under .md-doc)
@@ -252,7 +254,9 @@ static/
                          render-notes.js (sections, links inside the file; pure), page.js (the
                          file + its own no-script CSP; pure), assets.js (MathML, cleaned SVG,
                          images as data: URLs, in an inert document), download.js, export.js
-  js/ui/                 shared pieces that know nothing about notes: menu.js (a popup menu
+  js/ui/                 shared pieces that know nothing about notes: dates.js (THE on-screen
+                         day and time format: "Wed 25 Nov", 24-hour, the year only when not
+                         this year; pure), menu.js (a popup menu
                          under a button), dialog.js (formDialog, confirmDialog on <dialog>:
                          errors show inside and keep it open), picker.js (a text box over a
                          filtered list; filterItems is pure), ui-keys.js (THE key table of
@@ -566,6 +570,15 @@ Update this section when the structure changes.
 ## Look
 - Nord palette, defined as CSS variables in `static/css/nord.css`. Components use the variables,
   never raw hex values.
+- Tokens (also `nord.css`): fonts only `--font-ui` (Segoe UI first) and `--font-mono` (Consolas
+  first); sizes only `--fs-xs` 12, `--fs-sm` 13, `--fs-md` 15 (body), `--fs-lg` 18, `--fs-xl` 22;
+  weights 400 and 600; spacing only `--sp-0`..`--sp-6` (2, 4, 8, 12, 16, 24, 32 px). Muted text
+  uses `--text-dim` / `--text-faint`, never opacity. `color-scheme: dark` keeps native controls
+  and scrollbars dark. Section headings are one style everywhere (sentence case, `--fs-sm`, 600).
+- Titles beat details: in a row the detail shrinks first (`flex-shrink: 100`). Red marks only the
+  signal (a dot, a date), never a whole row.
+- Dates on screen go through `static/js/ui/dates.js` ("Wed 25 Nov", "14:00–15:00"); the API and
+  ex commands keep "YYYY-MM-DD"; the timesheet's clipboard copy keeps "Mon 11/23".
 - Links are nord8 (frost cyan). Headings are all nord13 (one colour, set apart from the
   nord4 text), never nord8: size, weight and a rule under H1 and H2 tell the levels apart
   (raw lines, one row high: an underline on H1 and H2).

@@ -16,7 +16,7 @@ function mark(plan, { note, milestone }, today, draggable) {
   return {
     key: `milestone:${note.id}`, id: note.id, label: note.title, at: dayNumber(milestone.day), done, draggable,
     late: !done && (milestone.day < today || slip.keepsSlipping),
-    detail: [shortDay(milestone.day, today), done ? `reached ${milestone.done_day}` : "", slipText(slip)].filter(Boolean).join(" · "),
+    detail: [shortDay(milestone.day, today), done ? `reached ${shortDay(milestone.done_day, today)}` : "", slipText(slip)].filter(Boolean).join(" · "),
   };
 }
 

@@ -26,6 +26,14 @@ export function todayMeetings(tree, meetings, today) {
     .sort((a, b) => byWhen(a.meeting, b.meeting) || titleKey(a.note.title).localeCompare(titleKey(b.note.title)));
 }
 
+/** The first meeting after today (not cancelled, not archived), or null: what an empty Today points at. */
+export function nextMeeting(tree, meetings, today) {
+  const day = localDay(today);
+  return allMeetings(tree, meetings)
+    .filter((entry) => !entry.archived && !entry.meeting.cancelled && entry.meeting.day > day)
+    .sort((a, b) => byWhen(a.meeting, b.meeting))[0] ?? null;
+}
+
 export function openQuestions(tree, records) {
   return allOfKind(tree, records, "question")
     .filter((entry) => !entry.archived && isOpen(entry.record))

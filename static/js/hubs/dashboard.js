@@ -9,13 +9,18 @@
 //   dashboard.hasChart / dashboard.focus()
 import { GanttView } from "../gantt/gantt-view.js";
 import { valueOf } from "../gantt/gantt-model.js";
+import { drawDiagrams } from "../diagrams/mermaid.js";
 import { renderMarkdown } from "../markdown/index.js";
+import { ensureMathFonts, typesetMath } from "../math/typeset.js";
 import { localDay } from "../meetings/meeting-days.js";
 import { isHub, isPerson } from "../notes/hub-groups.js";
 import { applyTemplateDialog, dropDates, editDatesDialog, historyDialog, newMilestoneDialog, newPhaseDialog,
   saveTemplateDialog, setMilestoneDone } from "../plan/plan-commands.js";
 import { areaRows, projectRows } from "../plan/plan-rows.js";
 import { fieldsFor } from "./fields.js";
+
+// Past this height (rem) the rendered text folds under Show more.
+const FOLD_REM = 24;
 
 export class Dashboard {
   constructor({ text, chart }) {
@@ -29,6 +34,13 @@ export class Dashboard {
       onOpen: (row, mark) => this.open(row, mark),
       onDrop: (row, mark, span) => this.drop(row, mark, span),
       onAction: (action, row) => this.action(action, row),
+    });
+    // Long text is folded under "Show more" (never a scroll box inside the scrolling page);
+    // opened stays opened for that note until another note is shown.
+    this.unfolded = null;
+    text.more?.addEventListener("click", () => {
+      this.unfolded = this.unfolded === this.note?.id ? null : this.note?.id;
+      this.fold();
     });
     text.edit.addEventListener("click", () => this.note && this.app.guard(this.app.openInNoteWindow(this.note.id)));
     // A link in the rendered text opens like any other: a dashboard here, a note there.
@@ -58,7 +70,23 @@ export class Dashboard {
     this.text.body.innerHTML = body.trim() ? renderMarkdown(body, this.app.markdownOptions())
       : `<p class="dash-text__empty">${escapeHtml(fields.main.hint || "Nothing written yet")}: Edit ↗ to write it</p>`;
     for (const link of this.text.body.querySelectorAll("a")) link.tabIndex = -1;
+    // The renderer leaves maths and diagrams as placeholders; draw them as the editor does.
+    ensureMathFonts();
+    typesetMath(this.text.body);
+    drawDiagrams(this.text.body);
+    this.fold();
     if (this.hasChart) this.drawChart(ctx, note);
+  }
+
+  fold() {
+    const { body, more } = this.text;
+    if (!more) return;
+    const open = this.unfolded === this.note?.id;
+    body.classList.remove("dash-text__body--folded");
+    const tall = body.scrollHeight > FOLD_REM * parseFloat(getComputedStyle(document.documentElement).fontSize);
+    body.classList.toggle("dash-text__body--folded", tall && !open);
+    more.hidden = !tall;
+    more.textContent = open ? "Show less" : "Show more";
   }
 
   drawChart(ctx, note) {

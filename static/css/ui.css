@@ -8,7 +8,7 @@
   max-width: min(22rem, calc(100vw - 1rem));
   max-height: calc(100vh - 1rem);
   overflow: auto;
-  padding: 0.25rem 0;
+  padding: var(--sp-1) 0;
   border: 1px solid var(--nord3);
   border-radius: 4px;
   background: var(--nord1);
@@ -18,13 +18,13 @@
 .menu__item {
   display: flex;
   align-items: baseline;
-  gap: 0.4rem;
-  padding: 0.2rem 0.75rem 0.2rem 0.4rem;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-2);
   border: none;
   background: none;
   color: var(--nord4);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: var(--fs-md);
   text-align: left;
   cursor: pointer;
 }
@@ -62,26 +62,24 @@
 }
 
 .menu__hint {
-  color: var(--nord4);
-  font-size: 0.8rem;
-  opacity: 0.7;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
 }
 
 .menu__group {
-  padding: 0.3rem 0.75rem 0.1rem 1.8rem;
-  color: var(--nord4);
-  font-size: 0.75rem;
-  opacity: 0.7;
+  padding: var(--sp-1) var(--sp-3) var(--sp-0) var(--sp-6);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
 }
 
 .menu__separator {
-  margin: 0.25rem 0;
+  margin: var(--sp-1) 0;
   border-top: 1px solid var(--nord2);
 }
 
 .dialog {
   width: min(28rem, calc(100vw - 2rem));
-  padding: 1rem 1.25rem;
+  padding: var(--sp-4) var(--sp-5);
   border: 1px solid var(--nord3);
   border-radius: 6px;
   background: var(--nord1);
@@ -96,14 +94,14 @@
 .dialog__form {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--sp-3);
   margin: 0;
 }
 
 .dialog__title {
-  margin: 0 0 0.25rem;
+  margin: 0 0 var(--sp-1);
   color: var(--nord6);
-  font-size: 1.05rem;
+  font-size: var(--fs-lg);
   font-weight: 600;
 }
 
@@ -114,19 +112,19 @@
 .dialog__field {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  font-size: 0.85rem;
+  gap: var(--sp-0);
+  font-size: var(--fs-sm);
 }
 
 .dialog__input {
   width: 100%;
-  padding: 0.3rem 0.45rem;
+  padding: var(--sp-1) var(--sp-2);
   border: 1px solid var(--nord3);
   border-radius: 3px;
   background: var(--nord0);
   color: var(--nord6);
   font: inherit;
-  font-size: 0.95rem;
+  font-size: var(--fs-md);
   color-scheme: dark;
 }
 
@@ -153,18 +151,18 @@
 .dialog__buttons {
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 0.25rem;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
 }
 
 .dialog__button {
-  padding: 0.25rem 0.9rem;
+  padding: var(--sp-1) var(--sp-4);
   border: 1px solid var(--nord3);
   border-radius: 4px;
   background: var(--nord2);
   color: var(--nord6);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: var(--fs-md);
   cursor: pointer;
 }
 
@@ -189,7 +187,7 @@
 
 .picker__list {
   max-height: min(24rem, 60vh);
-  margin: 0.5rem 0 0;
+  margin: var(--sp-2) 0 0;
   padding: 0;
   list-style: none;
   overflow: auto;
@@ -198,8 +196,8 @@
 .picker__row {
   display: flex;
   align-items: baseline;
-  gap: 0.75rem;
-  padding: 0.2rem 0.5rem;
+  gap: var(--sp-3);
+  padding: var(--sp-1) var(--sp-2);
   border-radius: 3px;
   cursor: pointer;
 }
@@ -219,43 +217,43 @@
 }
 
 .picker__row--muted .picker__title {
-  opacity: 0.55;
+  color: var(--text-faint);
 }
 
 .picker__title {
+  /* The title keeps its width; the path beside it gives way first. */
   flex: 0 1 auto;
-  min-width: 0;
+  min-width: min(50%, 8rem);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .picker__detail {
-  flex: 1 1 auto;
+  flex: 1 100 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--nord4);
-  font-size: 0.85rem;
-  opacity: 0.7;
+  font-size: var(--fs-sm);
   text-align: right;
+  color: var(--text-dim);
 }
 
 .picker__empty {
-  padding: 0.4rem 0.5rem;
-  opacity: 0.7;
+  padding: var(--sp-2) var(--sp-2);
+  color: var(--text-dim);
 }
 
 /* A small icon-like button beside a fact: ▾ ✎ + × (the hub line, the tree's groups). */
 .mini-button {
-  padding: 0 0.3rem;
+  padding: 0 var(--sp-1);
   border: none;
   border-radius: 3px;
   background: none;
   color: var(--nord4);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   opacity: 0.65;
   cursor: pointer;
@@ -271,13 +269,13 @@
 
 /* A list under a dialog's words (a date history). */
 .dialog__lines {
-  margin: 0 0 0.75rem;
-  padding-left: 1.2rem;
+  margin: 0 0 var(--sp-3);
+  padding-left: var(--sp-4);
   max-height: 50vh;
   overflow: auto;
-  font-size: 0.9rem;
+  font-size: var(--fs-md);
 }
 
 .dialog__line + .dialog__line {
-  margin-top: 0.2rem;
+  margin-top: var(--sp-1);
 }

@@ -50,8 +50,8 @@ test("meeting days: local days, words, times and the weekday", () => {
   assertEqual(error, 'E: "2026-02-30" is not a date like 2026-11-24');
   assertEqual(parseTime("9:30"), "09:30");
   assertEqual(parseTime("Kickoff"), null);
-  assertEqual(whenText({ day: "2026-11-24", time: "14:00" }), "Tue 2026-11-24 14:00");
-  assertEqual(whenText({ day: "2026-11-21", time: "" }), "Sat 2026-11-21");
+  assertEqual(whenText({ day: "2026-11-24", time: "14:00" }, "2026-11-01"), "Tue 24 Nov 14:00");
+  assertEqual(whenText({ day: "2026-11-21", time: "" }, "2026-11-01"), "Sat 21 Nov");
 });
 
 test("meeting days: periods start weeks on Monday", () => {
@@ -105,10 +105,10 @@ test("meeting sections: Meetings on hubs (upcoming first), what a person attende
   const c = { ...ctx(), records: { all: () => [], get: () => ({ people: [] }) } };
   assertEqual(sectionsFor(c.tree.get(20)).map((t) => t.key).join(), "tasks,questions,decisions,files");
   const rows = (key, id) => tab(key).rows(c, c.tree.get(id)).map((r) => `${r.title}|${r.detail}${r.muted ? "~" : ""}`).join(",");
-  assertEqual(rows("meetings", 1), "Review|Sat 2026-11-21 09:30 · no attendees,"
-    + "Kickoff|Tue 2026-11-24 14:00 · on Rollout · 2 attendees,Planning|Tue 2026-11-17 · on Rollout · 1 attendee");
-  assertEqual(rows("active", 10), "Kickoff|Meeting · Tue 2026-11-24 14:00 · Rollout,Planning|Meeting · Tue 2026-11-17 · Rollout");
-  assertEqual(rows("archived", 10), "Old sync|Meeting · Sun 2025-06-01 · Old plan~");
+  assertEqual(rows("meetings", 1), "Review|Sat 21 Nov 09:30 · no attendees,"
+    + "Kickoff|Tue 24 Nov 14:00 · on Rollout · 2 attendees,Planning|Tue 17 Nov · on Rollout · 1 attendee");
+  assertEqual(rows("active", 10), "Kickoff|Meeting · Tue 24 Nov 14:00 · Rollout,Planning|Meeting · Tue 17 Nov · Rollout");
+  assertEqual(rows("archived", 10), "Old sync|Meeting · Sun 1 Jun 2025 · Old plan~");
   assertEqual(tab("notes").rows(c, c.tree.get(2)).map((r) => r.title).join(), "Plan", "meetings have their own section");
   assertEqual(tab("meetings").empty({ kind: "resource" }), "No meetings in this resource yet");
 });
@@ -124,7 +124,7 @@ test("meeting page: the card and its sections", () => {
     const hub = new HubPage({ page, line, section, onOpen: (id) => opened.push(id), onLeave: () => {} });
     hub.show(ctx(), 20);
     const rows = [...line.querySelectorAll(".hub-line__row")].map((row) => row.textContent);
-    assertEqual(rows.join("|"), "Meeting·Tue 2026-11-24 14:00·in Rollout|Attendees:Bob Lee×, Jane Doe×+ Add attendee");
+    assertEqual(rows.join("|"), "Meeting·Tue 24 Nov 14:00·in Rollout|Attendees:Bob Lee×, Jane Doe×+ Add attendee");
     line.querySelector(".hub-line__link").click();
     assertEqual(opened.join(), "2");
     assertEqual([...section.querySelectorAll(".hub__label")].map((t) => t.textContent).join(), "Tasks,Questions,Decisions,Files");
@@ -144,7 +144,7 @@ test("meetings page: lists and filters by period", () => {
     const shown = () => [...section.querySelectorAll(".meetings__title")].map((n) => n.textContent).join();
     assertEqual(shown(), "Kickoff,Review,Planning");
     const first = section.querySelector("[role=option]");
-    assertEqual([...first.children].map((n) => n.textContent).join("|"), "Tue 2026-11-24 14:00|Kickoff|Rollout|Bob Lee, Jane Doe");
+    assertEqual([...first.children].map((n) => n.textContent).join("|"), "Tue 24 Nov 14:00|Kickoff|Rollout|Bob Lee, Jane Doe");
     const period = section.querySelector("[data-filter=period]");
     assertEqual(period.options[0].textContent, "any time");
     period.value = "lastWeek";
@@ -218,7 +218,7 @@ test("meeting commands: :date, :attendee and :dropattendee on a meeting", async 
   let { app, calls } = fakeApp(20);
   await runNoteCommand(app, { name: "date", arg: "tomorrow 9:00" });
   assertEqual(calls.join(";"), "update 20 2026-11-22 09:00;meta 2026-11-22 Kickoff;refresh");
-  assertEqual(app.messages.pop(), '"2026-11-22 Kickoff" is on Sun 2026-11-22 09:00');
+  assertEqual(app.messages.pop(), '"2026-11-22 Kickoff" is on Sun 22 Nov 09:00');
   assertEqual(await rejects(runNoteCommand(app, { name: "date", arg: "soon" })), "E471: Argument required: :date {date} [{time}], like :date 2026-11-24 14:00");
   assertEqual(await rejects(runNoteCommand(app, { name: "date", arg: "today noon" })), 'E: "noon" is not a time like 14:30');
   calls.length = 0;

@@ -12,8 +12,17 @@
 import { dateOf } from "../meetings/meeting-days.js";
 import { DAY_MINUTES, clock, layoutDay } from "./week-model.js";
 
-// Pixels per hour; keep in step with --cal-hour in calendar.css.
-export const HOUR_PX = 48;
+// Pixels per hour: at least this, more when the window is tall, so that FIT_FROM to FIT_TO
+// (the working day with an hour either side) fills the grid's height. calendar.css reads the
+// same number as --cal-hour, set on the grid's root.
+export const MIN_HOUR_PX = 40;
+const FIT_FROM = 7;
+const FIT_TO = 18;
+
+/** Pixels per hour for a grid this many pixels tall. Pure. */
+export function hourPxFor(height) {
+  return Math.max(MIN_HOUR_PX, Math.floor(height / (FIT_TO - FIT_FROM)));
+}
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 // The bottom edge of a block that drags its end, in pixels.
 const EDGE_PX = 7;
@@ -32,9 +41,22 @@ export class GridView {
     this.scroller.append(this.body);
     root.replaceChildren(this.head, this.allDay, this.scroller);
     this.body.addEventListener("click", (event) => this.onBodyClick(event));
+    this.hourPx = MIN_HOUR_PX;
+    this.last = null;
+    // A taller or shorter window: hours grow or shrink to keep the working day in view.
+    if (typeof ResizeObserver === "function") {
+      new ResizeObserver(() => {
+        if (this.last && hourPxFor(this.scroller.clientHeight) !== this.hourPx) this.draw(this.last);
+      }).observe(this.scroller);
+    }
   }
 
-  draw({ days, blocks, today, now, selected = null }) {
+  draw(state) {
+    const { days, blocks, today, now, selected = null } = state;
+    this.last = state;
+    const minute = this.scroller.scrollTop / this.hourPx * 60;
+    if (this.scroller.clientHeight) this.hourPx = hourPxFor(this.scroller.clientHeight);
+    this.root.style.setProperty("--cal-hour", `${this.hourPx}px`);
     this.columns.clear();
     this.nodes.clear();
     this.root.style.setProperty("--cal-days", String(days.length));
@@ -54,7 +76,7 @@ export class GridView {
     const gutter = element("div", "cal-gutter");
     for (let hour = 1; hour < 24; hour += 1) {
       const label = element("span", "cal-gutter__hour", `${String(hour).padStart(2, "0")}:00`);
-      label.style.setProperty("top", `${hour * HOUR_PX}px`);
+      label.style.setProperty("top", `${hour * this.hourPx}px`);
       gutter.append(label);
     }
     const columns = days.map((day) => {
@@ -63,13 +85,14 @@ export class GridView {
       for (const block of layoutDay(blocks.filter((each) => each.day === day))) column.append(this.blockNode(block, selected, true));
       if (day === today && now !== null) {
         const line = element("div", "cal-now");
-        line.style.setProperty("top", `${(now / 60) * HOUR_PX}px`);
+        line.style.setProperty("top", `${(now / 60) * this.hourPx}px`);
         column.append(line);
       }
       this.columns.set(day, column);
       return column;
     });
     this.body.replaceChildren(gutter, ...columns);
+    this.scroller.scrollTop = (minute / 60) * this.hourPx;
   }
 
   blockNode(block, selected, timed) {
@@ -86,11 +109,11 @@ export class GridView {
     if (block.sub) node.append(element("span", "cal-block__sub", block.sub));
     if (timed) {
       const length = Math.max(block.end - block.start, 15);
-      node.style.setProperty("top", `${(block.start / 60) * HOUR_PX}px`);
-      node.style.setProperty("height", `${(length / 60) * HOUR_PX - 2}px`);
+      node.style.setProperty("top", `${(block.start / 60) * this.hourPx}px`);
+      node.style.setProperty("height", `${(length / 60) * this.hourPx - 2}px`);
       node.style.setProperty("left", `calc(${(block.col / block.cols) * 100}% + 2px)`);
       node.style.setProperty("width", `calc(${100 / block.cols}% - 4px)`);
-      if (length <= 30) node.classList.add("cal-block--short");
+      if (length < 45) node.classList.add("cal-block--short");
     }
     if (block.kind !== "pending") {
       if (timed) node.append(element("span", "cal-block__edge"));
@@ -122,7 +145,7 @@ export class GridView {
       const rect = column.getBoundingClientRect();
       if (clientX < rect.left || clientX >= rect.right) continue;
       if (clientY < this.scroller.getBoundingClientRect().top || clientY > this.scroller.getBoundingClientRect().bottom) return null;
-      const minute = ((clientY - rect.top) / HOUR_PX) * 60;
+      const minute = ((clientY - rect.top) / this.hourPx) * 60;
       return { day, minute: Math.max(0, Math.min(DAY_MINUTES, minute)) };
     }
     return null;
@@ -132,8 +155,8 @@ export class GridView {
     const column = this.columns.get(day);
     if (!column) return this.hideGhost();
     this.ghost.textContent = `${title}  ${clock(start)}–${clock(end)}`;
-    this.ghost.style.setProperty("top", `${(start / 60) * HOUR_PX}px`);
-    this.ghost.style.setProperty("height", `${((end - start) / 60) * HOUR_PX - 2}px`);
+    this.ghost.style.setProperty("top", `${(start / 60) * this.hourPx}px`);
+    this.ghost.style.setProperty("height", `${((end - start) / 60) * this.hourPx - 2}px`);
     if (this.ghost.parentNode !== column) column.append(this.ghost);
     return undefined;
   }
@@ -143,7 +166,7 @@ export class GridView {
   }
 
   scrollToMinute(minute) {
-    this.scroller.scrollTop = (minute / 60) * HOUR_PX;
+    this.scroller.scrollTop = (minute / 60) * this.hourPx;
   }
 
   blockNodeFor(key) {

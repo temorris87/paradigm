@@ -51,10 +51,22 @@ test("move picker: never itself, under itself or its own parent; records stay in
 });
 
 test("go to: every note with where it is; a meeting with its date", () => {
-  const items = goToItems(tree(), { get: () => ({ day: "2026-11-24", time: "10:00" }) });
+  const items = goToItems(tree(), { get: () => ({ day: "2026-11-24", time: "10:00" }) }, new Date(2026, 10, 22));
   assertEqual(items.length, 7);
   assertEqual(items.find((item) => item.id === 4).detail, "Projects › Acme › Budget");
-  assertEqual(items.find((item) => item.id === 2).detail, "Meeting · Tue 2026-11-24 10:00 · Projects › Acme");
+  assertEqual(items.find((item) => item.id === 2).detail, "Meeting · next Tue 24 Nov 10:00 · Projects › Acme");
+  assertEqual(items[items.length - 1].id, 2, "meetings, decisions and questions after the notes");
+});
+
+test("go to: a meeting series is one item, opening the next one", () => {
+  const t = new NoteTree([...NOTES, { id: 30, parent_id: 1, title: "Kickoff", kind: "meeting" },
+    { id: 31, parent_id: 1, title: "kickoff", kind: "meeting" }]);
+  const days = { 2: "2026-11-10", 30: "2026-11-24", 31: "2026-12-01" };
+  const items = goToItems(t, { get: (id) => ({ day: days[id], time: "09:00" }) }, new Date(2026, 10, 22));
+  const kickoffs = items.filter((item) => item.title.toLowerCase() === "kickoff");
+  assertEqual(kickoffs.length, 1);
+  assertEqual(kickoffs[0].id, 30);
+  assertEqual(kickoffs[0].detail, "Meeting · 3 · next Tue 24 Nov 09:00 · Projects › Acme");
   assertEqual(whereText(tree(), 1), "Projects");
 });
 
@@ -69,5 +81,5 @@ test("trash: where a note goes back to, and what must come back first", async ()
   assertEqual(blockedText(entry({ kind: "meeting" })), null);
   const rows = trashRows({ entries: [entry({ inside: 2 }), entry({ id: 21, title: "Other" })], days: 7 }, tree(), { title: "q" });
   assertEqual(rows.map((row) => `${row.title}|${row.inside}|${row.when}`).join(),
-    "Q3|2 notes under it|trashed 2026-11-20 · gone for good 2026-11-27");
+    "Q3|2 notes under it|trashed 20 Nov · gone for good 27 Nov");
 });

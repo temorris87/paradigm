@@ -18,6 +18,7 @@ import { NoteTree } from "../notes/tree-model.js";
 import { Meetings } from "../meetings/meetings-model.js";
 import { Tasks } from "../tasks/tasks-model.js";
 import { addDays, dateOf, localDay, whenText } from "../meetings/meeting-days.js";
+import { weekRange } from "../ui/dates.js";
 import { groupForKind, isArchived, isHub } from "../notes/hub-groups.js";
 import { formDialog, confirmDialog } from "../ui/dialog.js";
 import { openMenu } from "../ui/menu.js";
@@ -110,7 +111,7 @@ export class CalendarPage {
   draw() {
     const days = weekDays(this.monday);
     this.blocks = calendarBlocks(this.data, days);
-    const shown = shownDays(days, this.blocks, this.weekend);
+    const shown = shownDays(days, this.blocks, this.weekend, localDay(this.today()));
     const now = this.today();
     this.grid.draw({ days: shown, blocks: this.blocks, today: localDay(now), now: now.getHours() * 60 + now.getMinutes(),
       selected: this.selected });
@@ -420,12 +421,7 @@ function liveHubs(tree) {
 }
 
 function weekLabel(days) {
-  const first = dateOf(days[0]);
-  const last = dateOf(days[6]);
-  const month = (date) => date.toLocaleString("en", { month: "short" });
-  const from = `${month(first)} ${first.getDate()}`;
-  const to = first.getMonth() === last.getMonth() ? `${last.getDate()}` : `${month(last)} ${last.getDate()}`;
-  return `${from} – ${to}, ${last.getFullYear()}`;
+  return weekRange(days[0]);
 }
 
 /** "Imported: 3 new, 2 to file, 1 moved" (or why nothing was). */

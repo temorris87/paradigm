@@ -100,7 +100,9 @@ export function slipOf(plan, id) {
   const days = phase ? daysBetween(phase.baseline_end, phase.end) : milestone ? daysBetween(milestone.baseline_day, milestone.day) : 0;
   // Only the end (or the day) slipping counts as later; a start moving is a move.
   const later = changes.filter((change) => change.field !== "start" && change.new > change.old).length;
-  return { days, moves: changes.length, later, keepsSlipping: later >= KEEPS_SLIPPING };
+  // One move changes the start and the end together: they share a changed_at, so it counts once.
+  const moves = new Set(changes.map((change) => (change.changed_at ? `${change.changed_at}|${change.reason ?? ""}` : change.id))).size;
+  return { days, moves, later, keepsSlipping: later >= KEEPS_SLIPPING };
 }
 
 export function slipText(slip) {

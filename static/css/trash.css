@@ -3,14 +3,14 @@
    at the foot of the notes panel. */
 .trash .list-page__row {
   grid-template-columns: minmax(8rem, 1fr) minmax(0, 1.5fr);
-  row-gap: 0.05rem;
+  row-gap: var(--sp-0);
 }
 
 .trash__where,
 .trash__inside,
 .trash__when {
   color: var(--nord4);
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
 }
 
 .trash__inside:empty {
@@ -18,19 +18,19 @@
 }
 
 .trash__when {
-  opacity: 0.75;
+  color: var(--text-dim);
 }
 
 .navigator__trash {
   align-self: flex-start;
   margin-top: auto;
-  padding: 0.15rem 0.6rem;
+  padding: var(--sp-0) var(--sp-3);
   border: none;
   border-radius: 4px;
   background: none;
   color: var(--nord4);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 

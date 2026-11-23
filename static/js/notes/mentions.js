@@ -75,8 +75,10 @@ function indentOf(line) {
   return /^[ \t]*/.exec(line)[0].replace(/\t/g, "    ").length;
 }
 
+// Spaces, apostrophes and hyphens are dropped: @LiamOConnor and @LiamO'Connor both reach
+// "Liam O'Connor", and @AnnMarie reaches "Ann-Marie".
 function squash(text) {
-  return String(text ?? "").replace(/\s+/g, "").toLowerCase();
+  return String(text ?? "").replace(/[\s'’-]+/g, "").toLowerCase();
 }
 
 export function mentionName(person) {

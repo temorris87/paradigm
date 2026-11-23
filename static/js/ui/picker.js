@@ -11,7 +11,7 @@
 //
 // Every word typed must appear in the title or the detail, ignoring case; titles that match
 // come before items that match only in their detail. Its keys are in ui-keys.js.
-import { element, restoreFocus, uniqueId } from "./dom.js";
+import { element, openModal, restoreFocus, uniqueId } from "./dom.js";
 import { uiAction } from "./ui-keys.js";
 
 const LIMIT = 200;
@@ -120,8 +120,7 @@ export function pickFrom({ title, placeholder = "", items, query = "", create = 
       finish(null);
     });
     draw();
-    dialog.showModal();
-    box.focus();
+    openModal(dialog, box);
     box.setSelectionRange?.(box.value.length, box.value.length);
   });
 }

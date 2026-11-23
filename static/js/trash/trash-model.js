@@ -7,6 +7,7 @@ import { dayOf } from "../hubs/hub-sections.js";
 import { groupForKind, isRecordKind } from "../notes/hub-groups.js";
 import { whereText } from "../notes/note-actions.js";
 import { titleKey } from "../notes/titles.js";
+import { dayText } from "../ui/dates.js";
 
 export const NO_TRASH = Object.freeze({ entries: [], days: 7 });
 
@@ -18,7 +19,7 @@ export function trashRows(trash, tree, { title = "" } = {}) {
       id: entry.id,
       title: entry.title,
       where: whereBack(entry, tree),
-      when: `trashed ${dayOf(entry.deleted_at)} · gone for good ${dayOf(entry.purge_at)}`,
+      when: `trashed ${dayText(dayOf(entry.deleted_at), { weekday: false })} · gone for good ${dayText(dayOf(entry.purge_at), { weekday: false })}`,
       inside: entry.inside === 0 ? "" : entry.inside === 1 ? "1 note under it" : `${entry.inside} notes under it`,
       blocked: blockedText(entry),
     }));

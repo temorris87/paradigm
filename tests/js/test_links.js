@@ -54,7 +54,7 @@ test("links: the Linked from section on resources, last", () => {
   assertTrue(!sectionsFor(t.get(3)).some((section) => section.key === "linked"), "not on projects yet");
   const rows = linked.rows({ tree: t, links: new Links(LINKS) }, t.get(1));
   assertEqual(rows.map((r) => r.detail).join(" | "),
-    "to Colours · Pilot · 2026-11-21 | Pilot · 2026-11-20 | 2026-11-22 · archived");
+    "to Colours · Pilot · 21 Nov | Pilot · 20 Nov | 22 Nov · archived");
   assertTrue(rows[2].muted && !rows[0].muted);
   assertEqual(linked.rows({ tree: t, links: new Links(LINKS) }, t.get(9)).length, 0);
   assertEqual(linked.empty(t.get(9)), "Nothing links to Second yet. Write [[Second]] in any note.");

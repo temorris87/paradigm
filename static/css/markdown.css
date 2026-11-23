@@ -35,20 +35,20 @@
   color: var(--nord13);
 }
 .md-doc h1 {
-  font-size: 1.8em;
-  font-weight: 700;
+  /* A note's headings stay below the page's own size: H1 about --fs-xl, H2 --fs-lg. */
+  font-size: 1.45em;
   padding-bottom: 0.2em;
   border-bottom: 2px solid var(--nord3);
 }
 .md-doc h2 {
-  font-size: 1.45em;
+  font-size: 1.2em;
   padding-bottom: 0.15em;
   border-bottom: 1px solid var(--nord3);
 }
-.md-doc h3 { font-size: 1.2em; }
-.md-doc h4 { font-size: 1.05em; }
+.md-doc h3 { font-size: 1.08em; }
+.md-doc h4 { font-size: 1em; }
 .md-doc h5 { font-size: 1em; }
-.md-doc h6 { font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.06em; }
+.md-doc h6 { font-size: 0.9em; color: var(--text-dim); }
 
 .md-doc a {
   color: var(--nord8);
@@ -95,7 +95,7 @@
 
 .md-doc code,
 .md-doc pre {
-  font-family: Consolas, "Cascadia Mono", Menlo, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-family: var(--font-mono);
   font-size: 0.9em;
 }
 .md-doc code {
@@ -254,7 +254,7 @@
 .md-doc .md-math-error,
 .md-doc .katex-error {
   color: var(--nord11);
-  font-family: Consolas, "Cascadia Mono", Menlo, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-family: var(--font-mono);
   font-size: 0.9em;
   white-space: pre-wrap;
 }

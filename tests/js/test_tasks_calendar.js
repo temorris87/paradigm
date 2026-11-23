@@ -102,6 +102,7 @@ test("week: days, the weekend shows only when used", () => {
   assertEqual(shownDays(days, []).length, 5);
   assertEqual(shownDays(days, [{ day: "2026-11-29" }]), [...days.slice(0, 5), "2026-11-29"]);
   assertEqual(shownDays(days, [], true).length, 7);
+  assertEqual(shownDays(days, [], false, "2026-11-28"), [...days.slice(0, 5), "2026-11-28"], "today shows on a weekend");
   assertEqual([minutes("09:30"), clock(570), clock(1440), snap(37), snap(38)], [570, "09:30", "24:00", 30, 45]);
 });
 
@@ -164,4 +165,24 @@ test("home: Today holds the day's task blocks by time, and the import reminder",
   assertEqual(waiting.rows.map((row) => row.cells[0][1]), ["Order boxes"]);
   assertTrue(waiting.rows[0].late);
   assertEqual(today.rows[2].cells[0][1], "10:00–11:00");
+});
+
+test("the Time page loads its week the first time it is shown", async () => {
+  const { TimePage } = await import("../../static/js/timesheet/time-page.js");
+  const root = document.createElement("div");
+  const bar = document.createElement("div");
+  const main = document.createElement("div");
+  root.append(bar, main);
+  let asked = null;
+  const api = { week: async (monday) => {
+    asked = monday;
+    return { days: ["2026-11-23"], rows: [{ code: "A-1", hours: [8], total: 8 }], totals: [8], total: 8, default_code: "A-1",
+      unbooked_hours: 0, warnings: [], pto: [], not_counted: [], details: {} };
+  } };
+  const page = new TimePage({ root, bar, main, api, changes: { listen() {} }, today: () => new Date(2026, 10, 25) });
+  page.show();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assertEqual(asked, "2026-11-23");
+  assertEqual(main.querySelector(".time-week").hidden, false);
+  assertTrue(main.querySelector(".time-grid"), "the grid is drawn");
 });

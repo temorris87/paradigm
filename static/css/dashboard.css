@@ -2,8 +2,8 @@
    the plan as a Gantt chart (gantt.css), the hub's text rendered, then its sections laid out
    in columns. Under 1400 px wide (the laptop) the columns fall back to one. */
 [data-role="main"] .app__note {
-  gap: 0.75rem;
-  padding: 1rem 1.5rem 3rem;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5) 3rem;
 }
 
 .dash-chart[hidden],
@@ -12,7 +12,7 @@
 }
 
 .dash-text {
-  padding: 0.6rem 0.9rem;
+  padding: var(--sp-3) var(--sp-4);
   border: 1px solid var(--nord2);
   border-radius: 6px;
 }
@@ -20,28 +20,25 @@
 .dash-text__head {
   display: flex;
   align-items: baseline;
-  gap: 0.75rem;
-  margin-bottom: 0.25rem;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-1);
 }
 
 .dash-text__label {
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--nord4);
-  opacity: 0.8;
+  color: var(--text-strong);
 }
 
 .dash-text__edit {
   margin-left: auto;
-  padding: 0.05rem 0.55rem;
+  padding: var(--sp-0) var(--sp-2);
   border: 1px solid var(--nord3);
   border-radius: 4px;
   background: var(--nord1);
   color: var(--nord5);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 
@@ -50,9 +47,26 @@
   border-color: var(--nord8);
 }
 
-.dash-text__body {
-  max-height: 18rem;
-  overflow: auto;
+/* Shown in full; past 24rem it folds (dashboard.js) under Show more, with a fade. */
+.dash-text__body--folded {
+  max-height: 24rem;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, black 80%, transparent);
+}
+
+.dash-text__more {
+  margin-top: var(--sp-2);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--nord8);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.dash-text__more[hidden] {
+  display: none;
 }
 
 .dash-text__empty {
@@ -64,30 +78,30 @@
   border-top: none;
 }
 
+/* Columns filled top to bottom in the section order, so a short section sits under the one
+   before it instead of leaving a hole beside a long one. */
 [data-role="main"] .hub__list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(26rem, 1fr));
-  align-items: start;
-  gap: 0.75rem;
+  display: block;
+  columns: 30rem 4;
+  column-gap: var(--sp-3);
 }
 
 [data-role="main"] .hub__section {
-  padding: 0.4rem 0.5rem 0.5rem;
+  break-inside: avoid;
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-2);
   border: 1px solid var(--nord2);
   border-radius: 6px;
   min-width: 0;
 }
 
-/* Tasks and Projects hold the most: two columns' worth when there is room. */
-@media (min-width: 1900px) {
-  [data-role="main"] .hub__section--tasks,
-  [data-role="main"] .hub__section--projects {
-    grid-column: span 2;
-  }
+/* An empty section is one line: its heading, its count and its add button. */
+[data-role="main"] .hub__section--empty .hub__empty {
+  display: none;
 }
 
 @media (max-width: 1399.98px) {
   [data-role="main"] .hub__list {
-    grid-template-columns: minmax(0, 1fr);
+    columns: auto;
   }
 }

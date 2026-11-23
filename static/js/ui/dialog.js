@@ -23,7 +23,7 @@
 // Escape (ui-keys.js) or Cancel closes it with nothing changed; Enter submits, as on any form.
 // Text fields are required unless optional. Afterwards the focus goes back to returnFocus, or
 // where it was; when that element is gone (or was the page itself), fallbackFocus() decides.
-import { element, restoreFocus, uniqueId } from "./dom.js";
+import { element, openModal, restoreFocus, uniqueId } from "./dom.js";
 import { uiAction } from "./ui-keys.js";
 
 export function formDialog({ title, text = "", lines = [], fields = [], submit = "OK", danger = false, run = async (values) => values,
@@ -104,9 +104,8 @@ export function formDialog({ title, text = "", lines = [], fields = [], submit =
         ok.disabled = false;
       }
     });
-    dialog.showModal();
     const first = inputs.values().next().value ?? ok;
-    first.focus();
+    openModal(dialog, first);
     if (first.select && first.type === "text") first.select();
   });
 }

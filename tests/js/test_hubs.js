@@ -68,7 +68,7 @@ test("hub sections: Notes lists the whole subtree in tree order with depths", ()
   const t = tree();
   const rows = section("notes").rows({ tree: t }, t.get(2));
   assertEqual(rows.map((r) => `${r.title}:${r.depth}`).join(), "Budget:0,Kickoff:0,Minutes:1");
-  assertEqual(rows[0].detail, dayOf(T));
+  assertEqual(rows[0].detail, "21 Nov");
   assertEqual(section("notes").empty(t.get(7)), "No notes in this resource yet");
   assertEqual(dayOf(""), "");
   assertEqual(dayOf("nonsense"), "");
@@ -78,14 +78,14 @@ test("hub sections: an area's projects say on hold and overdue, muted when on ho
   const t = tree();
   const rows = section("projects").rows({ tree: t, today: TODAY }, t.get(1));
   assertEqual(rows.map((r) => `${r.title}${r.muted ? "~" : ""}`).join(), "Acme,Northwind~");
-  assertEqual(rows[1].detail, "on hold · overdue since Sun 2026-11-01");
+  assertEqual(rows[1].detail, "on hold · overdue since Sun 1 Nov");
   assertEqual(section("projects").detail(rows), "1 live");
 });
 
 test("project facts: status and due texts", () => {
   assertEqual(statusText({ status: "on_hold" }), "on hold");
   assertEqual(statusText({ status: "active" }), "");
-  assertEqual(dueText({ due: "2026-12-15" }, TODAY), "due Tue 2026-12-15");
+  assertEqual(dueText({ due: "2026-12-15" }, TODAY), "due Tue 15 Dec");
   assertTrue(isOverdue({ due: "2026-11-21" }, TODAY));
   assertTrue(!isOverdue({ due: "2026-11-22" }, TODAY), "due today is not overdue");
   assertEqual(dueText({ due: "" }, TODAY), "");
@@ -171,7 +171,7 @@ test("hub page: shows only on a hub, a person or a meeting; labels the text box"
   hub.show({ tree: tree() }, 7);
   assertEqual(rows(line).join("|"), "Resource▾");
   hub.show({ tree: tree(), today: TODAY }, 6);
-  assertEqual(rows(line)[0], "Project▾·On hold▾·overdue since Sun 2026-11-01·Area: Operations✎·Set time code");
+  assertEqual(rows(line)[0], "Project▾·On hold▾·overdue since Sun 1 Nov·Area: Operations✎·Set time code");
   assertTrue(line.querySelector(".hub-line__when--late") !== null);
   hub.show({ tree: tree() }, 9);
   assertEqual(rows(line)[0], "Project▾·Active▾·Set due date·no areaSet area·Set time code");
@@ -286,7 +286,7 @@ test("hub sections: archived projects come last, muted", () => {
   const t = new NoteTree(WITH_ARCHIVED);
   const projectRows = section("projects").rows({ tree: t, today: TODAY }, t.get(1));
   assertEqual(projectRows.map((r) => `${r.title}${r.muted ? "~" : ""}`).join(), "Acme,Northwind~,Zeta~");
-  assertEqual(projectRows[2].detail, `archived ${dayOf(A)}`);
+  assertEqual(projectRows[2].detail, "archived 15 Nov");
 });
 
 test("hub page: an archived hub says so; an archived area is muted on its projects", () => withPage(({ line, hub }) => {

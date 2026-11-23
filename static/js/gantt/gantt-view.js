@@ -11,12 +11,15 @@
 // diamond moves the milestone. Each drop is one change (the page records it). A click with no
 // drag opens the row. The chart is one focus stop (a listbox of its rows); its keys are in
 // gantt-keys.js.
-import { barBox, chartAxis, dayAt, dragged, fitDayPx, markLeft } from "./gantt-model.js";
+import { barBox, chartAxis, dayAt, dragged, fitDayPx, markLeft, ticksFor } from "./gantt-model.js";
 import { ganttAction } from "./gantt-keys.js";
 
 const LABEL_PX = 220;
 const EDGE_PX = 6;
 const DRAG_THRESHOLD_PX = 4;
+
+// About how wide one character of a milestone's label is, in pixels (--fs-xs).
+const LABEL_CHARS_PX = 6.5;
 
 export class GanttView {
   constructor(root, { label = "Plan", onOpen = () => {}, onDrop = () => {}, onAction = () => {} } = {}) {
@@ -62,7 +65,7 @@ export class GanttView {
 
   axisNode() {
     const axis = element("div", "gantt__axis");
-    for (const tick of this.axis.ticks) {
+    for (const tick of ticksFor(this.axis, this.dayPx)) {
       const node = element("span", `gantt__tick${tick.major ? " gantt__tick--major" : ""}`, tick.label);
       node.style.setProperty("left", `${(tick.at - this.axis.first) * this.dayPx}px`);
       axis.append(node);
@@ -118,6 +121,9 @@ export class GanttView {
       node.setAttribute("aria-hidden", "true");
       const name = element("span", "gantt__mark-label", mark.label);
       node.append(name);
+      // A label that would run past the chart's right edge goes on the diamond's left.
+      const left = markLeft(this.axis, mark.at, this.dayPx);
+      if (left + LABEL_CHARS_PX * mark.label.length + 24 > this.axis.days * this.dayPx) node.classList.add("gantt__mark--flip");
       if (mark.draggable) node.addEventListener("pointerdown", (event) => this.startDrag(event, row, mark, node));
       else node.addEventListener("click", () => this.handlers.onOpen(row, mark));
       track.append(node);

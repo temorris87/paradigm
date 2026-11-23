@@ -1,7 +1,7 @@
 /* The calendar page in the main window (.cal-view, &calendar): a bar, the task sidebar and
    the week grid, as tall as the window. */
 .cal-view {
-  --cal-hour: 48px; /* keep in step with HOUR_PX in grid-view.js */
+  --cal-hour: 40px; /* grid-view.js sets the real value on the grid (hourPxFor) */
   --cal-gutter: 3.5rem;
   display: flex;
   flex-direction: column;
@@ -28,13 +28,13 @@ body.is-dragging * {
 }
 
 .cal-button {
-  padding: 0.25rem 0.7rem;
+  padding: var(--sp-1) var(--sp-3);
   border: 1px solid var(--nord3);
   border-radius: 4px;
   background: var(--nord1);
   color: var(--nord5);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: var(--fs-md);
   cursor: pointer;
 }
 
@@ -53,15 +53,15 @@ body.is-dragging * {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 1rem;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
   border-bottom: 1px solid var(--nord2);
   background: var(--nord1);
 }
 
 .cal-bar__week {
-  margin: 0 0.75rem;
-  font-size: 1.15rem;
+  margin: 0 var(--sp-3);
+  font-size: var(--fs-lg);
   font-weight: 600;
   color: var(--nord13);
 }
@@ -69,7 +69,7 @@ body.is-dragging * {
 .cal-bar__status {
   flex: 1 1 20rem;
   min-width: 0;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   color: var(--nord4);
 }
 
@@ -89,21 +89,21 @@ body.is-dragging * {
 .cal-side {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--sp-2);
   min-height: 0;
-  padding: 0.75rem;
+  padding: var(--sp-3);
   border-right: 1px solid var(--nord2);
   background: var(--nord1);
 }
 
 .cal-side__tabs {
   display: flex;
-  gap: 0.25rem;
+  gap: var(--sp-1);
 }
 
 .cal-side__tab {
   flex: 1;
-  padding: 0.3rem 0.5rem;
+  padding: var(--sp-1) var(--sp-2);
   border: 1px solid var(--nord3);
   border-radius: 4px;
   background: var(--nord0);
@@ -121,20 +121,20 @@ body.is-dragging * {
 .cal-side__filters {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--sp-2);
 }
 
 .cal-side__hub,
 .cal-side__search,
 .cal-file__hub {
   width: 100%;
-  padding: 0.3rem 0.4rem;
+  padding: var(--sp-1) var(--sp-2);
   border: 1px solid var(--nord3);
   border-radius: 4px;
   background: var(--nord0);
   color: var(--nord5);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: var(--fs-md);
 }
 
 .cal-file__hub.is-missing {
@@ -143,9 +143,8 @@ body.is-dragging * {
 
 .cal-side__hint {
   margin: 0;
-  font-size: 0.8rem;
-  color: var(--nord4);
-  opacity: 0.8;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
 }
 
 .cal-side__list {
@@ -158,7 +157,7 @@ body.is-dragging * {
 }
 
 .cal-side__empty {
-  padding: 0.5rem;
+  padding: var(--sp-2);
   font-style: italic;
   color: var(--nord4);
 }
@@ -166,8 +165,8 @@ body.is-dragging * {
 .cal-task {
   display: flex;
   align-items: flex-start;
-  gap: 0.4rem;
-  padding: 0.3rem 0.4rem;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
   border-radius: 4px;
 }
 
@@ -181,7 +180,7 @@ body.is-dragging * {
 .cal-task--depth-4 { padding-left: 4.4rem; }
 
 .cal-task__box {
-  margin-top: 0.25rem;
+  margin-top: var(--sp-1);
   accent-color: var(--nord14);
 }
 
@@ -198,22 +197,25 @@ body.is-dragging * {
 }
 
 .cal-task--done .cal-task__title {
-  opacity: 0.6;
-  text-decoration: line-through;
+  color: var(--text-dim);
+}
+
+.cal-task__box--none {
+  display: inline-block;
+  width: 13px;
 }
 
 .cal-task__meta,
 .cal-file__meta {
-  font-size: 0.8rem;
-  color: var(--nord4);
-  opacity: 0.85;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
 }
 
 .cal-file {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.5rem 0.4rem;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-2);
   border-bottom: 1px solid var(--nord2);
 }
 
@@ -224,7 +226,7 @@ body.is-dragging * {
 .cal-file__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
+  gap: var(--sp-1);
 }
 
 /* ---- the week ---- */
@@ -251,8 +253,8 @@ body.is-dragging * {
   display: flex;
   align-items: baseline;
   justify-content: center;
-  gap: 0.4rem;
-  padding: 0.4rem 0;
+  gap: var(--sp-2);
+  padding: var(--sp-2) 0;
   border-left: 1px solid var(--nord2);
 }
 
@@ -261,7 +263,7 @@ body.is-dragging * {
 }
 
 .cal-dayhead__date {
-  font-size: 1.2rem;
+  font-size: var(--fs-lg);
   font-weight: 600;
   color: var(--nord6);
 }
@@ -277,9 +279,9 @@ body.is-dragging * {
 
 .cal-corner--label {
   align-self: center;
-  padding-right: 0.4rem;
+  padding-right: var(--sp-2);
   text-align: right;
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
   color: var(--nord4);
 }
 
@@ -310,7 +312,7 @@ body.is-dragging * {
   position: absolute;
   right: 0.4rem;
   transform: translateY(-50%);
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
   color: var(--nord4);
   font-variant-numeric: tabular-nums;
 }
@@ -351,7 +353,7 @@ body.is-dragging * {
   border-radius: 4px;
   background: color-mix(in srgb, var(--nord10) 45%, var(--nord0));
   color: var(--nord6);
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
   line-height: 1.25;
   cursor: grab;
   touch-action: none;
@@ -382,8 +384,14 @@ body.is-dragging * {
   text-decoration: line-through;
 }
 
+/* Done: the ☑ says it; a dimmed block, no strikethrough (hard to read on a small block). */
+.cal-block--done {
+  filter: saturate(0.4) brightness(0.85);
+}
+
 .cal-block--done .cal-block__title {
-  text-decoration: line-through;
+  font-weight: 400;
+  color: var(--text-dim);
 }
 
 .cal-block--selected {
@@ -413,13 +421,13 @@ body.is-dragging * {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  opacity: 0.85;
+  color: var(--text-dim);
 }
 
 /* Half an hour or less: one line, the time beside the title. */
 .cal-block--short {
   flex-direction: row;
-  gap: 0.4rem;
+  gap: var(--sp-2);
 }
 
 .cal-block--short .cal-block__sub {

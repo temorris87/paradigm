@@ -25,6 +25,7 @@ import { openCount } from "../tasks/tasks-model.js";
 import { localDay } from "../meetings/meeting-days.js";
 import { NO_CONTROLS, factButton, miniButton } from "./hub-line-controls.js";
 import { dueText, isOverdue, statusLabel } from "./project-facts.js";
+import { dayText } from "../ui/dates.js";
 
 export function showHubLine(line, ctx, hub, onOpen, controls = NO_CONTROLS) {
   line.hidden = !hub;
@@ -159,13 +160,33 @@ function areaDetails(ctx, area, controls) {
   ], []];
 }
 
+// How many people the card names before "+N more"; leads and sponsors come first.
+const CARD_PEOPLE = 4;
+const ROLE_RANK = ["lead", "sponsor", "owner"];
+
+function rank(role) {
+  const at = ROLE_RANK.indexOf(role.toLowerCase());
+  return at === -1 ? ROLE_RANK.length : at;
+}
+
 function peopleRow(ctx, hub, onOpen, controls) {
   const on = peopleOn(ctx.tree, ctx.people, hub).filter((each) => each.roles.some((role) => role.via === null));
+  const roleOf = (entry) => entry.roles.find((each) => each.via === null)?.role ?? "";
+  // The card stays short: leads and sponsors first, a few names, then "+N more" (the People
+  // section lists everyone).
+  const ranked = [...on].sort((a, b) => rank(roleOf(a)) - rank(roleOf(b)));
+  const shown = ranked.length > CARD_PEOPLE + 1 ? ranked.slice(0, CARD_PEOPLE) : ranked;
+  const rest = ranked.slice(shown.length);
   // One inline run, so the row's gaps don't come between a name and its comma.
-  const names = list(on.map(({ person, roles, archived }) => {
-    const role = roles.find((each) => each.via === null)?.role;
-    return [linkTo(person, archived, onOpen), ...(role ? [span("hub-line__role", ` (${role})`)] : [])];
+  const names = list(shown.map((entry) => {
+    const role = roleOf(entry);
+    return [linkTo(entry.person, entry.archived, onOpen), ...(role ? [span("hub-line__role", ` (${role})`)] : [])];
   }));
+  if (rest.length) {
+    const more = span("hub-line__role", ` +${rest.length} more`);
+    more.title = rest.map((entry) => entry.person.title).join(", ");
+    names.append(more);
+  }
   return [span("hub-line__label", "People:"), on.length ? names : span("hub-line__text hub-line__text--none", "no one yet"),
     factButton("hub-line__set", "+ Add person", "Put someone on it, with a role", () => controls.addPerson(hub))];
 }
@@ -205,10 +226,10 @@ function recordDetails({ tree, records }, note, onOpen, controls) {
   const record = records.get(note.id);
   const day = (text) => factButton("hub-line__when", text, "Change the date", () => controls.day(note));
   const parts = note.kind === "question"
-    ? [factButton("hub-line__state", isOpen(record) ? "open" : `answered ${record.answered}`,
+    ? [factButton("hub-line__state", isOpen(record) ? "open" : `answered ${shortDay(record.answered, localDay(new Date()))}`,
       isOpen(record) ? "Answer it, or mark it answered" : "Reopen it, or change the answer date", (button) => controls.answer(button, note), { caret: true }),
-    separator(), span("hub-line__text", "asked "), day(record.day)]
-    : [day(record.day)];
+    separator(), span("hub-line__text", "asked "), day(dayText(record.day))]
+    : [day(dayText(record.day))];
   const hub = hubOf(tree, note.id);
   if (hub) parts.push(separator(), span("hub-line__text", "in "), linkTo(hub, false, onOpen));
   const names = peopleOf(tree, records, note.id);

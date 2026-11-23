@@ -26,6 +26,11 @@ export const PAGE_VIEWS = [
   { key: "template", label: "Plan template" },
 ];
 
+/** A page's name ("Home"), for the tab's title. */
+export function viewLabel(key) {
+  return PAGE_VIEWS.find((view) => view.key === key)?.label ?? "";
+}
+
 export class PageViews {
   constructor({ main, pages, history, noteUrl }) {
     this.main = main;

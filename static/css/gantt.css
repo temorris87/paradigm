@@ -6,8 +6,8 @@
 .gantt {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.5rem 0.6rem 0.6rem;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
   border: 1px solid var(--nord2);
   border-radius: 6px;
 }
@@ -16,7 +16,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--sp-2);
 }
 
 .gantt__tools:empty {
@@ -25,13 +25,13 @@
 
 .gantt__tool,
 .plan-template__button {
-  padding: 0.1rem 0.6rem;
+  padding: var(--sp-0) var(--sp-3);
   border: 1px solid var(--nord3);
   border-radius: 4px;
   background: var(--nord1);
   color: var(--nord5);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 
@@ -43,15 +43,14 @@
 }
 
 .gantt__note {
-  color: var(--nord4);
-  opacity: 0.7;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
 }
 
 .gantt__scroll {
   overflow-x: auto;
   overflow-y: hidden;
-  padding-bottom: 0.6rem; /* room for the last milestone's name */
+  padding-bottom: var(--sp-3); /* room for the last milestone's name */
 }
 
 .gantt__grid {
@@ -85,7 +84,7 @@
   top: 0;
   padding-left: 3px;
   border-left: 1px solid var(--nord2);
-  font-size: 0.72rem;
+  font-size: var(--fs-xs);
   color: var(--nord4);
   opacity: 0.65;
   white-space: nowrap;
@@ -102,12 +101,13 @@
   justify-content: center;
   line-height: 1.15;
   min-width: 0;
-  padding: 0.25rem 0.5rem;
+  padding: var(--sp-1) var(--sp-2);
   border-radius: 3px;
   cursor: pointer;
 }
 
-.gantt__label[aria-selected="true"] {
+/* The keyboard's row: shown only while the chart has the focus. */
+.gantt__grid:focus .gantt__label[aria-selected="true"] {
   background: var(--nord2);
   color: var(--nord6);
 }
@@ -119,14 +119,14 @@
 }
 
 .gantt__label--muted .gantt__name {
-  opacity: 0.55;
+  color: var(--text-faint);
 }
 
 .gantt__badge {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.72rem;
+  font-size: var(--fs-xs);
   color: var(--nord13);
 }
 
@@ -159,10 +159,10 @@
 
 .gantt__bar {
   overflow: hidden;
-  padding: 0 0.4rem;
+  padding: 0 var(--sp-2);
   background: var(--nord10);
   color: var(--nord6);
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
   line-height: 1.3rem;
   white-space: nowrap;
   cursor: grab;
@@ -209,7 +209,7 @@
   top: 0.55rem;
   width: 0.85rem;
   height: 0.85rem;
-  margin-left: -0.425rem;
+  margin-left: calc(-1 * var(--sp-2));
   transform: rotate(45deg);
   border: 2px solid var(--nord13);
   background: var(--nord0);
@@ -233,10 +233,17 @@
   top: -0.25rem;
   transform: rotate(-45deg);
   transform-origin: left top;
-  font-size: 0.72rem;
+  font-size: var(--fs-xs);
   color: var(--nord5);
   white-space: nowrap;
   pointer-events: none;
+}
+
+/* Near the right edge the label sits on the diamond's other side. */
+.gantt__mark--flip .gantt__mark-label {
+  left: auto;
+  right: 1.1rem;
+  transform-origin: right top;
 }
 
 .gantt__today {
@@ -251,6 +258,6 @@
 
 .gantt__empty {
   grid-column: 1 / -1;
-  padding: 0.6rem 0.5rem;
+  padding: var(--sp-3) var(--sp-2);
   color: var(--nord3);
 }

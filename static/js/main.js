@@ -65,7 +65,8 @@ boot({
       buttons: { calendar: $(".topbar__calendar"), time: $(".topbar__time") },
       status: $(".status-line"),
       dashboard: new Dashboard({
-        text: { box: $(".dash-text"), label: $(".dash-text__label"), body: $(".dash-text__body"), edit: $(".dash-text__edit") },
+        text: { box: $(".dash-text"), label: $(".dash-text__label"), body: $(".dash-text__body"), edit: $(".dash-text__edit"),
+          more: $(".dash-text__more") },
         chart: $(".dash-chart"),
       }),
     };

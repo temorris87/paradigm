@@ -22,7 +22,16 @@ export class AgendaField {
       },
       onError,
     });
-    editor?.addEventListener("change", (event) => this.session.edited(event.detail.value));
+    editor?.addEventListener("change", (event) => {
+      this.session.edited(event.detail.value);
+      this.markEmpty(event.detail.value);
+    });
+  }
+
+  // An empty agenda is one line until it is clicked into (hub.css), so a past meeting's
+  // minutes are not pushed down by an empty box.
+  markEmpty(text) {
+    this.field?.classList.toggle("app__agenda--empty", !String(text ?? "").trim());
   }
 
   get id() {
@@ -44,6 +53,7 @@ export class AgendaField {
       this.session.open({ id: note.id, title: note.title, body: note.agenda, version: note.agenda_version });
       if (this.editor) this.editor.value = note.agenda;
     }
+    this.markEmpty(this.session.text);
     if (this.field) this.field.hidden = false;
   }
 

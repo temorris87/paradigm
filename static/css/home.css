@@ -20,29 +20,29 @@
 }
 
 .home__section + .home__section {
-  margin-top: 1rem;
+  margin-top: var(--sp-4);
 }
 
 .home__heading {
-  margin: 0 0 0.25rem;
-  padding-bottom: 0.15rem;
+  margin: 0 0 var(--sp-1);
+  padding-bottom: var(--sp-0);
   border-bottom: 1px solid var(--nord2);
-  font-size: 1.05rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
-  color: var(--nord13);
+  color: var(--text-strong);
 }
 
 .home__detail {
-  color: var(--nord4);
+  color: var(--text-faint);
   font-weight: normal;
 }
 
 .home__row {
   display: flex;
-  gap: 0.75rem;
+  gap: var(--sp-3);
   align-items: baseline;
   min-width: 0;
-  padding: 0.2rem 0.5rem;
+  padding: var(--sp-1) var(--sp-2);
   border-radius: 3px;
 }
 
@@ -65,12 +65,12 @@
 
 /* An area's row heads its projects, which sit under it indented. */
 .home__row--group {
-  margin-top: 0.25rem;
+  margin-top: var(--sp-1);
   font-weight: 600;
 }
 
 .home__row--indent {
-  padding-left: 1.75rem;
+  padding-left: var(--sp-6);
 }
 
 .home__cell {
@@ -94,7 +94,7 @@
 .home__meta {
   flex: 1 1 0;
   color: var(--nord4);
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
 }
 
 .home__area--none {
@@ -104,23 +104,50 @@
 }
 
 .home__empty {
-  padding: 0.2rem 0.5rem;
+  padding: var(--sp-1) var(--sp-2);
   color: var(--nord4);
   font-style: italic;
 }
 
 /* A project on hold. */
 .home__row--muted .home__title {
-  opacity: 0.55;
+  color: var(--text-faint);
 }
 
 /* "Calendar not imported today": a reminder until the day's export is read. */
 .home__notice {
   color: var(--nord13);
-  font-size: 0.9rem;
+  font-size: var(--fs-md);
 }
 
 /* A delegated task past its follow-up day. */
-.home__row--late .home__meta {
+.home__row--late .home__meta::before {
+  content: "● ";
   color: var(--nord11);
 }
+
+/* A wide main window: the sections flow down columns (in the table's order, which is also the
+   keys' order), so the width holds two or three short columns instead of 1,700 px rows. The
+   page then scrolls as a whole (a scrolling multi-column box would overflow sideways). */
+@media (min-width: 1400px) {
+  .home {
+    overflow-y: auto;
+  }
+
+  .home__list {
+    flex: none;
+    overflow: visible;
+    columns: 34rem 3;
+    column-gap: var(--sp-6);
+  }
+
+  .home__section {
+    break-inside: avoid;
+  }
+
+  .home__section + .home__section {
+    margin-top: 0;
+    padding-top: var(--sp-4);
+  }
+}
+

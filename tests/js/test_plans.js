@@ -51,6 +51,8 @@ const PLAN = {
     { id: 1, note_id: 3, field: "end", old: "2026-11-13", new: "2026-11-16", changed_at: "2026-11-09T10:00:00Z", reason: "late" },
     { id: 2, note_id: 3, field: "end", old: "2026-11-16", new: "2026-11-18", changed_at: "2026-11-12T10:00:00Z", reason: "" },
     { id: 3, note_id: 3, field: "end", old: "2026-11-18", new: "2026-11-20", changed_at: "2026-11-16T10:00:00Z", reason: "vendor" },
+    // The same move as id 3: a bar dragged moves both ends at once.
+    { id: 4, note_id: 3, field: "start", old: "2026-10-30", new: "2026-11-02", changed_at: "2026-11-16T10:00:00Z", reason: "vendor" },
   ],
   applied: [{ project_id: 2, template_id: 1, title: "Standard", applied_at: T }],
 };
@@ -157,4 +159,16 @@ test("files: one file on many notes, a project's with its phases', folders of th
   assertEqual([fileDir(files.file(1)), fileDir(files.file(2))], ["Design", ""]);
   const rows = HUB_SECTIONS.find((section) => section.key === "files").rows({ tree: tree(), files }, tree().get(2));
   assertTrue(rows[1].late && rows[1].detail.includes("not in the folder"), rows[1].detail);
+});
+
+test("gantt: the axis thins its ticks so labels never collide", async () => {
+  const { chartAxis, ticksFor, TICK_PX } = await import("../../static/js/gantt/gantt-model.js");
+  const at = dayNumber("2026-09-07");
+  const axis = chartAxis([{ key: "a", start: at, end: at + 180, marks: [] }], { today: null });
+  assertEqual(ticksFor(axis, 10).length, axis.ticks.length, "70 px a week: every week");
+  for (const dayPx of [5, 3.6, 2, 1]) {
+    const ticks = ticksFor(axis, dayPx);
+    assertTrue(ticks.every((tick, i) => i === 0 || (tick.at - ticks[i - 1].at) * dayPx >= TICK_PX), `${dayPx} px a day: no two labels closer than one`);
+    assertTrue(ticks.length >= Math.floor((axis.days * dayPx) / (TICK_PX * 2)), `${dayPx} px a day: still labelled`);
+  }
 });

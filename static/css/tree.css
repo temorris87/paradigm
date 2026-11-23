@@ -7,7 +7,7 @@
 }
 
 .tree__group {
-  padding-left: 0.9rem;
+  padding-left: var(--sp-4);
 }
 
 .tree__item {
@@ -17,8 +17,8 @@
 .tree__row {
   display: flex;
   align-items: baseline;
-  gap: 0.25rem;
-  padding: 0.1rem 0.4rem;
+  gap: var(--sp-1);
+  padding: var(--sp-0) var(--sp-2);
   border-radius: 3px;
   color: var(--nord4);
   cursor: pointer;
@@ -29,17 +29,24 @@
   background: var(--nord2);
 }
 
+/* The fold arrow: a 20 px target, visible against the sidebar. */
 .tree__twisty {
   flex: none;
-  width: 1em;
-  color: var(--nord3);
+  width: 1.25rem;
+  margin: calc(-1 * var(--sp-0)) 0;
+  padding: var(--sp-0) 0;
+  color: var(--text-dim);
   text-align: center;
 }
 
+/* Real titles are long: two lines before the ellipsis. */
 .tree__title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .tree__item[aria-selected="true"] > .tree__row {
@@ -56,12 +63,12 @@
 
 /* Hub group headings: Inbox, Projects, Areas, Resources. */
 .tree__item--group + .tree__item--group {
-  margin-top: 0.4rem;
+  margin-top: var(--sp-2);
 }
 
 .tree__heading {
   color: var(--nord4);
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -70,17 +77,16 @@
 .tree__count {
   margin-left: auto;
   color: var(--nord4);
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
 }
 
 /* What an archived hub was ("Project"), beside its title in the Archive group. */
 .tree__kind {
   margin-left: auto;
-  padding-left: 0.5rem;
-  color: var(--nord4);
-  opacity: 0.6;
-  font-size: 0.75rem;
+  padding-left: var(--sp-2);
+  font-size: var(--fs-xs);
   white-space: nowrap;
+  color: var(--text-faint);
 }
 
 .tree__item--empty > .tree__row .tree__heading {
@@ -89,7 +95,7 @@
 
 /* The + on a group heading: a new note in that group (shown on hover, or while focused). */
 .tree__add {
-  margin-left: 0.15rem;
+  margin-left: var(--sp-0);
   visibility: hidden;
 }
 

@@ -58,6 +58,15 @@ test("mentions: a name reaches a person by full name, or a first name only one l
   assertEqual(mentionName(t.get(10)), "PriyaShah");
 });
 
+test("mentions: apostrophes and hyphens in a name are optional", () => {
+  const t = new NoteTree([...NOTES, { id: 13, parent_id: null, title: "Liam O'Connor", kind: "person", updated_at: T },
+    { id: 14, parent_id: null, title: "Ann-Marie Diaz", kind: "person", updated_at: T }]);
+  assertEqual(personForMention(t, "LiamOConnor")?.id, 13);
+  assertEqual(personForMention(t, "LiamO'Connor")?.id, 13);
+  assertEqual(personForMention(t, "AnnMarieDiaz")?.id, 14);
+  assertEqual(personForMention(t, "AnnMarie")?.id, 14, "a hyphenated first name, unique");
+});
+
 test("mentions: who mentions a person, newest first; a Backlinks section with the context", () => {
   const t = tree();
   const mentions = [
@@ -68,7 +77,7 @@ test("mentions: who mentions a person, newest first; a Backlinks section with th
   ];
   assertEqual(mentionsOf(t, mentions, 10).map((m) => `${m.note.title}:${m.line}`).join(), "Weekly sync:0,Plan:4");
   const rows = HUB_SECTIONS.find((s) => s.key === "backlinks").rows({ tree: t, mentions, links: new Links([{ id: 12, targets: ["Priya Shah"] }]) }, t.get(10));
-  assertEqual(rows.map((r) => `${r.title}|${r.detail}`).join(","), "Weekly sync|agenda · Rollout · 2026-11-21,Plan|Rollout · 2026-11-20,Sam Lee|links here · 2026-11-21");
+  assertEqual(rows.map((r) => `${r.title}|${r.detail}`).join(","), "Weekly sync|agenda · Rollout · 21 Nov,Plan|Rollout · 20 Nov,Sam Lee|links here · 21 Nov");
   assertEqual(rows[1].snippet, "- @PriyaShah to check\n  - why", "moved left by the first line's indent");
   assertEqual(JSON.stringify(rows[1].at), '{"field":"body","line":4}');
 });

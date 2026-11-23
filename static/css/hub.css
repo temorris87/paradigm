@@ -5,12 +5,12 @@
 .hub-line {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.5rem 0.75rem;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
   border: 1px solid var(--nord2);
   border-radius: 6px;
   background: var(--nord1);
-  font-size: 0.9rem;
+  font-size: var(--fs-md);
   color: var(--nord4);
 }
 
@@ -18,7 +18,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.4rem;
+  gap: var(--sp-2);
 }
 
 .hub-line[hidden],
@@ -33,14 +33,12 @@
 }
 
 .hub-line__label {
-  color: var(--nord4);
-  opacity: 0.7;
+  color: var(--text-dim);
 }
 
 .hub-line__role,
 .hub-line__quote {
-  color: var(--nord4);
-  opacity: 0.8;
+  color: var(--text-dim);
 }
 
 .hub-line__quote {
@@ -84,10 +82,9 @@
 .field-label {
   display: flex;
   align-items: baseline;
-  gap: 0.6rem;
-  margin: 0.4rem 0 -0.25rem;
-  font-size: 0.75rem;
-  letter-spacing: 0.06em;
+  gap: var(--sp-3);
+  margin: var(--sp-2) 0 calc(-1 * var(--sp-1));
+  font-size: var(--fs-sm);
 }
 
 .field-label:empty {
@@ -95,16 +92,13 @@
 }
 
 .field-label__name {
-  color: var(--nord4);
-  opacity: 0.7;
   font-weight: 600;
-  text-transform: uppercase;
+  color: var(--text-strong);
 }
 
 .field-label__hint {
   display: none;
-  color: var(--nord3);
-  letter-spacing: normal;
+  color: var(--text-faint);
 }
 
 .field-label[data-empty="true"] .field-label__hint {
@@ -120,7 +114,7 @@
 .app__agenda {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--sp-2);
 }
 
 .app__agenda-editor {
@@ -128,33 +122,29 @@
   height: 9rem;
 }
 
-.app__note:is([data-page="project"], [data-page="area"]) .app__editor {
-  flex: none;
-  height: 8rem;
-  min-height: 6rem;
+.app__agenda--empty .app__agenda-editor {
+  min-height: 0; /* the editor's own :host minimum is 6rem */
+  height: 2.75rem;
 }
 
-.app__note:is([data-page="resource"], [data-page="person"]) .app__editor {
+/* The note window is where text is written: its main text box gets most of the window on
+   every kind of page, and the sections follow below it. */
+.app__note[data-page] .app__editor {
   flex: none;
-  height: 14rem;
-}
-
-.app__note[data-page="meeting"] .app__editor {
-  flex: none;
-  height: max(16rem, 45vh);
+  height: max(20rem, 60vh);
 }
 
 /* The sections under the text: one listbox, each section a heading and its rows. */
 .hub {
   flex: none;
   border-top: 1px solid var(--nord2);
-  padding-top: 0.25rem;
+  padding-top: var(--sp-1);
 }
 
 .hub__list {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--sp-3);
   outline: none;
   border-radius: 3px;
 }
@@ -162,36 +152,33 @@
 .hub__heading {
   display: flex;
   align-items: baseline;
-  gap: 0.5rem;
-  padding: 0.2rem 0.5rem;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
   border-radius: 3px;
-  font-size: 0.75rem;
-  letter-spacing: 0.06em;
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 
+/* THE section heading (also Home's, the dashboard's text label and the field labels): sentence
+   case, --fs-sm, 600, strong text; its count follows in faint text. */
 .hub__label {
-  color: var(--nord4);
   font-weight: 600;
-  text-transform: uppercase;
-  opacity: 0.8;
+  color: var(--text-strong);
 }
 
 .hub__twisty,
 .hub__count {
-  color: var(--nord4);
-  opacity: 0.6;
+  color: var(--text-faint);
 }
 
 .hub__heading .hub__add {
   margin-left: auto;
-  letter-spacing: normal;
 }
 
 .hub__row {
   display: flex;
   flex-direction: column;
-  padding: 0.15rem 0.5rem;
+  padding: var(--sp-0) var(--sp-2);
   border-radius: 3px;
   cursor: pointer;
 }
@@ -199,7 +186,7 @@
 .hub__line {
   display: flex;
   align-items: baseline;
-  gap: 0.75rem;
+  gap: var(--sp-3);
   min-width: 0;
 }
 
@@ -220,27 +207,27 @@
 }
 
 .hub__title {
-  flex: 1;
-  min-width: 0;
+  /* The title keeps its width; the detail beside it gives way first (flex-shrink 100). */
+  flex: 1 1 auto;
+  min-width: min(50%, 8rem);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .hub__detail {
-  flex: 0 1 auto;
+  flex: 0 100 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--nord4);
-  font-size: 0.85rem;
-  opacity: 0.75;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
 }
 
 /* Answered questions, archived items, projects on hold. */
 .hub__row--muted .hub__title {
-  opacity: 0.55;
+  color: var(--text-faint);
 }
 
 .hub__row--depth-1 { padding-left: 1.5rem; }
@@ -252,10 +239,10 @@
 
 /* A mention's lines, rendered, under its row on a person's page. */
 .hub__snippet {
-  margin: 0.15rem 0 0.25rem 1rem;
-  padding-left: 0.6rem;
+  margin: var(--sp-0) 0 var(--sp-1) var(--sp-4);
+  padding-left: var(--sp-3);
   border-left: 2px solid var(--nord3);
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
 }
 
 .hub__snippet > :last-child {
@@ -263,24 +250,23 @@
 }
 
 .hub__more {
-  padding: 0.1rem 0.5rem;
+  padding: var(--sp-0) var(--sp-2);
   border-radius: 3px;
   color: var(--nord9);
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 
 .hub__empty {
-  padding: 0.1rem 0.5rem 0.25rem;
-  color: var(--nord4);
-  font-size: 0.85rem;
-  opacity: 0.6;
+  padding: var(--sp-0) var(--sp-2) var(--sp-1);
+  font-size: var(--fs-sm);
+  color: var(--text-faint);
 }
 
 /* A fact on the card that can be changed (static/js/hubs/hub-line-controls.js). */
 .hub-line__control {
-  padding: 0 0.3rem;
-  margin: 0 -0.3rem;
+  padding: 0 var(--sp-1);
+  margin: 0 calc(-1 * var(--sp-1));
   border: none;
   border-radius: 3px;
   background: none;
@@ -309,7 +295,7 @@
 }
 
 .hub-line__caret {
-  margin-left: 0.25rem;
+  margin-left: var(--sp-1);
   font-size: 0.8em;
   font-weight: normal;
   color: var(--nord4);
@@ -320,19 +306,19 @@
 }
 
 .hub-line__mini {
-  margin-left: -0.2rem;
+  margin-left: calc(-1 * var(--sp-1));
 }
 
 /* A section's add button (hub-sections.js add), on its heading. */
 .hub__add {
   flex: none;
-  padding: 0.1rem 0.6rem;
+  padding: var(--sp-0) var(--sp-3);
   border: 1px solid var(--nord3);
   border-radius: 4px;
   background: none;
   color: var(--nord9);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 
@@ -349,7 +335,7 @@
 .hub__row-actions {
   display: none;
   flex: none;
-  gap: 0.25rem;
+  gap: var(--sp-1);
 }
 
 .hub__row:hover .hub__row-actions,
@@ -358,13 +344,13 @@
 }
 
 .hub__row-action {
-  padding: 0 0.45rem;
+  padding: 0 var(--sp-2);
   border: 1px solid var(--nord3);
   border-radius: 3px;
   background: var(--nord1);
   color: var(--nord4);
   font: inherit;
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 
@@ -378,19 +364,21 @@
 }
 
 .hub-line__list .mini-button {
-  margin-left: 0.1rem;
+  margin-left: var(--sp-0);
 }
 
 /* A timesheet code on the card. */
 .hub-line__code {
-  font-family: var(--mono, monospace);
+  font-family: var(--font-mono);
   color: var(--nord8);
 }
 
 /* Late: an overdue task or milestone, a follow-up past its day, a plan that keeps slipping. */
-.hub__row--late .hub__detail {
+/* Late (overdue, slipping, a file gone): a red dot leads the detail; the text itself stays
+   muted, so red marks only the signal, never the whole row. */
+.hub__row--late .hub__detail::before {
+  content: "● ";
   color: var(--nord11);
-  opacity: 1;
 }
 
 /* A task's box and its ▸ (Enter shows its subtasks). */
@@ -407,7 +395,7 @@
 
 .hub__row--add .hub__title {
   color: var(--nord9);
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
 }
 
 /* A phase's or milestone's slip on its card: red once it keeps slipping. */

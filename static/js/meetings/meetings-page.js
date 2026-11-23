@@ -24,6 +24,7 @@ export function meetingsPage(section, { onOpen, onLeave, onAdd = () => {}, today
     rows: ({ tree, meetings }, { hubId, period, title }) =>
       filterMeetings(tree, meetings, { hubId: hubId === "" ? null : Number(hubId), period, title }, today())
         .map((entry) => ({ id: entry.note.id, ...entry })),
+    columns: ["When", "Meeting", "Hub", "Attendees"],
     cells: ({ note, meeting, hub }, { tree, meetings }) => [
       ["meetings__when", whenText(meeting)],
       ["meetings__title", shortTitle(note, meeting)],

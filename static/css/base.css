@@ -10,10 +10,23 @@ body {
   height: 100%;
 }
 
+/* Dark native controls and scrollbars (checkboxes, selects, date inputs), in every window. */
+:root {
+  color-scheme: dark;
+  scrollbar-color: var(--nord3) transparent;
+}
+
+/* A hint inside an empty box never reads like a value. */
+::placeholder {
+  color: var(--text-faint);
+  opacity: 1;
+}
+
 body {
   background: var(--nord0);
-  color: var(--nord4);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
   line-height: 1.5;
 }
 
@@ -24,7 +37,7 @@ a {
 /* The sidebar comes after the note in the page (for Tab order) but shows on the left. */
 .app {
   display: grid;
-  grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr);
+  grid-template-columns: minmax(14rem, 21rem) minmax(0, 1fr);
   grid-template-areas: "sidebar note";
   height: 100%;
 }
@@ -33,17 +46,17 @@ a {
   grid-area: sidebar;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--sp-3);
   min-height: 0;
-  padding: 1.25rem 0.75rem;
+  padding: var(--sp-5) var(--sp-3);
   background: var(--nord1);
   border-right: 1px solid var(--nord2);
   overflow: auto;
 }
 
 .app__title {
-  margin: 0 0.5rem;
-  font-size: 1.1rem;
+  margin: 0 var(--sp-2);
+  font-size: var(--fs-lg);
   color: var(--nord6);
   font-weight: 600;
 }
@@ -52,13 +65,13 @@ a {
   grid-area: note;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--sp-2);
   min-width: 0;
   min-height: 0;
   width: 100%;
   max-width: 60rem;
   margin: 0 auto;
-  padding: 1.25rem 1.5rem;
+  padding: var(--sp-5) var(--sp-5);
 }
 
 .app__editor {
@@ -84,11 +97,11 @@ a {
   bottom: 0.75rem;
   z-index: 15;
   max-width: min(40rem, 80vw);
-  padding: 0.3rem 0.75rem;
+  padding: var(--sp-1) var(--sp-3);
   border-radius: 4px;
   background: var(--nord1);
   color: var(--nord5);
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   box-shadow: 0 0 0 1px var(--nord3);
 }
 
@@ -110,6 +123,6 @@ a {
   }
 
   .app__note {
-    padding: 0.75rem 1rem;
+    padding: var(--sp-3) var(--sp-4);
   }
 }

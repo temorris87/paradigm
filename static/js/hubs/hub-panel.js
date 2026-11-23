@@ -67,6 +67,7 @@ export class HubPanel {
     group.append(heading);
     if (section.folded) return group;
     if (!section.rows.length) {
+      group.classList.add("hub__section--empty");
       const empty = element("div", "hub__empty", section.empty);
       group.append(empty);
     }

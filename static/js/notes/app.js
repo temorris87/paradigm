@@ -43,7 +43,7 @@ import { LinkIndex, indexTexts } from "./link-index.js";
 import { NoteSession } from "./note-session.js";
 import { resolveLink, splitTarget } from "./resolve.js";
 import { NoteTree } from "./tree-model.js";
-import { PageViews } from "./page-views.js";
+import { PageViews, viewLabel } from "./page-views.js";
 import { Meetings } from "../meetings/meetings-model.js";
 import { meetingsPage } from "../meetings/meetings-page.js";
 import { People } from "../people/people-model.js";
@@ -398,7 +398,8 @@ export class NotesApp {
 
   redraw() {
     const id = this.currentId;
-    this.treeView.show(this.tree, id);
+    // While a page (Home, Calendar...) is shown, no tree row is the current one.
+    this.treeView.show(this.tree, id, { marked: !this.views.shown });
     showBreadcrumb(this.crumbs, this.tree, id, (target) => this.guard(this.open(target)),
       (button) => openNoteMenu(this, button));
     const ctx = { tree: this.tree, people: this.people, meetings: this.meetings, records: this.records,
@@ -410,7 +411,8 @@ export class NotesApp {
     this.hubPage.show(ctx, id);
     this.dashboard?.show(ctx, this.tree.get(id) ?? null, this.session.note?.body ?? "", Boolean(this.views.shown));
     this.views.draw(ctx, this.crumbs);
-    const title = this.tree.get(id)?.title ?? this.session.note?.title;
+    // A page shown over the note names the tab, not the note under it.
+    const title = this.views.shown ? viewLabel(this.views.shown) : this.tree.get(id)?.title ?? this.session.note?.title;
     document.title = title ? `${title} - Paradigm` : "Paradigm";
     // Links resolve against the tree and the open note, so both changing means new links.
     const options = this.markdownOptions();

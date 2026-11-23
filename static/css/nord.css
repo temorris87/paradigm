@@ -20,4 +20,32 @@
   --nord13: #ebcb8b;
   --nord14: #a3be8c;
   --nord15: #b48ead;
+
+  /* Text, by emphasis: muted text uses these colours, never opacity (opacity also dims the
+     links and badges inside it). */
+  --text: var(--nord4);
+  --text-strong: var(--nord6);
+  --text-dim: color-mix(in srgb, var(--nord4) 72%, var(--nord0));
+  --text-faint: color-mix(in srgb, var(--nord4) 48%, var(--nord0));
+}
+
+/* THE design tokens: every font, size and gap in static/css comes from these. Segoe UI and
+   Consolas first: the work PC. */
+:root {
+  --font-ui: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --font-mono: Consolas, "Cascadia Mono", Menlo, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  /* Type scale (rem: the browser's 16 px) and two weights, 400 and 600. */
+  --fs-xs: 0.75rem;    /* 12: badges, axis labels */
+  --fs-sm: 0.8125rem;  /* 13: details beside a title, section headings */
+  --fs-md: 0.9375rem;  /* 15: body text, rows, buttons */
+  --fs-lg: 1.125rem;   /* 18: page titles, H2 */
+  --fs-xl: 1.375rem;   /* 22: H1 */
+  /* Spacing scale: 4 px steps (sp-0 is a hairline gap). */
+  --sp-0: 2px;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
 }

@@ -2,7 +2,7 @@
 //
 //   weekOf(day)                          the Monday ("YYYY-MM-DD") of a day's week
 //   weekDays(monday)                     the seven days, Monday to Sunday
-//   shownDays(days, blocks, weekend)     the days drawn: Monday to Friday, and Saturday and
+//   shownDays(days, blocks, weekend, today?)  the days drawn: Monday to Friday, today, and Saturday and
 //                                        Sunday only when something is on them (or weekend)
 //   calendarBlocks({ tree, meetings, tasks, sessions, pending }, days)
 //                                        [block]: { key, kind: "meeting" | "task" | "pending",
@@ -45,9 +45,10 @@ export function weekDays(monday) {
   return Array.from({ length: 7 }, (_, index) => localDay(addDays(start, index)));
 }
 
-export function shownDays(days, blocks, weekend = false) {
+export function shownDays(days, blocks, weekend = false, today = null) {
   const busy = new Set(blocks.map((block) => block.day));
-  return days.filter((day, index) => index < 5 || weekend || busy.has(day));
+  // Today always shows: a weekend day opens on itself, not on a week with no "today".
+  return days.filter((day, index) => index < 5 || weekend || busy.has(day) || day === today);
 }
 
 export function calendarBlocks({ tree, meetings, tasks, sessions = [], pending = [] }, days) {
