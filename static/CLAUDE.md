@@ -127,7 +127,7 @@ static/
                          with its own zoom and pan; viewer-math.js (pure), viewer-keys.js
                          (THE viewer key table)
   js/math/typeset.js     draws the renderer's .md-math placeholders with KaTeX (audited
-                         options, errors caught); ensureMathFonts() puts KaTeX's @font-face
+                         options, errors caught, groups nested past 100 refused first); ensureMathFonts() puts KaTeX's @font-face
                          in the page, since Chrome ignores it inside a shadow root
   js/diagrams/           mermaid.js: draws the renderer's .md-mermaid placeholders (Mermaid
                          loaded on first use, strict, one render at a time, cached by source;

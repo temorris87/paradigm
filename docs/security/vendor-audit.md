@@ -111,7 +111,9 @@ is not part of the vendored files.
 2. Options: `trust: false` (the default; never turn it on), `maxExpand: 1000`, `maxSize: 10`,
    `throwOnError: false`, `strict: "ignore"` or `"warn"`.
 3. Wrap each call in `try/catch`: deep nesting throws past `throwOnError`. Show the raw source on
-   failure.
+   failure. Whether deep nesting throws at all depends on the browser's stack (Firefox on CI
+   drew 3000 levels), so `typeset.js` also refuses groups nested past `MAX_TEX_NESTING` (100)
+   before KaTeX runs.
 4. Colour errors with CSS (`.katex-error { color: var(--nord11); }`); `errorColor` is applied as
    an inline style attribute and gets blocked.
 5. For `:export`, `output: "mathml"` gives style-free MathML. It needs a maths font on the

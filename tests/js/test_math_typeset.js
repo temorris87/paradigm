@@ -1,7 +1,7 @@
 // KaTeX drawing the Markdown renderer's maths placeholders, in a real page. (This runner has no
 // CSP; the CSP check is done in the app itself, see CLAUDE.md "Testing".)
 import { renderMarkdown } from "../../static/js/markdown/index.js";
-import { KATEX_CSS, ensureMathFonts, typesetMath } from "../../static/js/math/typeset.js";
+import { KATEX_CSS, MAX_TEX_NESTING, ensureMathFonts, texNestingDepth, typesetMath } from "../../static/js/math/typeset.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
 function draw(markdown) {
@@ -39,6 +39,22 @@ test("math typeset: a parse error shows the source, marked as an error", () => {
 test("math typeset: too deep nesting falls back without throwing", () => {
   const box = draw(`$${"{".repeat(3000)}x${"}".repeat(3000)}$`);
   assertTrue(box.querySelector(".md-math").classList.contains("md-math-error"));
+});
+
+test("math typeset: nesting up to the cap is drawn, one past it falls back", () => {
+  const nested = (n) => `$${"{".repeat(n)}x${"}".repeat(n)}$`;
+  const ok = draw(nested(MAX_TEX_NESTING)).querySelector(".md-math");
+  assertTrue(ok.querySelector(".katex") !== null, "drawn at the cap");
+  const deep = draw(nested(MAX_TEX_NESTING + 1)).querySelector(".md-math");
+  assertTrue(deep.classList.contains("md-math-error"), "refused past the cap");
+});
+
+test("math typeset: texNestingDepth counts groups and \\left, not escaped braces", () => {
+  assertEqual(texNestingDepth("x"), 0);
+  assertEqual(texNestingDepth("\\frac{a}{b^{2}}"), 2);
+  assertEqual(texNestingDepth("\\{\\{\\{x\\}\\}\\}"), 0);
+  assertEqual(texNestingDepth("\\left( \\left[ x \\right] \\right)"), 2);
+  assertEqual(texNestingDepth("a \\leftarrow b \\rightarrow c \\leftrightarrow d"), 0);
 });
 
 test("math typeset: hostile commands make no links, images or attributes", () => {
