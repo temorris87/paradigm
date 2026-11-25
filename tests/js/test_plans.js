@@ -2,7 +2,7 @@
 // templates; OneDrive files; the roll-up of questions and decisions.
 import { barBox, chartAxis, dayAt, dragged, fitDayPx } from "../../static/js/gantt/gantt-model.js";
 import { ganttAction } from "../../static/js/gantt/gantt-keys.js";
-import { Files, fileDir, filesOn, foldersFor } from "../../static/js/files/files-model.js";
+import { Files, fileDir, filesOn, folderSummary, foldersFor, foldersOf, unlinkText } from "../../static/js/files/files-model.js";
 import { HUB_SECTIONS, sectionsFor } from "../../static/js/hubs/hub-sections.js";
 import { noteMenuItems } from "../../static/js/notes/note-menu.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
@@ -16,7 +16,7 @@ import { assertEqual as same, assertTrue, test } from "./harness.js";
 import "../../static/js/hubs/hub-actions.js";
 import "../../static/js/hubs/dashboard.js";
 import "../../static/js/plan/template-page.js";
-import "../../static/js/files/file-commands.js";
+import { addFileDialog, unlinkFolderDialog } from "../../static/js/files/file-commands.js";
 import "../../static/js/templates/template-commands.js";
 import "../../static/js/notes/app.js";
 import "../../static/js/calendar/calendar-page.js";
@@ -158,7 +158,52 @@ test("files: one file on many notes, a project's with its phases', folders of th
   assertEqual(foldersFor(tree(), files, 7).map((folder) => folder.name), ["Pilot", "Ops"]);
   assertEqual([fileDir(files.file(1)), fileDir(files.file(2))], ["Design", ""]);
   const rows = HUB_SECTIONS.find((section) => section.key === "files").rows({ tree: tree(), files }, tree().get(2));
-  assertTrue(rows[1].late && rows[1].detail.includes("not in the folder"), rows[1].detail);
+  assertTrue(rows[2].late && rows[2].detail.includes("not in the folder"), rows[2].detail);
+});
+
+test("files: a hub's linked folders come first in its Files, with what they hold; only on the hub", () => {
+  const files = new Files({
+    folders: [{ id: 1, note_id: 2, path: "/od/Pilot", name: "Pilot" }, { id: 2, note_id: 2, path: "/od/Contracts", name: "Contracts" },
+      { id: 3, note_id: 1, path: "/od/Ops", name: "Ops" }],
+    files: [{ id: 1, folder_id: 1, rel_path: "a.xlsx", name: "a.xlsx", missing: false },
+      { id: 2, folder_id: 1, rel_path: "b.pdf", name: "b.pdf", missing: false },
+      { id: 3, folder_id: 1, rel_path: "c.pdf", name: "c.pdf", missing: false },
+      { id: 4, folder_id: 3, rel_path: "d.pdf", name: "d.pdf", missing: false }],
+    links: [{ file_id: 1, note_id: 3 }, { file_id: 1, note_id: 8 }, { file_id: 2, note_id: 8 }],
+  });
+  assertEqual(foldersOf(files, 2).map((folder) => folder.name), ["Contracts", "Pilot"]);
+  assertEqual(folderSummary(files, 1), { files: 3, attached: 2, noteIds: [3, 8], trashed: 0 });
+  assertEqual(folderSummary(files, 2), { files: 0, attached: 0, noteIds: [], trashed: 0 });
+  const binned = new Files({ folders: [{ id: 5, note_id: 2, path: "/od/C", name: "C", trashed: 1 }],
+    files: [{ id: 9, folder_id: 5, rel_path: "Lease.pdf", name: "Lease.pdf", missing: false }], links: [] });
+  assertEqual(folderSummary(binned, 5), { files: 1, attached: 0, noteIds: [], trashed: 1 });
+  const section = HUB_SECTIONS.find((each) => each.key === "files");
+  const rows = section.rows({ tree: tree(), files }, tree().get(2));
+  assertEqual(rows.map((row) => [row.title, row.folder ?? null]),
+    [["📁 Contracts", 2], ["📁 Pilot", 1], ["a.xlsx", null], ["b.pdf", null]]);
+  assertEqual(rows[1].detail, "OneDrive folder · 3 files · 2 on notes");
+  assertEqual(rows[0].detail, "OneDrive folder · 0 files");
+  assertEqual([rows[1].tip, rows[1].actions], ["/od/Pilot", [{ key: "remove", label: "Unlink" }]]);
+  assertEqual(section.detail(rows), "2");
+  assertEqual(section.rows({ tree: tree(), files }, tree().get(3)).some((row) => row.folder !== undefined), false);
+  assertEqual(section.rows({ tree: tree(), files }, tree().get(1)).map((row) => row.title), ["📁 Ops"]);
+});
+
+test("files: the unlink confirm names the notes its files come off", () => {
+  const titles = { 3: "Kickoff", 4: "Phase 1", 5: "Review", 6: "Wrap-up" };
+  const titleOf = (id) => titles[id] ?? null;
+  assertEqual(unlinkText("Contracts", "Northwind rollout", { files: 4, attached: 0, noteIds: [] }, titleOf),
+    'Unlink "Contracts" from "Northwind rollout"? Nothing in OneDrive changes.');
+  assertEqual(unlinkText("Contracts", "Northwind rollout", { files: 4, attached: 3, noteIds: [3, 4] }, titleOf),
+    'Unlink "Contracts" from "Northwind rollout"? Its 3 files on notes come off them (Kickoff, Phase 1). Nothing in OneDrive changes.');
+  assertEqual(unlinkText("C", "N", { files: 1, attached: 1, noteIds: [3] }, titleOf),
+    'Unlink "C" from "N"? Its 1 file on notes comes off it (Kickoff). Nothing in OneDrive changes.');
+  assertEqual(unlinkText("C", "N", { files: 9, attached: 5, noteIds: [3, 4, 5, 6, 99] }, titleOf),
+    'Unlink "C" from "N"? Its 5 files on notes come off them (Kickoff, Phase 1, Review, …). Nothing in OneDrive changes.');
+  assertEqual(unlinkText("C", "N", { files: 1, attached: 0, noteIds: [], trashed: 1 }, titleOf),
+    'Unlink "C" from "N"? 1 attachment on notes in the trash goes too, for good. Nothing in OneDrive changes.');
+  assertEqual(unlinkText("C", "N", { files: 2, attached: 1, noteIds: [3], trashed: 2 }, titleOf),
+    'Unlink "C" from "N"? Its 1 file on notes comes off it (Kickoff). 2 attachments on notes in the trash go too, for good. Nothing in OneDrive changes.');
 });
 
 test("gantt: the axis thins its ticks so labels never collide", async () => {
@@ -171,4 +216,20 @@ test("gantt: the axis thins its ticks so labels never collide", async () => {
     assertTrue(ticks.every((tick, i) => i === 0 || (tick.at - ticks[i - 1].at) * dayPx >= TICK_PX), `${dayPx} px a day: no two labels closer than one`);
     assertTrue(ticks.length >= Math.floor((axis.days * dayPx) / (TICK_PX * 2)), `${dayPx} px a day: still labelled`);
   }
+});
+
+test("files: a folder row left over after an unlink elsewhere says the folder is no longer linked", async () => {
+  // The page still holds folder 1; the reload the dialog does first finds it gone.
+  const app = {
+    tree: tree(),
+    files: new Files({ folders: [{ id: 1, note_id: 2, path: "/od/C", name: "C" }] }),
+    refreshTree: async () => { app.files = new Files(); },
+  };
+  const rejects = async (promise) => {
+    try { await promise; } catch (error) { return error.message; }
+    return "no error";
+  };
+  assertEqual(await rejects(unlinkFolderDialog(app, 1)), "E: that folder is no longer linked");
+  app.files = new Files({ folders: [{ id: 1, note_id: 2, path: "/od/C", name: "C" }] });
+  assertEqual(await rejects(addFileDialog(app, app.tree.get(2), { folderId: 1 })), "E: that folder is no longer linked");
 });

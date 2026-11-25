@@ -120,7 +120,7 @@ export class HubPanel {
     }
     for (const row of section.rows) group.append(this.row(section, row));
     if (section.more) {
-      group.append(this.option(element("div", "hub__more", `Show all (${section.rows.length + section.more})`),
+      group.append(this.option(element("div", "hub__more", `Show all (${section.total ?? section.rows.length + section.more})`),
         { type: "more", section }));
     }
     return group;
@@ -132,6 +132,7 @@ export class HubPanel {
       row.health && `hub__row--health health--${row.health}`, row.statusHistory && "hub__row--add", row.bar && "hub__row--bar",
       row.pre !== undefined && "hub__row--pre"];
     const node = this.option(element("div", classes.filter(Boolean).join(" ")), { type: "row", section, row });
+    if (row.tip) node.title = row.tip;
     const line = element("div", "hub__line");
     if (row.task !== undefined && row.depth === 0 && !row.addSubtask) {
       line.append(element("span", "hub__next", row.next ? "NEXT" : ""));
@@ -166,7 +167,7 @@ export class HubPanel {
 
   option(node, option) {
     const index = this.options.length;
-    const rowId = option.row ? `${option.row.id}:${option.row.at?.line ?? ""}:${option.row.task ?? option.row.file ?? option.row.template ?? option.row.addSubtask ?? ""}` : "";
+    const rowId = option.row ? `${option.row.id}:${option.row.at?.line ?? ""}:${option.row.task ?? option.row.file ?? (option.row.folder !== undefined ? `folder${option.row.folder}` : undefined) ?? option.row.template ?? option.row.addSubtask ?? ""}` : "";
     this.options.push({ ...option, lane: this.laneIndex ?? 0, id: `${option.type}:${option.section.key}:${rowId}` });
     node.id = `hub-option-${index}`;
     node.dataset.index = String(index);

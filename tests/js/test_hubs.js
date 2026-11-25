@@ -8,6 +8,7 @@ import { dueText, isOverdue, statusText } from "../../static/js/hubs/project-fac
 import { NOTE_COMMANDS, runNoteCommand } from "../../static/js/notes/commands.js";
 import { isHub } from "../../static/js/notes/hub-groups.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
+import { Files } from "../../static/js/files/files-model.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
 const T = "2026-11-21T12:00:00.000Z";
@@ -119,7 +120,7 @@ test("note commands: :inarea and :hub, typed in full", () => {
 
 const STORE = ["paradigm.hub.folds"];
 
-function withPage(body, { tabActions } = {}) {
+function withPage(body, { tabActions, hideSections = ["plan", "files"] } = {}) {
   STORE.forEach((key) => localStorage.removeItem(key));
   const page = document.createElement("main");
   const line = document.createElement("div");
@@ -132,7 +133,7 @@ function withPage(body, { tabActions } = {}) {
   const opened = [];
   let left = 0;
   const hub = new HubPage({ page, line, section, labels: { main }, onOpen: (id, at) => opened.push(at ? `${id}@${at.line}` : id),
-    onLeave: () => { left += 1; }, hideSections: ["plan", "files"], ...(tabActions ? { tabActions } : {}) });
+    onLeave: () => { left += 1; }, hideSections, ...(tabActions ? { tabActions } : {}) });
   try {
     body({ page, line, main, section, editor, hub, opened, left: () => left });
   } finally {
@@ -234,6 +235,23 @@ test("hub page: Enter or z on a heading folds it; folds are remembered per kind"
   assertEqual(headings(section), "Notes");
   assertEqual(JSON.parse(localStorage.getItem("paradigm.hub.folds"))["project:notes"], false);
 }));
+
+test("hub page: a Files section's folders sit outside its limit; heading and Show all count files", () => withPage(({ section, hub }) => {
+  const folders = [1, 2, 3].map((id) => ({ id, note_id: 1, path: `/od/F${id}`, name: `F${id}` }));
+  const names = Array.from({ length: 10 }, (_, i) => `f${String(i).padStart(2, "0")}.xlsx`);
+  const files = new Files({ folders, files: names.map((name, i) => ({ id: i + 1, folder_id: 1, rel_path: name, name, missing: false })),
+    links: names.map((_, i) => ({ file_id: i + 1, note_id: 1 })) });
+  hub.show({ tree: tree(), files }, 1);
+  const filesSection = () => section.querySelector(".hub__section--files");
+  const shownRows = () => [...filesSection().querySelectorAll(".hub__row .hub__title")].map((n) => n.textContent);
+  assertEqual(shownRows().filter((t) => t.startsWith("📁")).length, 3, "every folder shown");
+  assertEqual(shownRows().filter((t) => !t.startsWith("📁")).length, 8, "the limit's 8 files, not 8 rows");
+  assertEqual(filesSection().querySelector(".hub__count").textContent, "10");
+  const more = filesSection().querySelector(".hub__more");
+  assertEqual(more.textContent, "Show all (10)", "the same count as the heading");
+  more.click();
+  assertEqual(shownRows().length, 13);
+}, { hideSections: ["plan"] }));
 
 test("hub page: a section past its limit shows Show all", () => withPage(({ section, hub }) => {
   const many = [...NOTES, ...Array.from({ length: 7 }, (_, i) => ({ id: 100 + i, parent_id: 2, title: `Q${i}` }))];

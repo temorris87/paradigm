@@ -7,12 +7,13 @@
 // What a flagged row means in each section (rows carry late: a task past due, a file gone).
 const FLAG_WORDS = { files: "missing" };
 
-/** The bar's parts: one per section, its top-level rows counted (a task section: open ones). */
+/** The bar's parts: one per section, its top-level rows counted (a task section: open ones;
+ *  Files: the files, not the folders linked above them). */
 export function sectionSummary(sections) {
   return sections.map(({ key, label, rows }) => {
     // Opened tasks add their subtasks and "+ Add subtask" under them: only the top rows count.
     const top = rows.filter((row) => (row.depth ?? 0) === 0 && row.addSubtask === undefined
-      && !row.statusHistory && !row.digest);
+      && !row.statusHistory && !row.digest && row.folder === undefined);
     const counted = key === "tasks" ? top.filter((row) => row.task !== undefined && !row.done) : top;
     return {
       key,

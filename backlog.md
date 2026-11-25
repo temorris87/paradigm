@@ -144,3 +144,4 @@ Features in build order. "build feature" takes the first unchecked item.
 - [x] On call: paste the Excel on-call sheet (Role + one column per week) into an On call tab
   on the Week page; this week's names on Today and in the Week bar; a person's next on-call
   week on their dashboard (done 2026-11-23)
+- [x] Add ability to remove folders from Project/areas and other locations where folders are added (done 2026-11-25)

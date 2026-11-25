@@ -35,7 +35,8 @@ class FileRepository:
         self._opener = opener
 
     def all(self) -> Dict[str, List[Dict]]:
-        """Every folder on a live hub, its files, and every attachment to a live note."""
+        """Every folder on a live hub (with `trashed`: its files' attachments to notes in the
+        trash), its files, and every attachment to a live note."""
         with self._db.reading() as conn:
             folders = conn.execute(
                 "SELECT file_folders.* FROM file_folders JOIN notes ON notes.id = file_folders.note_id "
@@ -45,8 +46,14 @@ class FileRepository:
             links = conn.execute(
                 "SELECT file_links.* FROM file_links JOIN notes ON notes.id = file_links.note_id "
                 "WHERE notes.deleted_at IS NULL ORDER BY file_links.added_at, file_links.file_id").fetchall()
+            # Attachments on notes in the trash are hidden above, but unlinking a folder drops
+            # them too, so its confirm must be able to say how many there are.
+            trashed = dict(conn.execute(
+                "SELECT files.folder_id, COUNT(*) FROM file_links JOIN files ON files.id = file_links.file_id "
+                "JOIN notes ON notes.id = file_links.note_id WHERE notes.deleted_at IS NOT NULL "
+                "GROUP BY files.folder_id").fetchall())
         file_ids = {row["id"] for row in files}
-        return {"folders": [_folder(row) for row in folders], "files": [_file(row) for row in files],
+        return {"folders": [dict(_folder(row), trashed=trashed.get(row["id"], 0)) for row in folders], "files": [_file(row) for row in files],
                 "links": [{"file_id": row["file_id"], "note_id": row["note_id"], "added_at": row["added_at"]}
                           for row in links if row["file_id"] in file_ids]}
 

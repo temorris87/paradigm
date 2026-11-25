@@ -15,7 +15,8 @@
 //     controls: the card's buttons (hub-actions.js hubLineControls)
 //     tabActions: { add(sectionKey, owner), row(key, sectionKey, owner, row), command(action, owner) }
 //             (hub-actions.js); command: "logStatus", "plan";
-//             row keys besides the row's buttons: "addSubtask", "openFile", "openTemplate"
+//             row keys besides the row's buttons: "addSubtask", "openFile", "openFolder",
+//             "openTemplate"
 //     at: { field, line } when a row points into the text (a mention)
 //     sheet: the note window's .sheet around the sections (section-sheet.js): they slide up
 //             over the text from a bar of counts; closed whenever another note opens
@@ -128,7 +129,10 @@ export class HubPage {
   drawn(section, rows) {
     const hub = this.hub;
     const all = this.showingAll.has(`${hub.id}:${section.key}`);
-    const limit = section.limit && !all ? section.limit : rows.length;
+    // Pinned rows (a Files section's folders) are always drawn; the limit and Show all count the rest.
+    const pinned = section.pinned ? rows.filter(section.pinned) : [];
+    const counted = section.pinned ? rows.filter((row) => !section.pinned(row)) : rows;
+    const limit = section.limit && !all ? section.limit : counted.length;
     return {
       key: section.key,
       base: section.base ?? null,
@@ -136,8 +140,9 @@ export class HubPage {
       columns: section.columns ?? null,
       detail: section.detail ? section.detail(rows) : String(rows.length),
       folded: isFolded(this.folds, hub.kind, section),
-      rows: rows.slice(0, limit),
-      more: Math.max(0, rows.length - limit),
+      rows: [...pinned, ...counted.slice(0, limit)],
+      more: Math.max(0, counted.length - limit),
+      total: counted.length,
       empty: section.empty(hub),
       add: section.add?.label ?? null,
       addPlain: Boolean(section.add?.plain),
@@ -157,6 +162,7 @@ export class HubPage {
 
   onRow(sectionDef, row) {
     if (row.addSubtask !== undefined) return this.tabActions.row("addSubtask", sectionDef.key, this.hub, row);
+    if (row.folder !== undefined) return this.tabActions.row("openFolder", sectionDef.key, this.hub, row);
     if (row.file !== undefined) return this.tabActions.row("openFile", sectionDef.key, this.hub, row);
     if (row.template !== undefined) return this.tabActions.row("openTemplate", sectionDef.key, this.hub, row);
     if (row.statusEntry !== undefined || row.statusHistory) return this.tabActions.row("statusHistory", sectionDef.key, this.hub, row);

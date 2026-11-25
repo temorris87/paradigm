@@ -12,7 +12,9 @@
 //   section.rows(ctx, note)    [{ id, title, depth, detail, date?, cells?, muted?, late?, actions?,
 //                              snippet?, at?, task?, file?, template?, addSubtask?, next?,
 //                              health?, statusEntry?, statusHistory?, box?, bar?, pre?,
-//                              cellClasses? }]
+//                              cellClasses?, folder?, tip? }]
+//                              folder: a linked folder's id (the Files section's folder rows);
+//                              tip: the row's hover text
 //                              box: drawn boxed (the newest status); bar: { left, width,
 //                              today } in parts of one (Portfolio); pre: text kept as written
 //                              (the digest); health: on_track | at_risk | blocked (its colour)
@@ -33,6 +35,8 @@
 //   section.empty(note)        what it says when it has no rows
 //   section.add                { label } of its add button (hub-actions.js), or null
 //   section.limit              rows shown before "Show all"
+//   section.pinned(row)        true for rows always shown, outside the limit and Show all's
+//                              count (the Files section's folder rows)
 //   section.folded             folded until opened (remembered per browser: hub-folds.js)
 //   section.base               the section whose add button and row buttons it shares
 //                              ("openQuestions" adds a question), or none
@@ -45,7 +49,7 @@ import { mentionsOf } from "../notes/mentions.js";
 import { hubLinks, peopleOn, rolesText, workText } from "../people/people-model.js";
 import { isOpen, peopleOf, recordsOn } from "../records/records-model.js";
 import { nextAction, openCount, subtaskText, tasksOn, waitingOn } from "../tasks/tasks-model.js";
-import { Files, fileDir, filesOn } from "../files/files-model.js";
+import { Files, fileDir, filesOn, folderSummary, foldersOf } from "../files/files-model.js";
 import { Plan, milestonesOf, nextMilestone, phasesOf, shortDay, slipOf, slipText } from "../plan/plan-model.js";
 import { projectFactsText, statusText } from "./project-facts.js";
 import { dayText, daysAgo } from "../ui/dates.js";
@@ -270,20 +274,13 @@ export const HUB_SECTIONS = [
   {
     key: "files",
     label: "Files",
-    // OneDrive files on it (and on the notes inside it). Enter opens one on this computer.
-    rows: (ctx, owner) => filesOn(ctx.tree, ctx.files ?? new Files(), owner).map(({ file, folder, own, via, others }) => ({
-      id: owner.id,
-      title: file.name,
-      depth: 0,
-      detail: [folder?.name, fileDir(file), via ? `on ${via.title}` : "", others.length ? `also on ${others.map((note) => note.title).join(", ")}` : "",
-        file.missing ? "⚠ not in the folder any more" : ""].filter(Boolean).join(" · "),
-      muted: file.missing,
-      late: file.missing,
-      file: file.id,
-      owner: own ? owner.id : via.id,
-      actions: [{ key: "remove", label: "Remove" }],
-    })),
-    detail: (rows) => String(rows.length),
+    // The folders linked to this hub first (only on the hub itself), then the OneDrive files on
+    // it (and on the notes inside it). Enter opens a file on this computer, or a folder's files
+    // in the Add file picker.
+    rows: (ctx, owner) => [...folderRows(ctx.files ?? new Files(), owner), ...fileRows(ctx, owner)],
+    detail: (rows) => String(rows.filter((row) => row.folder === undefined).length),
+    // Folder rows are always shown and sit outside the limit, so they never push files out of view.
+    pinned: (row) => row.folder !== undefined,
     empty: () => "No files yet. Link a OneDrive folder, then add its files here.",
     add: { label: "Add file" },
     limit: 8,
@@ -753,3 +750,34 @@ export function dayOf(iso) {
   return `${when.getFullYear()}-${pad(when.getMonth() + 1)}-${pad(when.getDate())}`;
 }
 
+// A linked folder's row: "📁 Contracts", what it holds, its path on hover.
+function folderRows(files, owner) {
+  if (owner.kind !== "project" && owner.kind !== "area") return [];
+  return foldersOf(files, owner.id).map((folder) => {
+    const { files: count, attached } = folderSummary(files, folder.id);
+    return {
+      id: owner.id,
+      title: `📁 ${folder.name}`,
+      depth: 0,
+      detail: ["OneDrive folder", `${count} file${count === 1 ? "" : "s"}`, attached ? `${attached} on notes` : ""].filter(Boolean).join(" · "),
+      tip: folder.path,
+      folder: folder.id,
+      actions: [{ key: "remove", label: "Unlink" }],
+    };
+  });
+}
+
+function fileRows(ctx, owner) {
+  return filesOn(ctx.tree, ctx.files ?? new Files(), owner).map(({ file, folder, own, via, others }) => ({
+    id: owner.id,
+    title: file.name,
+    depth: 0,
+    detail: [folder?.name, fileDir(file), via ? `on ${via.title}` : "", others.length ? `also on ${others.map((note) => note.title).join(", ")}` : "",
+      file.missing ? "⚠ not in the folder any more" : ""].filter(Boolean).join(" · "),
+    muted: file.missing,
+    late: file.missing,
+    file: file.id,
+    owner: own ? owner.id : via.id,
+    actions: [{ key: "remove", label: "Remove" }],
+  }));
+}

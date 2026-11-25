@@ -1,13 +1,14 @@
 """Endpoints for OneDrive files: folders linked to hubs, their files, and the notes they
 are attached to. The synced folder on this computer is the source of truth.
 
-GET  /api/files              -> {folders: [{id, note_id, path, name, scanned_at}],
+GET  /api/files              -> {folders: [{id, note_id, path, name, scanned_at, trashed}],
                                  files: [{id, folder_id, rel_path, name, size, modified, missing}],
                                  links: [{file_id, note_id, added_at}]}
 GET  /api/folders/browse     -> {roots: [paths], folders: [paths]}  the folders under the
                                 OneDrive roots (to pick one to link)
 POST /api/folder/link        {note_id, path}    -> {folder, added, missing}
-POST /api/folder/unlink      {id}               -> {}
+POST /api/folder/unlink      {id}               -> {}   its files' attachments go, on every
+                                                         note (trashed ones too: folder.trashed)
 POST /api/folder/scan        {id}               -> {folder, added, missing}
 POST /api/file/attach        {file_id, note_id} -> file
 POST /api/file/detach        {file_id, note_id} -> {}

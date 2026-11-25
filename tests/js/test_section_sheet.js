@@ -18,7 +18,7 @@ const task = (id, noteId, more = {}) => ({ id, note_id: noteId, parent_id: null,
 const TASKS = () => new Tasks([task(10, 2), task(11, 2, { due: "2026-11-20" }), task(12, 2, { done: true }),
   task(13, 2, { parent_id: 10 }), task(14, 2)]);
 
-test("section summary: open top-level tasks, late ones flagged; files missing; empty sections kept", () => {
+test("section summary: open top-level tasks, late ones flagged; files missing, folders not counted; empty sections kept", () => {
   const parts = sectionSummary([
     { key: "tasks", label: "Tasks", rows: [
       { depth: 0, task: 1, done: false, late: true },
@@ -26,11 +26,22 @@ test("section summary: open top-level tasks, late ones flagged; files missing; e
       { depth: 1, task: 3, done: false, late: true },
       { depth: 1, addSubtask: 1 },
       { depth: 0, task: 4, done: false } ] },
-    { key: "files", label: "Files", rows: [{ depth: 0, file: 1, late: true }, { depth: 0, file: 2 }] },
+    { key: "files", label: "Files", rows: [{ depth: 0, folder: 7 }, { depth: 0, file: 1, late: true }, { depth: 0, file: 2 }] },
     { key: "decisions", label: "Decisions", rows: [] },
   ]);
   assertEqual(summaryText(parts), "Tasks 2 (1 late) · Files 2 (1 missing) · Decisions 0");
 });
+
+// A headless browser window may never hold the OS focus: focus() then moves activeElement but
+// fires no focus or focusin, which the sheet's open and close rules listen for. Fire them by hand
+// only then, so a focused browser still tests the real events.
+function focusOn(node) {
+  const from = document.activeElement;
+  node.focus();
+  if (document.hasFocus() || document.activeElement !== node || from === node) return;
+  node.dispatchEvent(new FocusEvent("focus", { relatedTarget: from }));
+  node.dispatchEvent(new FocusEvent("focusin", { bubbles: true, relatedTarget: from }));
+}
 
 function withSheet(body) {
   localStorage.removeItem("paradigm.hub.folds");
@@ -90,12 +101,12 @@ test("section sheet: :hub and a click open it; Escape and the text close it; ano
     bar.click();
     assertTrue(!isOpen(sheet), "and again closes it");
     hub.focus();
-    editor.focus();
+    focusOn(editor);
     assertTrue(!isOpen(sheet), "the focus in the text closes it");
     hub.focus();
     const outside = document.createElement("button");
     document.body.append(outside);
-    outside.focus();
+    focusOn(outside);
     assertTrue(isOpen(sheet), "a dialog outside the page (on <body>) keeps it open");
     outside.remove();
     hub.show(ctx(), 3);
@@ -105,8 +116,8 @@ test("section sheet: :hub and a click open it; Escape and the text close it; ano
 test("section sheet: Tab onto the bar opens it into the rows; Shift-Tab back onto it closes it", () =>
   withSheet(({ hub, sheet, bar, section }) => {
     hub.show(ctx(), 2);
-    bar.focus();
+    focusOn(bar);
     assertTrue(isOpen(sheet) && section.contains(document.activeElement), "focus on the bar goes on into the rows");
-    bar.focus();
+    focusOn(bar);
     assertTrue(!isOpen(sheet) && document.activeElement === bar, "back from the rows: closed, the focus stays on the bar");
   }));

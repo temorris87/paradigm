@@ -29,7 +29,7 @@ import { addTopicDialog, raiseTopic, removeTopic } from "../people/topic-command
 import { addTask, delegateDialog, editTaskDialog, newTaskDialog, removeTaskDialog, setNextAction, setTaskDone, takeBack } from "../tasks/task-commands.js";
 import { editDatesDialog, historyDialog, newMilestoneDialog, newPhaseDialog, newPlanTemplateDialog,
   setMilestoneDone } from "../plan/plan-commands.js";
-import { addFileDialog, detachFile, openFile } from "../files/file-commands.js";
+import { addFileDialog, detachFile, openFile, unlinkFolderDialog } from "../files/file-commands.js";
 import { confirmDialog } from "../ui/dialog.js";
 
 // The person dialog's fields, in order (paradigm/notes/people.py PERSON_FIELDS).
@@ -277,7 +277,8 @@ export function hubTabActions(app) {
     archived: (person, row) => unlinkPerson(app, app.tree.get(row.id), person),
     projects: (area, row) => app.setAreaOf(row.id, null),
     tasks: (owner, row) => removeTaskDialog(app, row.task),
-    files: (owner, row) => detachFile(app, row.file, row.owner),
+    // A folder row unlinks the folder from its hub; a file row takes the file off its note.
+    files: (owner, row) => (row.folder !== undefined ? unlinkFolderDialog(app, row.folder) : detachFile(app, row.file, row.owner)),
     templates: (area, row) => removeTemplateDialog(app, row.template),
     raise: (person, row) => removeTopic(app, row.topic),
   };
@@ -310,6 +311,7 @@ export function hubTabActions(app) {
       if (key === "statusHistory") return app.guard(statusHistoryDialog(app, owner));
       if (key === "addSubtask") return app.guard(newTaskDialog(app, owner, app.tasks.get(row.addSubtask)));
       if (key === "openFile") return app.guard(openFile(app, row.file));
+      if (key === "openFolder") return app.guard(addFileDialog(app, owner, { folderId: row.folder }));
       if (key === "openTemplate") return app.showTemplate(row.template);
       if (key !== "role") return undefined;
       const [hub, person] = owner.kind === "person" ? [app.tree.get(row.id), owner] : [owner, app.tree.get(row.id)];

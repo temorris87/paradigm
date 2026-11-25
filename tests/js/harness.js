@@ -39,4 +39,10 @@ export async function run(output) {
   document.title = summary;
   console.log(`TESTS ${summary}`);
   output.before(Object.assign(document.createElement("h2"), { textContent: summary }));
+  // tools/run_js_tests.py opens the page with ?report and serves /__report, so any browser
+  // (headless or not) can hand back the outcome without reading its console.
+  if (new URLSearchParams(location.search).has("report")) {
+    const failures = [...output.querySelectorAll(".fail")].map((row) => row.textContent);
+    await fetch("/__report", { method: "POST", body: JSON.stringify({ summary, failures }) });
+  }
 }

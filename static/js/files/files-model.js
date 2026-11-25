@@ -12,8 +12,18 @@
 //   foldersFor(tree, files, noteId)    the folders whose files can be added there: its hub's,
 //                                      and a project's area's
 //   folderFiles(files, folderIds)      the files in those folders, by path
+//   foldersOf(files, hubId)            the folders linked to that hub itself, by name
+//   folderSummary(files, folderId)     { files, attached, noteIds, trashed }: how many files
+//                                      it holds, how many of them are on a note, those notes'
+//                                      ids (each once, in link order), and its attachments on
+//                                      notes in the trash (the server's folder.trashed)
+//   unlinkText(name, hubTitle, summary, titleOf)   the unlink confirm's line, naming the notes
+//                                      its files come off (titleOf: id -> title, or null)
 //   fileDir(file)                      "Design/Drawings" ("" at the folder's top)
 import { hubOf } from "../notes/hub-groups.js";
+
+// The notes named in the unlink confirm before "…".
+const NAMED_NOTES = 3;
 
 export class Files {
   constructor({ folders = [], files = [], links = [] } = {}) {
@@ -85,4 +95,37 @@ export function folderFiles(files, folderIds) {
 export function fileDir(file) {
   const at = file.rel_path.lastIndexOf("/");
   return at < 0 ? "" : file.rel_path.slice(0, at);
+}
+
+export function foldersOf(files, hubId) {
+  return files.allFolders().filter((folder) => folder.note_id === hubId)
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+}
+
+export function folderSummary(files, folderId) {
+  const inside = [...files.files.values()].filter((file) => file.folder_id === folderId);
+  const noteIds = new Set();
+  let attached = 0;
+  for (const file of inside) {
+    const notes = files.notesOf(file.id);
+    if (notes.length) attached += 1;
+    for (const noteId of notes) noteIds.add(noteId);
+  }
+  // Attachments on notes in the trash are not in `links`, but unlink drops them too.
+  const trashed = files.folder(folderId)?.trashed ?? 0;
+  return { files: inside.length, attached, noteIds: [...noteIds], trashed };
+}
+
+/** The unlink confirm's line: what it drops, by note. */
+export function unlinkText(folderName, hubTitle, summary, titleOf) {
+  const ask = `Unlink "${folderName}" from "${hubTitle}"?`;
+  const safe = "Nothing in OneDrive changes.";
+  const trashed = summary.trashed ?? 0;
+  const binned = trashed ? ` ${trashed} attachment${trashed === 1 ? "" : "s"} on notes in the trash ${trashed === 1 ? "goes" : "go"} too, for good.` : "";
+  if (!summary.attached) return `${ask}${binned} ${safe}`;
+  const titles = summary.noteIds.map(titleOf).filter(Boolean);
+  const named = titles.length > NAMED_NOTES ? [...titles.slice(0, NAMED_NOTES), "…"] : titles;
+  const one = summary.attached === 1;
+  const which = named.length ? ` (${named.join(", ")})` : "";
+  return `${ask} Its ${summary.attached} file${one ? "" : "s"} on notes come${one ? "s" : ""} off ${titles.length === 1 ? "it" : "them"}${which}.${binned} ${safe}`;
 }
