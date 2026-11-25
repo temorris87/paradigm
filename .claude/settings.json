@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 tools/pipeline_gate.py:*)",
+      "Bash(python3 tools/pipeline_state.py:*)",
+      "Bash(python3 tools/run_js_tests.py:*)",
+      "Bash(python3 -m unittest discover tests/python:*)",
+      "Bash(python3.11 -m unittest discover tests/python:*)",
+      "Bash(python tools/pipeline_gate.py:*)",
+      "Bash(python tools/pipeline_state.py:*)",
+      "Bash(python tools/run_js_tests.py:*)",
+      "Bash(python -m unittest discover tests/python:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/claude_hooks.py\" commit-gate",
+            "timeout": 600
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/claude_hooks.py\" stop-check",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

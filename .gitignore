@@ -6,3 +6,4 @@ __pycache__/
 *.db-shm
 paradigm-notes/
 .env
+.pipeline/
