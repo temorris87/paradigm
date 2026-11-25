@@ -8,7 +8,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 from helpers import RunningServer
-from paradigm.app import LaunchError, port_error_message, run
+from paradigm.app import LaunchError, port_error_message, run, stop_message
 from paradigm.config import Config
 from paradigm.instance import PortState, probe
 
@@ -54,6 +54,15 @@ def visit_and_close_tab(port: int, tab: str = "t1") -> None:
     stream.close()
 
 
+def visit_and_drop_tab(port: int, tab: str = "t1") -> None:
+    """Behave like Safari closing a tab: the event stream drops and no beacon is sent."""
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+    conn.request("GET", "/api/events?tab=" + tab)
+    stream = conn.getresponse()
+    stream.fp.readline()
+    stream.close()
+
+
 class ProbeTest(unittest.TestCase):
     def test_free_port(self) -> None:
         self.assertIs(probe("127.0.0.1", free_port()), PortState.FREE)
@@ -95,6 +104,50 @@ class FullLaunchTest(unittest.TestCase):
         self.assertEqual(result, [0])
         self.assertEqual(visits, [config.url])
         self.assertIs(probe("127.0.0.1", port), PortState.FREE)
+
+    def run_with_tab(self, config: Config, tab_action) -> list:
+        def browser(url: str) -> None:
+            threading.Thread(target=tab_action, args=(config.port,), daemon=True).start()
+
+        result = []
+        with self.assertLogs("paradigm", level="INFO") as logs:
+            runner = threading.Thread(
+                target=lambda: result.append(run(config, open_url=browser)), daemon=True
+            )
+            runner.start()
+            runner.join(timeout=10)
+        self.assertFalse(runner.is_alive(), "server did not stop")
+        self.assertEqual(result, [0])
+        return [record.getMessage() for record in logs.records]
+
+    def test_beacon_logs_last_tab_closed(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        config = Config(data_dir=Path(tmp.name), port=free_port(), grace_seconds=0.2,
+                        idle_seconds=30)
+        messages = self.run_with_tab(config, visit_and_close_tab)
+        self.assertIn("Last tab closed", messages)
+        self.assertEqual(messages[-1], "Paradigm stopped")
+
+    def test_stops_when_the_tab_drops_without_a_beacon(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        port = free_port()
+        config = Config(data_dir=Path(tmp.name), port=port, grace_seconds=0.1,
+                        idle_seconds=0.5)
+        messages = self.run_with_tab(config, visit_and_drop_tab)
+        self.assertIn("No tab for 0.5 s", messages)
+        self.assertNotIn("Last tab closed", messages)
+        self.assertEqual(messages[-1], "Paradigm stopped")
+        self.assertIs(probe("127.0.0.1", port), PortState.FREE)
+
+
+class StopMessageTest(unittest.TestCase):
+    def test_beacon(self) -> None:
+        self.assertEqual(stop_message("beacon", 60.0), "Last tab closed")
+
+    def test_idle(self) -> None:
+        self.assertEqual(stop_message("idle", 60.0), "No tab for 60 s")
 
 
 class SecondLaunchTest(unittest.TestCase):

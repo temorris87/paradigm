@@ -12,6 +12,8 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(config.data_dir, Path.home() / "paradigm-notes")
         self.assertTrue(config.open_browser)
         self.assertEqual(config.url, "http://127.0.0.1:8765/")
+        self.assertEqual(config.grace_seconds, 10.0)
+        self.assertEqual(config.idle_seconds, 60.0)
 
     def test_overrides(self) -> None:
         config = parse_args(["--port", "9000", "--data", "notes-here", "--no-browser"])

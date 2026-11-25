@@ -49,7 +49,7 @@ from paradigm.instance import PortState, probe
 from paradigm.logging_setup import setup_logging
 from paradigm.notes.seed import seed_if_empty
 from paradigm.notify import pause_console, show_error_box
-from paradigm.presence import Presence
+from paradigm.presence import IDLE, Presence
 from paradigm.web.router import Router
 from paradigm.web.server import ParadigmServer
 
@@ -96,7 +96,7 @@ def run(config: Config, open_url: OpenUrl = webbrowser.open,
         probe_port: Callable[[str, int], PortState] = probe) -> int:
     # Take the port first and only ask "is that a Paradigm?" if it is taken. Asking an
     # empty port first is slow on Windows: a refused local connection takes about 2 s.
-    presence = Presence(config.grace_seconds)
+    presence = Presence(config.grace_seconds, config.idle_seconds)
     try:
         server = bind_server(config)
     except OSError as error:
@@ -114,7 +114,7 @@ def run(config: Config, open_url: OpenUrl = webbrowser.open,
         open_url(config.url)
     try:
         wait_for_stop(presence)
-        log.info("Last tab closed")
+        log.info("%s", stop_message(presence.stop_reason, config.idle_seconds))
     except KeyboardInterrupt:
         log.info("Stopping (Ctrl-C)")
     server.stop()
@@ -242,6 +242,13 @@ def wait_for_stop(presence: Presence, poll_seconds: float = STOP_POLL_SECONDS) -
     # A short sleep loop rather than a blocking wait, so Ctrl-C works on Windows too.
     while not presence.should_stop():
         time.sleep(poll_seconds)
+
+
+def stop_message(reason: Optional[str], idle_seconds: float) -> str:
+    """Why the server stopped by itself: a beacon from the last tab, or no tab for a while."""
+    if reason == IDLE:
+        return "No tab for {:g} s".format(idle_seconds)
+    return "Last tab closed"
 
 
 # "Address in use" on Windows / Linux / Mac, and "access denied" on Windows / POSIX.

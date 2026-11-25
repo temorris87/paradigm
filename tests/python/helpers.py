@@ -13,12 +13,13 @@ from paradigm.presence import Presence
 
 class RunningServer:
     def __init__(self, grace_seconds: float = 0.2, keepalive_seconds: float = 15.0,
-                 max_streams: int = 50):
+                 max_streams: int = 50, idle_seconds: float = 60.0):
         self.tmp = tempfile.TemporaryDirectory()
         self.config = Config(data_dir=Path(self.tmp.name), port=0, open_browser=False,
-                             grace_seconds=grace_seconds, keepalive_seconds=keepalive_seconds,
+                             grace_seconds=grace_seconds, idle_seconds=idle_seconds,
+                             keepalive_seconds=keepalive_seconds,
                              max_streams=max_streams)
-        self.presence = Presence(grace_seconds)
+        self.presence = Presence(grace_seconds, idle_seconds)
         self.server = build_server(self.config, self.presence)
         self.port = self.server.port
         self.server.start_in_thread()

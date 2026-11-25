@@ -79,7 +79,7 @@ class UnusedImagesTest(unittest.TestCase):
     def restart(self) -> None:
         if not self.running.server.stop_event.is_set():
             self.running.server.stop()
-        self.running.server = build_server(self.running.config, Presence(0.2))
+        self.running.server = build_server(self.running.config, Presence(0.2, 60.0))
         self.running.port = self.running.server.port
         self.running.server.start_in_thread()
 

@@ -144,9 +144,14 @@ paradigm/                Python package
   and exits. If another program is there it explains and exits. Otherwise it starts the server
   and opens the browser.
 - Each tab holds one Server-Sent Events stream (`/api/events?tab=ID`) and sends a beacon
-  (`POST /api/closing`) on `pagehide`. The server stops only when no tab is connected, the
-  last tab to leave sent a beacon, and nothing reconnects within 10 s. A drop without a beacon
-  (sleep, a sleeping tab) never stops it.
+  (`POST /api/closing`) on `pagehide`. When the last stream drops, `Presence` arms a stop
+  60 s out (`Config.idle_seconds`): Safari sends no beacon when a tab closes, nor does a
+  browser that quits or crashes. A beacon from the last tab to leave (before or after its
+  stream drops) brings it in to 10 s (`Config.grace_seconds`); any other tab's beacon is
+  ignored. A reconnect cancels it. Wake guard: two `should_stop` checks over 5 s apart
+  (`WAKE_GAP_SECONDS`; they run every 0.25 s) mean the machine slept, so the deadline restarts
+  from that check with its full period. `stop_reason` ("beacon" or "idle") picks the log line,
+  "Last tab closed" or "No tab for 60 s".
 - `paradigm.pyw` runs under `pythonw.exe`, which opens no window. `sys.stdout`, `sys.stderr`
   and `sys.stdin` are `None` there, so never `print` or `input` without checking. Startup errors
   go to a message box (`notify.show_error_box`, using ctypes `MessageBoxW`) and to the log.

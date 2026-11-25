@@ -24,6 +24,9 @@ class Config:
     open_browser: bool = True
     # After the last tab closes, wait this long for a reload to reconnect before stopping.
     grace_seconds: float = 10.0
+    # With no tab connected for this long, stop even without a beacon: Safari sends none
+    # when a tab closes, nor does a browser that quits or crashes.
+    idle_seconds: float = 60.0
     # How often an open event stream is sent a keep-alive comment.
     keepalive_seconds: float = 15.0
     # Most event streams open at once (one per tab).

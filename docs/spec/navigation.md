@@ -78,3 +78,9 @@ How the app behaves. Kept up to date by each feature that changes it.
 - An image is deleted from the database once no note (trashed ones included) links to it any
   more, but only when Paradigm starts or stops: while a tab is open, `u` or `p` can bring a
   deleted link back.
+- Paradigm stops by itself once no tab is open. Close the last tab and it stops 10 s later,
+  when the tab's closing beacon got out (Chrome, Edge). With no beacon (Safari closing a tab,
+  a browser that quits or crashes) it stops once no tab has been open for 60 s (Tyson,
+  2026-11-25). A tab that comes back first (a reload, Undo Close Tab) keeps it running, and
+  after the machine sleeps the wait starts again from the wake. The log says "Last tab closed"
+  or "No tab for 60 s"; there is no flag for either wait.
