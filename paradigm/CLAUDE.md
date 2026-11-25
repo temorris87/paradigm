@@ -10,6 +10,7 @@ paradigm/                Python package
   config.py              Config + argparse (port 8765, data ~/paradigm-notes)
   instance.py            probe the port: free / a running Paradigm / another program
   presence.py            open tabs and the shutdown rule (pure logic, injected clock)
+  stopping.py            ctrl_c_ignored: once stopping, Ctrl-C only logs "Already stopping"
   logging_setup.py       console (if any) + <data>/paradigm.log
   notify.py              startup errors: console pause, or a message box with no console
   web/                   server.py (ThreadingHTTPServer), handler.py, router.py,
@@ -152,6 +153,9 @@ paradigm/                Python package
   (`WAKE_GAP_SECONDS`; they run every 0.25 s) mean the machine slept, so the deadline restarts
   from that check with its full period. `stop_reason` ("beacon" or "idle") picks the log line,
   "Last tab closed" or "No tab for 60 s".
+- Once the stop has begun (`app.stop_server`), Ctrl-C is ignored (`stopping.ctrl_c_ignored`
+  swaps the SIGINT handler, main thread only) and each press logs "Already stopping - please
+  wait", so the tidy-up and closing the database always run and the log ends "Paradigm stopped".
 - `paradigm.pyw` runs under `pythonw.exe`, which opens no window. `sys.stdout`, `sys.stderr`
   and `sys.stdin` are `None` there, so never `print` or `input` without checking. Startup errors
   go to a message box (`notify.show_error_box`, using ctypes `MessageBoxW`) and to the log.

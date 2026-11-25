@@ -1,13 +1,20 @@
 import errno
 import http.client
+import os
+import signal
 import socket
+import subprocess
+import sys
 import tempfile
 import threading
+import time
 import unittest
+from unittest import mock
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 from helpers import RunningServer
+from paradigm import app
 from paradigm.app import LaunchError, port_error_message, run, stop_message
 from paradigm.config import Config
 from paradigm.instance import PortState, probe
@@ -140,6 +147,140 @@ class FullLaunchTest(unittest.TestCase):
         self.assertNotIn("Last tab closed", messages)
         self.assertEqual(messages[-1], "Paradigm stopped")
         self.assertIs(probe("127.0.0.1", port), PortState.FREE)
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+class SecondCtrlCTest(unittest.TestCase):
+    """A Ctrl-C while stopping is noted and ignored: the stop still runs to the end."""
+
+    def setUp(self) -> None:
+        self.assertIs(threading.current_thread(), threading.main_thread())
+        before = signal.getsignal(signal.SIGINT)
+        self.addCleanup(signal.signal, signal.SIGINT, before)
+        signal.signal(signal.SIGINT, signal.default_int_handler)
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.data = Path(tmp.name)
+        self.ran = []
+
+    def install_with_ctrl_c_during_stop(self):
+        """install_apis, with each stop hook recorded and a Ctrl-C raised before the tidy-up."""
+        original = app.install_apis
+
+        def install(server, config, presence) -> None:
+            original(server, config, presence)
+            server.on_close[:] = [self.recorded(name, close) for name, close in
+                                  zip(("tidy", "db.close"), server.on_close)]
+            server.on_close.insert(0, lambda: signal.raise_signal(signal.SIGINT))
+
+        return mock.patch.object(app, "install_apis", install)
+
+    def recorded(self, name: str, close):
+        def run_it() -> None:
+            close()
+            self.ran.append(name)
+        return run_it
+
+    def test_second_ctrl_c_after_the_first(self) -> None:
+        config = Config(data_dir=self.data, port=free_port(), open_browser=False)
+        with self.install_with_ctrl_c_during_stop(), \
+                mock.patch.object(app, "wait_for_stop", side_effect=KeyboardInterrupt), \
+                self.assertLogs("paradigm", level="INFO") as logs:
+            code = run(config)
+        messages = [record.getMessage() for record in logs.records]
+        self.assertEqual(code, 0)
+        self.assertEqual(self.ran, ["tidy", "db.close"])
+        stopping = messages.index("Stopping (Ctrl-C)")
+        self.assertIn("Already stopping - please wait", messages[stopping:])
+        self.assertEqual(messages[-1], "Paradigm stopped")
+        self.assertIs(probe("127.0.0.1", config.port), PortState.FREE)
+
+    def test_ctrl_c_while_stopping_after_the_last_tab_closed(self) -> None:
+        port = free_port()
+        config = Config(data_dir=self.data, port=port, grace_seconds=0.2, idle_seconds=30)
+
+        def browser(url: str) -> None:
+            threading.Thread(target=visit_and_close_tab, args=(port,), daemon=True).start()
+
+        with self.install_with_ctrl_c_during_stop(), \
+                self.assertLogs("paradigm", level="INFO") as logs:
+            code = run(config, open_url=browser)
+        messages = [record.getMessage() for record in logs.records]
+        self.assertEqual(code, 0)
+        self.assertEqual(self.ran, ["tidy", "db.close"])
+        closed = messages.index("Last tab closed")
+        self.assertIn("Already stopping - please wait", messages[closed:])
+        self.assertEqual(messages[-1], "Paradigm stopped")
+
+    def test_ctrl_c_handler_is_back_after_run(self) -> None:
+        config = Config(data_dir=self.data, port=free_port(), open_browser=False)
+        with mock.patch.object(app, "wait_for_stop", side_effect=KeyboardInterrupt), \
+                self.assertLogs("paradigm", level="INFO"):
+            run(config)
+        self.assertIs(signal.getsignal(signal.SIGINT), signal.default_int_handler)
+
+
+@unittest.skipIf(os.name == "nt", "SIGINT to a child process is a console event on Windows")
+class CtrlCProcessTest(unittest.TestCase):
+    """A real paradigm.py on sample data in a temporary folder."""
+
+    def start(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.log_path = Path(tmp.name) / "paradigm.log"
+        self.port = free_port()
+        process = subprocess.Popen(
+            [sys.executable, str(REPO_ROOT / "paradigm.py"), "--data", tmp.name,
+             "--no-browser", "--port", str(self.port)],
+            cwd=str(REPO_ROOT), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+        self.addCleanup(self.kill, process)
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline:
+            if self.log_path.exists() and "Paradigm running" in self.log_text():
+                return process
+            if process.poll() is not None:
+                break
+            time.sleep(0.05)
+        self.fail("paradigm.py did not start")
+
+    def kill(self, process) -> None:
+        if process.poll() is None:
+            process.kill()
+        process.wait(timeout=10)
+        process.stderr.close()
+
+    def log_text(self) -> str:
+        return self.log_path.read_text(encoding="utf-8")
+
+    def stopped_cleanly(self, process) -> str:
+        code = process.wait(timeout=20)
+        stderr = process.stderr.read().decode("utf-8", "replace")
+        text = self.log_text()
+        self.assertEqual(code, 0, stderr)
+        self.assertTrue(text.rstrip().endswith("Paradigm stopped"), text)
+        self.assertNotIn("Traceback", text + stderr)
+        self.assertIs(probe("127.0.0.1", self.port), PortState.FREE)
+        return text
+
+    def test_two_ctrl_c(self) -> None:
+        process = self.start()
+        process.send_signal(signal.SIGINT)
+        time.sleep(0.1)
+        if process.poll() is None:
+            process.send_signal(signal.SIGINT)
+        text = self.stopped_cleanly(process)
+        self.assertIn("Stopping (Ctrl-C)", text)
+
+    def test_one_ctrl_c(self) -> None:
+        process = self.start()
+        process.send_signal(signal.SIGINT)
+        text = self.stopped_cleanly(process)
+        self.assertIn("Stopping (Ctrl-C)", text)
+        self.assertNotIn("Already stopping", text)
 
 
 class StopMessageTest(unittest.TestCase):

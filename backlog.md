@@ -146,7 +146,7 @@ Features in build order. "build feature" takes the first unchecked item.
   week on their dashboard (done 2026-11-23)
 - [x] Add ability to remove folders from Project/areas and other locations where folders are added (done 2026-11-25)
 - [x] Auto shutoff of the server does not work on Mac (done 2026-11-25)
-- [ ] A second Ctrl-C while Paradigm is stopping leaves it half-stopped (no "Paradigm stopped" in the log, the tidy-up skipped)
+- [x] A second Ctrl-C while Paradigm is stopping leaves it half-stopped (no "Paradigm stopped" in the log, the tidy-up skipped) (done 2026-11-25)
 - [ ] I want to have the popup window that takes up the 1/3 of my screen to be a markdown view
   of any note and the note content should be visible on the main page. The reasoning behind
   this is to get rid of the weird behavior that real time rendering in the vim windows is

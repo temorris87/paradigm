@@ -50,6 +50,7 @@ from paradigm.logging_setup import setup_logging
 from paradigm.notes.seed import seed_if_empty
 from paradigm.notify import pause_console, show_error_box
 from paradigm.presence import IDLE, Presence
+from paradigm.stopping import ctrl_c_ignored
 from paradigm.web.router import Router
 from paradigm.web.server import ParadigmServer
 
@@ -114,12 +115,20 @@ def run(config: Config, open_url: OpenUrl = webbrowser.open,
         open_url(config.url)
     try:
         wait_for_stop(presence)
-        log.info("%s", stop_message(presence.stop_reason, config.idle_seconds))
+        reason = stop_message(presence.stop_reason, config.idle_seconds)
     except KeyboardInterrupt:
-        log.info("Stopping (Ctrl-C)")
-    server.stop()
-    log.info("Paradigm stopped")
+        reason = "Stopping (Ctrl-C)"
+    stop_server(server, reason)
     return 0
+
+
+def stop_server(server: ParadigmServer, reason: str) -> None:
+    """Once stopping, another Ctrl-C must not cut it short: the tidy-up and closing the
+    database would be skipped, and the log would never say "Paradigm stopped"."""
+    with ctrl_c_ignored(lambda: log.info("Already stopping - please wait")):
+        log.info("%s", reason)
+        server.stop()
+        log.info("Paradigm stopped")
 
 
 def build_server(config: Config, presence: Presence) -> ParadigmServer:

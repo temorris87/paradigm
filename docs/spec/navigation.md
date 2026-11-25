@@ -84,3 +84,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   2026-11-25). A tab that comes back first (a reload, Undo Close Tab) keeps it running, and
   after the machine sleeps the wait starts again from the wake. The log says "Last tab closed"
   or "No tab for 60 s"; there is no flag for either wait.
+- Ctrl-C in the console stops Paradigm ("Stopping (Ctrl-C)"). Once it is stopping, for any
+  reason, a further Ctrl-C is ignored and only logs "Already stopping - please wait", so the
+  tidy-up always runs and the log ends "Paradigm stopped"; there is no force-quit on a third
+  press (Tyson, 2026-11-25). Ctrl-C during startup, Ctrl-Break and closing the console window
+  are unchanged.
