@@ -21,13 +21,17 @@ jobs:
         run: python tools/pipeline_gate.py --no-js
 
   js:
-    name: JS tests in Firefox
+    name: JS tests in Chrome, then Firefox
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      # GitHub's Ubuntu runners come with Chrome. Firefox runs too, as the fallback browser,
+      # so a test that only passes in one of them shows up.
       - uses: browser-actions/setup-firefox@v1
-      - name: JS tests
+      - name: JS tests (Chrome)
+        run: python tools/run_js_tests.py --browser chrome --timeout 180
+      - name: JS tests (Firefox)
         run: python tools/run_js_tests.py --browser firefox --timeout 180

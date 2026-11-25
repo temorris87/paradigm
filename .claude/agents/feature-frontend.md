@@ -24,3 +24,11 @@ headless browser was found, say so in your answer; don't count that as a pass.
 
 Return: what you built, every file you changed, anything in the contract you had to interpret,
 and the test result.
+
+## Git
+The other lane edits this same working tree at the same time. Never run `git stash`, `reset`,
+`restore`, `checkout`, `switch` or `clean`: one stash takes the other lane's work away, and the
+hook refuses them while a feature is in progress. To see what HEAD had, use `git diff`,
+`git show HEAD:<path> > <scratchpad>/<name>`, or for a whole clean copy (to tell whether a
+failure was already there before the feature) `git worktree add <scratchpad>/head HEAD`, run it
+there, then `git worktree remove <scratchpad>/head`.

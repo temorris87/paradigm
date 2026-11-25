@@ -20,6 +20,13 @@ tests/js/                index.html runner, harness.js, fakes.js, editor-helpers
    async tests end: instead put `user_pref("devtools.console.stdout.content", true);` in the
    profile's `user.js`, run `firefox --headless -no-remote -profile <dir> <url>` under a
    timeout, and read the `TESTS PASS n` / `FAIL ...` lines the harness logs.
-3. Check the behaviour in a real browser on sample data, including the keys.
+3. Check the behaviour in a real browser on sample data, including the keys:
+   `python tools/browser_drive.py start`, then `api`, `keys`, `click`, `text`, `focus`,
+   `console`, `shot`, `windows`, `window N`, `stop` (its docstring has them all). It drives
+   Google Chrome by default, through Chrome's own DevTools port (`tools/cdp.py`), so there is no
+   chromedriver to install or keep in step with Chrome's updates. Without Chrome it falls back
+   to Firefox, which needs geckodriver (`brew install geckodriver` on a Mac,
+   `winget install Mozilla.GeckoDriver` on Windows). The JS tests run in Chrome first too
+   (`run_js_tests.py`; CI runs Chrome and Firefox).
 4. Report what was tested and what wasn't, such as Windows-specific behaviour Tyson must check
    at work.

@@ -80,10 +80,13 @@ How the app behaves. Kept up to date by each feature that changes it.
   folder row opens Add file over that folder's files only. Unlink (the row's ⋯, or `x` /
   `Delete`) asks first, danger: *Unlink "Contracts" from "Northwind rollout"? Its 3 files on
   notes come off them (Kickoff, Phase 1, Review, …). Nothing in OneDrive changes.* (up to
-  three notes named). It drops the folder, its files and their attachments on every note, and
+  three notes named; attachments on notes in the trash are counted too: "1 attachment on notes
+  in the trash goes too, for good"). It drops the folder, its files and their attachments on every note, and
   can't be undone; nothing on disk changes. The Add file picker has "Unlink a folder…" under
   "Link a OneDrive folder…" when the hub has folders, so a phase or note page reaches it too.
   A hub with no folder left can be filed as a resource again, if nothing else stops it.
+  Unlink and Enter on a folder row reload the page's data first: a row left over after the
+  other window unlinked it says "that folder is no longer linked" instead.
 - Time codes: a project or area has one on its card (`Time code: X ✎`, `(from area)` when a
   project books to its area's, else Set time code; `:timecode`). A resource or Inbox note has
   none: its time is listed as not counted.

@@ -1,6 +1,9 @@
 """Claude Code hooks for the feature pipeline (wired in .claude/settings.json).
 
-  commit-gate  PreToolUse on Bash: a `git commit` runs the gate first and is blocked when it fails.
+  commit-gate  PreToolUse on Bash: a `git commit` runs the gate first and is blocked when it fails;
+               while a feature is in progress, git commands that rewrite the shared working tree
+               (stash, reset, restore, checkout, switch, clean) are refused: the lanes edit it
+               side by side, and one agent's stash takes the other's work away.
   stop-check   Stop: while a feature is in progress, a session can't end with phases still owed,
                unless one runs in the background or waits on Tyson (`running` / `blocked`).
 
@@ -15,10 +18,18 @@ import sys
 import pipeline_state
 
 GIT_COMMIT = re.compile(r"(^|[;&|(]|\s)git(\s+-\S+(\s+\S+)?)*\s+commit\b")
+GIT_REWRITE = re.compile(r"(^|[;&|(]|\s)git(\s+-\S+(\s+\S+)?)*\s+(stash|reset|restore|checkout|switch|clean)\b")
+REWRITE_HELP = ("Blocked: a feature is in the pipeline and its lanes share this working tree, so git "
+                "commands that rewrite it (stash, reset, restore, checkout, switch, clean) are off. "
+                "To compare with HEAD, use `git diff` or `git show HEAD:<path>` into the scratchpad "
+                "(or `git worktree add <scratch dir> HEAD` for a whole clean copy).")
 
 
 def commit_gate(event):
     command = (event.get("tool_input") or {}).get("command", "")
+    if GIT_REWRITE.search(command) and pipeline_state.current_slug():
+        print(REWRITE_HELP, file=sys.stderr)
+        return 2
     if not GIT_COMMIT.search(command):
         return 0
     gate = pipeline_state.REPO / "tools" / "pipeline_gate.py"

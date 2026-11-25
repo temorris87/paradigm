@@ -44,11 +44,11 @@ No change. Unlink is a hard delete, as built: the `file_folders` row, its `files
 finds the files again, but their attachments are gone), which is why the dialog spells out the
 attachments it drops. Trash, restore and purge of the hub are unchanged.
 
-## API contract (exists, unchanged)
+## API contract (the unlink route as it was; `/api/files` gained `trashed`)
 | Method | Path | Request | Response | Errors |
 |---|---|---|---|---|
 | POST | /api/folder/unlink | `{"id": 3}` | `{}` | 404 no such folder, 400 bad id |
-| GET | /api/files | — | `{folders:[{id,note_id,path,name,scanned_at}], files:[…], links:[…]}` | — |
+| GET | /api/files | — | `{folders:[{id,note_id,path,name,scanned_at,trashed}], files:[…], links:[…]}`: `trashed`, the folder's attachments on notes in the trash (hidden from `links`, but unlink drops them) | — |
 
 ## Files
 - Frontend lane: `static/js/files/file-commands.js` (`unlinkFolderDialog(app, folderId)`,
@@ -84,6 +84,12 @@ attachments it drops. Trash, restore and purge of the hub are unchanged.
 - Folder rows are not counted: the Files section's count and the sheet bar
   (`section-summary.js`) count files only.
 - Backend tests are in `tests/python/test_files_unlink.py`.
+- `GET /api/files` gives each folder `trashed` (review, round 2), and the confirm adds
+  "N attachment(s) on notes in the trash go too, for good".
+- Folder rows sit outside the Files section's 8-row limit (review, round 3).
+- `unlinkFolderDialog` is async and, like `addFileDialog({folderId})`, calls
+  `app.refreshTree()` before trusting the page's copy, so a row left stale by the other window
+  says "that folder is no longer linked" on the status line (browser check).
 
 ## Not in this feature
 Opening the folder itself in File Explorer / Finder. Changing a link's path (unlink, then link).

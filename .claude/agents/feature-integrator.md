@@ -23,3 +23,11 @@ When both halves meet the contract, record the phases:
 (`python` instead of `python3` on Windows.)
 
 Return: each mismatch you found and how you fixed it, the files you changed, and the test results.
+
+## Git
+The other lane edits this same working tree at the same time. Never run `git stash`, `reset`,
+`restore`, `checkout`, `switch` or `clean`: one stash takes the other lane's work away, and the
+hook refuses them while a feature is in progress. To see what HEAD had, use `git diff`,
+`git show HEAD:<path> > <scratchpad>/<name>`, or for a whole clean copy (to tell whether a
+failure was already there before the feature) `git worktree add <scratchpad>/head HEAD`, run it
+there, then `git worktree remove <scratchpad>/head`.

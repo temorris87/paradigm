@@ -22,32 +22,35 @@ STATE_DIR = REPO / ".pipeline"
 CURRENT = STATE_DIR / "current"
 
 PHASES = ["plan", "implement", "integrate", "gate", "review", "docs", "browser", "close"]
-# Phases that judge the code: they must have seen the tree as it is now.
-FRESH = {"gate", "review", "browser"}
+# Phases that judge the code must have seen it as it is now, each over what it judges: the gate
+# and review read tests and tools too; the browser check only the app, so a new test leaves it be.
+ALL = "all"
+APP = "app"
+FRESH = {"gate": ALL, "review": ALL, "browser": APP}
 STATUSES = ("pass", "fail", "running", "blocked")
 
 SOURCE_FILES = ("paradigm.py", "paradigm.pyw")
-SOURCE_DIRS = ("paradigm", "static", "tests", "tools")
+SOURCE_DIRS = {ALL: ("paradigm", "static", "tests", "tools"), APP: ("paradigm", "static")}
 SKIP_DIRS = {"__pycache__", ".git", ".pipeline"}
 # Docs (.md, CLAUDE.md included) never change what the code does, so editing them stales nothing.
 SKIP_SUFFIXES = {".md", ".pyc"}
 
 
-def source_files():
+def source_files(scope=ALL):
     for name in SOURCE_FILES:
         path = REPO / name
         if path.is_file():
             yield path
-    for top in SOURCE_DIRS:
+    for top in SOURCE_DIRS[scope]:
         for path in (REPO / top).rglob("*"):
             rel = path.relative_to(REPO)
             if path.is_file() and not SKIP_DIRS & set(rel.parts) and path.suffix not in SKIP_SUFFIXES:
                 yield path
 
 
-def fingerprint():
+def fingerprint(scope=ALL):
     digest = hashlib.sha256()
-    for path in sorted(source_files()):
+    for path in sorted(source_files(scope)):
         digest.update(path.relative_to(REPO).as_posix().encode("utf-8") + b"\0")
         digest.update(path.read_bytes() + b"\0")
     return digest.hexdigest()
@@ -84,7 +87,7 @@ def record(slug, phase, status, note=""):
     if status not in STATUSES:
         raise SystemExit(f"unknown status {status!r}; statuses: {', '.join(STATUSES)}")
     state = load(slug)
-    entry = {"status": status, "at": now(), "fingerprint": fingerprint(), "note": note}
+    entry = {"status": status, "at": now(), "fingerprint": fingerprint(FRESH.get(phase, ALL)), "note": note}
     state["phases"][phase] = entry
     state["history"].append({"phase": phase, **entry})
     save(state)
@@ -95,7 +98,6 @@ def problems(slug):
     """What still stands between this feature and done, as sentences. Empty when complete."""
     state = load(slug)
     phases = state["phases"]
-    tree = fingerprint()
     found = []
     for phase in PHASES:
         entry = phases.get(phase)
@@ -103,7 +105,7 @@ def problems(slug):
             found.append(f"{phase}: not done")
         elif entry["status"] != "pass":
             found.append(f"{phase}: {entry['status']}" + (f" ({entry['note']})" if entry["note"] else ""))
-        elif phase in FRESH and entry["fingerprint"] != tree:
+        elif phase in FRESH and entry["fingerprint"] != fingerprint(FRESH[phase]):
             found.append(f"{phase}: passed at {entry['at']}, but the code has changed since")
     return found
 

@@ -50,12 +50,19 @@ keybindings).
 - `backlog.md` lists features as `- [ ] Feature`. Tyson writes and orders it.
 - When Tyson types **"build feature"** (or `/feature`): take the first unchecked item through
   the pipeline in `.claude/skills/feature/SKILL.md`. Plan it in plan mode and write its spec to
-  `docs/features/NNN-slug.md`; the `feature-build` workflow then builds it (backend and frontend
-  lanes in parallel), integrates, gates, reviews and documents (in parallel), fixes, checks it in
-  a browser, and marks it `- [x] Feature (done YYYY-MM-DD)`.
+  `docs/features/NNN-slug.md`. The `feature-build` workflow then builds it:
+  1. gates the untouched tree;
+  2. builds the backend and frontend lanes in parallel, and integrates them;
+  3. gates and reviews: one full pass, then re-checks of the fixes;
+  4. fixes;
+  5. checks it in a browser (`tools/browser_drive.py`);
+  6. documents it;
+  7. marks it `- [x] Feature (done YYYY-MM-DD)`.
 - Each phase records its result in `.pipeline/<slug>/state.json` (not in git). A commit needs
   `python tools/pipeline_gate.py` to pass; the hooks in `.claude/settings.json` and
-  `tools/githooks/pre-commit` enforce it.
+  `tools/githooks/pre-commit` enforce it. While a feature is in progress, the hook also refuses
+  `git stash`, `reset`, `restore`, `checkout`, `switch` and `clean`: the lanes share the
+  working tree.
 - Lanes own files, so they can run side by side: the backend lane `paradigm/` and `tests/python/`
   (`paradigm/app.py` and the spec's migration number included), the frontend lane `static/` and
   `tests/js/` (`main.js`, `commands.js`, `page-views.js`, `hub-sections.js`, the key tables,

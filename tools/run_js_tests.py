@@ -6,7 +6,7 @@ browser could run them.
 
   python tools/run_js_tests.py [--browser auto|firefox|chrome|edge|safari] [--timeout 120]
 
-auto tries Firefox, Chrome/Chromium, then Edge, all headless. Safari (Mac only, a background tab
+auto tries Chrome/Chromium (the browser Tyson uses at work), Firefox, then Edge, all headless. Safari (Mac only, a background tab
 closed afterwards) runs only when asked for: a background tab never gets the keyboard focus, so
 the focus and key tests fail there and its result is not a pass or fail of the suite.
 """
@@ -93,17 +93,17 @@ def find_browsers():
     system = platform.system()
     found = []
     if system == "Darwin":
-        found += [("firefox", p) for p in _mac_app("Firefox", "firefox")]
         found += [("chrome", p) for p in _mac_app("Google Chrome", "Google Chrome")]
         found += [("chrome", p) for p in _mac_app("Chromium", "Chromium")]
+        found += [("firefox", p) for p in _mac_app("Firefox", "firefox")]
         found += [("edge", p) for p in _mac_app("Microsoft Edge", "Microsoft Edge")]
     elif system == "Windows":
-        found += [("firefox", p) for p in _windows_exe("Mozilla Firefox", "firefox.exe")]
         found += [("chrome", p) for p in _windows_exe("Google", "Chrome", "Application", "chrome.exe")]
+        found += [("firefox", p) for p in _windows_exe("Mozilla Firefox", "firefox.exe")]
         found += [("edge", p) for p in _windows_exe("Microsoft", "Edge", "Application", "msedge.exe")]
-    found += [("firefox", p) for p in _on_path("firefox")]
     found += [("chrome", p) for p in _on_path("google-chrome", "google-chrome-stable", "chromium",
                                              "chromium-browser", "chrome")]
+    found += [("firefox", p) for p in _on_path("firefox")]
     found += [("edge", p) for p in _on_path("microsoft-edge", "msedge")]
     if system == "Darwin" and pathlib.Path("/Applications/Safari.app").exists():
         found.append(("safari", "open"))
@@ -197,8 +197,8 @@ def main(argv=None):
     else:
         browsers = [b for b in browsers if b[0] == args.browser]
     if not browsers:
-        print("TESTS FAIL: no headless browser found to run the JS tests. Install Firefox "
-              "(Mac: brew install --cask firefox), or pass --browser safari for a rough run.")
+        print("TESTS FAIL: no headless browser found to run the JS tests. Install Google Chrome "
+              "(or Firefox), or pass --browser safari for a rough run.")
         return 2
     kind, exe = browsers[0]
     return run(kind, exe, args.timeout)
