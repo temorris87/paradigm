@@ -212,14 +212,20 @@ class InlineParser {
     }
     const afterBracket = this.pos;
     const target = this.inlineTarget() ?? this.referenceTarget(opener);
-    if (!target || this.tooDeep(opener)) {
+    const tooDeep = Boolean(target) && this.tooDeep(opener);
+    // The bracket around this one holds all of this one's nodes, so it is too deep as well:
+    // marking it saves rescanning an ever longer tail at every "]" further out.
+    if (tooDeep && opener.previous) opener.previous.tooDeep = true;
+    if (!target || tooDeep) {
       this.pos = afterBracket;
       this.brackets = opener.previous;
       this.pushText("]");
       return true;
     }
     processEmphasis(this, opener.previousDelimiter);
-    const start = this.nodes.indexOf(opener.node);
+    // From the end: the opener is near it, and indexOf from the start made nested brackets
+    // quadratic.
+    const start = this.nodes.lastIndexOf(opener.node);
     const children = this.nodes.splice(start).slice(1);
     const depth = nestingDepth(children) + 1;
     this.nodes.push({ type: opener.image ? "image" : "link", ...target, children, depth });
@@ -234,7 +240,8 @@ class InlineParser {
   }
 
   tooDeep(opener) {
-    return nestingDepth(this.nodes.slice(this.nodes.indexOf(opener.node) + 1)) >= MAX_INLINE_NESTING;
+    if (opener.tooDeep) return true;
+    return nestingDepth(this.nodes.slice(this.nodes.lastIndexOf(opener.node) + 1)) >= MAX_INLINE_NESTING;
   }
 
   // "(destination 'title')" right after "]".

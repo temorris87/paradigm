@@ -73,9 +73,10 @@ export function processEmphasis(parser, bottom) {
       }
       opener = opener.previous;
     }
-    if (found && tooDeep(parser.nodes, opener, closer)) found = false;
+    const span = found && locatePair(parser, opener, closer);
+    if (span && nestingDepth(parser.nodes.slice(span.from + 1, span.to)) >= MAX_INLINE_NESTING) found = false;
     if (found) {
-      closer = pair(parser, opener, closer);
+      closer = pair(parser, opener, closer, span);
     } else {
       const old = closer;
       closer = closer.next;
@@ -86,13 +87,29 @@ export function processEmphasis(parser, bottom) {
   while (parser.delimiters && parser.delimiters !== bottom) removeDelimiter(parser, parser.delimiters);
 }
 
-function tooDeep(nodes, opener, closer) {
-  const inner = nodes.slice(nodes.indexOf(opener.node) + 1, nodes.indexOf(closer.node));
-  return nestingDepth(inner) >= MAX_INLINE_NESTING;
+// Where the opener's and closer's nodes sit. Not indexOf from the start: closers are paired
+// left to right, so the next one is found near the last, and its opener just before it.
+// Searching from the start each time made long runs like "*a*a*a..." quadratic.
+function locatePair(parser, opener, closer) {
+  const nodes = parser.nodes;
+  const to = searchOutward(nodes, closer.node, parser.pairHint ?? 0);
+  let from = to - 1;
+  while (from >= 0 && nodes[from] !== opener.node) from -= 1;
+  parser.pairHint = to;
+  return { from, to };
+}
+
+function searchOutward(nodes, node, hint) {
+  const start = Math.min(hint, nodes.length - 1);
+  for (let step = 0; step < nodes.length; step += 1) {
+    if (nodes[start + step] === node) return start + step;
+    if (nodes[start - step] === node) return start - step;
+  }
+  return -1;
 }
 
 // Wrap the nodes between opener and closer; returns the closer to carry on from.
-function pair(parser, opener, closer) {
+function pair(parser, opener, closer, { from, to }) {
   const use = opener.char in TAGS ? 2 : closer.count >= 2 && opener.count >= 2 ? 2 : 1;
   const type = TAGS[opener.char] ?? (use === 1 ? "em" : "strong");
   opener.count -= use;
@@ -101,22 +118,19 @@ function pair(parser, opener, closer) {
   closer.node.value = closer.node.value.slice(use);
 
   const nodes = parser.nodes;
-  const from = nodes.indexOf(opener.node);
-  const to = nodes.indexOf(closer.node);
-  const inner = nodes.splice(from + 1, to - from - 1);
-  nodes.splice(from + 1, 0, { type, children: inner, depth: nestingDepth(inner) + 1 });
+  const inner = nodes.slice(from + 1, to);
+  nodes.splice(from + 1, to - from - 1, { type, children: inner, depth: nestingDepth(inner) + 1 });
+  parser.pairHint = from + 2;
 
   for (let between = closer.previous; between && between !== opener; ) {
     const previous = between.previous;
     removeDelimiter(parser, between);
     between = previous;
   }
-  if (opener.count === 0) {
-    nodes.splice(nodes.indexOf(opener.node), 1);
-    removeDelimiter(parser, opener);
-  }
+  // A used-up delimiter's node stays in the list as empty text (mergeText drops it):
+  // splicing it out would shift every node after it, once per pair.
+  if (opener.count === 0) removeDelimiter(parser, opener);
   if (closer.count === 0) {
-    nodes.splice(nodes.indexOf(closer.node), 1);
     const next = closer.next;
     removeDelimiter(parser, closer);
     return next;

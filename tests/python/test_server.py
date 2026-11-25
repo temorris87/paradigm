@@ -1,7 +1,23 @@
 import time
 import unittest
+from pathlib import Path
+from unittest import mock
 
 from helpers import RunningServer, wait_until
+from paradigm.web.router import Router
+from paradigm.web.server import ParadigmServer
+
+
+class BindTest(unittest.TestCase):
+    def test_binding_does_no_reverse_dns_lookup(self) -> None:
+        # HTTPServer looks up socket.getfqdn(host) on bind, which stalled startup on macOS CI.
+        with mock.patch("socket.getfqdn", side_effect=AssertionError("reverse DNS lookup")):
+            server = ParadigmServer(("127.0.0.1", 0), Router(), Path("."))
+        try:
+            self.assertEqual(server.server_name, "127.0.0.1")
+            self.assertEqual(server.server_port, server.port)
+        finally:
+            server.server_close()
 
 
 class ServerTest(unittest.TestCase):

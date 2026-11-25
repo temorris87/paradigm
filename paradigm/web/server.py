@@ -1,5 +1,6 @@
 """The HTTP server: threaded, local-only, stoppable."""
 import os
+import socketserver
 import threading
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -24,6 +25,14 @@ class ParadigmServer(ThreadingHTTPServer):
         self.stop_event = threading.Event()
         # Run after the last request is answered (the database closes here).
         self.on_close: List[Callable[[], None]] = []
+
+    def server_bind(self) -> None:
+        # HTTPServer.server_bind looks up socket.getfqdn(host), a reverse DNS lookup that
+        # Paradigm never uses and that can stall startup for many seconds (seen on macOS CI).
+        socketserver.TCPServer.server_bind(self)
+        host, port = self.server_address[:2]
+        self.server_name = host
+        self.server_port = port
 
     @property
     def port(self) -> int:
