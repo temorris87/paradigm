@@ -23,9 +23,10 @@ How the app behaves. Kept up to date by each feature that changes it.
   minute, Done / Open note / +15 min; else the next block; else "<Day> is clear.") over the
   day (meetings with their prep, blocks, free gaps of 30 min or more in the working hours,
   "Log status" when projects are stale); Up next, one list ranked across every project
-  (overdue, follow-ups past due, due today, due within 5 working days, each live project's
-  next action when it has none of those, questions waiting over 7 days; never done, on-hold,
-  archived or snoozed); Projects with their latest status, the Inbox, and whether today's
+  (overdue, follow-ups past due, due today, due within 5 working days, questions waiting over
+  7 days; never done, on-hold, archived or snoozed; next actions left it with the flag,
+  2026-11-26, and an empty list reads "Nothing urgent: nothing overdue, due soon or waiting on
+  you."); Projects with their latest status, the Inbox, and whether today's
   calendar is in. One focus stop, starting on Up next; `j k gg G`, `}` `{`, Space done (a
   question: Answer…), `s` into the first free slot before it is due (its estimate or 30 min,
   working days only, the timesheet's holidays skipped), `d` delegate, `z` snooze to tomorrow,

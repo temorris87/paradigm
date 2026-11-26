@@ -210,7 +210,6 @@
 
 .cal-group--overdue .cal-group__label { color: var(--nord11); }
 .cal-group--week .cal-group__label { color: var(--nord13); }
-.cal-group--next .cal-group__label { color: var(--nord8); }
 .cal-group--follow .cal-group__label { color: var(--nord12); }
 
 .cal-group__rows {

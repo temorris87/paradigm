@@ -185,7 +185,7 @@
 .hub__section--table .hub__line,
 .hub__columns {
   display: grid;
-  grid-template-columns: minmax(8rem, 200px) 92px minmax(0, 2.2fr) 100px minmax(0, 1.4fr) 150px 70px auto;
+  grid-template-columns: minmax(8rem, 200px) 92px minmax(0, 2.2fr) 100px 150px 70px auto;
   column-gap: var(--sp-3);
 }
 
@@ -480,16 +480,6 @@
 .hub__twisty--task {
   flex: none;
   width: 0.8rem;
-}
-
-/* NEXT: the task its page should do next, in a column of its own before the box. */
-.hub__next {
-  flex: none;
-  width: 3rem;
-  color: var(--nord8);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  letter-spacing: 0.05em;
 }
 
 .hub__row--add .hub__title {

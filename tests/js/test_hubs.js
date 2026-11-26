@@ -9,6 +9,7 @@ import { NOTE_COMMANDS, runNoteCommand } from "../../static/js/notes/commands.js
 import { isHub } from "../../static/js/notes/hub-groups.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
 import { Files } from "../../static/js/files/files-model.js";
+import { Tasks } from "../../static/js/tasks/tasks-model.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
 const T = "2026-11-21T12:00:00.000Z";
@@ -152,6 +153,21 @@ const active = (section) => {
   return node?.querySelector(".hub__title, .hub__label, .hub__empty-label")?.textContent ?? node?.textContent;
 };
 const rows = (line) => [...line.querySelectorAll(".hub-line__row")].map((row) => row.textContent);
+
+const hubTask = (id, noteId, title) => ({ id, note_id: noteId, parent_id: null, title, notes: "", due: "", delegate_id: null,
+  follow_up: "", done: false, done_day: "", position: id, snoozed_until: "", estimate_min: null });
+
+test("hub page: the first task is selected first, even when the tasks arrive after the first draw", () => withPage(({ section, hub }) => {
+  hub.show({ tree: tree(), today: TODAY }, 9);
+  hub.show({ tree: tree(), today: TODAY, tasks: new Tasks([hubTask(1, 9, "Solo one")]) }, 9);
+  assertEqual(active(section), "Solo one", "the tasks came in later");
+  hub.show({ tree: tree(), today: TODAY, tasks: new Tasks([hubTask(2, 2, "Acme first"), hubTask(3, 2, "Acme second")]) }, 2);
+  assertEqual(active(section), "Acme first", "another hub starts on its own first task");
+  section.querySelector("#hub-list").focus();
+  press("j");
+  hub.show({ tree: tree(), today: TODAY, tasks: new Tasks([hubTask(2, 2, "Acme first"), hubTask(3, 2, "Acme second")]) }, 2);
+  assertEqual(active(section), "Acme second", "once moved, a redraw keeps the row");
+}));
 
 test("hub page: shows only on a hub, a person or a meeting; labels the text box", () => withPage(({ page, line, main, section, hub }) => {
   hub.show({ tree: tree() }, 8);
@@ -370,11 +386,13 @@ test("dashboard: every lane's section is in the table; a project's and an area's
   assertTrue(!lanes("project").includes("plan"), "the chart shows the plan");
 });
 
-test("dashboard: an area's Projects as a table: health, latest status, updated, next action, milestone, open", () => {
+test("dashboard: an area's Projects as a table: health, latest status, updated, milestone, open", () => {
   const rows = section("projects").rows({ tree: tree(), today: TODAY }, tree().get(1));
-  assertEqual(rows.map((row) => row.cells.join("|")).join(" / "), "—|log one|||| / On hold|log one||||");
+  assertEqual(rows.map((row) => row.cells.join("|")).join(" / "), "—|log one||| / On hold|log one|||");
   assertEqual(rows[0].cellClasses.slice(0, 2).join(), "health health--none,hub__cell--action");
   assertEqual(section("projects").columns.length, rows[0].cells.length);
+  assertEqual(section("projects").columns.join(), "Health,Latest status,Updated,Next milestone,Open");
+  assertEqual(rows[0].cellClasses.length, 5);
 });
 
 test("dashboard: two lanes; arrows cross between them; split sections act as their base", () => {

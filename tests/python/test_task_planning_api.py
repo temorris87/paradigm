@@ -1,4 +1,4 @@
-"""The task fields the redesign added: the next action (022), snoozing (024), estimates (025)."""
+"""The task fields the redesign added: snoozing (024), estimates (025); the next action (022) is gone (029)."""
 import unittest
 
 from helpers import RunningServer
@@ -22,27 +22,15 @@ class TaskPlanningApiTest(unittest.TestCase):
     def task(self, title, **extra):
         return self.post("/api/task/create", dict({"note_id": self.hub, "title": title}, **extra))
 
-    def flags(self):
-        _, body = self.running.get_json("/api/tasks")
-        return {task["title"]: task["is_next"] for task in body["tasks"]}
-
-    def test_one_next_action_per_note(self) -> None:
-        first, second = self.task("Draft"), self.task("Review")
-        self.assertFalse(first["is_next"])
-        self.assertTrue(self.post("/api/task/next", {"id": second["id"], "next": True})["is_next"])
-        self.post("/api/task/next", {"id": first["id"], "next": True})
-        self.assertEqual(self.flags(), {"Draft": True, "Review": False})
-        self.post("/api/task/next", {"id": first["id"], "next": False})
-        self.assertEqual(self.flags(), {"Draft": False, "Review": False})
-
-    def test_done_tasks_and_subtasks_are_never_next(self) -> None:
+    def test_the_next_action_is_gone(self) -> None:
         task = self.task("Draft")
-        sub = self.task("Outline", parent_id=task["id"])
-        self.post("/api/task/next", {"id": sub["id"], "next": True}, 400)
-        self.post("/api/task/next", {"id": task["id"], "next": "yes"}, 400)
-        self.post("/api/task/next", {"id": task["id"], "next": True})
-        self.assertFalse(self.post("/api/task/done", {"id": task["id"], "done": True})["is_next"])
-        self.post("/api/task/next", {"id": task["id"], "next": True}, 400)
+        self.assertNotIn("is_next", task)
+        self.post("/api/task/next", {"id": task["id"], "next": True}, 404)
+        self.assertNotIn("is_next", self.post("/api/task/done", {"id": task["id"], "done": True}))
+        _, body = self.running.get_json("/api/tasks")
+        self.assertTrue(body["tasks"])
+        for listed in body["tasks"]:
+            self.assertNotIn("is_next", listed)
 
     def test_snooze_until_a_day(self) -> None:
         task = self.task("Draft")

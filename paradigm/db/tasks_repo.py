@@ -97,21 +97,8 @@ class TaskRepository:
         with self._db.transaction() as conn:
             row = _task_row(conn, task_id)
             done_day = (row["done_day"] or self._today()) if done else ""
-            # A done task is no one's next action any more.
-            conn.execute("UPDATE tasks SET done = ?, done_day = ?, is_next = is_next * (1 - ?) WHERE id = ?",
-                         (int(done), done_day, int(done), task_id))
-            return _task(_task_row(conn, task_id))
-
-    def set_next(self, task_id: int, flag: bool) -> Dict:
-        """Makes a task its note's next action (any other loses the flag), or unflags it. Only an
-        open top-level task can be one."""
-        with self._db.transaction() as conn:
-            row = _task_row(conn, task_id)
-            if flag and (row["done"] or row["parent_id"] is not None):
-                raise BadTask("Only an open task (not a subtask) can be the next action")
-            if flag:
-                conn.execute("UPDATE tasks SET is_next = 0 WHERE note_id = ? AND id != ?", (row["note_id"], task_id))
-            conn.execute("UPDATE tasks SET is_next = ? WHERE id = ?", (int(flag), task_id))
+            conn.execute("UPDATE tasks SET done = ?, done_day = ? WHERE id = ?",
+                         (int(done), done_day, task_id))
             return _task(_task_row(conn, task_id))
 
     def move(self, task_id: int, before_id: Optional[int]) -> Dict:
@@ -205,7 +192,7 @@ def _task(row: sqlite3.Row) -> Dict:
     return {"id": row["id"], "note_id": row["note_id"], "parent_id": row["parent_id"], "title": row["title"],
             "notes": row["notes"], "due": row["due"], "delegate_id": row["delegate_id"],
             "follow_up": row["follow_up"], "done": bool(row["done"]), "done_day": row["done_day"],
-            "position": row["position"], "is_next": bool(row["is_next"]),
+            "position": row["position"],
             "snoozed_until": row["snoozed_until"], "estimate_min": row["estimate_min"],
             "for_person_id": row["for_person_id"], "source_id": row["source_id"], "quote": row["quote"] or ""}
 

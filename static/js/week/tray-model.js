@@ -2,11 +2,17 @@
 // Pure.
 //
 //   trayGroups(data, today, monday, filter)   [{ key, label, items: [item] }]: Overdue, Due this
-//                                     week, Next actions, Follow-ups (empty groups left out).
-//                                     Open tasks of mine (delegated: Follow-ups) in live hubs
-//                                     that aren't on hold; filter { hubId, text } as openTasks.
+//                                     week, Due later, No due date, Follow-ups (empty groups
+//                                     left out). Every open top-level task of mine (delegated
+//                                     with a follow-up by Sunday: Follow-ups) in live hubs that
+//                                     aren't on hold, and on notes outside any hub; each once.
+//                                     filter { hubId, text }: hubId a hub (an area with its
+//                                     projects), OTHER_NOTES (only notes outside any hub) or
+//                                     null; text: words in the title, note or hub
 //                                     item: { entry, meta: [[text, tone?]], estimate, est }
 //                                     tone: "placed" | "unplaced"
+//   OTHER_NOTES                       the filter's "Other notes" choice
+//   weekEnd(monday)                   the week's Sunday
 //   placedMinutes(sessions, taskId, from)   minutes of its blocks from a day on
 //   dueChips(data, days)              { day: [{ key, kind: "due" | "unplaced" | "milestone",
 //                                     label, noteId, taskId? }] }: open tasks due that day
@@ -15,12 +21,17 @@
 //                                     working days
 import { hubScope } from "../people/people-model.js";
 import { milestonesOf } from "../plan/plan-model.js";
-import { estimateText, nextAction, taskEntries } from "../tasks/tasks-model.js";
+import { estimateText, taskEntries } from "../tasks/tasks-model.js";
 import { dayText } from "../ui/dates.js";
 import { minutes } from "../calendar/week-model.js";
 import { dayCapacity, isWorkingDay } from "./capacity.js";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export const OTHER_NOTES = "other";
+
+export function weekEnd(monday) {
+  return addDay(monday, 6);
+}
 
 function weekdayOf(day) {
   const [y, m, d] = day.split("-").map(Number);
@@ -38,11 +49,12 @@ function firstPlaced(sessions, taskId, from) {
 }
 
 export function trayGroups({ tree, tasks, sessions = [] }, today, monday, { hubId = null, text = "" } = {}) {
-  const sunday = addDay(monday, 6);
-  const scope = hubId === null ? null : hubScope(tree, hubId);
+  const sunday = weekEnd(monday);
+  const scope = hubId === null || hubId === OTHER_NOTES ? null : hubScope(tree, hubId);
+  const inScope = (entry) => hubId === OTHER_NOTES ? !entry.hub : scope === null || (entry.hub && scope.includes(entry.hub.id));
   const words = String(text).toLowerCase().split(/\s+/).filter(Boolean);
   const live = taskEntries(tree, tasks).filter((entry) => !entry.archived && !entry.task.done && entry.depth === 0
-    && entry.hub?.status !== "on_hold" && (scope === null || (entry.hub && scope.includes(entry.hub.id)))
+    && entry.hub?.status !== "on_hold" && inScope(entry)
     && words.every((word) => `${entry.task.title} ${entry.note.title} ${entry.hub?.title ?? ""}`.toLowerCase().includes(word)));
   const mine = live.filter((entry) => entry.task.delegate_id === null);
   const taken = new Set();
@@ -59,19 +71,22 @@ export function trayGroups({ tree, tasks, sessions = [] }, today, monday, { hubI
     const first = firstPlaced(sessions, entry.task.id, today);
     return [entry.task.estimate_min ? `${estimateText(placed)} placed` : `placed ${weekdayOf(first.day)}`, "placed"];
   };
+  // A day before the week shown (it is next week's, say) gets its date, so "Fri" isn't read as
+  // the shown week's Friday.
+  const dueInWeek = (day) => day === today ? "today" : day < monday ? dayText(day, { today, weekday: true }) : weekdayOf(day);
   const hubText = (entry) => entry.hub?.title ?? entry.note.title;
   const byDue = (a, b) => a.task.due.localeCompare(b.task.due);
   const groups = [
     group("overdue", "Overdue", mine.filter((entry) => entry.task.due && entry.task.due < today).sort(byDue),
       (entry) => [[hubText(entry)], [`was due ${dayText(entry.task.due, { today, weekday: true })}`], place(entry)]),
     group("week", "Due this week", mine.filter((entry) => entry.task.due >= today && entry.task.due <= sunday).sort(byDue),
-      (entry) => [[hubText(entry)], [`due ${entry.task.due === today ? "today" : weekdayOf(entry.task.due)}`], place(entry)]),
+      (entry) => [[hubText(entry)], [`due ${dueInWeek(entry.task.due)}`], place(entry)]),
+    group("later", "Due later", mine.filter((entry) => entry.task.due > sunday).sort(byDue),
+      (entry) => [[hubText(entry)], [`due ${dayText(entry.task.due, { today, weekday: true })}`], place(entry)]),
+    // Sorted by hub title only: a stable sort keeps each hub's own order (taskEntries').
+    group("undated", "No due date", mine.filter((entry) => !entry.task.due).sort((a, b) => hubText(a).localeCompare(hubText(b))),
+      (entry) => [[hubText(entry)], place(entry)]),
   ];
-  const projects = tree.children(null).filter((note) => note.kind === "project" && !note.archived_at && note.status !== "on_hold"
-    && (scope === null || scope.includes(note.id)));
-  const nexts = projects.map((project) => nextAction(tree, tasks, project)).filter((entry) => entry && entry.task.delegate_id === null
-    && live.some((each) => each.task.id === entry.task.id));
-  groups.push(group("next", "Next actions", nexts, (entry) => [[hubText(entry)], ...(placedMinutes(sessions, entry.task.id, today) ? [place(entry)] : [])]));
   const follow = live.filter((entry) => entry.task.delegate_id !== null && entry.task.follow_up && entry.task.follow_up <= sunday)
     .sort((a, b) => a.task.follow_up.localeCompare(b.task.follow_up));
   groups.push(group("follow", "Follow-ups", follow, (entry) => [[`→ ${tree.get(entry.task.delegate_id)?.title ?? "someone"}`],

@@ -11,12 +11,11 @@
 //                                    current, minutes? }] } by time; free: a gap of 30 min or
 //                                    more in the working hours not yet over
 //   upNext(ctx, now)                 [item], ranked: overdue (oldest due first), follow-ups past
-//                                    due, due today, due within 5 working days, each live
-//                                    project's next action when it has none of those, questions
+//                                    due, due today, due within 5 working days, questions
 //                                    waiting over 7 days (oldest first). Never done tasks,
 //                                    tasks of on-hold or archived hubs, or snoozed ones.
 //                                    item: { key, kind: task | followup | question, reason,
-//                                    reasonKind (overdue | followup | due | next | asked), glyph,
+//                                    reasonKind (overdue | followup | due | asked), glyph,
 //                                    title, detail, estimate, place, placed, id, taskId?,
 //                                    questionId? }
 //   projectRows(ctx, now)            live projects (on hold last) with their latest status:
@@ -34,7 +33,7 @@ import { prepFor, prepText } from "../meetings/prep-model.js";
 import { isArchived } from "../notes/hub-groups.js";
 import { DEFAULT_LENGTH, clock, minutes } from "../calendar/week-model.js";
 import { StatusLogs, firstSentence, healthOf } from "../status/status-model.js";
-import { estimateText, nextAction, taskEntries } from "../tasks/tasks-model.js";
+import { estimateText, taskEntries } from "../tasks/tasks-model.js";
 import { dayCapacity, freeGaps, isWorkingDay } from "../week/capacity.js";
 import { dayText } from "../ui/dates.js";
 import { openQuestions } from "./today-facts.js";
@@ -177,13 +176,6 @@ export function upNext(ctx, now) {
   for (const entry of mine.filter((each) => each.task.due > day && each.task.due <= soon).sort(byDue)) {
     const ahead = daysBetween(day, entry.task.due);
     add(entry, ahead < 7 ? `Due ${WEEKDAYS[dateOf(entry.task.due).getDay()]}` : `Due ${dayText(entry.task.due, { today: day, weekday: false })}`, "due");
-  }
-  // Each live project with nothing above: its next action, so no project goes quiet.
-  const hubsListed = new Set(items.map((item) => item.hubId));
-  for (const project of ctx.tree.children(null).filter((note) => note.kind === "project" && !note.archived_at && note.status !== "on_hold")) {
-    if (hubsListed.has(project.id) || !ctx.tasks) continue;
-    const next = nextAction(ctx.tree, ctx.tasks, project);
-    if (next && next.task.delegate_id === null && !(next.task.snoozed_until && next.task.snoozed_until > day)) add(next, "Next action", "next");
   }
   if (ctx.records) {
     for (const { note, record, hub, archived } of openQuestions(ctx.tree, ctx.records)) {

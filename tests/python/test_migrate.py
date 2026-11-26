@@ -110,6 +110,32 @@ class MigrateTest(unittest.TestCase):
             conn.execute("UPDATE images SET note_id = NULL")
             conn.execute("DELETE FROM notes")
 
+    def test_dropping_the_next_action_keeps_every_task(self) -> None:
+        # A database at schema 28 with flagged next actions, a done task and a subtask.
+        folder = Path(self.tmp.name) / "upto28"
+        folder.mkdir()
+        for number, path in migrations()[:28]:
+            (folder / path.name).write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+        self.assertEqual(migrate(self.db, folder), 28)
+        with self.db.transaction() as conn:
+            conn.execute("INSERT INTO notes (id, title, kind, created_at, updated_at) "
+                         "VALUES (1, 'Northwind', 'project', 'x', 'x')")
+            conn.execute("INSERT INTO tasks (id, note_id, title, due, position, is_next, created_at) "
+                         "VALUES (1, 1, 'Draft', '2026-12-01', 1, 1, 'x')")
+            conn.execute("INSERT INTO tasks (id, note_id, title, done, done_day, position, created_at) "
+                         "VALUES (2, 1, 'Review', 1, '2026-11-20', 2, 'x')")
+            conn.execute("INSERT INTO tasks (id, note_id, parent_id, title, position, created_at) "
+                         "VALUES (3, 1, 1, 'Outline', 1, 'x')")
+        self.assertEqual(migrate(self.db), 29)
+        with self.db.reading() as conn:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(tasks)")}
+            rows = [tuple(row) for row in conn.execute(
+                "SELECT id, parent_id, title, due, done, done_day FROM tasks ORDER BY id")]
+        self.assertNotIn("is_next", columns)
+        self.assertEqual(rows, [(1, None, "Draft", "2026-12-01", 0, ""),
+                                (2, None, "Review", "", 1, "2026-11-20"),
+                                (3, 1, "Outline", "", 0, "")])
+
     def test_foreign_keys_are_on(self) -> None:
         with self.db.reading() as conn:
             self.assertEqual(conn.execute("PRAGMA foreign_keys").fetchone()[0], 1)

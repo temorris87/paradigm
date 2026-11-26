@@ -69,12 +69,13 @@ paradigm/                Python package
                          plan_item_tasks (working days from 0), project_plans, 020
                          file_folders + files + file_links, 021 resource_folders +
                          notes.folder_id; resources holding hub things became areas,
-                         022 tasks.is_next: one flagged next action per note, 023
+                         022 tasks.is_next (dropped by 029), 023
                          status_logs: dated health + words on a project or area, 024
                          tasks.snoozed_until: off Today's Up next until that day, 025
                          tasks.estimate_min, 026 task_sources (a captured T: line) +
                          tasks.for_person_id (I owe them), 027 person_topics (to raise at
-                         the next 1:1), 028 on_call (week's Monday, role, name as pasted))
+                         the next 1:1), 028 on_call (week's Monday, role, name as pasted),
+                         029 drops tasks.is_next: the next action is gone)
                          connection.py (one locked connection, transactions, VACUUM at start
                          when worth it), migrate.py
                          (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py,

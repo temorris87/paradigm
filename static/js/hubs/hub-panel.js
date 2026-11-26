@@ -14,6 +14,7 @@
 //     "Show all" would add (0: none);
 //     columns: a table's column names (its rows carry cells)
 //   panel.focus()
+//   panel.reset()                  another note: the next draws start on its first task again
 //
 // The whole panel is one focus stop (Tab passes through it once): a listbox whose options are
 // the headings, the rows and the "Show all" lines, the active one shown with
@@ -22,7 +23,7 @@
 import { hubAction } from "./hub-keys.js";
 
 const MAX_DEPTH = 6;
-const KEYS_OF = { remove: "x", role: "r", answer: "r", done: "Space", edit: "e", delegate: "d", takeBack: "d", history: "h", next: "n" };
+const KEYS_OF = { remove: "x", role: "r", answer: "r", done: "Space", edit: "e", delegate: "d", takeBack: "d", history: "h" };
 
 export class HubPanel {
   constructor(section, handlers) {
@@ -31,6 +32,9 @@ export class HubPanel {
     this.sections = [];
     this.options = []; // [{ id, type: "heading" | "row" | "more", section, row? }]
     this.active = 0;
+    // Until the user moves or acts, each draw selects the first task: the tasks may arrive
+    // after the first draw, which would otherwise leave the heading selected for good.
+    this.touched = false;
     this.list = element("div", "hub__list");
     this.list.setAttribute("role", "listbox");
     this.list.setAttribute("aria-label", "Sections");
@@ -58,9 +62,10 @@ export class HubPanel {
     this.list.classList.toggle("hub__list--lanes", lanes.length > 1);
     this.list.replaceChildren(...lanes.map((lane, index) => this.lane(lane, index)));
     const again = this.options.findIndex((option) => option.id === activeId);
-    // A first draw starts on the next action, the row most likely acted on.
-    const next = activeId === undefined ? this.options.findIndex((option) => option.row?.next) : -1;
-    this.active = Math.max(0, again >= 0 ? again : next);
+    // Untouched, the panel starts on the first task, the row most likely acted on.
+    const first = this.touched ? -1
+      : this.options.findIndex((option) => option.row?.task !== undefined && !option.row.addSubtask);
+    this.active = Math.max(0, first >= 0 ? first : again);
     this.markActive();
     if (hadFocus) this.focus();
   }
@@ -135,7 +140,6 @@ export class HubPanel {
     if (row.tip) node.title = row.tip;
     const line = element("div", "hub__line");
     if (row.task !== undefined && row.depth === 0 && !row.addSubtask) {
-      line.append(element("span", "hub__next", row.next ? "NEXT" : ""));
       line.append(element("span", "hub__twisty hub__twisty--task", row.expanded ? "▾" : "▸"));
     }
     if (row.task !== undefined && !row.addSubtask) line.append(element("span", "hub__box", row.done ? "☑" : "☐"));
@@ -178,6 +182,7 @@ export class HubPanel {
   onClick(event) {
     const node = event.target.closest?.("[role=option]");
     if (!node) return;
+    this.touched = true;
     // A link inside a snippet opens the row, like a click anywhere on it.
     if (event.target.closest("a")) event.preventDefault();
     const index = Number(node.dataset.index);
@@ -200,6 +205,7 @@ export class HubPanel {
   }
 
   perform(action) {
+    this.touched = true;
     const option = this.options[this.active];
     const last = this.options.length - 1;
     switch (action) {
@@ -220,7 +226,6 @@ export class HubPanel {
       case "edit": return this.rowAction(option, ["edit"]);
       case "delegate": return this.rowAction(option, ["delegate", "takeBack"]);
       case "history": return this.rowAction(option, ["history"]);
-      case "makeNext": return option?.row?.task !== undefined ? this.handlers.onRowAction(option.section, option.row, "next") : undefined;
       case "logStatus":
       case "plan": return this.handlers.onCommand?.(action);
       case "editor": return this.handlers.onLeave();
@@ -278,6 +283,12 @@ export class HubPanel {
 
   focus() {
     this.list.focus();
+  }
+
+  reset() {
+    this.touched = false;
+    this.options = [];
+    this.active = 0;
   }
 
   hasFocus() {

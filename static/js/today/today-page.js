@@ -179,7 +179,7 @@ export class TodayPage {
     heading.append(element("span", "today__detail", `ranked across every project · ${items.length}`));
     part.append(heading);
     const rows = element("div", "today-next__rows");
-    if (!items.length) rows.append(element("p", "today__empty", "Nothing overdue or due. Every project has a next action scheduled."));
+    if (!items.length) rows.append(element("p", "today__empty", "Nothing urgent: nothing overdue, due soon or waiting on you."));
     for (const item of items) {
       const node = element("div", `today-next__row today-next__row--${item.reasonKind}`);
       const title = element("span", "today-next__title", item.title);

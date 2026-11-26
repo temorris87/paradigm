@@ -15,15 +15,17 @@ How the app behaves. Kept up to date by each feature that changes it.
   click) opens it in place: its subtasks, its notes and + Add subtask. Row buttons: Done
   (Space), Edit… (`e`: text, notes, due), Delegate… / Take back (`d`), Delete (`x`; a task
   with logged time keeps its row). A delegated task shows "→ Name, follow up …" (red past
-  the follow-up day), leaves the calendar's task list, and is listed in Waiting on (Home and
+  the follow-up day), leaves the Week tray (but for Follow-ups, when its follow-up day is in
+  the week shown or before), and is listed in Waiting on (Home and
   the person's page). Roll-up: a project lists its tasks and those of the notes inside it;
   an area lists its own only, and each of its projects in Projects with that project's
   counts (open tasks, decisions, open questions, next milestone).
-- Next action: one open task per note is flagged NEXT (`n` or Make next on its row;
-  `tasks.is_next`, one per note). With none flagged, the first open task of mine stands in
-  (`nextAction` in `tasks-model.js`); on a project, its own flag beats one inside it (a
-  phase's). It leads its Tasks section, is selected first, and shows in an area's Projects table. Questions and decisions
-  roll up the same way. `- [ ]` in a note is plain Markdown again (a click still ticks it).
+- No next action (Tyson, 2026-11-26; it replaced the NEXT flag): a Tasks section keeps its
+  tasks in their own order, with no NEXT badge, no Make next and no `n`. A page opened shows
+  its first task selected, even when the tasks load after the first draw, until you move, press
+  a key or click; another page starts on its first task again. `tasks.is_next` was dropped
+  (migration 029) and `POST /api/task/next` is gone. Planning from everything open is the
+  Week tray's job (week.md). Questions and decisions roll up the same way as tasks. `- [ ]` in a note is plain Markdown again (a click still ticks it).
 - Plan (Tyson, 2026-11-22): a project's phases are notes (kind "phase", directly under the
   project, in the tree tagged Phase, with notes under them) with a start and an end day; its
   milestones are notes (kind "milestone", under the project or a phase, out of the tree)
@@ -43,7 +45,7 @@ How the app behaves. Kept up to date by each feature that changes it.
   buttons (`1` `2` `3`), the words, and "since last log" lines to click in (date moves,
   decisions, answers, done tasks); Ctrl-Enter logs it. The newest entry is its health: the
   dashboard head's badge, "Where I am" first in Act (the newest boxed, two older, History),
-  an area's Projects table (Health, Latest status, Updated, Next action, Next milestone,
-  Open). On hold beats it; none logged reads "—" / "log one"; stale at `Config.stale_days`
+  an area's Projects table (Health, Latest status, Updated, Next milestone, Open; the Next
+  action column went with the next action, 2026-11-26). On hold beats it; none logged reads "—" / "log one"; stale at `Config.stale_days`
   (14). An area's dashboard: Projects across both lanes, then Portfolio (a bar per project),
   Tasks; Weekly digest on the right (Copy: Markdown + HTML).

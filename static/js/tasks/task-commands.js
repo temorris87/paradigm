@@ -8,7 +8,6 @@
 //   editTaskDialog(app, taskId)                       title, notes, due date, estimate, for whom
 //   delegateDialog(app, taskId)                       to whom, and when to follow it up
 //   takeBack(app, taskId)                             delegated back to me
-//   setNextAction(app, owner, taskId)                 its next action (n), or not any more
 //   scheduleTask(app, taskId)                         s: a block in the first free slot from now
 //                                                     on, before its due day (its estimate, or
 //                                                     30 min long)
@@ -137,18 +136,6 @@ export function delegateDialog(app, taskId) {
     },
     fallbackFocus: () => app.focusNote(),
   });
-}
-
-export async function setNextAction(app, owner, taskId) {
-  const task = taskOf(app, taskId);
-  const flag = !task.is_next;
-  await app.tasksApi.setNext(taskId, flag);
-  // The owner's own flag beats one inside it (nextAction), so a task flagged from the owner's
-  // page on a note inside it takes over from the owner's.
-  const own = owner ? app.tasks.all().find((each) => each.is_next && each.note_id === owner.id && each.id !== taskId) : null;
-  if (flag && own) await app.tasksApi.setNext(own.id, false);
-  await changed(app);
-  app.say(flag ? `Next action: "${task.title}"` : `"${task.title}" is no longer the next action`);
 }
 
 export async function scheduleTask(app, taskId) {

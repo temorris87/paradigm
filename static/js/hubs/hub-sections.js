@@ -48,7 +48,7 @@ import { Links, linksInto } from "../notes/links.js";
 import { mentionsOf } from "../notes/mentions.js";
 import { hubLinks, peopleOn, rolesText, workText } from "../people/people-model.js";
 import { isOpen, peopleOf, recordsOn } from "../records/records-model.js";
-import { nextAction, openCount, subtaskText, tasksOn, waitingOn } from "../tasks/tasks-model.js";
+import { openCount, subtaskText, tasksOn, waitingOn } from "../tasks/tasks-model.js";
 import { Files, fileDir, filesOn, folderSummary, foldersOf } from "../files/files-model.js";
 import { Plan, milestonesOf, nextMilestone, phasesOf, shortDay, slipOf, slipText } from "../plan/plan-model.js";
 import { projectFactsText, statusText } from "./project-facts.js";
@@ -67,7 +67,6 @@ const DELEGATE = Object.freeze({ key: "delegate", label: "Delegate…" });
 const TAKE_BACK = Object.freeze({ key: "takeBack", label: "Take back" });
 const DELETE = Object.freeze({ key: "remove", label: "Delete" });
 const HISTORY = Object.freeze({ key: "history", label: "History" });
-const MAKE_NEXT = Object.freeze({ key: "next", label: "Make next" });
 const RAISED = Object.freeze({ key: "done", label: "Raised" });
 const LIMIT = 5;
 
@@ -106,7 +105,7 @@ export const DASHBOARD_LAYOUT = {
 };
 
 // A project's columns in an area's Projects table ("Open": tasks · questions, "4 · 1?").
-export const PROJECT_CELLS = ["Health", "Latest status", "Updated", "Next action", "Next milestone", "Open"];
+export const PROJECT_CELLS = ["Health", "Latest status", "Updated", "Next milestone", "Open"];
 
 export const HUB_SECTIONS = [
   {
@@ -219,13 +218,7 @@ export const HUB_SECTIONS = [
     label: "Tasks",
     // Its tasks and those of the notes inside it (never a project's on its area); subtasks
     // show as a count until the row is opened (Enter), then under it with + Add subtask.
-    rows: (ctx, owner) => {
-      const next = nextAction(ctx.tree, ctx.tasks, owner)?.task.id;
-      // The next action leads; the rest keep their order.
-      const entries = tasksOn(ctx.tree, ctx.tasks, owner);
-      const ordered = [...entries.filter((entry) => entry.task.id === next), ...entries.filter((entry) => entry.task.id !== next)];
-      return ordered.flatMap((entry) => taskRows(ctx, owner, entry, next));
-    },
+    rows: (ctx, owner) => tasksOn(ctx.tree, ctx.tasks, owner).flatMap((entry) => taskRows(ctx, owner, entry)),
     detail: (rows) => counted(rows.filter((row) => row.depth === 0 && row.task && !row.done).length, "open"),
     empty: (owner) => owner.kind === "meeting" ? "No action items from this meeting yet" : "No tasks yet",
     add: { label: "New task" },
@@ -596,7 +589,7 @@ function milestoneRow(ctx, { note, milestone, phase }) {
   };
 }
 
-function taskRows(ctx, owner, entry, nextId = null) {
+function taskRows(ctx, owner, entry) {
   const { task, note, archived } = entry;
   const open = ctx.expanded?.has(task.id) ?? false;
   const subtasks = entry.subtasks ?? [];
@@ -615,9 +608,7 @@ function taskRows(ctx, owner, entry, nextId = null) {
     done: task.done,
     expanded: open,
     snippet: open && task.notes ? task.notes : "",
-    // NEXT: its owner's next action (flagged, or the first open one standing in).
-    next: task.id === nextId,
-    actions: archived ? [] : [task.done ? UNDONE : DONE, ...(task.done || task.id === nextId ? [] : [MAKE_NEXT]), EDIT,
+    actions: archived ? [] : [task.done ? UNDONE : DONE, EDIT,
       task.delegate_id === null ? DELEGATE : TAKE_BACK, DELETE],
   };
   if (!open) return [row];
@@ -685,23 +676,22 @@ function projectCounts(ctx, project) {
   return parts.join(" · ");
 }
 
-/** An area's Projects table: health, latest status, updated, next action, next milestone, open. */
+/** An area's Projects table: health, latest status, updated, next milestone, open. */
 function projectCells(ctx, project) {
   const today = localDay(ctx.today ?? new Date());
   const next = nextMilestone(ctx.tree, plan(ctx), project.id);
   const tasks = ctx.tasks ? openCount(ctx.tree, ctx.tasks, project) : 0;
   const questions = ctx.records ? recordsOn(ctx.tree, ctx.records, project, "question").filter((entry) => isOpen(entry.record)).length : 0;
-  const action = ctx.tasks ? nextAction(ctx.tree, ctx.tasks, project) : null;
   const health = healthOf(ctx.statusLogs ?? new StatusLogs(), project, today);
   return [health.label, health.entry ? firstSentence(health.entry.text) : "log one", health.entry ? daysAgo(health.entry.day, today) : "",
-    action?.task.title ?? "", next ? `◆ ${next.note.title} ${shortDay(next.milestone.day, today)}` : "",
+    next ? `◆ ${next.note.title} ${shortDay(next.milestone.day, today)}` : "",
     [tasks ? String(tasks) : "", questions ? `${questions}?` : ""].filter(Boolean).join(" · ")];
 }
 
 /** Each cell's look: the health in its colour, "log one" as an action, a stale day in red. */
 function projectCellClasses(ctx, project) {
   const health = healthOf(ctx.statusLogs ?? new StatusLogs(), project, localDay(ctx.today ?? new Date()));
-  return [`health health--${health.key}`, health.entry ? "" : "hub__cell--action", health.stale ? "hub__cell--late" : "", "", "", ""];
+  return [`health health--${health.key}`, health.entry ? "" : "hub__cell--action", health.stale ? "hub__cell--late" : "", "", ""];
 }
 
 /** Where I am: the newest entry boxed, two older ones a line each, then History (n). */

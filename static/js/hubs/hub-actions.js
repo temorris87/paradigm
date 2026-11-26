@@ -26,7 +26,7 @@ import { pickFrom } from "../ui/picker.js";
 import { areaOf, projectsIn } from "./hub-areas.js";
 import { copyDigest, logStatusDialog, statusHistoryDialog, statusHubOf } from "../status/status-commands.js";
 import { addTopicDialog, raiseTopic, removeTopic } from "../people/topic-commands.js";
-import { addTask, delegateDialog, editTaskDialog, newTaskDialog, removeTaskDialog, setNextAction, setTaskDone, takeBack } from "../tasks/task-commands.js";
+import { addTask, delegateDialog, editTaskDialog, newTaskDialog, removeTaskDialog, setTaskDone, takeBack } from "../tasks/task-commands.js";
 import { editDatesDialog, historyDialog, newMilestoneDialog, newPhaseDialog, newPlanTemplateDialog,
   setMilestoneDone } from "../plan/plan-commands.js";
 import { addFileDialog, detachFile, openFile, unlinkFolderDialog } from "../files/file-commands.js";
@@ -306,7 +306,6 @@ export function hubTabActions(app) {
       if (key === "edit") return app.guard(editTaskDialog(app, row.task));
       if (key === "delegate") return app.guard(delegateDialog(app, row.task));
       if (key === "takeBack") return app.guard(takeBack(app, row.task));
-      if (key === "next") return app.guard(setNextAction(app, owner, row.task));
       if (key === "history") return app.guard(historyDialog(app, row.id));
       if (key === "statusHistory") return app.guard(statusHistoryDialog(app, owner));
       if (key === "addSubtask") return app.guard(newTaskDialog(app, owner, app.tasks.get(row.addSubtask)));

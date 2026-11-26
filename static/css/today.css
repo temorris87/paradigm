@@ -295,7 +295,6 @@
 .today-next__row--overdue .today-next__reason { color: var(--nord11); }
 .today-next__row--followup .today-next__reason { color: var(--nord12); }
 .today-next__row--due .today-next__reason { color: var(--nord13); }
-.today-next__row--next .today-next__reason { color: var(--nord8); }
 .today-next__row--asked .today-next__reason { color: var(--nord15); }
 
 .today-next__glyph {

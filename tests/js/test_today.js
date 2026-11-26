@@ -26,7 +26,7 @@ const NOTES = [
   { id: 8, parent_id: null, title: "Auth", kind: "project", status: "active", updated_at: T },
 ];
 const task = (id, noteId, title, more = {}) => ({ id, note_id: noteId, parent_id: null, title, notes: "", due: "", delegate_id: null,
-  follow_up: "", done: false, done_day: "", position: id, is_next: false, snoozed_until: "", ...more });
+  follow_up: "", done: false, done_day: "", position: id, snoozed_until: "", ...more });
 const TASKS = [
   task(10, 1, "Draft ADR", { due: "2026-11-20" }),
   task(11, 1, "Load-test numbers", { delegate_id: 4, follow_up: "2026-11-19" }),
@@ -49,17 +49,18 @@ const ctx = (more = {}) => ({ tree: new NoteTree(NOTES), tasks: new Tasks(TASKS)
     { id: 1, note_id: 1, day: "2026-11-20", health: "at_risk", text: "Design slipped. ADR waits.", created_at: T },
     { id: 2, note_id: 2, day: "2026-11-01", health: "on_track", text: "Fine.", created_at: T }]), ...more });
 
-test("today: Up next ranks overdue, follow-ups, due today, due soon, next actions, old questions", () => {
+test("today: Up next ranks overdue, follow-ups, due today, due soon, old questions; no next actions", () => {
   const items = upNext(ctx(), NOW);
   assertEqual(items.map((item) => `${item.reason}:${item.title}`).join(" | "),
     "Overdue 3 d:Draft ADR | Follow up 4 d:Load-test numbers | Due today:Rate-limit review | Due WED:Retry semantics"
-    + " | Next action:Pick token store | Asked 21 d:Exactly-once?");
+    + " | Asked 21 d:Exactly-once?");
   assertEqual(items[0].place, "in calendar".replace("in calendar", "09:30"), "a block today shows its time");
   assertEqual(items[1].glyph + items[1].place, "→nudge");
   assertEqual(items[3].place, "s schedule");
-  assertEqual(items[5].glyph + items[5].place, "?answer");
-  assertTrue(!items.some((item) => ["Cache thing", "Snoozed", "Done one", "Sunset plan"].includes(item.title)),
-    "on hold, snoozed, done and far-off tasks stay out");
+  assertEqual(items[4].glyph + items[4].place, "?answer");
+  assertTrue(!items.some((item) => ["Cache thing", "Snoozed", "Done one", "Sunset plan", "Pick token store"].includes(item.title)),
+    "on hold, snoozed, done, far-off and undated tasks stay out");
+  assertTrue(!items.some((item) => item.reasonKind === "next"), "no next actions");
 });
 
 test("today: the Now block, else the next one", () => {
@@ -152,11 +153,14 @@ test("week: estimates parse and read back; the tray groups and the due strip", a
   const data = { ...ctx(), tasks: new Tasks(TASKS.map((each) => (each.id === 13 ? { ...each, estimate_min: 120 } : each))) };
   const groups = trayGroups(data, "2026-11-23", "2026-11-23");
   assertEqual(groups.map((group) => `${group.key}:${group.items.map((item) => item.entry.task.title).join("+")}`).join(" | "),
-    "overdue:Draft ADR+Snoozed | week:Rate-limit review+Retry semantics | next:Pick token store | follow:Load-test numbers",
+    "overdue:Draft ADR+Snoozed | week:Rate-limit review+Retry semantics | later:Sunset plan | undated:Pick token store"
+    + " | follow:Load-test numbers",
     "snoozing only leaves Today's Up next");
   const meta = (item) => item.meta.map(([text]) => text).join(" · ");
   assertEqual(meta(groups[0].items[0]), "Event bus · was due Fri 20 Nov · placed Mon");
   assertEqual(meta(groups[1].items[1]) + ` [${groups[1].items[1].estimate}]`, "Event bus · due Wed · not placed [2 h]");
+  assertEqual(meta(groups[2].items[0]), "Gateway · due Sun 20 Dec · not placed");
+  assertEqual(meta(groups[3].items[0]), "Auth · not placed");
   const chips = dueChips(data, ["2026-11-23", "2026-11-24", "2026-11-25"]);
   assertEqual(chips["2026-11-23"].map((chip) => chip.label).join(), "◆ Due · Rate-limit review");
   assertEqual(chips["2026-11-25"].map((chip) => `${chip.kind}:${chip.label}`).join(), "unplaced:Due · Retry semantics — not placed");

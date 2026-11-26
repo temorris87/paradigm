@@ -1,5 +1,5 @@
-// The Week page's tray: the open tasks to plan, grouped (Overdue, Due this week, Next actions,
-// Follow-ups: week/tray-model.js), each with where it is, when it is due, how much of it is
+// The Week page's tray: the open tasks to plan, grouped (Overdue, Due this week, Due later,
+// No due date, Follow-ups: week/tray-model.js), each with where it is, when it is due, how much of it is
 // placed and its estimate, to drag onto the week (or s: the first free slot); and the
 // imported events waiting for a hub (To file). It draws what it is given and reports what was
 // done; CalendarPage decides the rest.
@@ -8,18 +8,22 @@
 //                                           onFile(ids, hubId), onIgnore(ids), onFilter() });
 //   side.draw({ tree, tasks, sessions, pending, hubs, today, monday })   hubs: the live hubs
 //   side.filter -> { hubId, text }; side.show("tasks" | "file")
+//     hubId: a hub's id, OTHER_NOTES or null (all); remembered in localStorage (HUB_STORE), the
+//     search box isn't
 //   side.focusedTask() -> task id of the tray row with the focus, or null
 import { whenText } from "../meetings/meeting-days.js";
 import { groupForKind } from "../notes/hub-groups.js";
 import { hubChoices } from "../tasks/tasks-model.js";
-import { trayGroups } from "../week/tray-model.js";
+import { OTHER_NOTES, trayGroups, weekEnd } from "../week/tray-model.js";
+
+export const HUB_STORE = "paradigm.week.trayHub";
 
 export class TaskSidebar {
   constructor(root, handlers) {
     this.root = root;
     this.handlers = handlers;
     this.tab = "tasks";
-    this.filter = { hubId: null, text: "" };
+    this.filter = { hubId: savedHub(), text: "" };
     this.tabs = element("div", "cal-side__tabs");
     this.tabs.setAttribute("role", "tablist");
     this.tasksTab = tabButton("To plan", () => this.show("tasks"));
@@ -28,7 +32,8 @@ export class TaskSidebar {
     this.hubSelect = element("select", "cal-side__hub");
     this.hubSelect.setAttribute("aria-label", "Project or area");
     this.hubSelect.addEventListener("change", () => {
-      this.filter.hubId = this.hubSelect.value ? Number(this.hubSelect.value) : null;
+      this.filter.hubId = hubOfValue(this.hubSelect.value);
+      saveHub(this.filter.hubId);
       this.handlers.onFilter();
     });
     this.search = element("input", "cal-side__search");
@@ -61,7 +66,7 @@ export class TaskSidebar {
   }
 
   draw({ tree, tasks, sessions = [], pending, hubs, today, monday }) {
-    this.drawHubFilter(tree, tasks);
+    this.drawHubFilter({ tree, tasks, sessions }, today, monday);
     const count = this.drawTasks({ tree, tasks, sessions }, today, monday);
     this.drawPending(pending, hubs);
     this.tasksTab.textContent = `To plan · ${count}`;
@@ -73,11 +78,18 @@ export class TaskSidebar {
     return row && this.list.contains(row) ? Number(row.dataset.task) : null;
   }
 
-  drawHubFilter(tree, tasks) {
-    const choices = hubChoices(tree, tasks);
-    if (this.filter.hubId !== null && !choices.some((hub) => hub.id === this.filter.hubId)) this.filter.hubId = null;
+  drawHubFilter(data, today, monday) {
+    const choices = hubChoices(data.tree, data.tasks, { until: weekEnd(monday) });
+    const other = trayGroups(data, today, monday, { hubId: OTHER_NOTES }).length > 0;
+    const offered = this.filter.hubId === OTHER_NOTES ? other : choices.some((hub) => hub.id === this.filter.hubId);
+    // A saved hub with nothing left to plan (done, archived, on hold) falls back to All.
+    if (this.filter.hubId !== null && !offered) {
+      this.filter.hubId = null;
+      saveHub(null);
+    }
     this.hubSelect.replaceChildren(option("", "All projects and areas"),
-      ...choices.map((hub) => option(String(hub.id), `${hub.title} (${groupForKind(hub.kind).label})`)));
+      ...choices.map((hub) => option(String(hub.id), `${hub.title} (${groupForKind(hub.kind).label})`)),
+      ...(other ? [option(OTHER_NOTES, "Other notes")] : []));
     this.hubSelect.value = this.filter.hubId === null ? "" : String(this.filter.hubId);
   }
 
@@ -85,7 +97,7 @@ export class TaskSidebar {
     const groups = trayGroups(data, today, monday, this.filter);
     if (!groups.length) {
       this.list.replaceChildren(element("li", "cal-side__empty", this.filter.text || this.filter.hubId !== null
-        ? "No open task matches" : "Nothing to plan: no task of yours is overdue, due this week or a next action."));
+        ? "No open task matches" : "Nothing to plan: every task is done or delegated."));
       return 0;
     }
     const focused = this.focusedTask();
@@ -154,6 +166,29 @@ export class TaskSidebar {
       return;
     }
     this.handlers.onFile(ids, Number(select.value));
+  }
+}
+
+function hubOfValue(value) {
+  if (value === OTHER_NOTES) return OTHER_NOTES;
+  return value && Number.isInteger(Number(value)) ? Number(value) : null;
+}
+
+// localStorage may be off (a private window): then the choice lasts only this page.
+function savedHub() {
+  try {
+    return hubOfValue(localStorage.getItem(HUB_STORE) ?? "");
+  } catch {
+    return null;
+  }
+}
+
+function saveHub(hubId) {
+  try {
+    if (hubId === null) localStorage.removeItem(HUB_STORE);
+    else localStorage.setItem(HUB_STORE, String(hubId));
+  } catch {
+    // Not remembered; the filter still works.
   }
 }
 

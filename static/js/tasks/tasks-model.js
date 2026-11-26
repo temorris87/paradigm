@@ -21,14 +21,15 @@
 //                                         each followed by its open subtasks; text: words in the
 //                                         title, note or hub
 //   todayTasks(tree, tasks, sessions, day)    [{ entry, session }] of the blocks that day
-//   hubChoices(tree, tasks)               the hubs with open tasks: the calendar's filter
+//   hubChoices(tree, tasks, { until })    the hubs with an open top-level task in the tray:
+//                                         mine, or delegated with a follow-up on or before
+//                                         until (any follow-up without until); an area once
+//                                         one of its projects is; never on-hold or archived
+//                                         hubs. The calendar's filter, by title
 //   subtaskText(entry)                    "2/5 subtasks" (done of all), "" for none
 //   parseEstimate(text)                   minutes from "1.5 h", "90 min", "45m", "2h30", "1:30";
 //                                         null for ""; throws on anything else
 //   estimateText(minutes)                 "1.5 h", "45 min", "" for none
-//   nextAction(tree, tasks, owner)        the entry it should do next: the open task flagged
-//                                         on the owner itself, else one flagged inside it, else
-//                                         the first open task of mine (not delegated); null
 import { hubOf, isArchived } from "../notes/hub-groups.js";
 import { hubScope } from "../people/people-model.js";
 
@@ -97,14 +98,6 @@ function withSubtasks(tasks, entry) {
   return { ...entry, subtasks, openSubtasks: subtasks.filter((task) => !task.done).length };
 }
 
-export function nextAction(tree, tasks, owner) {
-  const open = tasksOn(tree, tasks, owner).filter((entry) => !entry.task.done && !entry.archived);
-  return open.find((entry) => entry.task.is_next && entry.task.note_id === owner.id)
-    ?? open.find((entry) => entry.task.is_next)
-    ?? open.find((entry) => entry.task.delegate_id === null)
-    ?? null;
-}
-
 export function openCount(tree, tasks, owner) {
   return tasksOn(tree, tasks, owner).filter((entry) => !entry.task.done).length;
 }
@@ -147,14 +140,17 @@ export function todayTasks(tree, tasks, sessions, day) {
     .map((session) => ({ entry: entries.get(session.task_id), session }));
 }
 
-export function hubChoices(tree, tasks) {
+export function hubChoices(tree, tasks, { until = "" } = {}) {
   const hubs = new Map();
+  const offered = (hub) => hub && !hub.archived_at && hub.status !== "on_hold";
+  const followed = (task) => Boolean(task.follow_up) && (!until || task.follow_up <= until);
   for (const entry of taskEntries(tree, tasks)) {
-    if (entry.archived || entry.task.done || entry.task.delegate_id !== null || !entry.hub) continue;
+    if (entry.depth > 0 || entry.archived || entry.task.done || !offered(entry.hub)) continue;
+    if (entry.task.delegate_id !== null && !followed(entry.task)) continue;
     hubs.set(entry.hub.id, entry.hub);
     // An area offers its projects' tasks too, so it is a choice once one of them has some.
     const area = entry.hub.area_id ? tree.get(entry.hub.area_id) : null;
-    if (area) hubs.set(area.id, area);
+    if (offered(area)) hubs.set(area.id, area);
   }
   return [...hubs.values()].sort((a, b) => a.title.localeCompare(b.title));
 }

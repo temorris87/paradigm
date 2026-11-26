@@ -3,7 +3,7 @@
 import { call } from "../notes/api.js";
 
 export const tasksApi = {
-  // -> [{ id, note_id, parent_id, title, notes, due, delegate_id, follow_up, done, done_day, position, is_next }]
+  // -> [{ id, note_id, parent_id, title, notes, due, delegate_id, follow_up, done, done_day, position }]
   list: async () => (await call("/api/tasks")).tasks,
   create: (noteId, title, { parentId = null, due = "", notes = "" } = {}) =>
     call("/api/task/create", { payload: { note_id: noteId, title, parent_id: parentId, due, notes } }),
@@ -12,7 +12,6 @@ export const tasksApi = {
   delegate: (id, personId, followUp = "") => call("/api/task/delegate", { payload: { id, person_id: personId, follow_up: followUp } }),
   setDone: (id, done) => call("/api/task/done", { payload: { id, done } }),
   setFor: (id, personId) => call("/api/task/for", { payload: { id, person_id: personId } }),
-  setNext: (id, next) => call("/api/task/next", { payload: { id, next } }),
   move: (id, beforeId) => call("/api/task/move", { payload: { id, before_id: beforeId } }),
   remove: (id) => call("/api/task/remove", { payload: { id } }),
   // -> [{ id, task_id, day, start, end }]

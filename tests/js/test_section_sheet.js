@@ -14,7 +14,7 @@ const tree = () => new NoteTree([
   { id: 4, parent_id: null, title: "Loose", kind: "template", updated_at: T },
 ]);
 const task = (id, noteId, more = {}) => ({ id, note_id: noteId, parent_id: null, title: `t${id}`, notes: "", due: "",
-  delegate_id: null, follow_up: "", done: false, done_day: "", position: id, is_next: false, ...more });
+  delegate_id: null, follow_up: "", done: false, done_day: "", position: id, ...more });
 const TASKS = () => new Tasks([task(10, 2), task(11, 2, { due: "2026-11-20" }), task(12, 2, { done: true }),
   task(13, 2, { parent_id: 10 }), task(14, 2)]);
 

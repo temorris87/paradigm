@@ -105,6 +105,7 @@ export class HubPage {
       this.showingAll.clear();
       this.expanded.clear();
       this.sheet?.close();
+      this.panel.reset();
     }
     // hub: the page's owner, whose sections these are (any note but a template).
     this.hub = note && note.kind !== "template" ? note : null;

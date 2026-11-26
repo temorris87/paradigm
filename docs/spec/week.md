@@ -10,11 +10,27 @@ How the app behaves. Kept up to date by each feature that changes it.
   and a capacity bar (meetings, then focus blocks, as parts of the working day, lunch out);
   the "due" strip holds tasks due that day ("not placed" when no block comes before it),
   milestones and untimed meetings. Meetings (an end time, else 30 min; cancelled struck
-  through) and task blocks. The tray ("To plan · N"): Overdue, Due this week, Next actions,
-  Follow-ups, each task with where, when due, how much is placed, and its estimate ("est?";
-  set in Edit…: "1.5 h", "45 min"); a filter by project or area and a search box. Drag one
-  onto the week for a 30-minute block; `s` on a tray row drops its estimate into the first
-  free slot before its due day. Drag a block to move it, its bottom edge to resize (15-minute
+  through) and task blocks. The tray ("To plan · N", counting every row) holds every open,
+  top-level task of mine in a live hub that isn't on hold, and on notes outside any hub, each
+  once, in the first group that takes it (Tyson, 2026-11-26; it replaced Next actions):
+  Overdue (oldest first, "was due Fri 20 Nov"), Due this week (today to the Sunday shown, "due
+  Wed" or "due today"; due before the Monday shown, as when next week is shown: "due Fri 27
+  Nov"), Due later (soonest first, "due Tue 8 Dec"), No due date (by hub title, then the hub's
+  own order), Follow-ups (delegated, follow-up on or before Sunday). Each row has where it is,
+  when due, how much is placed from today on ("1.5 h placed", "placed Mon", "not placed": a
+  block on a past day doesn't count) and its estimate ("est?"; set in Edit…: "1.5 h",
+  "45 min"). Done, delegated-without-follow-up, archived, on-hold, trashed tasks and subtasks
+  stay out. The filter by project or area offers every hub with a row, follow-ups included
+  (an area once one of its projects is; never on hold), "Title (Project/Area)" by title,
+  after "All projects and areas", and last "Other notes" (only tasks on notes outside any
+  hub); an area includes its projects. The choice is remembered (`localStorage`
+  `paradigm.week.trayHub`: reloads, week changes, the other window) and falls back to All once
+  that hub has nothing in the tray; the search box isn't remembered and narrows inside the
+  filter. Empty: "No open task matches" with a filter or search, else "Nothing to plan: every
+  task is done or delegated." Drag one onto the week for a 30-minute block; `s` on a tray
+  row drops its estimate into the first free slot before its due day (no due date: within
+  the next two weeks). `gw` (or opening Plan) puts the focus on the calendar, so `[` `]` `t`
+  and `s` work at once. Drag a block to move it, its bottom edge to resize (15-minute
   steps); click (or right-click) for its menu: open, done, Edit time…, remove or cancel. An
   empty slot makes a meeting there. A block that has passed is time worked. Plan's footer:
   each code's hours so far, the week projected, Timesheet ↗. Its keys live in

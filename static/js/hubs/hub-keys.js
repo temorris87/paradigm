@@ -19,7 +19,6 @@ export const HUB_KEYS = [
   { keys: ["r"], action: "second", help: "the row's other button: Role… on a person, Answer… on a question" },
   { keys: [" "], action: "toggle", help: "tick a task (or a milestone) done, or reopen it" },
   { keys: ["e"], action: "edit", help: "Edit… a task: its text, notes and due date" },
-  { keys: ["n"], action: "makeNext", help: "make the task its page's next action (NEXT), or not any more" },
   { keys: ["d"], action: "delegate", help: "Delegate… a task to someone, or take it back" },
   { keys: ["h"], action: "history", help: "the date history of a phase or milestone" },
   { keys: ["L"], action: "logStatus", help: "Log status… of the project or area: its health and where it is", command: "log" },

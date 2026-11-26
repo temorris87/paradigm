@@ -187,6 +187,8 @@ export class WeekPage {
   focus() {
     // On call takes its keys and Ctrl-V where the focus is: on its own body.
     if (this.view === "oncall") this.onCall.focus();
+    // The calendar's keys ([ ] t, s) listen on its own body, so Plan starts there.
+    else if (this.view === "plan") this.calendar.focus();
     else this.root.focus({ preventScroll: true });
   }
 }
