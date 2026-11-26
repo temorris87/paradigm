@@ -52,6 +52,22 @@ How the app behaves. Kept up to date by each feature that changes it.
   all-day, free, tentative, out of office, working elsewhere. Attendees are matched by email,
   then name, else made as people (rooms, groups and you left out; none past 20). A trashed
   imported meeting is never made again. Home and the calendar remind until today's import.
+- Imported agenda (Tyson, 2026-11-26): the invite's text, without Teams' joining text. A section
+  between underscore rules is Teams' block when one of its lines is wholly a Teams phrase
+  ("Microsoft Teams meeting", "Microsoft Teams Need help?", "Join the meeting now", "Join on your
+  computer, mobile app or room device", "Click here to join the meeting", "Download Teams | Join
+  on the web", "Learn More | Meeting options") or holds a Teams join link (`/l/meetup-join/`,
+  `/meet/`); it goes with its dial-in half (the section after Outlook's shorter inner rule), to
+  the end when no rule closes it. A rule as long as the opening one closes it, and the text after
+  stays. Elsewhere only the boilerplate lines go (Meeting ID, Passcode, Dial in by phone, `,,digits#`
+  numbers, Find a local number, Phone conference ID, Tenant key, Video ID, More info, For
+  organizers, Reset dial-in PIN …), in any case, with or without Outlook's `<link>`. Sections
+  between rules with no Teams text, lines that only mention Teams ("Microsoft Teams rollout plan")
+  and Teams channel or file links are kept; the rules themselves go. Also dropped: `** CAUTION`
+  banners and "You don't often get email from … Learn why this is important". `<url>` becomes
+  `url`, `* ` bullets `- `. The Join button still comes from the uncleaned invite. Only new
+  imports and events waiting in To file get it; meetings already made keep their agenda, and
+  only Teams is cleaned, not Zoom, Webex or Meet (Tyson, 2026-11-26).
 - On call (Tyson, 2026-11-23): the Week page's fourth tab (`:oncall`, the palette's Pages; URL
   `&week=oncall`). Copy the Excel sheet (Role, then one column per week, a date in each header)
   and Ctrl-V on the tab, or Paste sheet… (`p`): a dialog shows the sheet and a preview ("3 roles ×

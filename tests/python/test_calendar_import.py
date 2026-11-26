@@ -42,7 +42,7 @@ class IcsTest(unittest.TestCase):
     def test_rules(self) -> None:
         text = calendar([event("u", "Canceled: Plan / review #2 [x]", "20261124T100000", "20261124T110000",
                                ["LOCATION:Microsoft Teams Meeting; https://teams.microsoft.com/l/meetup-join/abc",
-                                "DESCRIPTION:Agenda\\n* one\\n________________\\nJoin here\\n________________\\nend"])])
+                                "DESCRIPTION:Agenda\\n* one\\n________________\\nClick here to join the meeting\\n________________\\nend"])])
         found = read_calendar(text, to_local=eastern).events[0]
         self.assertTrue(rules.is_cancelled(found, "me@acme.example"))
         self.assertEqual(rules.meeting_title(found.summary), "Plan - review 2 x")

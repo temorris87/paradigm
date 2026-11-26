@@ -157,7 +157,7 @@ Features in build order. "build feature" takes the first unchecked item.
 - [x] I want to remove the next task feature and show all tasks on the calendar view when
   scheduling my week and days. I should be able to filter by project / area so I can narrow in
   on what I want to work on. (done 2026-11-26)
-- [ ] Remove generic teams boilerplate text from agenda imports.
+- [x] Remove generic teams boilerplate text from agenda imports. (done 2026-11-26)
 - [ ] Tasks should have their own page. Subtask names should be aligned underneath and indented
   slightly under the task name. Subtasks should render with their own notes column on the task
   page. Subtasks should be able to have subtasks.

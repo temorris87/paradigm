@@ -121,7 +121,9 @@ paradigm/                Python package
                          folder, opening a file with this computer's program)
   calendar/              ics.py (reads Outlook's .ics: unfolding, its own VTIMEZONE rules,
                          then this computer's local time; pure), import_rules.py (skipped,
-                         cancelled, moved, title, agenda, join link, attendees; pure)
+                         cancelled, moved, title, agenda, join link, attendees; pure),
+                         teams_boilerplate.py (Teams' joining block and lines out of an
+                         agenda; pure)
   timesheet/             report.py (the week: each weekday exactly the working day in
                          quarter hours, overlaps shared, largest remainder, the rest to the
                          Default code; pure), holidays.py (rules like "4th Thu of Nov + 1",

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from typing import List, NamedTuple, Optional, Tuple
 
 from paradigm.calendar.ics import Attendee, Event
+from paradigm.calendar.teams_boilerplate import strip_teams
 from paradigm.notes.titles import FORBIDDEN, MAX_TITLE_LENGTH
 
 # More invitees than this is a broadcast: nobody is added.
@@ -17,6 +18,9 @@ _JOIN = re.compile(
     r"https://(?:[\w-]+\.)*(?:teams\.microsoft\.com/l/meetup-join|teams\.live\.com/meet|meet\.google\.com|"
     r"(?:[\w-]+\.)?zoom(?:gov)?\.us/[jw]|[\w-]+\.webex\.com/)[^\s<>\"]*", re.IGNORECASE)
 _URL = re.compile(r"<?https?://[^\s<>\"]+>?", re.IGNORECASE)
+# External-mail banners: "** CAUTION ..." and Outlook's "You don't often get email from ...".
+_BANNER = re.compile(r"\*{2,}\s*CAUTION|^\s*you don['\u2019]t often get email from|^\s*learn why this is important",
+                     re.IGNORECASE)
 
 
 class Span(NamedTuple):
@@ -87,16 +91,11 @@ def location(event: Event) -> str:
 
 
 def agenda(description: str) -> str:
-    """The invite's text as an agenda: Teams' joining block and caution banners dropped, blank
-    runs closed up."""
+    """The invite's text as an agenda: Teams' joining text and external-mail banners dropped,
+    links unwrapped, bullets as "- ", blank runs closed up."""
     lines: List[str] = []
-    skipping = False
-    for line in description.replace("\r\n", "\n").split("\n"):
-        rule = re.fullmatch(r"\s*_{8,}\s*", line) is not None
-        if rule:
-            skipping = not skipping
-            continue
-        if skipping or re.search(r"\*{2,}\s*CAUTION", line, re.IGNORECASE):
+    for line in strip_teams(description.replace("\r\n", "\n").split("\n")):
+        if _BANNER.search(line):
             continue
         line = re.sub(r"<(https?://[^>\s]+)>", r"\1", line.rstrip())
         lines.append(re.sub(r"^(\s*)\* ", r"\1- ", line))

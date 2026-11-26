@@ -40,3 +40,43 @@ def calendar(events: List[str], first: str = "20261123T050000Z", last: str = "20
     text = "\n".join(["BEGIN:VCALENDAR", "VERSION:2.0", "X-OWNER;CN=Me:mailto:" + OWNER,
                       "X-CALSTART:" + first, "X-CALEND:" + last, ZONE] + events + ["END:VCALENDAR"])
     return text.replace("\n", "\r\n")
+
+
+# Invite descriptions with Teams' joining text, as Outlook writes them (made-up IDs and numbers).
+TEAMS_JOIN = "https://teams.microsoft.com/l/meetup-join/19%3ameeting_ACME123%40thread.v2/0"
+LONG_RULE = "_" * 80
+SHORT_RULE = "_" * 32
+
+TEAMS_BLOCK = [
+    LONG_RULE,
+    "Microsoft Teams Need help?<https://aka.ms/JoinTeamsMeeting>",
+    "Join the meeting now<" + TEAMS_JOIN + ">",
+    "Meeting ID: 111 222 333 444",
+    "Passcode: Ab12Cd",
+    SHORT_RULE,
+    "Dial in by phone",
+    "+1 323-555-0100,,123456789# United States, Los Angeles",
+    "Find a local number<https://dialin.example/acme>",
+    "Phone conference ID: 123 456 789#",
+    "Join on a video conferencing device",
+    "Tenant key: acme@m.example.com   Video ID: 999 888 777 6   More info<https://help.example/vtc>",
+    "For organizers: Meeting options<https://options.example/acme> | Reset dial-in PIN<https://pin.example>",
+    LONG_RULE,
+]
+
+OLD_TEAMS_BLOCK = [
+    LONG_RULE,
+    "Microsoft Teams meeting",
+    "Join on your computer, mobile app or room device",
+    "Click here to join the meeting<" + TEAMS_JOIN + ">",
+    "Meeting ID: 555 666 777 888",
+    "Passcode: Zz99Yy",
+    "Download Teams<https://download.example> | Join on the web<https://web.example>",
+    "Learn More<https://aka.ms/JoinTeamsMeeting> | Meeting options<https://options.example/acme>",
+    LONG_RULE,
+]
+
+
+def description(lines: List[str]) -> str:
+    """lines as an ICS DESCRIPTION property's value (newlines escaped, commas escaped)."""
+    return "DESCRIPTION:" + "\\n".join(lines).replace(",", "\\,")
