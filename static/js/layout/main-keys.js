@@ -9,6 +9,7 @@ export const MAIN_KEYS = [
   { keys: ["gt"], action: "today", help: "Today", command: "home" },
   { keys: ["gw"], action: "week", help: "the Week", command: "calendar" },
   { keys: ["gp"], action: "plan", help: "the full plan (its Gantt chart) of the project or area on the dashboard", command: "plan" },
+  { keys: ["gn"], action: "live", help: "the Live note: the note window's note as it is typed", command: "live" },
 ];
 
 const read = keyReader(MAIN_KEYS);
@@ -24,7 +25,7 @@ export function mainAction(event) {
   return read(event);
 }
 
-/** Puts the keys on the window: handlers { palette(), today(), week(), plan() }. */
+/** Puts the keys on the window: handlers { palette(), today(), week(), plan(), live() }. */
 export function installMainKeys(target, handlers) {
   target.addEventListener("keydown", (event) => {
     const action = mainAction(event);

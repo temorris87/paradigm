@@ -1,7 +1,7 @@
 # Welcome
 
-This editor is Vim on Markdown. Blocks render as you write; the block under the cursor
-shows its raw text. `:set nopreview` shows it all raw. Notes save by themselves; `:w` saves now.
+This editor is Vim on plain Markdown. The main window's Live page (`gn` there) shows the
+note rendered as you type, with a caret where you are. Notes save by themselves; `:w` saves now.
 
 ## Try
 
@@ -12,8 +12,8 @@ shows its raw text. `:set nopreview` shows it all raw. Notes save by themselves;
 
 ### Notes
 
-- `:new Title` makes a note beside this one, `:sub Title` one under it
-- `:e Title` opens a note; `:rename`, `:move Parent` (or `:move /`) and `:delete`
+- `:new Title` makes a note beside this one, `:child Title` one under it
+- `:e Title` opens a note; `:rename`, `:parent Note` (or `:parent /`) and `:trash`
 - `:project`, `:area` and `:resource` file a top-level note as a hub; `:inbox` unfiles it
 - `:nav` (or the ☰ button) goes to the notes tree: j k move, l h open and close, Enter opens, Esc goes back
 - [[Ideas]] is a wiki link to a note that doesn't exist yet: click it to make it
@@ -28,7 +28,7 @@ See [the Nord palette](https://www.nordtheme.com) and `inline code`.
 | `Ctrl-E` | scroll one row |
 
 > [!tip] Links open in a new tab
-> Click a rendered block to edit it.
+> On the Live page, a link opens as it does on a dashboard.
 
 ### Maths
 

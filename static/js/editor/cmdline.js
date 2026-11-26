@@ -14,7 +14,6 @@ export function startCmdline(vim, type, text = "", pendingCmd = null) {
     pendingCmd,
     origin: { ...vim.cursor },
     originTop: vim.view.top,
-    originSkip: vim.view.skip,
     originWant: vim.want,
     prevMode: vim.mode,
     visual: vim.visual,
@@ -80,7 +79,6 @@ function close(vim) {
 function cancel(vim) {
   const line = close(vim);
   vim.view.top = line.originTop;
-  vim.view.skip = line.originSkip;
 }
 
 function execute(vim) {

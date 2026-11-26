@@ -63,6 +63,8 @@
 
 /* The main window's bar: a rule under it, Today | Week, then the breadcrumb. */
 .topbar--main {
+  /* A page taller than the window must not squash the bar (a flex child of .app__note). */
+  flex: none;
   gap: var(--sp-3);
   margin: calc(-1 * var(--sp-4)) calc(-1 * var(--sp-5)) 0;
   padding: var(--sp-3) var(--sp-5);

@@ -4,8 +4,7 @@
 //   editor.value                      // read it
 //   editor.readOnly = true;           // or the readonly attribute
 //   editor.showMessage("Saved");      // a message in the status line
-//   <pd-editor syntax="plain">        // no Markdown colouring and no live preview
-//   editor.markdownOptions = { resolveWikiLink };  // passed to the Markdown renderer
+//   <pd-editor syntax="plain">        // no Markdown colouring
 //   editor.addExCommand("edit", 1);   // :e and :edit now send an "ex" event
 //   editor.modified = true;           // [+] in the status line
 //   editor.goToLine(12);              // cursor to a line (0-based)
@@ -25,26 +24,19 @@
 //                                     // { label, detail?, insert } puts insert in place of
 //                                     // "@query"; { label, run(query) } calls run, which may
 //                                     // resolve to the text to put there
-//   editor.highlights = [{ text, label, title, data }]   // marks text in rendered blocks with
-//                                     // a badge; a click sends "highlight" (detail.data)
 //   <pd-editor compact>               // the status line shows only while it has the focus
 //   editor.hints = { status(text), line(lineText), cmdline(text) }   // the host's words: status
 //                                     // at the status line's right ("3 captured"); line under
 //                                     // the cursor's line in insert mode; cmdline over the
 //                                     // command line while typing one. Each returns "" for none
 //
-// Live preview (on by default, :set nopreview turns it off): Markdown blocks are drawn
-// rendered, the cursor's marked in normal mode; it shows its raw text in insert mode.
+// The text is always raw Markdown, its syntax coloured: no block is ever drawn rendered.
 //
-// Events: "task" (a rendered task box was clicked: detail.line, its source line),
-// "change" (the text changed, on every edit), "save" (:w, :x, ZZ; detail.force for
-// :w!), "quit" (:q, :x, ZZ, ZQ; detail.force for :q!), "mode" (detail.mode), "ex" (a command
-// added with addExCommand: detail.name, .arg, .bang) and "link" (a rendered [[wiki link]] was
-// clicked: detail.target, the text inside the brackets before any "|"). Each carries
-// detail.value. A wiki link clicked with Ctrl, Shift or Cmd is left to the browser.
-// "mention": a rendered @mention the host resolved was clicked (detail.name).
-// "image": a rendered image was clicked (detail.src, the full URL, and detail.alt); the
-// cursor stays where it is. An image inside a link is the link's.
+// Events: "change" (the text changed, on every edit), "save" (:w, :x, ZZ; detail.force for
+// :w!), "quit" (:q, :x, ZZ, ZQ; detail.force for :q!), "mode" (detail.mode) and "ex" (a
+// command added with addExCommand: detail.name, .arg, .bang). Each carries detail.value.
+// "cursor": after a key or a click that moved the cursor or changed the mode, detail
+// { line, col, mode } (0-based; mode the engine's mode name), for a host showing where it is.
 //
 // "menu": a right-click, or the context-menu key (Shift-F10, Menu), detail.text: the visual
 // selection's text or null, detail.table: editor.table where it was clicked, detail.x / .y
@@ -64,23 +56,15 @@
 // A hidden textarea holds the focus and takes the keys, so IME input, dead keys and paste
 // work as usual. Tab and Shift-Tab indent in insert mode; in every other mode they are not
 // taken, so they move the focus on, like on any page.
-import { onDiagramDrawn } from "../diagrams/mermaid.js";
 import { copyRich } from "../ui/clipboard.js";
-import { syncDiagramSheets } from "../diagrams/insert-svg.js";
-import { KATEX_CSS, ensureMathFonts } from "../math/typeset.js";
 import { isTextKey, keyName } from "./key-names.js";
 import { BOUND_KEYS, INSERT_ONLY_KEYS } from "./keys.js";
 import { Completion } from "./completion.js";
-import { markHighlights } from "./highlights.js";
 import { tableInfo } from "./table-edit.js";
-import { PreviewLayout } from "./preview-layout.js";
-import { PreviewMeasure } from "./preview-measure.js";
-import { PreviewView } from "./preview-view.js";
 import { EditorView } from "./render.js";
-import { TEXT_LAYOUT } from "./text-layout.js";
 import { Vim } from "./vim.js";
 
-const STYLESHEETS = [KATEX_CSS, ...["../../css/markdown.css", "../../css/editor.css"].map((path) => new URL(path, import.meta.url).href)];
+const STYLESHEETS = [new URL("../../css/editor.css", import.meta.url).href];
 const PASTE_KEYS = new Set(["<C-v>", "<C-S-v>", "<S-Insert>"]);
 const WHEEL_LINES = 3;
 
@@ -105,34 +89,23 @@ export class PdEditor extends HTMLElement {
     this.input.setAttribute("aria-label", this.getAttribute("aria-label") || "Text editor");
     this.frame.append(this.textArea, this.statusLine, this.input);
     root.append(...links, this.frame);
-    // Each stylesheet that arrives can change how tall rendered blocks are.
-    for (const link of links) {
-      link.addEventListener("load", () => {
-        this.sizes.forgetAll();
-        this.measure();
-      });
-    }
-    ensureMathFonts();
+    // The row height and character width are only right once the stylesheet is in.
+    for (const link of links) link.addEventListener("load", () => this.measure());
 
     this.vim = new Vim({ clipboard });
-    this.sizes = new PreviewMeasure(this.frame);
-    this.previewLayout = new PreviewLayout({ measure: this.sizes });
-    const preview = new PreviewView({ onResize: (html, node) => this.unitResized(html, node) });
-    this.preview = preview;
     this.completion = new Completion(this.frame, {
       accept: (length, text) => this.replaceBeforeCursor(length, text),
       onRun: () => this.input.focus(),
     });
-    this.view = new EditorView({ text: this.textArea, status: this.statusLine, preview });
+    this.view = new EditorView({ text: this.textArea, status: this.statusLine });
     this.hintBox = element("div", "pd-hint");
     this.hintBox.hidden = true;
     this.frame.append(this.hintBox);
     this.hints = {};
-    this.chooseLayout();
     this.queue = [];
     this.busy = false;
     this.composing = false;
-    this.seen = { version: this.vim.buf.version, mode: this.vim.mode, bells: 0 };
+    this.seen = { version: this.vim.buf.version, mode: this.vim.mode, bells: 0, cursor: cursorKey(this.vim) };
     this.listen();
   }
 
@@ -156,54 +129,27 @@ export class PdEditor extends HTMLElement {
     input.addEventListener("blur", () => this.render());
     this.textArea.addEventListener("mousedown", (event) => this.onMouseDown(event));
     this.frame.addEventListener("contextmenu", (event) => this.onContextMenu(event));
-    this.textArea.addEventListener("click", (event) => {
-      const mark = event.target.closest?.("[data-highlight]");
-      if (mark) this.emitEvent("highlight", { data: this.preview.highlightData(Number(mark.dataset.highlight)) });
-    });
-    // A "#" link moved the cursor on mousedown; the page itself must not jump. A wiki link
-    // was handed to the host on mousedown, unless a modifier asks the browser for a new tab.
-    this.textArea.addEventListener("click", (event) => {
-      if (event.target.closest?.('.pd-unit a[href^="#"]')) event.preventDefault();
-      else if (event.target.closest?.(".pd-unit a.md-wikilink, .pd-unit a.md-mention") && !hasModifier(event)) event.preventDefault();
-    });
     this.textArea.addEventListener("wheel", (event) => this.onWheel(event), { passive: false });
     this.frame.addEventListener("animationend", () => this.frame.classList.remove("pd-editor--bell"));
     this.resizeObserver = new ResizeObserver(() => this.measure());
-    // Maths measured before its fonts arrived was measured in a fallback font.
-    this.onFontsLoaded = () => {
-      this.sizes.forgetAll();
-      this.measure();
-    };
+    // A row measured before the font arrived was measured in a fallback font.
+    this.onFontsLoaded = () => this.measure();
   }
 
   connectedCallback() {
     this.resizeObserver.observe(this.textArea);
     document.fonts?.addEventListener("loadingdone", this.onFontsLoaded);
-    // A diagram finished drawing: its block was measured with the "Drawing" line in it.
-    this.stopDiagrams = onDiagramDrawn(() => {
-      this.sizes.forgetAll();
-      this.vim.relayout();
-      this.render();
-    });
     this.measure();
   }
 
   disconnectedCallback() {
     this.resizeObserver.disconnect();
     document.fonts?.removeEventListener("loadingdone", this.onFontsLoaded);
-    this.stopDiagrams?.();
   }
 
   attributeChangedCallback(name) {
     if (name === "readonly") this.vim.readOnly = this.hasAttribute("readonly");
-    if (name === "syntax") this.chooseLayout();
     this.render();
-  }
-
-  chooseLayout() {
-    if (!this.previewLayout) return; // attributes are seen before the constructor ends
-    this.vim.layout = this.getAttribute("syntax") === "plain" ? TEXT_LAYOUT : this.previewLayout;
-    this.vim.relayout();
   }
 
   get value() {
@@ -214,6 +160,7 @@ export class PdEditor extends HTMLElement {
     this.vim.setText(text ?? "");
     this.seen.version = this.vim.buf.version;
     this.seen.mode = this.vim.mode;
+    this.seen.cursor = cursorKey(this.vim); // new text from the host is no cursor move
     this.render();
   }
 
@@ -221,21 +168,11 @@ export class PdEditor extends HTMLElement {
     return this.vim.mode;
   }
 
-  get markdownOptions() {
-    return this.previewLayout.options;
-  }
-
-  set markdownOptions(options) {
-    this.previewLayout.setOptions(options ?? {});
-    this.sizes.forgetAll();
-    this.vim.relayout();
-    this.render();
-  }
-
   /** Puts the cursor at the start of a line (0-based), scrolling it into view. */
   goToLine(line) {
     this.vim.click({ line: Math.max(0, Math.min(line, this.vim.buf.lastLine)), col: 0 });
     this.render();
+    this.reportCursor();
   }
 
   get selectedText() {
@@ -258,15 +195,6 @@ export class PdEditor extends HTMLElement {
 
   set completions(sources) {
     this.completion.sources = sources ?? {};
-  }
-
-  get highlights() {
-    return this.preview.highlights;
-  }
-
-  set highlights(list) {
-    if (!this.preview.setHighlights(list ?? [], markHighlights)) return;
-    this.render();
   }
 
   addExCommand(name, minLength = name.length) {
@@ -382,12 +310,11 @@ export class PdEditor extends HTMLElement {
     if (event.button !== 0) return;
     event.preventDefault();
     this.input.focus();
-    if (event.target.closest?.("[data-highlight]")) return;
-    if (this.onPreviewMouseDown(event.target, event)) return;
     const at = this.view.positionAt(event.clientX, event.clientY);
     if (!at) return;
     this.vim.click(at);
     this.render();
+    this.reportCursor();
     this.followDrag(at);
   }
 
@@ -418,6 +345,7 @@ export class PdEditor extends HTMLElement {
       if (at) {
         this.vim.click(at);
         this.render();
+        this.reportCursor();
       }
     }
     // The context-menu key comes with no pointer position: show the menu at the cursor.
@@ -436,50 +364,6 @@ export class PdEditor extends HTMLElement {
     this.input.focus();
     for (let index = 0; index < length; index += 1) this.enqueue("<BS>");
     this.enqueue({ paste: text });
-  }
-
-  // Links, images and fold toggles in rendered Markdown. Returns true if the press was theirs:
-  // the browser's own click then opens the link (in a new tab) or folds the callout, and an
-  // image goes to the host to show.
-  onPreviewMouseDown(target, event) {
-    if (!target.closest?.(".pd-unit")) return false;
-    if (target.closest("summary")) return true;
-    const box = target.closest("input.md-taskbox");
-    if (box) {
-      event.preventDefault();
-      this.emitEvent("task", { line: Number(box.dataset.line) });
-      return true;
-    }
-    const link = target.closest("a");
-    if (!link && target.closest("img")) {
-      const image = target.closest("img");
-      if (!hasModifier(event)) this.emitEvent("image", { src: image.src, alt: image.alt });
-      return true;
-    }
-    if (!link) return false;
-    const href = link.getAttribute("href") ?? "";
-    if (link.classList.contains("md-mention")) {
-      if (!hasModifier(event)) this.emitEvent("mention", { name: link.dataset.mention ?? "" });
-      return true;
-    }
-    if (link.classList.contains("md-wikilink") && !href.startsWith("#")) {
-      if (!hasModifier(event)) this.emitEvent("link", { target: link.dataset.target ?? "" });
-      return true;
-    }
-    if (href.startsWith("#")) {
-      const line = this.vim.layout.anchorLine(this.vim, decodeURIComponent(href.slice(1)));
-      if (line !== null) {
-        this.vim.click({ line, col: 0 });
-        this.render();
-      }
-    }
-    return true;
-  }
-
-  unitResized(html, node) {
-    this.sizes.remeasure(html, node);
-    this.vim.relayout();
-    this.render();
   }
 
   onWheel(event) {
@@ -542,7 +426,18 @@ export class PdEditor extends HTMLElement {
       this.frame.classList.add("pd-editor--bell");
     }
     this.render();
+    this.reportCursor();
     this.completion.update(vim, () => this.view.cursorBox(), this.frame.getBoundingClientRect());
+  }
+
+  /** "cursor" when the cursor or the mode moved since the last one. */
+  reportCursor() {
+    const { line, col } = this.vim.cursor;
+    const mode = this.vim.mode;
+    const key = cursorKey(this.vim);
+    if (key === this.seen.cursor) return;
+    this.seen.cursor = key;
+    this.dispatchEvent(new CustomEvent("cursor", { detail: { line, col, mode } }));
   }
 
   async copyTable({ html, text, message }) {
@@ -563,7 +458,6 @@ export class PdEditor extends HTMLElement {
   measure() {
     if (!this.isConnected) return;
     const { height, width } = this.view.measure();
-    this.sizes.reset(this.textArea.clientWidth, this.view.rowHeight);
     this.vim.resize(height, width);
     this.render();
   }
@@ -572,7 +466,6 @@ export class PdEditor extends HTMLElement {
     this.frame.classList.toggle("pd-editor--focused", this.shadowRoot.activeElement === this.input);
     const note = this.hints?.status?.(this.vim.text) ?? "";
     this.view.render(this.vim, { syntax: this.getAttribute("syntax") !== "plain", modified: this.modified, note });
-    syncDiagramSheets(this.shadowRoot); // styles for diagrams just shown; none for those gone
     this.placeInput();
     this.showHint();
   }
@@ -615,12 +508,12 @@ function imageFiles(data) {
   return [...(data?.files ?? [])].filter((file) => file.type.startsWith("image/"));
 }
 
-function carriesFiles(data) {
-  return Boolean(data && [...data.types].includes("Files"));
+function cursorKey(vim) {
+  return `${vim.cursor.line}:${vim.cursor.col}:${vim.mode}`;
 }
 
-function hasModifier(event) {
-  return Boolean(event?.ctrlKey || event?.metaKey || event?.shiftKey);
+function carriesFiles(data) {
+  return Boolean(data && [...data.types].includes("Files"));
 }
 
 function element(tag, className) {

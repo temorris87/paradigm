@@ -37,7 +37,7 @@ How the app behaves. Kept up to date by each feature that changes it.
   keys (`ui-keys.js`).
 - Top bar and palette (Tyson, 2026-11-22): the main window's bar is ☰, Today | Week, the
   breadcrumb, the palette's field and Window ▾ (Go to, Home, People, Meetings, Calendar and
-  Time left it). The note window's: ☰, the breadcrumb, Go to…, Dashboard ↗. The palette
+  Time left it; Live note added 2026-11-26). The note window's: ☰, the breadcrumb, Go to…, Dashboard ↗. The palette
   (`static/js/palette/`; the field, Go to…, `:find`, or `:` anywhere in the main window outside
   a text box, which opens it on ":") lists Recent (the last 8 opened) and Pages with nothing
   typed; notes and pages as you type (each word in the title or path); after ":", every note
@@ -46,7 +46,7 @@ How the app behaves. Kept up to date by each feature that changes it.
   window, Tab completes a command. Buttons never show `:command` names; the palette's command
   mode is the one place they appear.
 - Main-window keys (`static/js/layout/main-keys.js`, read in the capture phase): `:` the palette,
-  `gt` Today, `gw` the Week, `gp` the plan of the project or area on the dashboard (anywhere on
+  `gt` Today, `gw` the Week, `gn` the Live page, `gp` the plan of the project or area on the dashboard (anywhere on
   it; on another page it says to open one; `:plan` in the palette). `g` waits for a second key everywhere (as in Vim): `gg` is the
   first row in every list (`static/js/ui/key-sequence.js` reads two-key entries; a page-wide
   key clears a list's waiting `g`).
@@ -68,6 +68,25 @@ How the app behaves. Kept up to date by each feature that changes it.
   empty sections share one "Nothing yet:" line at the foot of their lane (in the note window
   too). ←/→ cross between the lanes. Under 1400 px the lanes stack. A hub's linked folders
   are read again when its dashboard opens.
+- Live page (Tyson, 2026-11-26; `&live`, `static/js/live/`): the main window shows the note
+  open in the note window, rendered as on a dashboard (math, Mermaid, images, links) under its
+  breadcrumb title, updated as it is typed (every keystroke, not on save, at most every 50 ms),
+  so a screen share of the main window alone shows the typing. A nord8 caret sits where the
+  cursor is: a thin bar in insert and replace mode, a block in every other mode; the block
+  holding the cursor gets a band with a nord8 bar at its left edge. Where no caret can sit in
+  rendered text (a fence line, a table's `|---|` row, a rule, a link's URL or an image's path,
+  maths, a diagram's source, a blank line) only the band shows; on a heading, list or quote
+  marker the caret goes to the start of the text. It scrolls only to keep the caret in its
+  middle third. A meeting shows Agenda, then Notes, each under its label. Every note opened in
+  the note window, any way, switches the main window to its Live page; hubs and people too
+  (their live text, not the dashboard; Dashboard ↗ or `:dashboard` still shows that). Typing
+  alone never switches it, nor does the note that opens by itself after a trash. Back to it:
+  `gn`, Window ▾ Live note, `:live`. Links open as on a dashboard, an image click opens the
+  image viewer, and the page has no keys of its own. A main window opened after the note
+  window asks it what it shows. No note open: "No note open in the note window." with an
+  Open note window button; the note window closed: the last view stays, with "The note window
+  is closed"; trashed: "Moved to trash"; empty: "Empty note". Unchanged blocks are not drawn
+  again, so math and diagrams don't redraw on each keystroke.
 - Trash: trashing a note (its menu, or `:trash`) takes the notes under it too; they stay in the
   Trash for a week, then are deleted for good (with their person, meeting, record rows and
   links) when Paradigm starts or stops. The Trash page (`&trash`; the Trash button at the foot

@@ -5,8 +5,9 @@
 //                 the note window.
 //   role "note"   the note window: the tree (a drawer), the breadcrumb and the editor on the
 //                 open note, its card and sections. Pages it asks for (Home, a dashboard...)
-//                 show in the main window.
-// It owns what the editor's events mean here: saving, following [[links]], note commands.
+//                 show in the main window, and the main window's Live page shows the
+//                 open note as it is typed (static/js/live/).
+// It owns what the editor's events mean here: saving, note commands.
 //
 //   const app = new NotesApp({ editor, tree: ulElement, crumbs: navElement, navigator,
 //                              hub: { page, line, section, labels },
@@ -38,7 +39,7 @@ import { triageInbox } from "../triage/triage.js";
 import { ContextStrip } from "../today/context-strip.js";
 import { dayText } from "../ui/dates.js";
 import { AgendaField } from "./agenda.js";
-import { mentionCompletions, openMention, rewriteMentionsOf } from "./mention-actions.js";
+import { mentionCompletions, rewriteMentionsOf } from "./mention-actions.js";
 import { personForMention } from "./mentions.js";
 import { openSelectionMenu } from "./selection-menu.js";
 import { renderMarkdown } from "../markdown/index.js";
@@ -49,7 +50,7 @@ import { openPalette } from "../palette/palette.js";
 import { rememberOpened } from "../palette/recent.js";
 import { LinkIndex, indexTexts } from "./link-index.js";
 import { NoteSession } from "./note-session.js";
-import { resolveLink, splitTarget } from "./resolve.js";
+import { resolveLink } from "./resolve.js";
 import { NoteTree } from "./tree-model.js";
 import { PageViews, viewLabel } from "./page-views.js";
 import { Meetings } from "../meetings/meetings-model.js";
@@ -63,7 +64,6 @@ import { trashPage } from "../trash/trash-page.js";
 import { newPersonDialog } from "../people/people-page.js";
 import { Changes } from "../connection/changes.js";
 import { Tasks } from "../tasks/tasks-model.js";
-import { boxState, setBox } from "./tasks.js";
 import { addDays, localDay } from "../meetings/meeting-days.js";
 import { openNoteWindow, showMainWindow } from "../windows/note-window.js";
 import { Plan } from "../plan/plan-model.js";
@@ -91,6 +91,9 @@ export class NotesApp {
                 buttons = {}, status = null, dashboard = null, location = window.location, history = window.history,
                 today = () => new Date(), changes = new Changes() }) {
     this.role = role;
+    // "redraw" after every redraw, "trashed" (detail.id; detail.next, the note opened next or
+    // null) as the open note goes to the Trash: for the Live page's sender (live/live-sender.js).
+    this.events = new EventTarget();
     this.status = status;
     this.dashboard = dashboard;
     this.planApi = planApi;
@@ -255,10 +258,6 @@ export class NotesApp {
     for (const box of [editor, this.agendaEditor].filter(Boolean)) {
       box.addEventListener("quit", () => box.showMessage("Nothing to close here: closing the tab stops Paradigm"));
       box.addEventListener("ex", (event) => this.guard(runNoteCommand(this, event.detail)));
-      box.addEventListener("link", (event) => this.guard(this.followLink(event.detail.target)));
-      box.addEventListener("mention", (event) => this.guard(openMention(this, event.detail.name)));
-      box.addEventListener("highlight", (event) => this.guard(this.openRecord(event.detail.data)));
-      box.addEventListener("task", (event) => this.guard(this.tickLine(box, event.detail.line)));
       box.addEventListener("menu", (event) => {
         event.preventDefault();
         openSelectionMenu(this, event.detail, box);
@@ -326,7 +325,9 @@ export class NotesApp {
     const agendaChanged = note.agenda_version !== undefined && this.agenda.id === id
       && note.agenda_version !== this.agenda.session.note?.version;
     if (note.version === this.session.note?.version && !agendaChanged) return;
-    await this.open(id, { discard: true, history: "none" });
+    // switchTo, not open: open() leaves a page shown in the main window (the Live page, while
+    // this hub is typed in the note window), and a reload must not move the window anywhere.
+    await this.switchTo(id, { discard: true, history: "none", heading: "" });
   }
 
   /** A meeting's save sends its T:/D:/Q: lines (capture.js); what they made shows at once. */
@@ -354,7 +355,13 @@ export class NotesApp {
     };
   }
 
-  async start() {
+  /** Loads the tree and opens what the URL asks for; `started` holds the promise. */
+  start() {
+    this.started = this.startUp();
+    return this.started;
+  }
+
+  async startUp() {
     await this.refreshTree();
     await this.openFromUrl("replace");
     this.focusNote();
@@ -403,6 +410,8 @@ export class NotesApp {
       throw new Error("E: the browser blocked the note window: allow popups for Paradigm (127.0.0.1)");
     }
     this.say(`"${this.tree.get(id)?.title ?? ""}" is open in the note window`);
+    // Any note opened in the note window shows on the Live page here (live/live-page.js).
+    if (this.views.pages.live) this.showView("live", "push");
     return true;
   }
 
@@ -523,17 +532,11 @@ export class NotesApp {
     // A page shown over the note names the tab, not the note under it.
     const title = this.views.shown ? viewLabel(this.views.shown) : this.tree.get(id)?.title ?? this.session.note?.title;
     document.title = title ? `${title} - Paradigm` : "Paradigm";
-    // Links resolve against the tree and the open note, so both changing means new links.
-    const options = this.markdownOptions();
-    const highlights = this.highlightsOf(id);
-    for (const box of [this.editor, this.agendaEditor].filter(Boolean)) {
-      box.markdownOptions = options;
-      box.highlights = highlights;
-    }
     this.editor.hints = { ...this.captureHints(id), cmdline: (text) => this.cmdlineHint(text) };
     this.prep?.show(ctx, this.tree.get(id) ?? null);
     this.drawContext();
     this.markEmptyFields();
+    this.events.dispatchEvent(new Event("redraw"));
   }
 
   /** The navigator's Today and Week rows, with what is overdue and what is free this week. */
@@ -569,9 +572,10 @@ export class NotesApp {
     if (!this.session.dirty) this.say("Back: your changes are saved");
   }
 
-  markdownOptions() {
+  /** The renderer's options: wiki links resolve from fromId (the nearest note wins). */
+  markdownOptions(fromId = this.currentId) {
     return {
-      resolveWikiLink: (link) => this.wikiHref(link),
+      resolveWikiLink: (link) => this.wikiHref(link, fromId),
       resolveMention: (name) => {
         const person = personForMention(this.tree, name);
         return person ? { href: noteUrl(person.id), archived: isArchived(this.tree, person.id) } : null;
@@ -579,8 +583,9 @@ export class NotesApp {
     };
   }
 
-  /** The text the open note's decisions and questions were made from, for its badges; on a
-   * meeting, its captured T:/D:/Q: lines get theirs before the text, with what they made. */
+  /** The text the open note's decisions and questions were made from, for its badges on the
+   * Live page; on a meeting, its captured T:/D:/Q: lines get theirs before the text, with
+   * what they made. */
   highlightsOf(id) {
     if (id === null) return [];
     const labels = { decision: "Decision", question: "Question" };
@@ -665,30 +670,11 @@ export class NotesApp {
     if (this.labels.agenda && this.agendaEditor) this.labels.agenda.dataset.empty = String(!this.agendaEditor.value.trim());
   }
 
-  async openRecord(id) {
-    if (id === null || !this.tree.has(id)) return;
-    await this.open(id);
-    this.editor.focus();
-  }
-
-  wikiHref(link) {
+  wikiHref(link, fromId = this.currentId) {
     if (!link.target) return null;
-    const found = resolveLink(this.tree, this.currentId, link.target);
+    const found = resolveLink(this.tree, fromId, link.target);
     if (!found.note) return { href: null, exists: false };
     return { href: noteUrl(found.note.id), exists: true, archived: isArchived(this.tree, found.note.id) };
-  }
-
-  async followLink(target) {
-    const { link, heading } = splitTarget(target);
-    if (!link) return;
-    const found = resolveLink(this.tree, this.currentId, link);
-    if (found.note) {
-      await this.open(found.note.id, { heading });
-    } else if (found.create) {
-      await this.createAndOpen(found.create.parentId, found.create.title);
-    } else {
-      throw new Error(explainMissing(link, found));
-    }
   }
 
   // ---- the ex commands (commands.js) ---------------------------------------------------
@@ -840,15 +826,6 @@ export class NotesApp {
     await this.refreshTree();
     this.changes.send({ type: "changed", what: ["notes"] });
     this.say(note.time_code ? `"${note.title}" books time to ${note.time_code}` : `"${note.title}" has no time code`);
-  }
-
-  /** A rendered box was clicked: tick (or clear) it in the text, as an edit (a checkbox in the
-   * text is only Markdown: tasks are records of their own). */
-  async tickLine(box, line) {
-    const text = box.value.split("\n")[line];
-    const state = boxState(text);
-    if (state === null) return;
-    if (!(await box.replaceLine(line, setBox(text, !state)))) throw new Error("E: leave insert mode first (Escape), then tick it");
   }
 
   /** :calendar, gw: the Week page's Plan in the main window. */
@@ -1069,6 +1046,7 @@ export class NotesApp {
     const id = this.currentId;
     const next = this.nextAfterDeleting(id);
     await this.api.remove(id, recursive);
+    this.events.dispatchEvent(new CustomEvent("trashed", { detail: { id, next } }));
     const title = this.session.note.title;
     this.session.close();
     await this.refreshTree();
@@ -1139,6 +1117,8 @@ export function setNotePath(path) {
 }
 
 export function noteUrl(id) {
+  // No note open (none made yet, or the last one trashed): no ?note=null in the address.
+  if (id === null || id === undefined) return notePath;
   return `${notePath}?note=${encodeURIComponent(id)}`;
 }
 

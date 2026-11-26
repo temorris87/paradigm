@@ -1,7 +1,6 @@
 // Editor options and :set. Defaults follow Vim, except where notes want otherwise:
 // autoindent on (lists keep their indent), expandtab with shiftwidth 2 (Tab is not an
-// editor key, so indenting is >> and <<). "preview" is ours, not Vim's: live preview of
-// Markdown, on wherever the element shows it.
+// editor key, so indenting is >> and <<).
 import { EditorError } from "./errors.js";
 
 export const OPTIONS = [
@@ -11,7 +10,6 @@ export const OPTIONS = [
   { name: "incsearch", short: "is", type: "bool", value: true },
   { name: "wrapscan", short: "ws", type: "bool", value: true },
   { name: "wrap", short: "wrap", type: "bool", value: true },
-  { name: "preview", short: "pv", type: "bool", value: true },
   { name: "autoindent", short: "ai", type: "bool", value: true },
   { name: "expandtab", short: "et", type: "bool", value: true },
   { name: "shiftwidth", short: "sw", type: "number", value: 2, min: 1 },

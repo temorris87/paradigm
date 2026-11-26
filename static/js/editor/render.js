@@ -1,11 +1,10 @@
 // Draws the engine's state: the lines on screen, the cursor, the selection, search matches
 // and the status line. Only the visible lines are built, so long notes stay fast.
 // Long lines are cut into rows of exactly view.width characters, the same rule the layout
-// uses, so what the engine thinks is on screen is what is on screen. In live preview a
-// rendered unit is drawn by preview-view.js, as tall as the layout measured it.
+// uses, so what the engine thinks is on screen is what is on screen.
 import { fenceStateAt, tokenizeLine } from "./markdown-tokens.js";
 import { compilePattern, lineMatches } from "./search.js";
-import { bottomLine, unitAt } from "./view.js";
+import { bottomLine, rowsOf } from "./view.js";
 import { visualRegion } from "./visual.js";
 
 const MODE_LABELS = {
@@ -19,10 +18,9 @@ const MODE_LABELS = {
 const CURSOR_CLASSES = { insert: "pd-cursor-bar", replace: "pd-cursor-under" };
 
 export class EditorView {
-  constructor({ text, status, preview = null }) {
+  constructor({ text, status }) {
     this.text = text;
     this.status = status;
-    this.preview = preview;
     this.rowHeight = 16;
     this.patternCache = { key: null, regex: null };
   }
@@ -57,19 +55,9 @@ export class EditorView {
     const selection = vim.mode === "visual" && vim.visual ? visualRegion(vim) : null;
     const regex = this.searchRegex(vim);
     let fence = syntax ? fenceStateAt(vim.buf.lines, vim.view.top) : null;
-    this.preview?.begin();
-    let rows = -vim.view.skip;
+    let rows = 0;
     let line = vim.view.top;
     for (; line <= vim.buf.lastLine && rows < vim.view.height; line += 1) {
-      const unit = unitAt(vim, line);
-      if (unit.rendered) {
-        const cursor = vim.mode !== "cmdline" && vim.cursor.line >= unit.start && vim.cursor.line <= unit.end;
-        nodes.push(this.preview.node(unit, line === vim.view.top ? vim.view.skip * this.rowHeight : 0, cursor));
-        if (syntax) for (let at = unit.start; at <= unit.end; at += 1) fence = tokenizeLine(vim.buf.line(at), fence).fence;
-        rows += unit.rows;
-        line = unit.end;
-        continue;
-      }
       const text = vim.buf.line(line);
       const decorations = [];
       if (syntax) {
@@ -96,7 +84,7 @@ export class EditorView {
       }
       if (selected && selected.to > text.length) extraCell = true;
       nodes.push(this.lineNode(vim, line, text, decorations, extraCell));
-      rows += unit.rows;
+      rows += rowsOf(vim, line);
     }
     for (; rows < vim.view.height; rows += 1) {
       const filler = document.createElement("div");
@@ -194,25 +182,18 @@ export class EditorView {
 
   /** The text position under a mouse point, or null. */
   positionAt(clientX, clientY) {
-    for (const row of this.text.querySelectorAll(".pd-row, .pd-unit")) {
+    for (const row of this.text.querySelectorAll(".pd-row")) {
       const box = row.getBoundingClientRect();
       if (clientY < box.top || clientY >= box.bottom) continue;
-      // A rendered unit: its first line (where in the source a click lands isn't tracked).
-      if (row.classList.contains("pd-unit")) return { line: Number(row.dataset.line), col: 0 };
       const col = Number(row.dataset.start) + Math.max(0, Math.floor((clientX - box.left) / (this.charWidth || 8)));
       return { line: Number(row.dataset.line), col };
     }
     return null;
   }
 
-  /** Where the cursor is drawn: its cell, or the top of the rendered block it is in. */
+  /** Where the cursor is drawn: its cell, or null. */
   cursorBox() {
-    const cursor = this.text.querySelector(".pd-cursor, .pd-cursor-bar, .pd-cursor-under");
-    if (cursor) return cursor.getBoundingClientRect();
-    const block = this.text.querySelector(".pd-unit--cursor");
-    if (!block) return null;
-    const box = block.getBoundingClientRect();
-    return { left: box.left, right: box.left + (this.charWidth || 8), top: box.top, bottom: box.top + this.rowHeight, width: this.charWidth || 8, height: this.rowHeight };
+    return this.text.querySelector(".pd-cursor, .pd-cursor-bar, .pd-cursor-under")?.getBoundingClientRect() ?? null;
   }
 }
 

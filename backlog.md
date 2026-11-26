@@ -147,12 +147,12 @@ Features in build order. "build feature" takes the first unchecked item.
 - [x] Add ability to remove folders from Project/areas and other locations where folders are added (done 2026-11-25)
 - [x] Auto shutoff of the server does not work on Mac (done 2026-11-25)
 - [x] A second Ctrl-C while Paradigm is stopping leaves it half-stopped (no "Paradigm stopped" in the log, the tidy-up skipped) (done 2026-11-25)
-- [ ] I want to have the popup window that takes up the 1/3 of my screen to be a markdown view
+- [x] I want to have the popup window that takes up the 1/3 of my screen to be a markdown view
   of any note and the note content should be visible on the main page. The reasoning behind
   this is to get rid of the weird behavior that real time rendering in the vim windows is
   causing. The real time view on the main 2/3 screen page should show where the cursor is so
   when I share my screen with just the 2/3 window, people are able to see where I'm typing while
-  I focus on the right 1/3.
+  I focus on the right 1/3. (done 2026-11-26)
 - [ ] On Chrome on windows, the heading and column on the calendar doesn't align with the content.
 - [ ] I want to remove the next task feature and show all tasks on the calendar view when
   scheduling my week and days. I should be able to filter by project / area so I can narrow in

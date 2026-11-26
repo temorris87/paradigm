@@ -43,57 +43,13 @@
   visibility: hidden;
 }
 
-/* Live preview: a rendered Markdown unit between raw lines. Blank lines in the source give
-   the spacing, so a unit has no outer margins. flow-root keeps its children's margins
-   inside, so the height measured (in .pd-measure) is the height drawn. */
-.pd-unit {
-  display: flow-root;
-  white-space: normal;
-  font-family: var(--font-ui);
-}
-
-.pd-unit > :first-child {
-  margin-top: 0;
-}
-
-.pd-unit > :last-child,
-.pd-unit :is(li, blockquote, .md-callout-content) > :last-child {
-  margin-bottom: 0;
-}
-
-/* Each bullet is its own unit, drawn inside its parents' lists; those wrappers keep the
-   indent but draw no marker of their own. */
-.pd-unit .md-nest-li {
-  list-style: none;
-}
-
-/* Normal mode keeps the cursor's block rendered: a bar at its left edge and a faint band say
-   the cursor is in it (dim while the editor doesn't have the focus, like the block cursor).
-   Shadows, not borders or padding, so the block is as tall and as wide as it measured. */
-.pd-unit--cursor {
-  background: var(--nord1);
-  box-shadow: inset 2px 0 0 var(--nord3);
-}
-
-.pd-editor--focused .pd-unit--cursor {
-  box-shadow: inset 2px 0 0 var(--nord8);
-}
-
-.pd-measure {
-  position: absolute;
-  left: 0;
-  top: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-
 .pd-line--end {
   color: var(--nord3);
 }
 
 /* Raw Markdown: headings are all one colour (as rendered) and bold; rows have one fixed height, so instead
    of size, H1 and H2 get an underline (thick, thin). Links are nord8 and nothing else is.
-   Scoped to raw rows, so rendered units (markdown.css, same class names) are untouched. */
+   Scoped to raw rows. */
 .pd-row :is(.md-h1, .md-h2, .md-h3, .md-h4, .md-h5, .md-h6) { color: var(--nord13); font-weight: bold; }
 .pd-row :is(.md-h1, .md-h2) {
   text-decoration: underline;
@@ -226,16 +182,6 @@
   from { border-color: var(--nord11); }
 }
 
-/* Wiki links go to the page, not the browser: even one to a note not made yet is clickable. */
-/* A click on a rendered image opens it in the viewer. */
-.pd-unit img {
-  cursor: zoom-in;
-}
-
-.pd-unit .md-wikilink {
-  cursor: pointer;
-}
-
 /* <pd-editor compact> (a meeting's agenda): the status line only while it has the focus. */
 :host([compact]) .pd-editor:not(.pd-editor--focused) .pd-status {
   display: none;
@@ -282,27 +228,6 @@
   color: var(--text-dim);
 }
 
-/* Text a decision or question was made from (highlights.js): a muted underline and a badge. */
-.pd-highlight {
-  background: none;
-  color: inherit;
-  text-decoration: underline dotted var(--nord9);
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-
-.pd-highlight__badge {
-  margin-left: var(--sp-2);
-  padding: 0 var(--sp-2);
-  border: 1px solid var(--nord3);
-  border-radius: 3px;
-  color: var(--nord9);
-  font-family: var(--font-ui);
-  font-size: var(--fs-xs);
-  vertical-align: 0.1em;
-  cursor: pointer;
-}
-
 /* The host's words in the status line ("3 captured · 1 pending"). */
 .pd-status__note {
   color: var(--text-dim);
@@ -334,29 +259,4 @@
 .pd-hint--cmdline {
   left: var(--sp-3);
   bottom: 2em;
-}
-
-/* A captured line's badge, before its text (TASK, DECISION, QUESTION), and its meta after. */
-.pd-highlight__badge--capture {
-  margin: 0 var(--sp-1) 0 0;
-  padding: 0 var(--sp-1);
-  border-radius: 3px;
-  color: var(--nord0);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.pd-highlight__badge--task { background: var(--nord14); }
-.pd-highlight__badge--decision { background: var(--nord8); }
-.pd-highlight__badge--question { background: var(--nord15); }
-
-.pd-highlight--capture {
-  text-decoration: none;
-}
-
-.pd-highlight__meta {
-  margin-left: var(--sp-2);
-  color: var(--text-dim);
-  font-size: var(--fs-sm);
 }

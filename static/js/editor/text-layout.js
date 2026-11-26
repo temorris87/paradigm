@@ -1,9 +1,5 @@
-// How tall each line is on screen. The engine asks its layout for the "unit" holding a line:
-//   { start, end, rows, rendered }
-// a run of lines that is drawn and scrolled as one piece, `rows` screen rows tall (it may be
-// a fraction). This plain-text layout makes every line its own unit, wrapped at exactly
-// view.width characters, the same rule the renderer uses. The live-preview layout
-// (preview-layout.js) swaps in rendered Markdown blocks.
+// How many screen rows a line takes: lines wrap at exactly view.width characters, the same
+// rule the renderer uses, so what the engine thinks is on screen is what is on screen.
 
 /** Rows one raw line takes. */
 export function textRows(vim, line) {
@@ -13,12 +9,3 @@ export function textRows(vim, line) {
   if (vim.cursor.line === line && vim.cursor.col >= length && vim.isInsertLike()) length += 1;
   return Math.max(1, Math.ceil(length / Math.max(1, vim.view.width)));
 }
-
-export function textUnit(vim, line) {
-  return { start: line, end: line, rows: textRows(vim, line), rendered: false };
-}
-
-export const TEXT_LAYOUT = {
-  unitAt: textUnit,
-  anchorLine: () => null,
-};

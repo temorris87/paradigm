@@ -1,0 +1,160 @@
+/* The Live page (static/js/live/live-page.js): the note window's note, rendered as it is
+   typed, under its path and title, with a caret where the cursor is and a band on the block
+   holding it, so a screen share of the main window shows where the typing is. */
+.live-view[hidden],
+.live-view [hidden] {
+  display: none;
+}
+
+.live-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  max-width: 60rem;
+  outline: none;
+}
+
+.live__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.live__crumbs {
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.live__title {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+}
+
+.live__state,
+.live__note {
+  margin: 0;
+  color: var(--text-dim);
+}
+
+.live__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-3);
+}
+
+.live__open {
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  background: var(--nord1);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.live__open:hover,
+.live__open:focus-visible {
+  border-color: var(--nord8);
+}
+
+.live__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* Each field (a meeting's Agenda, then its Notes) under its label, like the dashboard's text. */
+.live-field__label {
+  margin-bottom: var(--sp-1);
+  color: var(--text-strong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+/* A top-level block. Plain blocks, so their children's margins collapse as without them. */
+.live-field__body > .live-block:first-child > :first-child {
+  margin-top: 0;
+}
+
+/* The block holding the cursor: a faint band, and a nord8 bar at its left edge. Shadows, not
+   padding or borders, so the text does not move as the cursor goes from block to block. */
+.live-block--cursor {
+  background: var(--nord1);
+  box-shadow: calc(-1 * var(--sp-2)) 0 0 var(--nord1), calc(-1 * var(--sp-2) - 2px) 0 0 var(--nord8);
+}
+
+/* The caret: a bar in insert and replace mode, a block over its character otherwise. */
+.live-caret--bar {
+  display: inline-block;
+  width: 0;
+  height: 1.2em;
+  margin-right: -2px;
+  border-left: 2px solid var(--nord8);
+  vertical-align: text-bottom;
+}
+
+.live-caret--block {
+  background: var(--nord8);
+  color: var(--nord0);
+}
+
+.live-caret--block.live-caret--empty {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.2em;
+  vertical-align: text-bottom;
+}
+
+/* A click on an image opens it in the viewer. */
+.live-field__body img {
+  cursor: zoom-in;
+}
+
+/* Text a decision or question was made from (highlights.js): a muted underline and a badge. */
+.pd-highlight {
+  background: none;
+  color: inherit;
+  text-decoration: underline dotted var(--nord9);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.pd-highlight__badge {
+  margin-left: var(--sp-2);
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--nord3);
+  border-radius: 3px;
+  color: var(--nord9);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  vertical-align: 0.1em;
+  cursor: pointer;
+}
+
+/* A captured line's badge, before its text (TASK, DECISION, QUESTION), and its meta after. */
+.pd-highlight__badge--capture {
+  margin: 0 var(--sp-1) 0 0;
+  padding: 0 var(--sp-1);
+  border-radius: 3px;
+  color: var(--nord0);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.pd-highlight__badge--task { background: var(--nord14); }
+.pd-highlight__badge--decision { background: var(--nord8); }
+.pd-highlight__badge--question { background: var(--nord15); }
+
+.pd-highlight--capture {
+  text-decoration: none;
+}
+
+.pd-highlight__meta {
+  margin-left: var(--sp-2);
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}

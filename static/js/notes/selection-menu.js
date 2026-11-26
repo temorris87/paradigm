@@ -1,6 +1,6 @@
 // The menu on a right-click in the text (or Shift-F10, the Menu key): make a question or a
 // decision from the selected text. The record goes in the note's hub and remembers the note
-// and the text; the note stays open, and the text gets a badge (highlights in <pd-editor>).
+// and the text; the note stays open, and the text gets a badge (on the Live page).
 // Then the table at the cursor (sort, align, copy), or Insert table… when there is none.
 //
 //   openSelectionMenu(app, { text, table, x, y }, editor)   from the editor's "menu" event
@@ -11,7 +11,7 @@
 import { localDay } from "../meetings/meeting-days.js";
 import { hubOf, isMeeting, meetingOf } from "./hub-groups.js";
 import { MENTION, trimName } from "../markdown/mentions.js";
-import { plainWords } from "../editor/highlights.js";
+import { plainWords } from "../live/highlights.js";
 import { personForMention } from "./mentions.js";
 import { peopleNamed } from "../people/people-commands.js";
 import { allPeople } from "../people/people-model.js";

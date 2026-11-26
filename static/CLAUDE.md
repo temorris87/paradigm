@@ -15,6 +15,7 @@ static/
                          gantt.css, plan-template.css, folder-page.css, oncall.css (the On call
                          tab, the Week bar's line, Today's rows, a person's head line),
                          sheet.css (the note window's sections sheet and its bar),
+                         live.css (the Live page: its head, the caret, the cursor's band),
                          nord.css (palette variables and THE design tokens: --font-ui,
                          --font-mono, --fs-xs..xl, --sp-0..6, --text/-dim/-faint), base.css (the
                          page grid, color-scheme dark; one column under 1400 px), one file per component (topbar.css, navigator.css...)
@@ -24,8 +25,17 @@ static/
   js/boot.js             what both windows start with (connection, navigator, NotesApp)
   js/main.js             the main window: its pages, the dashboard, the Window menu
   js/note-main.js        the note window
-  js/layout/main-keys.js THE main window's own key table (: gt gw)
+  js/layout/main-keys.js THE main window's own key table (: gt gw gp gn)
   js/layout/navigator-parts.js  the navigator's pinned Today / Week and its save state
+  js/live/               the Live page (&live): the note window's note rendered in the main
+                         window as it is typed, with a caret where the cursor is:
+                         caret.js (the cursor's sentinel in a field's raw text, bar or block,
+                         none where no caret can sit; pure), live-sender.js (the note window:
+                         a throttled "live" message on the windows' channel, answers
+                         "live-ask", "live-closed" on pagehide), live-page.js (the main
+                         window: blocks drawn per line range, the caret and the band, empty /
+                         closed / trashed lines, link, highlight and image clicks),
+                         highlights.js (a record's source text underlined with its badge)
   js/palette/            palette-model.js (groups for what is typed: Recent, Pages, Notes,
                          Commands with their keys; pure), palette.js (the dialog), recent.js
                          (the notes opened last, per browser)
@@ -58,9 +68,9 @@ static/
                          :addperson :dropperson :org :job :email :phone :meetings :meeting :date
                          :attendee :dropattendee :decision :question :answered :reopen :with
                          :dropwith :task :template :dashboard :plan :timecode :calendar :time :oncall :hub
-                         :home :export :trash :trashed :find),
+                         :home :live :export :trash :trashed :find),
                          page-views.js (which page the main window shows: &home, &people,
-                         &meetings, &trash, &calendar, &time, &template=ID; the URL flag
+                         &meetings, &trash, &calendar, &time, &live, &template=ID; the URL flag
                          and Back),
                          hub-groups.js (THE PARA group table: Inbox, Projects, Areas,
                          Resources; then People, Templates and the Archive, folded by
@@ -151,7 +161,9 @@ static/
                          under a button), dialog.js (formDialog, confirmDialog on <dialog>:
                          errors show inside and keep it open), picker.js (a text box over a
                          filtered list; filterItems is pure), ui-keys.js (THE key table of
-                         menus, pickers and dialogs), dom.js
+                         menus, pickers and dialogs), dom.js, rendered-text.js (rendered
+                         Markdown in the main window, the dashboard's and the Live page's:
+                         maths and diagrams drawn, links to notes open the note)
   js/triage/             triage-model.js (the hub a note's links and mentions point to most;
                          the options; pure), triage-keys.js (THE triage key table), triage.js
                          (the Inbox one note at a time)

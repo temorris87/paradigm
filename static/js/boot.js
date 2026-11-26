@@ -36,8 +36,6 @@ export function boot({ role, kind, options }) {
   connection.start();
 
   const editor = document.querySelector(".app__editor");
-  const viewer = document.querySelector("pd-image-viewer");
-  for (const box of document.querySelectorAll("pd-editor")) box.addEventListener("image", (event) => viewer.open(event.detail));
 
   const navigator = new Navigator({
     panel: document.querySelector(".app__sidebar"),

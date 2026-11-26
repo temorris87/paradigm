@@ -1,6 +1,6 @@
-// Highlights in rendered blocks: text the host marks (a quote a decision was made from), drawn
-// with a muted underline and a small badge after it. The editor knows nothing about what a
-// highlight is; it reports a click with the highlight's data.
+// Highlights in rendered text: text the host marks (a quote a decision was made from), drawn
+// with a muted underline and a small badge after it. It knows nothing about what a
+// highlight is: the page reports a click with the highlight's data.
 //
 //   markHighlights(node, highlights)   wraps the first match of each highlight in node
 //     highlight: { text, label, title, data, capture?, meta? }; capture ("task", "decision",

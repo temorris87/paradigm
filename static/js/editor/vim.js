@@ -11,7 +11,6 @@ import { Marks } from "./marks.js";
 import { defaultOptions } from "./options.js";
 import { clamp, endAfter, lastCol, pos } from "./position.js";
 import { Registers } from "./registers.js";
-import { TEXT_LAYOUT } from "./text-layout.js";
 import { UndoHistory } from "./undo.js";
 import { ensureCursorVisible, scrollLines } from "./view.js";
 import { enterVisual, exitVisual, visualRegion } from "./visual.js";
@@ -23,9 +22,7 @@ export class Vim {
     this.registers = new Registers(clipboard);
     this.undo = new UndoHistory();
     this.marks = new Marks();
-    this.view = { top: 0, skip: 0, left: 0, height: 20, width: 80 };
-    // How lines map to screen rows; the element swaps in live preview (preview-layout.js).
-    this.layout = TEXT_LAYOUT;
+    this.view = { top: 0, left: 0, height: 20, width: 80 };
     this.history = { ":": [], "/": [] };
     this.search = { pattern: null, forward: true, highlight: false };
     this.readOnly = false;
@@ -56,7 +53,6 @@ export class Vim {
     this.message = null;
     this.commandStart = null;
     this.view.top = 0;
-    this.view.skip = 0;
     this.view.left = 0;
   }
 
@@ -260,7 +256,7 @@ export class Vim {
     if (scrollLines(this, rows)) ensureCursorVisible(this);
   }
 
-  /** Something outside the engine changed how tall lines are (a resize, a remeasure). */
+  /** Something outside the engine changed how tall lines are (a resize). */
   relayout() {
     ensureCursorVisible(this);
   }

@@ -19,8 +19,9 @@ How the app behaves. Kept up to date by each feature that changes it.
   it deletes nothing). In a T: line a name first delegates ("T: @Tom book the room"), a name
   later is someone I owe ("T: send @Tom the numbers"); `!fri`, `!tomorrow`, `!2026-12-01` set
   the due date (the coming day, today included). D:/Q: lines take their @names as people. Never
-  inside code. Rendered, a captured line shows a TASK / DECISION / QUESTION badge in place of
-  its prefix and what it made; while typing one a hint under the line says what it will make;
+  inside code. On the Live page (since 2026-11-26; the note window shows the raw line and no
+  badge), a captured line shows a TASK / DECISION / QUESTION badge in place of its prefix and
+  what it made; while typing one a hint under the line says what it will make;
   the status line counts "N captured · N pending". A meeting's Prep box (under its card):
   open questions its attendees are on, what they owe (late first), last time (the same name in
   the same hub before it); Add all to agenda. The Meetings page: Upcoming / Past / Needs notes
@@ -32,8 +33,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   text). They are made from text: select it in any note inside a hub (drag with the mouse, or
   visual mode) and right-click (or Shift-F10, the Menu key): Add question… / Add decision…
   (`selection-menu.js`). The dialog has the text as the title, the meeting's day or today, and
-  the people @mentioned in it. The note stays open; the quoted text gets a muted underline and
-  a badge (Question / Answered / Decision; a click opens it). Not in a hub, the items are
+  the people @mentioned in it. The note stays open; on the Live page the quoted text gets a
+  muted underline and a badge (Question / Answered / Decision; a click opens it). Not in a hub, the items are
   greyed with the reason. Each section's + New question / New decision, and `:decision
   [{date}] {title}` / `:question ...`, make one too (from the open note). `:answered [{date}]`,
   `:reopen`, `:date {date}`, `:with[!] {name}, ...`, `:dropwith {name}`. Answer… (the card's ▾,

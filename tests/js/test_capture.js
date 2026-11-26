@@ -39,7 +39,7 @@ test("capture: lines in a note, never in code; payload and hint", () => {
 });
 
 test("capture: a captured line's badge takes the place of its T:, even before a mention", async () => {
-  const { markHighlights } = await import("../../static/js/editor/highlights.js");
+  const { markHighlights } = await import("../../static/js/live/highlights.js");
   const p = document.createElement("p");
   p.innerHTML = 'Priya has numbers.<br>\nT: <a class="md-mention">@Tom</a> book it !fri<br>\nD: Stay';
   markHighlights(p, [{ text: "@Tom book it !fri", label: "Task", capture: "task", meta: "→ Tom" },

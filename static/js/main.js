@@ -1,5 +1,6 @@
-// The main window (/): dashboards, Home, People, Meetings, the calendar, the timesheet and
-// plan templates, wide. A note opens in the note window (windows/note-window.js).
+// The main window (/): dashboards, Home, People, Meetings, the calendar, the timesheet, plan
+// templates and the Live note, wide. A note opens in the note window (windows/note-window.js),
+// and the Live page here shows it as it is typed there (live/live-page.js).
 import { boot } from "./boot.js";
 import { installMainKeys } from "./layout/main-keys.js";
 import { openPalette } from "./palette/palette.js";
@@ -10,6 +11,7 @@ import { setNotePath } from "./notes/app.js";
 import { PlanPage } from "./plan/plan-page.js";
 import { TemplatePage } from "./plan/template-page.js";
 import { FolderPage } from "./resources/folder-page.js";
+import { LivePage } from "./live/live-page.js";
 import { timeApi } from "./timesheet/api.js";
 import { TimePage } from "./timesheet/time-page.js";
 import { WeekPage } from "./week/week-page.js";
@@ -58,16 +60,23 @@ const app = boot({
     const template = new TemplatePage($(".plan-template-view"), { app, onLeave: () => app().leaveView() });
     const folder = new FolderPage($(".folder-view"), { app, onLeave: () => app().leaveView() });
     const plan = new PlanPage($(".plan-view"), { app, onLeave: () => app().leaveView() });
+    // A note newly opened in the note window, any way, brings the Live page up here.
+    const live = new LivePage($(".live-view"), { changes, app, viewer: $("pd-image-viewer"),
+      onNewNote: () => app().showView("live", "push"), ready: () => app()?.started ?? null });
     const windowButton = $(".topbar__window");
-    windowButton.addEventListener("click", () => openMenu(windowButton, WINDOW_MODES.map((mode) => ({
-      label: mode.label,
-      hint: mode.help,
-      checked: windowMode() === mode.key,
-      run: () => {
-        setWindowMode(mode.key);
-        app().say(`${mode.label} (${mode.help}). Close the note window for it to open there next time.`);
-      },
-    })), { label: "Note window" }));
+    windowButton.addEventListener("click", () => openMenu(windowButton, [
+      { label: "Live note", hint: "the note window's note, rendered as it is typed (gn)", run: () => app().showView("live", "push") },
+      "separator",
+      ...WINDOW_MODES.map((mode) => ({
+        label: mode.label,
+        hint: mode.help,
+        checked: windowMode() === mode.key,
+        run: () => {
+          setWindowMode(mode.key);
+          app().say(`${mode.label} (${mode.help}). Close the note window for it to open there next time.`);
+        },
+      })),
+    ], { label: "Window" }));
     return {
       home: { section: $(".home"), button: null },
       people: { section: $(".people"), button: null },
@@ -78,6 +87,7 @@ const app = boot({
         template: { section: $(".plan-template-view"), show: (ctx) => template.show(ctx), focus: () => template.focus() },
         folder: { section: $(".folder-view"), show: (ctx) => folder.show(ctx), focus: () => folder.focus() },
         plan: { section: $(".plan-view"), show: (ctx) => plan.show(ctx), focus: () => plan.focus() },
+        live: { section: $(".live-view"), show: () => live.show(), focus: () => live.focus() },
       },
       buttons: { today: $(".topbar__today"), week: $(".topbar__week"), palette: $(".topbar__palette") },
       status: $(".status-line"),
@@ -91,11 +101,13 @@ const app = boot({
   },
 });
 
-// Keys of the whole main window (layout/main-keys.js): the palette, Today, the Week, the plan.
+// Keys of the whole main window (layout/main-keys.js): the palette, Today, the Week, the plan,
+// the Live note.
 installMainKeys(window, {
   // Typed, : starts a command, as in the editor; the bar's field opens it empty.
   palette: () => app.guard(openPalette(app, ":")),
   today: () => app.showView("home", "push"),
   week: () => app.calendarCommand(),
   plan: () => app.guard(app.planKey()),
+  live: () => app.showView("live", "push"),
 });

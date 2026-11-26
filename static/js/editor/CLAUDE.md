@@ -5,16 +5,12 @@ Paths from the repo root. Update this layout when the structure here changes.
 ```
   js/editor/             the <pd-editor> component:
     pd-editor.js         the custom element (hidden textarea takes keys; events out: change,
-                         save, link, mention, menu, highlight, files, image...)
+                         save, quit, ex, mode, cursor {line, col, mode}, menu, files)
     completion.js        a list under the cursor in insert mode ("@" offers people; the
                          host gives the items)
-    highlights.js        marks quoted text in rendered blocks with a badge (a record's source)
     render.js            draws visible lines, cursor, selection, matches, status line
     view.js              viewport math in steps: top line + skip rows, scrolloff, H/M/L
-    text-layout.js       the layout interface (units of lines and their rows); plain text
-    preview-layout.js    live preview layout: rendered units away from the cursor (pure)
-    preview-units.js     text -> units (top-level blocks, lists split into items), raw ranges
-    preview-measure.js preview-view.js   DOM: unit heights (cached), unit nodes (reused)
+    text-layout.js       how many rows a raw line takes (wraps at the view's width)
     vim.js               the engine: state + feed(key); no DOM
     keys.js              THE editor key table (normal, visual, insert, cmdline)
     parser.js            keys -> command (register, counts, operator, motion)
@@ -33,14 +29,11 @@ Paths from the repo root. Update this layout when the structure here changes.
 - The editor is a real modal Vim on raw Markdown: normal, insert, visual and command-line modes,
   counts, operators + motions, text objects, `.`, registers and undo. Vim itself is the reference
   for its keys.
-- Live preview (`:set preview`, on by default; Tyson, 2026-11-23): in normal mode every block
-  renders, the cursor's too, marked by a band with a nord8 bar at its left edge. The block
-  under the cursor shows raw only in insert or replace mode; a visual selection (and `:` from
-  it) and the incsearch match show raw too. Lists split per item at every depth: each
-  sub-bullet is its own unit, drawn inside its parents' marker-less lists (`md-nest`); an
-  item with other blocks after its sub-list stays whole. A sub-list sits right under its
-  item, even in a loose list. A rendered block scrolls one step per row; a plain line is
-  one step; `j` through a block taller than the screen scrolls by proportion.
+- Plain Markdown only (Tyson, 2026-11-26): every line is raw Markdown with its syntax colours,
+  one line per wrapped row, in every mode; nothing renders inside the editor. The old live
+  preview is gone (`:set preview` answers "Unknown option"); the rendered view is the main
+  window's Live page (`static/js/live/`), fed by the `cursor` and `change` events.
+  `syntax="plain"` turns off the Markdown colouring.
 - **Tab / Shift-Tab: in insert mode they indent (spaces to the next shiftwidth stop) and
   unindent. In every other mode they leave the editor and move focus like on any web page**,
   so they are never bound there (Tyson's choice, 2026-11-21).

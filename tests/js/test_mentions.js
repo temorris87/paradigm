@@ -2,7 +2,7 @@
 // highlights, mouse selection and menu event, and the page's index of mentions.
 import "../../static/js/editor/pd-editor.js";
 import { Completion } from "../../static/js/editor/completion.js";
-import { markHighlights, plainWords } from "../../static/js/editor/highlights.js";
+import { markHighlights, plainWords } from "../../static/js/live/highlights.js";
 import { renderMarkdown } from "../../static/js/markdown/index.js";
 import { HUB_SECTIONS } from "../../static/js/hubs/hub-sections.js";
 import { LinkIndex, indexTexts } from "../../static/js/notes/link-index.js";

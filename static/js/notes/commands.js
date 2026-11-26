@@ -53,6 +53,8 @@ export const NOTE_COMMANDS = [
     run: (app) => app.showView("home", "push") },
   { name: "week", label: "Week", min: 4, usage: ":week", help: "open the Week: plan it, the timesheet",
     run: (app) => app.calendarCommand() },
+  { name: "live", label: "Live note", min: 4, usage: ":live", help: "show the note window's note in the main window, rendered as it is typed",
+    run: (app) => app.showView("live", "push") },
   { name: "people", label: "People", min: 6, usage: ":people", help: "open the People page (Escape comes back to the note)",
     run: (app) => app.showView("people", "push") },
   { name: "newperson", label: "New person…", min: 9, usage: ":newperson {name}", help: "add a person to People and open their note",

@@ -8,9 +8,8 @@
 //   dashboard.attach(app)      the NotesApp it works for (its plan, commands, renderer)
 //   dashboard.show(ctx, note, body, pageShown)    after every redraw
 //   dashboard.hasChart / dashboard.focus()        never a chart here now (kept for the app)
-import { drawDiagrams } from "../diagrams/mermaid.js";
 import { renderMarkdown } from "../markdown/index.js";
-import { ensureMathFonts, typesetMath } from "../math/typeset.js";
+import { drawRendered, followNoteLinks } from "../ui/rendered-text.js";
 import { isHub, isPerson } from "../notes/hub-groups.js";
 import { copyDigest, logStatusDialog } from "../status/status-commands.js";
 import { startOneOnOne } from "../people/topic-commands.js";
@@ -57,14 +56,7 @@ export class Dashboard {
     });
     text.edit.addEventListener("click", () => this.note && this.app.guard(this.app.openInNoteWindow(this.note.id)));
     // A link in the rendered text opens like any other: a dashboard here, a note there.
-    text.body.addEventListener("click", (event) => {
-      const link = event.target.closest?.("a[href]");
-      if (!link) return;
-      const url = new URL(link.href, window.location.href);
-      if (url.origin !== window.location.origin || !url.searchParams.has("note")) return;
-      event.preventDefault();
-      this.app.guard(this.app.open(Number(url.searchParams.get("note"))));
-    });
+    followNoteLinks(text.body, (id) => this.app.guard(this.app.open(id)));
   }
 
   attach(app) {
@@ -85,11 +77,7 @@ export class Dashboard {
     this.text.label.textContent = fields.main.label;
     this.text.body.innerHTML = body.trim() ? renderMarkdown(body, this.app.markdownOptions())
       : `<p class="dash-text__empty">${escapeHtml(fields.main.hint || "Nothing written yet")}: Edit ↗ to write it</p>`;
-    for (const link of this.text.body.querySelectorAll("a")) link.tabIndex = -1;
-    // The renderer leaves maths and diagrams as placeholders; draw them as the editor does.
-    ensureMathFonts();
-    typesetMath(this.text.body);
-    drawDiagrams(this.text.body);
+    drawRendered(this.text.body);
     this.fold();
   }
 

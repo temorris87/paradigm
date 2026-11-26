@@ -6,7 +6,6 @@ tests/python/            unittest; helpers.py runs a real server on a free port
 tests/js/                index.html runner, harness.js, fakes.js, editor-helpers.js, test_*.js
                          (test_editor_vim_cases.js: key sequences checked against real Vim)
                          markdown-sample.html: dev-only page rendering every Markdown construct
-                         preview-sample.html: dev-only live preview; ?keys=... feeds Vim keys
 ```
 
 ## Testing (every feature, before reporting it done)

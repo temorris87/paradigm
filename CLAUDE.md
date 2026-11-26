@@ -88,7 +88,7 @@ changes. How the app behaves, by area, is in `docs/spec/`: read the area's file 
 - `paradigm/CLAUDE.md`: the Python package's layout, how it launches and stops, migrations.
 - `paradigm/web/CLAUDE.md`: web security.
 - `static/CLAUDE.md`: the front end's layout, the look (design tokens), key-table rules.
-- `static/js/editor/CLAUDE.md`: the `<pd-editor>` component and its Vim keys, preview, tables.
+- `static/js/editor/CLAUDE.md`: the `<pd-editor>` component and its Vim keys, tables.
 - `tests/CLAUDE.md`: how to test.
 - `docs/spec/hubs.md` (PARA hubs, resources and folders, archive, pages, cards, dashboards,
   templates, files, time codes, page refresh), `people.md` (people, @mentions, 1:1 prep),

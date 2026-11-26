@@ -1,5 +1,5 @@
 // The pages the main window draws in place of a dashboard (Home, People, Meetings, Trash, the
-// calendar, the timesheet, a plan template): which one shows, if any, and its URL flag and
+// calendar, the timesheet, a plan template, the Live note): which one shows, if any, and its URL flag and
 // history step. The dashboard stays open under them: /?note=N&people, /?note=N&template=4.
 //
 //   const views = new PageViews({ main, pages: { home, people, meetings }, history, noteUrl() });
@@ -25,6 +25,7 @@ export const PAGE_VIEWS = [
   { key: "template", label: "Plan template" },
   { key: "folder", label: "Folder" },
   { key: "plan", label: "Plan" },
+  { key: "live", label: "Live note" },
 ];
 
 /** A page's name ("Home"), for the tab's title. */
@@ -48,7 +49,8 @@ export class PageViews {
   }
 
   show(key, history, flag = key) {
-    const url = `${this.noteUrl()}&${flag}`;
+    const base = this.noteUrl();
+    const url = `${base}${base.includes("?") ? "&" : "?"}${flag}`;
     if (history === "push" && this.shown !== key) {
       // From one page to the other: one step, so Escape and Back both reach the note.
       if (this.history.state?.view) this.history.replaceState({ view: key }, "", url);

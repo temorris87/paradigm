@@ -94,7 +94,7 @@ export function createDiagramRenderer({ load = () => import(MERMAID_URL).then((m
     try {
       const api = await mermaid();
       const { svg } = await api.render(id, source, workArea());
-      result = { svg };
+      result = { svg, id };
     } catch (error) {
       result = { error: messageOf(error) };
     } finally {
@@ -155,9 +155,21 @@ function showPending(element) {
   element.textContent = "Drawing diagram…";
 }
 
+// One cached SVG can be in the page more than once (a hub's dashboard and its Live page). Its
+// ids (markers, gradients, the CSS scoped to it) must differ per copy, or url(#...) reaches
+// whichever copy comes first, hidden or not.
+let placements = 0;
+
+/** The SVG text with its render id, the stem of all its ids, made unique to this copy. */
+export function placedSvg(svg, id) {
+  if (!id) return svg;
+  placements += 1;
+  return svg.replace(new RegExp(`${id}(?![0-9])`, "g"), `${id}-p${placements}`);
+}
+
 function fill(element, source, result) {
   element.classList.remove("md-mermaid-pending");
-  if (result.svg !== undefined && insertSvg(element, result.svg)) return;
+  if (result.svg !== undefined && insertSvg(element, placedSvg(result.svg, result.id))) return;
   element.classList.add("md-mermaid-error");
   const code = document.createElement("pre");
   code.textContent = source;

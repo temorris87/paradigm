@@ -139,6 +139,32 @@ test("diagrams: renders once per source, fills waiting placeholders, then draws 
   again.remove();
 });
 
+test("diagrams: each copy of one cached diagram gets its own ids", async () => {
+  const api = {
+    initialize: () => {},
+    render: async (id) => ({
+      svg: `<svg id="${id}" xmlns="http://www.w3.org/2000/svg"><marker id="${id}_pointEnd"/>` +
+        `<path marker-end="url(#${id}_pointEnd)"/></svg>`,
+    }),
+  };
+  const renderer = createDiagramRenderer({ load: async () => api });
+  const first = placeholders("graph LR\nX-->Y");
+  renderer.draw(first);
+  await renderer.idle();
+  const second = placeholders("graph LR\nX-->Y");
+  renderer.draw(second);
+  const [a, b] = [first, second].map((root) => root.querySelector(".md-mermaid svg"));
+  assertTrue(a.id !== b.id, "the two copies differ");
+  for (const svg of [a, b]) {
+    const marker = svg.querySelector("marker").id;
+    assertTrue(marker.startsWith(svg.id), "its marker id follows its svg id");
+    assertEqual(svg.querySelector("path").getAttribute("marker-end"), `url(#${marker})`);
+  }
+  assertEqual(document.querySelectorAll(`[id="${a.querySelector("marker").id}"]`).length, 1);
+  first.remove();
+  second.remove();
+});
+
 test("diagrams: a failed render shows the source and the message", async () => {
   const { load } = fakeMermaid();
   const renderer = createDiagramRenderer({ load });
