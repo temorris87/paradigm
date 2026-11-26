@@ -5,8 +5,10 @@
 // decides the rest.
 //
 //   const grid = new GridView(element, { onBlockDown(block, event, part), onSlotClick(day, minute),
-//                                        onBlockMenu(block, node), onChip(chip) });
+//                                        onBlockMenu(block, node), onChip(chip), onFocusLost?() });
 //   grid.draw({ days, blocks, today, now, selected, capacity?, chips?, off? })
+//     a block with the focus keeps it on its new node; gone, onFocusLost is called (the
+//     calendar takes it); focus anywhere else is left alone
 //     part: "body" | "end" (the bottom edge); capacity: { day: { workMin, meetingMin, focusMin,
 //     freeMin } }; chips: { day: [{ key, kind, label, noteId }] } (week/tray-model.js dueChips);
 //     off: { day: { label, title, whole } }: a day off's chip first in its all-day row; a whole
@@ -61,6 +63,7 @@ export class GridView {
   draw(state) {
     const { days, blocks, today, now, selected = null, capacity = {}, chips = {}, off = {} } = state;
     this.last = state;
+    const focused = this.focusedKey();
     const minute = this.scroller.scrollTop / this.hourPx * 60;
     if (this.scroller.clientHeight) this.hourPx = hourPxFor(this.scroller.clientHeight);
     this.root.style.setProperty("--cal-hour", `${this.hourPx}px`);
@@ -121,6 +124,22 @@ export class GridView {
     });
     this.body.replaceChildren(gutter, ...columns);
     this.scroller.scrollTop = (minute / 60) * this.hourPx;
+    if (focused !== null) this.refocus(focused);
+  }
+
+  /** The key of the block whose node has the focus, or null. */
+  focusedKey() {
+    const active = document.activeElement;
+    if (!active || !this.root.contains(active)) return null;
+    return active.closest(".cal-block[data-key]")?.dataset.key ?? null;
+  }
+
+  // Redrawing removes the focused node, and the focus would drop to the page body: the block's
+  // new node gets it back, or the calendar when the block is gone.
+  refocus(key) {
+    const node = this.nodes.get(key);
+    if (node) node.focus({ preventScroll: true });
+    else this.handlers.onFocusLost?.();
   }
 
   blockNode(block, selected, timed) {
