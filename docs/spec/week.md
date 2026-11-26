@@ -31,7 +31,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   row drops its estimate into the first free slot before its due day (no due date: within
   the next two weeks). `gw` (or opening Plan) puts the focus on the calendar, so `[` `]` `t`
   and `s` work at once. Drag a block to move it, its bottom edge to resize (15-minute
-  steps); click (or right-click) for its menu: open, Open task (a task's own page, tasks.md),
+  steps); dropping or resizing a block, or Escape mid-drag (which puts it back), never opens
+  New meeting (Tyson, 2026-11-26). A press that moves less than 4 px is a click; click (or right-click) for its menu: open, Open task (a task's own page, tasks.md),
   done, Edit time…, remove or cancel. Escape on the menu puts the focus back on the block,
   even when the week was redrawn under it. An
   empty slot makes a meeting there. A block that has passed is time worked. Plan's footer:
