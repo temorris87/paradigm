@@ -22,7 +22,9 @@
 //                              cells: a table row's columns (an area's Projects)
 //                              ctx: { tree, people, meetings, records, links, mentions, tasks,
 //                              sessions, plan, files, planTemplates, expanded: Set of task ids
-//                              shown with their subtasks, today }
+//                              shown in place with their subtasks, today }
+//                              task: a task's id (Tasks, Waiting on, I owe): Enter opens its
+//                              page; expanded (Tasks' top rows): whether it is open in place
 //                              (static/js/people/people-model.js, static/js/meetings/
 //                              meetings-model.js, static/js/records/records-model.js,
 //                              static/js/notes/links.js, static/js/notes/mentions.js)
@@ -48,7 +50,7 @@ import { Links, linksInto } from "../notes/links.js";
 import { mentionsOf } from "../notes/mentions.js";
 import { hubLinks, peopleOn, rolesText, workText } from "../people/people-model.js";
 import { isOpen, peopleOf, recordsOn } from "../records/records-model.js";
-import { openCount, subtaskText, tasksOn, waitingOn } from "../tasks/tasks-model.js";
+import { openCount, subtaskText, taskTree, tasksOn, waitingOn } from "../tasks/tasks-model.js";
 import { Files, fileDir, filesOn, folderSummary, foldersOf } from "../files/files-model.js";
 import { Plan, milestonesOf, nextMilestone, phasesOf, shortDay, slipOf, slipText } from "../plan/plan-model.js";
 import { projectFactsText, statusText } from "./project-facts.js";
@@ -217,7 +219,8 @@ export const HUB_SECTIONS = [
     key: "tasks",
     label: "Tasks",
     // Its tasks and those of the notes inside it (never a project's on its area); subtasks
-    // show as a count until the row is opened (Enter), then under it with + Add subtask.
+    // show as a count until the row is opened in place (z), then every level under it with
+    // + Add subtask. Enter on a task opens its own page (the main window).
     rows: (ctx, owner) => tasksOn(ctx.tree, ctx.tasks, owner).flatMap((entry) => taskRows(ctx, owner, entry)),
     detail: (rows) => counted(rows.filter((row) => row.depth === 0 && row.task && !row.done).length, "open"),
     empty: (owner) => owner.kind === "meeting" ? "No action items from this meeting yet" : "No tasks yet",
@@ -592,8 +595,7 @@ function milestoneRow(ctx, { note, milestone, phase }) {
 function taskRows(ctx, owner, entry) {
   const { task, note, archived } = entry;
   const open = ctx.expanded?.has(task.id) ?? false;
-  const subtasks = entry.subtasks ?? [];
-  // Closed, a row shows who has it and its subtasks; opened (Enter), where it is and its next
+  // Closed, a row shows who has it and its subtasks; opened (z), where it is and its next
   // block on the calendar too.
   const row = {
     id: note.id,
@@ -612,10 +614,11 @@ function taskRows(ctx, owner, entry) {
       task.delegate_id === null ? DELEGATE : TAKE_BACK, DELETE],
   };
   if (!open) return [row];
-  const subs = subtasks.map((sub) => ({
+  // Opened, every level under it, each indented one step past the one above (hub.css).
+  const subs = taskTree(ctx.tasks, task.id).map(({ task: sub, depth }) => ({
     id: note.id,
-    title: sub.title,
-    depth: 1,
+    title: sub.title || "(no text)",
+    depth,
     detail: delegateText(ctx, sub),
     date: sub.done ? `done ${shortDay(sub.done_day, localDay(ctx.today ?? new Date()))}` : dueText(ctx, sub),
     muted: sub.done || archived,
@@ -624,6 +627,7 @@ function taskRows(ctx, owner, entry) {
     done: sub.done,
     actions: archived ? [] : [sub.done ? UNDONE : DONE, EDIT, sub.delegate_id === null ? DELEGATE : TAKE_BACK, DELETE],
   }));
+  // Deeper subtasks are added on the task page (a on a row).
   const add = archived ? [] : [{ id: note.id, title: "+ Add subtask", depth: 1, detail: "", addSubtask: task.id, muted: true }];
   return [row, ...subs, ...add];
 }

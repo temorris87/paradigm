@@ -238,9 +238,12 @@ def _copy_tasks(conn: sqlite3.Connection, note_id: int, item_id: int) -> None:
         parent = made.get(row["parent_id"]) if row["parent_id"] is not None else None
         if row["parent_id"] is not None and parent is None:
             continue
-        made[row["id"]] = conn.execute(
+        made_id = conn.execute(
             "INSERT INTO plan_item_tasks (item_id, parent_id, title, position) VALUES (?, ?, ?, ?)",
             (item_id, parent, row["title"], position)).lastrowid
+        # Templates hold one level of subtasks: a subtask's own subtasks are left out.
+        if row["parent_id"] is None:
+            made[row["id"]] = made_id
 
 
 def _holidays(conn: sqlite3.Connection, start: date, working_days: int) -> Set[date]:

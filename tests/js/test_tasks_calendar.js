@@ -6,7 +6,7 @@ import { Meetings } from "../../static/js/meetings/meetings-model.js";
 import { boxState, setBox, tasksIn } from "../../static/js/notes/tasks.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
 import { HUB_SECTIONS } from "../../static/js/hubs/hub-sections.js";
-import { Tasks, hubChoices, openCount, openTasks, subtaskText, tasksOn, todayTasks, waitingOn } from "../../static/js/tasks/tasks-model.js";
+import { Tasks, hubChoices, openCount, openTasks, subtaskText, taskEntries, tasksOn, todayTasks, waitingOn } from "../../static/js/tasks/tasks-model.js";
 import { gridHtml, gridText } from "../../static/js/timesheet/copy.js";
 import { isWideScreen, noteWindowBox, noteWindowUrl } from "../../static/js/windows/note-window.js";
 import { assertEqual as same, assertTrue, test } from "./harness.js";
@@ -79,6 +79,27 @@ test("tasks: a project's list hides subtasks behind a count; done ones last", ()
   // Opened, a task shows its subtasks and + Add subtask under it.
   const open = section.rows({ ...ctx, expanded: new Set([10]) }, tree().get(2));
   assertEqual(open.slice(0, 4).map((row) => [row.title, row.depth]), [["Book van", 0], ["Get quotes", 1], ["Pick a date", 1], ["+ Add subtask", 1]]);
+});
+
+test("tasks: nested subtasks walk every level; counts read all of them", () => {
+  const nested = new Tasks([...TASKS, task(20, 2, "Call movers", { parent_id: 16 }),
+    task(21, 2, "Find numbers", { parent_id: 20, done: true, done_day: "2026-11-18" }), task(22, 2, "Ask Jo", { parent_id: 20 })]);
+  const entries = taskEntries(tree(), nested).filter((entry) => entry.note.id === 2);
+  const order = entries.map((entry) => [entry.task.id, entry.depth]);
+  assertEqual(order.slice(0, 6), [[10, 0], [11, 1], [16, 1], [20, 2], [21, 3], [22, 3]]);
+  const ask = entries.find((entry) => entry.task.id === 22);
+  assertEqual([ask.parent.id, ask.ancestors.map((each) => each.id)], [20, [10, 16, 20]]);
+  const book = tasksOn(tree(), nested, tree().get(2))[0];
+  assertEqual(subtaskText(book), "2/5 subtasks", "every level, done of all");
+  // Opened in place, every level under the task, indented by depth, then + Add subtask.
+  const section = HUB_SECTIONS.find((each) => each.key === "tasks");
+  const rows = section.rows({ tree: tree(), tasks: nested, sessions: [], today: new Date(2026, 10, 24), expanded: new Set([10]) }, tree().get(2));
+  assertEqual(rows.slice(0, 7).map((row) => [row.title, row.depth]), [["Book van", 0], ["Get quotes", 1], ["Pick a date", 1],
+    ["Call movers", 2], ["Find numbers", 3], ["Ask Jo", 3], ["+ Add subtask", 1]]);
+  assertEqual(rows[0].expanded, true);
+  assertEqual(rows[3].expanded, undefined, "only the top row opens in place");
+  // The calendar's list: a grandchild of mine shows under its open parents.
+  assertTrue(openTasks(tree(), nested).map((entry) => entry.task.id).includes(22));
 });
 
 test("tasks: waiting on a person, and the calendar's list", () => {

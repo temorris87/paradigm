@@ -11,15 +11,42 @@ How the app behaves. Kept up to date by each feature that changes it.
 - Tasks (Tyson, 2026-11-22: records, not text; this replaced the `- [ ]` tasks): a task
   belongs to one note (a project, an area, a phase, a milestone, a meeting, any note) and is
   made in that page's Tasks section (+ New task, `a`, or `:task [!]{text}`, ! due today).
-  One level of subtasks. A Tasks section lists a task once with "2/5 subtasks"; Enter (or a
-  click) opens it in place: its subtasks, its notes and + Add subtask. Row buttons: Done
-  (Space), Edit… (`e`: text, notes, due), Delegate… / Take back (`d`), Delete (`x`; a task
-  with logged time keeps its row). A delegated task shows "→ Name, follow up …" (red past
+  Subtasks nest (2026-11-26): a task plus at most 4 levels under it (deeper: "Subtasks go 4
+  levels deep"). A Tasks section lists a task once with "2/5 subtasks", counting every level;
+  Enter (or a click on its title) opens its own page (below), `z` (or a click on its ▸) opens
+  it in place: its notes, every level of subtasks, each box under the start of the title above
+  it, and + Add subtask for direct ones (deeper ones are added on the task page). Row buttons:
+  Done (Space), Edit… (`e`: text, notes, due), Delegate… / Take back (`d`), Delete (`x`; it
+  takes every subtask under it, and its confirm says how many and opens on Cancel; a task
+  with logged time keeps its row, so the timesheet doesn't change). Marking a task done marks
+  every open subtask under it done too, at every level, delegated ones included, with today's
+  done day; ones already done keep theirs (Tyson, 2026-11-26). Reopening reopens that task
+  alone, and ticking the last open subtask leaves its parent open. A subtask keeps its parent:
+  no indent or outdent. A delegated task shows "→ Name, follow up …" (red past
   the follow-up day), leaves the Week tray (but for Follow-ups, when its follow-up day is in
   the week shown or before), and is listed in Waiting on (Home and
   the person's page). Roll-up: a project lists its tasks and those of the notes inside it;
   an area lists its own only, and each of its projects in Projects with that project's
   counts (open tasks, decisions, open questions, next milestone).
+- Task page (2026-11-26; `?note=HUB&task=ID`, `static/js/tasks/task-page.js`): a task's own
+  page in the main window, over its note's dashboard (or its hub's); from the note window's
+  sheet Enter shows it in the main window. The breadcrumb is the hub › each parent task › this
+  task, each a link. The head: ☐/☑, the title, one line of facts (due, → delegate and
+  follow-up, For, estimate, "on {note}" when it is not the hub, done day), then its notes
+  rendered (maths, diagrams, note links), or "No notes — e to add". Under it a Subtask | Notes
+  table (about 2fr / 3fr; under 1400 px the notes go under each name): the left column a tree,
+  each box under the start of its parent's title; the right that subtask's own notes, blank
+  when it has none; done ones stay in place, muted. Titles win over facts: the facts are cut
+  first and wrap under the title when there is no room. + Add subtask under the table. Keys
+  (`task-page-keys.js`): `j`/`k`/arrows (the head is the first row), `gg`/`G`, Enter opens a
+  subtask's page, `a` adds a subtask under the row (on the head: a direct one), Space done or
+  reopen, `e` Edit…, `d` delegate or take back, `x`/Delete, `J`/`K` move among siblings,
+  Escape back to the dashboard. Notes are edited through Edit… only, never on the page (the
+  main window never edits text). It redraws when another window changes something; a deleted
+  task shows "This task is gone", one on a trashed note "Its note is in the trash" (a link to
+  Trash), each with Back; a task on an archived note is read-only. Waiting on and I owe rows
+  open it too; the calendar, the Week tray and Today keep opening the note (the block menu has
+  Open task); the palette lists no tasks.
 - No next action (Tyson, 2026-11-26; it replaced the NEXT flag): a Tasks section keeps its
   tasks in their own order, with no NEXT badge, no Make next and no `n`. A page opened shows
   its first task selected, even when the tasks load after the first draw, until you move, press

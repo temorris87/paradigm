@@ -1,5 +1,5 @@
 // The main window (/): dashboards, Home, People, Meetings, the calendar, the timesheet, plan
-// templates and the Live note, wide. A note opens in the note window (windows/note-window.js),
+// templates, folders, a task's page and the Live note, wide. A note opens in the note window (windows/note-window.js),
 // and the Live page here shows it as it is typed there (live/live-page.js).
 import { boot } from "./boot.js";
 import { installMainKeys } from "./layout/main-keys.js";
@@ -11,6 +11,7 @@ import { setNotePath } from "./notes/app.js";
 import { PlanPage } from "./plan/plan-page.js";
 import { TemplatePage } from "./plan/template-page.js";
 import { FolderPage } from "./resources/folder-page.js";
+import { TaskPage } from "./tasks/task-page.js";
 import { LivePage } from "./live/live-page.js";
 import { timeApi } from "./timesheet/api.js";
 import { TimePage } from "./timesheet/time-page.js";
@@ -48,6 +49,7 @@ const app = boot({
       api: { notes: notesApi, meetings: meetingsApi, tasks: tasksApi, calendar: calendarApi, plan: planApi, time: timeApi },
       changes,
       openNote: (id) => app().guard(app().open(id)),
+      openTask: (id) => app().guard(app().showTask(id)),
       isShown: shown("week"),
       onMove: (days) => week.moveWeek(days),
       onDrawn: () => week.drawSummary(),
@@ -59,6 +61,7 @@ const app = boot({
     week.hold(calendar, time, onCall);
     const template = new TemplatePage($(".plan-template-view"), { app, onLeave: () => app().leaveView() });
     const folder = new FolderPage($(".folder-view"), { app, onLeave: () => app().leaveView() });
+    const task = new TaskPage($(".task-view"), { app, onLeave: () => app().leaveView() });
     const plan = new PlanPage($(".plan-view"), { app, onLeave: () => app().leaveView() });
     // A note newly opened in the note window, any way, brings the Live page up here.
     const live = new LivePage($(".live-view"), { changes, app, viewer: $("pd-image-viewer"),
@@ -86,6 +89,7 @@ const app = boot({
         week: { section: weekRoot, show: (ctx) => week.redraw(ctx), enter: () => week.show(app().weekView), focus: () => week.focus() },
         template: { section: $(".plan-template-view"), show: (ctx) => template.show(ctx), focus: () => template.focus() },
         folder: { section: $(".folder-view"), show: (ctx) => folder.show(ctx), focus: () => folder.focus() },
+        task: { section: $(".task-view"), show: (ctx) => task.show(ctx), focus: () => task.focus() },
         plan: { section: $(".plan-view"), show: (ctx) => plan.show(ctx), focus: () => plan.focus() },
         live: { section: $(".live-view"), show: () => live.show(), focus: () => live.focus() },
       },

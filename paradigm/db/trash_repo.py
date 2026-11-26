@@ -107,6 +107,10 @@ class TrashRepository:
             conn.executemany("UPDATE tasks SET parent_id = NULL WHERE note_id = ?", ids)
             conn.executemany("DELETE FROM tasks WHERE note_id = ?", ids)
             conn.executemany("UPDATE tasks SET delegate_id = NULL, follow_up = '' WHERE delegate_id = ?", ids)
+            # Live and deleted tasks elsewhere may still name the note: as the person they're for,
+            # or as the note a task was captured from (the task stays, without its source).
+            conn.executemany("UPDATE tasks SET for_person_id = NULL WHERE for_person_id = ?", ids)
+            conn.executemany("DELETE FROM task_sources WHERE source_id = ?", ids)
             # A hub's linked folders go (the files stay in OneDrive), and an area's plan templates.
             for (note_id,) in ids:
                 _purge_folders(conn, note_id)

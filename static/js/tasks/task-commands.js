@@ -13,7 +13,8 @@
 //                                                     30 min long)
 //   snoozeTask(app, taskId)                           z: off Today's Up next until tomorrow
 //   extendBlock(app, sessionId, minutes)              a block made longer (+15 min)
-//   removeTaskDialog(app, taskId)                     with a confirm
+//   removeTaskDialog(app, taskId)                     with a confirm naming how many subtasks
+//                                                     go with it (every level: removeTaskText)
 //   taskCommand(app, arg)                             :task {title} on the open note
 //   quickTaskCommand(app, arg)                        :t {text} [@Name] [!day]: a task on the
 //                                                     open note's hub, without leaving the note
@@ -23,7 +24,7 @@ import { planningSettings } from "../today/today-model.js";
 import { firstFreeSlot } from "../week/capacity.js";
 import { dayText } from "../ui/dates.js";
 import { allPeople, findPerson } from "../people/people-model.js";
-import { estimateText, parseEstimate } from "./tasks-model.js";
+import { MAX_TASK_DEPTH, estimateText, parseEstimate } from "./tasks-model.js";
 import { parseTaskText } from "../notes/capture.js";
 import { nextTogether } from "../people/one-on-one.js";
 import { hubOf } from "../notes/hub-groups.js";
@@ -58,6 +59,9 @@ export async function setTaskDone(app, taskId, done) {
 }
 
 export function newTaskDialog(app, owner, parent = null) {
+  // The dialog always opens, so the keys typed after `a` land in it, never on the page; a level
+  // too deep is refused inside it, before the request (the server refuses it too, with a 400).
+  const tooDeep = parent !== null && app.tasks.ancestorsOf(parent.id).length + 1 >= MAX_TASK_DEPTH;
   return formDialog({
     title: parent ? `New subtask of "${parent.title}"` : `New task in "${owner.title}"`,
     fields: [
@@ -65,7 +69,7 @@ export function newTaskDialog(app, owner, parent = null) {
       { key: "due", label: "Due (optional)", type: "date", optional: true },
     ],
     submit: parent ? "Add subtask" : "Add task",
-    run: ({ title, due }) => addTask(app, parent ? parent.note_id : owner.id, title, { parentId: parent?.id ?? null, due }),
+    run: ({ title, due }) => tooDeep ? Promise.reject(new Error(`Subtasks go ${MAX_TASK_DEPTH - 1} levels deep`)) : addTask(app, parent ? parent.note_id : owner.id, title, { parentId: parent?.id ?? null, due }),
     fallbackFocus: () => app.focusNote(),
   });
 }
@@ -80,7 +84,7 @@ export function editTaskDialog(app, taskId) {
         placeholder: "a few lines: where it stands, links, what is waited on" },
       { key: "due", label: "Due (optional)", type: "date", value: task.due, optional: true },
       { key: "estimate", label: "Estimate (optional)", value: estimateText(task.estimate_min), optional: true,
-        placeholder: "30 min, 1.5 h: what s places on the week" },
+        placeholder: "30 min, 1.5 h: what is placed on the week" },
       ...(task.delegate_id === null ? [{ key: "forName", label: "For (optional): someone you owe it to",
         value: app.tree.get(task.for_person_id)?.title ?? "", optional: true, suggestions: allPeople(app.tree).map((person) => person.title) }] : []),
     ],
@@ -183,12 +187,13 @@ export async function takeBack(app, taskId) {
 
 export function removeTaskDialog(app, taskId) {
   const task = taskOf(app, taskId);
-  const subtasks = app.tasks.subtasksOf(taskId).length;
   return confirmDialog({
     title: "Delete task",
-    text: `Delete "${task.title}"${subtasks ? ` and its ${subtasks === 1 ? "subtask" : `${subtasks} subtasks`}` : ""}? Time already logged on it stays on the timesheet.`,
+    text: removeTaskText(task, app.tasks.descendantsOf(taskId).length),
     confirm: "Delete",
     danger: true,
+    // It takes every subtask with it: Enter by reflex must not.
+    safeFocus: true,
     run: async () => {
       await app.tasksApi.remove(taskId);
       await changed(app);
@@ -196,6 +201,12 @@ export function removeTaskDialog(app, taskId) {
     },
     fallbackFocus: () => app.focusNote(),
   });
+}
+
+/** The delete confirm's question: the subtasks counted at every level, since they all go. */
+export function removeTaskText(task, subtasks) {
+  const under = subtasks ? ` and ${subtasks === 1 ? "its subtask" : `the ${subtasks} subtasks under it`}` : "";
+  return `Delete "${task.title}"${under}? Any time logged on it stays on the timesheet.`;
 }
 
 /** :task {title}: a task on the open note (due today with a "!" in front: ":task !Call Jo"). */

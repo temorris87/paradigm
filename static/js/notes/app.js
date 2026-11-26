@@ -121,6 +121,8 @@ export class NotesApp {
     this.planTemplates = [];
     this.files = new Files();
     this.templateId = null;
+    this.taskId = null; // the task page's (the main window)
+    this.taskNoteId = null; // its note, as the URL had it: says "in the trash" after a reload
     this.weekView = "plan"; // the Week page's Plan, Timesheet, Settings or On call
     this.editor = editor;
     this.tasksApi = tasksApi;
@@ -302,6 +304,10 @@ export class NotesApp {
       if (message.key === "folder") {
         await this.refreshTree();
         this.showFolder(message.folderId);
+      } else if (message.key === "task") {
+        // id is the task's here, not a hub's: showTask opens the dashboard under it.
+        await this.refreshTree();
+        await this.showTask(message.id);
       } else if (this.views.pages[message.key] || ["calendar", "time", "oncall"].includes(message.key)) {
         // A page about one hub (its plan) opens that hub's dashboard under it first.
         if (message.id !== undefined) {
@@ -321,6 +327,11 @@ export class NotesApp {
   async reloadIfChanged() {
     const id = this.currentId;
     if (id === null || this.session.dirty || this.agenda.dirty) return;
+    // Trashed in the other window: fetching it would only report "No such note".
+    if (!this.tree.has(id)) {
+      await this.leaveTrashed();
+      return;
+    }
     const note = await this.api.get(id);
     const agendaChanged = note.agenda_version !== undefined && this.agenda.id === id
       && note.agenda_version !== this.agenda.session.note?.version;
@@ -328,6 +339,22 @@ export class NotesApp {
     // switchTo, not open: open() leaves a page shown in the main window (the Live page, while
     // this hub is typed in the note window), and a reload must not move the window anywhere.
     await this.switchTo(id, { discard: true, history: "none", heading: "" });
+  }
+
+  /** The note shown here went to the Trash from the other window. A page over it (a task
+   * page, Live) says so itself; a bare dashboard would be left empty, so move to its parent
+   * (or the first top-level note) and say where it went. */
+  async leaveTrashed() {
+    if (this.views?.shown) return;
+    const gone = this.session.note;
+    const parent = gone?.parent_id ?? null;
+    // Only a dashboard shows here (as mainFromUrl picks): the parent's, else the first one.
+    const near = parent !== null && this.tree.has(parent)
+      ? (this.isDashboard(parent) ? parent : hubOf(this.tree, parent)?.id ?? null) : null;
+    const next = near ?? this.tree.children(null).find((note) => this.isDashboard(note.id))?.id ?? null;
+    this.session.close();
+    if (next !== null) await this.switchTo(next, { discard: true, history: "replace", heading: "" });
+    this.say(`"${gone?.title ?? "The note"}" was moved to the Trash`);
   }
 
   /** A meeting's save sends its T:/D:/Q: lines (capture.js); what they made shows at once. */
@@ -393,6 +420,10 @@ export class NotesApp {
     if (id === undefined) return;
     if (params.has("template")) this.templateId = Number(params.get("template"));
     if (params.has("folder")) this.folderId = Number(params.get("folder"));
+    if (params.has("task")) {
+      this.taskId = Number(params.get("task"));
+      this.taskNoteId = Number.isInteger(wanted) && wanted > 0 ? wanted : null;
+    }
     this.weekView = params.has("time") ? "timesheet" : ["timesheet", "settings", "oncall"].includes(params.get("week")) ? params.get("week") : "plan";
     const view = this.views.fromUrl(params) ?? (asked !== null && this.isDashboard(id) ? null : "home");
     await this.open(id, { history: view ? "none" : history });
@@ -522,7 +553,7 @@ export class NotesApp {
     const ctx = { tree: this.tree, people: this.people, meetings: this.meetings, records: this.records,
       links: this.linkIndex.links, mentions: this.linkIndex.mentions, trash: this.trash, tasks: this.tasks,
       sessions: this.sessions, importStatus: this.importStatus, plan: this.plan, planTemplates: this.planTemplates,
-      files: this.files, templateId: this.templateId, folders: this.folders, folderId: this.folderId, statusLogs: this.statusLogs,
+      files: this.files, templateId: this.templateId, folders: this.folders, folderId: this.folderId, taskId: this.taskId, taskNoteId: this.taskNoteId, statusLogs: this.statusLogs,
       timeSettings: this.timeSettings, topics: this.topics ?? [], onCall: this.onCall, today: this.today() };
     const trashed = this.trash.entries.length;
     if (this.trashButton) this.trashButton.textContent = trashed ? `Trash · ${trashed}` : "Trash";
@@ -897,6 +928,27 @@ export class NotesApp {
     await this.showPlan();
   }
 
+  /** A task's page (the main window), over its note's dashboard (the note itself when it is
+   * one, else its hub): from the note window, it shows there. The dashboard is a step of its
+   * own, so Back (Escape) returns to it, wherever the task was opened from; from a task's page
+   * (a subtask, a crumb) the new page takes the URL's place. */
+  async showTask(taskId) {
+    if (this.role !== "main") {
+      showMainWindow({ type: "view", key: "task", id: taskId }, this.changes);
+      return;
+    }
+    const task = this.tasks.get(taskId);
+    if (!task) throw new Error("E: that task is gone (deleted in another window?)");
+    const under = this.isDashboard(task.note_id) ? task.note_id : hubOf(this.tree, task.note_id)?.id ?? null;
+    const fromTaskPage = this.views.shown === "task";
+    const needsOpen = under !== null && (under !== this.currentId || (!fromTaskPage && this.views.shown));
+    if (needsOpen && !(await this.open(under, { history: fromTaskPage ? "none" : "push" }))) return;
+    this.taskId = taskId;
+    this.taskNoteId = task.note_id;
+    this.views.show("task", "push", `task=${taskId}`);
+    this.redraw();
+  }
+
   /** A plan template's page (the main window). */
   showTemplate(templateId) {
     if (this.role !== "main") {
@@ -999,7 +1051,7 @@ export class NotesApp {
     }
     // A page about one thing keeps which one in its URL flag.
     const flag = key === "folder" ? `folder=${this.folderId}` : key === "template" ? `template=${this.templateId}`
-      : key === "week" && this.weekView !== "plan" ? `week=${this.weekView}` : key;
+      : key === "task" ? `task=${this.taskId}` : key === "week" && this.weekView !== "plan" ? `week=${this.weekView}` : key;
     this.views.show(key, history, flag);
     this.redraw();
   }
@@ -1050,6 +1102,8 @@ export class NotesApp {
     const title = this.session.note.title;
     this.session.close();
     await this.refreshTree();
+    // The other window may show a page about this note (a task page): it redraws on this.
+    this.changes.send({ type: "changed", what: ["notes", "tasks"] });
     if (next !== null) await this.open(next, { history: "replace", discard: true });
     this.say(`"${title}" moved to the Trash (kept for ${this.trash.days} days)`);
   }
@@ -1065,6 +1119,7 @@ export class NotesApp {
     }
     const { note, renamed } = answer;
     await this.refreshTree();
+    this.changes.send({ type: "changed", what: ["notes", "tasks"] });
     await this.open(note.id);
     const where = this.tree.parentId(note.id) === null ? groupLabel(this.tree, note.id) : whereText(this.tree, note.id);
     this.say(`"${note.title}" restored to ${where}${renamed ? " (its title was taken there)" : ""}`);

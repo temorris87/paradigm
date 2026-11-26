@@ -158,12 +158,17 @@ Features in build order. "build feature" takes the first unchecked item.
   scheduling my week and days. I should be able to filter by project / area so I can narrow in
   on what I want to work on. (done 2026-11-26)
 - [x] Remove generic teams boilerplate text from agenda imports. (done 2026-11-26)
-- [ ] Tasks should have their own page. Subtask names should be aligned underneath and indented
+- [x] Tasks should have their own page. Subtask names should be aligned underneath and indented
   slightly under the task name. Subtasks should render with their own notes column on the task
-  page. Subtasks should be able to have subtasks.
+  page. Subtasks should be able to have subtasks. (done 2026-11-26)
 - [ ] Moving a meeting around on the calendar always opens a new meeting dialog: bug.
 - [ ] Holiday time and PTO time should show on calendar.
 - [ ] Work display resolution is 5120x2160, the right 1/3 is slightly misaligned by default when
   it loads.
 - [ ] The "Cancel the meeting" dialog opens with the focus on its destructive button, so
   pressing Enter straight away cancels the meeting: focus the safe choice instead.
+- [ ] In the Delegate dialog, typing part of a person's name ("Dana") then Enter makes a new
+  person instead of picking the existing one (Dana Northwind): too easy to make duplicates.
+- [ ] Escape on a calendar block's menu leaves the focus on the page body instead of the block.
+- [ ] The main window once jumped to the Live page instead of staying on the task page it had
+  open, after a note had been trashed (seen once, not reproduced).

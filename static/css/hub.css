@@ -325,6 +325,24 @@
 .hub__row--depth-5 { padding-left: 5.5rem; }
 .hub__row--depth-6 { padding-left: 6.5rem; }
 
+/* A task's subtasks, every level: each box starts under the start of its parent's title, so
+   a name sits one step (a box and the gap after it) right of the name above it. A top task's
+   title starts after the row's padding, its ▸ (0.8rem) and its box, each followed by the gap. */
+.hub__row--task {
+  --task-box: 1em;
+  --task-step: calc(var(--task-box) + var(--sp-3));
+  --task-start: calc(var(--sp-2) + 0.8rem + var(--sp-3));
+}
+
+.hub__row--task .hub__box {
+  width: var(--task-box);
+}
+
+.hub__row--task.hub__row--depth-1 { padding-left: calc(var(--task-start) + var(--task-step)); }
+.hub__row--task.hub__row--depth-2 { padding-left: calc(var(--task-start) + 2 * var(--task-step)); }
+.hub__row--task.hub__row--depth-3 { padding-left: calc(var(--task-start) + 3 * var(--task-step)); }
+.hub__row--task.hub__row--depth-4 { padding-left: calc(var(--task-start) + 4 * var(--task-step)); }
+
 /* A mention's lines, rendered, under its row on a person's page. */
 .hub__snippet {
   margin: var(--sp-0) 0 var(--sp-1) var(--sp-4);
@@ -431,6 +449,33 @@
   display: flex;
 }
 
+/* On the active row the buttons never squeeze the title or its detail (a task's "1/4
+   subtasks"): the line wraps, and what no longer fits moves to a second line, at the right. */
+.hub__row[aria-selected="true"] .hub__line:has(> .hub__row-actions) {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  row-gap: var(--sp-0);
+}
+
+/* An empty date column would make a blank second line of its own. */
+.hub__row[aria-selected="true"] .hub__line:has(> .hub__row-actions) > .hub__date:empty {
+  display: none;
+}
+
+/* Under the mouse alone they lie over the end of the line instead: a row that grew there
+   would move every row below it while the pointer crosses the list. */
+.hub__line:has(> .hub__row-actions) {
+  position: relative;
+}
+
+.hub__row:hover:not([aria-selected="true"]) .hub__row-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding-left: var(--sp-2);
+  background: var(--nord1);
+}
+
 .hub__row-action {
   padding: 0 var(--sp-2);
   border: 1px solid var(--nord3);
@@ -470,7 +515,7 @@
   color: var(--nord11);
 }
 
-/* A task's box and its ▸ (Enter shows its subtasks). */
+/* A task's box and its ▸ (z, or a click on it, shows its subtasks in place). */
 .hub__box {
   flex: none;
   color: var(--nord4);

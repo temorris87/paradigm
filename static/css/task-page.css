@@ -1,0 +1,333 @@
+/* A task's page in the main window (static/js/tasks/task-page.js): the breadcrumb, the head
+   (box, title, facts, its notes), then its subtasks in two columns, Subtask | Notes, about
+   2fr / 3fr; under 1400 px the notes go under each name. */
+.task-view[hidden] {
+  display: none;
+}
+
+.task-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  outline: none;
+}
+
+.task-page__crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-1);
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+.task-page__separator,
+.task-page__dot {
+  color: var(--text-faint);
+}
+
+.task-page__crumb-link,
+.task-page__note-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--nord8);
+  font: inherit;
+  cursor: pointer;
+}
+
+.task-page__crumb-link:hover,
+.task-page__crumb-link:focus-visible,
+.task-page__note-link:hover {
+  text-decoration: underline;
+}
+
+.task-page__crumb-here {
+  color: var(--text);
+}
+
+.task-page__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  outline: none;
+}
+
+/* The rows of the listbox: the head and each subtask. */
+.task-page__head,
+.task-page__row {
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.task-page__head {
+  padding: var(--sp-2) var(--sp-3);
+}
+
+.task-page__head:hover,
+.task-page__row:hover {
+  background: var(--nord1);
+}
+
+.task-page__body [aria-selected="true"] {
+  background: var(--nord2);
+}
+
+.task-page__body:focus [aria-selected="true"] {
+  box-shadow: inset 0 0 0 1px var(--nord9);
+}
+
+.task-page__title-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.task-page__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  color: var(--text-strong);
+  line-height: 1.25;
+}
+
+.task-page__head .task-page__box {
+  font-size: var(--fs-xl);
+}
+
+.task-page__head--done .task-page__title {
+  color: var(--text-faint);
+}
+
+.task-page__facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-1) var(--sp-2);
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+.task-page__notes--head {
+  margin-top: var(--sp-3);
+}
+
+.task-page__no-notes {
+  margin: var(--sp-3) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-faint);
+}
+
+.task-page__box {
+  flex: none;
+  width: var(--task-box, 1.2em);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--nord4);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+span.task-page__box {
+  cursor: default;
+}
+
+/* Edit…, Delegate…, Delete: shown on the selected row or under the mouse. Hidden, they take
+   no room at all, so a name is never cut for them; on the selected row the line wraps and they
+   move to a line of their own when the name and its facts need the width. */
+.task-page__actions {
+  display: none;
+  flex: none;
+  gap: var(--sp-1);
+}
+
+.task-page__head:hover .task-page__actions,
+.task-page__row:hover .task-page__actions,
+[aria-selected="true"] > .task-page__title-line > .task-page__actions,
+[aria-selected="true"] > .task-page__name > .task-page__actions {
+  display: flex;
+}
+
+[aria-selected="true"] > .task-page__title-line,
+[aria-selected="true"] > .task-page__name {
+  flex-wrap: wrap;
+  row-gap: var(--sp-1);
+}
+
+/* Under the mouse alone they lie over the end of the line instead, so a row never grows
+   (and moves the rows below) while the pointer crosses the list. */
+.task-page__title-line,
+.task-page__name {
+  position: relative;
+}
+
+.task-page__head:hover:not([aria-selected="true"]) .task-page__actions,
+.task-page__row:hover:not([aria-selected="true"]) .task-page__actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding-left: var(--sp-2);
+  background: var(--nord1);
+}
+
+.task-page__action,
+.task-page__add {
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--nord3);
+  border-radius: 4px;
+  background: var(--nord1);
+  color: var(--nord5);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+
+.task-page__action:hover,
+.task-page__add:hover {
+  border-color: var(--nord8);
+}
+
+.task-page__add {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  color: var(--nord9);
+  font-size: var(--fs-sm);
+}
+
+/* The subtasks: one grid per row so each notes cell sits top-aligned beside its name. Each
+   box starts under the start of its parent's title: one step (a box and the gap) per level. */
+.task-page__table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-0);
+}
+
+.task-page__columns,
+.task-page__row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  align-items: start;
+  gap: var(--sp-4);
+}
+
+.task-page__columns {
+  padding: 0 var(--sp-2) var(--sp-1);
+  border-bottom: 1px solid var(--nord2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.task-page__row {
+  --task-box: 1.2em;
+  --task-step: calc(var(--task-box) + var(--sp-2));
+  --indent: 0;
+  /* Where the head's title starts, measured from the row's padding edge: the head's padding,
+     its box (1.2em at the title's size) and the gap, less the row's own padding. A direct
+     subtask's box starts there, so its name sits one step in under the task's name. */
+  --task-base: calc(2 * var(--sp-3) + 1.2 * var(--fs-xl) - var(--sp-2));
+  padding: var(--sp-1) var(--sp-2);
+}
+
+.task-page__row--depth-2 { --indent: 1; }
+.task-page__row--depth-3 { --indent: 2; }
+.task-page__row--depth-4 { --indent: 3; }
+
+.task-page__name {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  min-width: 0;
+  /* The box hangs in the padding, one step left of the title, so a line the selected row
+     wraps onto (its facts, its actions) starts under the title rather than under the box. */
+  padding-left: calc(var(--task-base) + (var(--indent) + 1) * var(--task-step));
+  /* Facts with no room left wrap under the title instead of being squeezed to nothing. */
+  flex-wrap: wrap;
+}
+
+.task-page__name > .task-page__box {
+  margin-left: calc(-1 * var(--task-step));
+}
+
+.task-page__row-title {
+  /* Never shrinks before the facts beside it: it gives way only once they are gone, and then
+     only to the row's own width (flex-shrink 1 vs 100 still clipped a short title). */
+  flex: 0 0 auto;
+  /* Room for the box beside it, so a long title is cut rather than wrapped off the box. */
+  max-width: calc(100% - var(--task-step));
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.task-page__row-title:hover {
+  text-decoration: underline;
+}
+
+/* Titles beat details: the facts give way first. */
+.task-page__row-facts {
+  flex: 0 100 auto;
+  min-width: min(100%, 8rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+.task-page__actions {
+  margin-left: auto;
+}
+
+.task-page__row--done .task-page__row-title,
+.task-page__row--done .task-page__box {
+  color: var(--text-faint);
+}
+
+.task-page__cell-notes {
+  min-width: 0;
+  font-size: var(--fs-sm);
+}
+
+.task-page__cell-notes > :last-child {
+  margin-bottom: 0;
+}
+
+.task-page__gone {
+  padding: var(--sp-2) var(--sp-3);
+}
+
+@media (max-width: 1399.98px) {
+  .task-page__columns {
+    display: none;
+  }
+
+  .task-page__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-1);
+  }
+
+  /* Under its name, indented as far as the name's title. */
+  .task-page__cell-notes {
+    padding-left: calc(var(--task-base) + (var(--indent) + 1) * var(--task-step));
+  }
+
+  .task-page__cell-notes:empty {
+    display: none;
+  }
+}

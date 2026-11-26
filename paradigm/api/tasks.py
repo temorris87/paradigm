@@ -5,14 +5,18 @@ GET  /api/tasks                -> {tasks: [{id, note_id, parent_id, title, notes
                                   snoozed_until, estimate_min, for_person_id, source_id, quote}]}
                                   source_id, quote: the meeting and line it was captured from   live tasks only
 POST /api/task/create          {note_id, title, parent_id?, due?, notes?}  -> task
+                               (parent_id: any task on that note above the 5th level;
+                               deeper: 400 "Subtasks go 4 levels deep")
 POST /api/task/update          {id, title?, notes?, due?, follow_up?, snoozed_until?, estimate_min?}
                                -> task (estimate_min: minutes, null for none)
                                (snoozed_until: off Today's Up next until that day; '' none)
 POST /api/task/delegate        {id, person_id|null, follow_up?}            -> task
 POST /api/task/for             {id, person_id|null}                        -> task (I owe them)
 POST /api/task/done            {id, done}                                  -> task
+                               (done: every open task under it is done too; reopen: it alone)
 POST /api/task/move            {id, before_id|null}                        -> task
 POST /api/task/remove          {id}                                        -> {removed: [ids]}
+                               (the task and all its descendants)
 GET  /api/sessions?from=D&to=D -> {sessions: [{id, task_id, day, start, end}]}
 POST /api/session/add          {task_id, day, start, end}  -> session
 POST /api/session/move         {id, day, start, end}       -> session

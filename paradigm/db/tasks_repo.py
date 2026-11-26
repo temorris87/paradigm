@@ -1,9 +1,10 @@
 """Every read and write of tasks and their blocks of time (017_task_records.sql). The only
 code that knows the tasks and task_sessions tables.
 
-A task belongs to one note; a subtask to a task on the same note (one level). A task can be
-delegated to a person, with a day to follow it up. Deleting a task that has blocks of time
-keeps its row (removed_at), since those blocks are time worked."""
+A task belongs to one note; a subtask to a task on the same note, nested up to MAX_TASK_DEPTH
+levels in all. A task can be delegated to a person, with a day to follow it up. Closing a task
+closes its whole subtree; deleting one deletes its subtree. A deleted task keeps its row
+(removed_at), so its id is never handed to another task and its blocks of time stay time worked."""
 import sqlite3
 from typing import Callable, Dict, List, Optional
 
@@ -17,17 +18,25 @@ from paradigm.notes.tasks import BadTask, clean_estimate, clean_optional_day, cl
 
 Clock = Callable[[], str]
 
-__all__ = ["TaskRepository", "insert_task", "NotFound", "BadWhen", "BadTask", "NotAPerson", "NoTasksHere"]
+__all__ = ["TaskRepository", "insert_task", "MAX_TASK_DEPTH", "NotFound", "BadWhen", "BadTask", "NotAPerson",
+           "NoTasksHere"]
+
+# A task plus 4 levels of subtasks: deeper, the indent stops being readable in the 1/3 window.
+MAX_TASK_DEPTH = 5
 
 # A task is live while it isn't deleted and its note isn't trashed.
 _LIVE_TASK = "tasks.removed_at IS NULL AND notes.deleted_at IS NULL"
+# A live task's subtree: itself first, then every live descendant, with its depth below it.
+_SUBTREE = ("WITH RECURSIVE down(id, depth) AS (SELECT id, 0 FROM tasks WHERE id = ? "
+            "UNION ALL SELECT tasks.id, down.depth + 1 FROM tasks JOIN down ON tasks.parent_id = down.id "
+            "WHERE tasks.removed_at IS NULL) ")
 # The fields update() may change, and how each is cleaned.
 _FIELDS = {"title": clean_task_title, "notes": clean_task_notes, "due": clean_optional_day,
            "follow_up": clean_optional_day, "snoozed_until": clean_optional_day, "estimate_min": clean_estimate}
 
 
 class NoTasksHere(NoteError):
-    """A person's note or a template holds no tasks; a subtask has no subtasks."""
+    """A person's note or a template holds no tasks; subtasks stop at MAX_TASK_DEPTH."""
 
 
 class TaskRepository:
@@ -94,11 +103,18 @@ class TaskRepository:
             return _task(_task_row(conn, task_id))
 
     def set_done(self, task_id: int, done: bool) -> Dict:
+        """Marks a task done, and every open task under it at any depth (each gets today; the
+        ones done already keep their day), or reopens that task alone: its subtasks may have
+        been done on their own."""
         with self._db.transaction() as conn:
             row = _task_row(conn, task_id)
-            done_day = (row["done_day"] or self._today()) if done else ""
+            today = self._today()
+            done_day = (row["done_day"] or today) if done else ""
             conn.execute("UPDATE tasks SET done = ?, done_day = ? WHERE id = ?",
                          (int(done), done_day, task_id))
+            if done:
+                conn.execute(_SUBTREE + "UPDATE tasks SET done = 1, done_day = ? "
+                             "WHERE id IN (SELECT id FROM down WHERE depth > 0) AND done = 0", (task_id, today))
             return _task(_task_row(conn, task_id))
 
     def move(self, task_id: int, before_id: Optional[int]) -> Dict:
@@ -115,22 +131,22 @@ class TaskRepository:
             return _task(_task_row(conn, task_id))
 
     def remove(self, task_id: int) -> List[int]:
-        """Deletes a task and its subtasks. One with blocks of time is only marked removed (the
-        blocks are time worked). Returns the ids gone."""
+        """Deletes a task and its whole subtree. Returns every id gone, the task first.
+
+        The rows are only marked removed, never deleted: SQLite hands the highest free id to
+        the next task, so a deleted newest task's id would come back, and an old ?task= link
+        or Back entry would open the new task instead of "This task is gone". A row with blocks
+        of time needs keeping anyway (the blocks are time worked). Trash purge deletes them
+        with their note."""
         with self._db.transaction() as conn:
             _task_row(conn, task_id)
-            ids = [task_id] + [each[0] for each in conn.execute(
-                "SELECT id FROM tasks WHERE parent_id = ? AND removed_at IS NULL", (task_id,))]
+            ids = [each[0] for each in conn.execute(_SUBTREE + "SELECT id FROM down ORDER BY depth, id", (task_id,))]
             now = self._clock()
             for each in ids:
-                logged = conn.execute("SELECT 1 FROM task_sessions WHERE task_id = ? LIMIT 1", (each,)).fetchone()
-                if logged:
-                    conn.execute("UPDATE tasks SET removed_at = ? WHERE id = ?", (now, each))
-            # Subtasks first: the parent may still be pointed at.
-            for each in reversed(ids):
+                conn.execute("UPDATE tasks SET removed_at = ? WHERE id = ?", (now, each))
+                # As a real delete's cascade did: a captured line deleted as a task may be captured again.
                 if not conn.execute("SELECT 1 FROM task_sessions WHERE task_id = ? LIMIT 1", (each,)).fetchone():
-                    conn.execute("UPDATE tasks SET parent_id = NULL WHERE parent_id = ?", (each,))
-                    conn.execute("DELETE FROM tasks WHERE id = ?", (each,))
+                    conn.execute("DELETE FROM task_sources WHERE task_id = ?", (each,))
         return ids
 
     # ---- blocks of time ----
@@ -177,8 +193,8 @@ def insert_task(conn: sqlite3.Connection, note_id: int, title: str, parent_id: O
         parent = _task_row(conn, parent_id)
         if parent["note_id"] != note_id:
             raise NoTasksHere("A subtask goes on the same note as its task")
-        if parent["parent_id"] is not None:
-            raise NoTasksHere('"{}" is a subtask: subtasks go one level deep'.format(parent["title"]))
+        if _depth(conn, parent_id) >= MAX_TASK_DEPTH:
+            raise NoTasksHere("Subtasks go {} levels deep".format(MAX_TASK_DEPTH - 1))
     position = conn.execute(
         "SELECT ifnull(max(position), 0) + 1 FROM tasks WHERE note_id = ? AND parent_id IS ?",
         (note_id, parent_id)).fetchone()[0]
@@ -186,6 +202,14 @@ def insert_task(conn: sqlite3.Connection, note_id: int, title: str, parent_id: O
         "INSERT INTO tasks (note_id, parent_id, title, notes, due, position, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
         (note_id, parent_id, title, notes, due, position, now),
     ).lastrowid
+
+
+def _depth(conn: sqlite3.Connection, task_id: int) -> int:
+    """How many levels down a task sits: 1 for a top-level task."""
+    return conn.execute(
+        "WITH RECURSIVE up(id, depth) AS (SELECT parent_id, 1 FROM tasks WHERE id = ? "
+        "UNION ALL SELECT tasks.parent_id, up.depth + 1 FROM tasks JOIN up ON tasks.id = up.id) "
+        "SELECT max(depth) FROM up", (task_id,)).fetchone()[0]
 
 
 def _task(row: sqlite3.Row) -> Dict:

@@ -1,13 +1,17 @@
 // The pages the main window draws in place of a dashboard (Home, People, Meetings, Trash, the
-// calendar, the timesheet, a plan template, the Live note): which one shows, if any, and its URL flag and
-// history step. The dashboard stays open under them: /?note=N&people, /?note=N&template=4.
+// calendar, the timesheet, a plan template, a folder, a task, the Live note): which one shows, if any, and its URL flag and
+// history step. The dashboard stays open under them: /?note=N&people, /?note=N&template=4,
+// /?note=N&task=12.
 //
 //   const views = new PageViews({ main, pages: { home, people, meetings }, history, noteUrl() });
 //   views.shown                    "home" | "people" | "meetings" | "trash" | null
 //   views.fromUrl(searchParams)    the view a URL asks for, or null
 //   views.show(key, history, flag?) history: "push" (a command or button), "replace" (the
 //                                  page was loaded with the flag) or "none" (Back/Forward);
-//                                  flag: the URL's flag when it carries a value ("template=4")
+//                                  flag: the URL's flag when it carries a value ("template=4");
+//                                  the same page with another value (a subtask's page) takes
+//                                  the URL's place, so Back still reaches the dashboard under
+//                                  the first one
 //   views.leave()                  back to the note; false when it is the app's to redraw
 //   views.hide()                   no view, without touching the history (opening a note)
 //   views.draw(ctx, crumbs)        after every redraw of the notes page
@@ -24,9 +28,13 @@ export const PAGE_VIEWS = [
   { key: "week", label: "Week" },
   { key: "template", label: "Plan template" },
   { key: "folder", label: "Folder" },
+  { key: "task", label: "Task" },
   { key: "plan", label: "Plan" },
   { key: "live", label: "Live note" },
 ];
+
+// Pages that push their own history step even when another page is shown.
+const STEPS_OVER_PAGES = new Set(["task"]);
 
 /** A page's name ("Home"), for the tab's title. */
 export function viewLabel(key) {
@@ -52,10 +60,12 @@ export class PageViews {
     const base = this.noteUrl();
     const url = `${base}${base.includes("?") ? "&" : "?"}${flag}`;
     if (history === "push" && this.shown !== key) {
-      // From one page to the other: one step, so Escape and Back both reach the note.
-      if (this.history.state?.view) this.history.replaceState({ view: key }, "", url);
+      // From one page to the other: one step, so Escape and Back both reach the note. A task
+      // page is a step of its own even over another page (showTask puts its dashboard under
+      // it first, so this only happens for a task with no dashboard to open).
+      if (this.history.state?.view && !STEPS_OVER_PAGES.has(key)) this.history.replaceState({ view: key }, "", url);
       else this.history.pushState({ view: key }, "", url);
-    }
+    } else if (history === "push" && flag !== key) this.history.replaceState(this.history.state, "", url);
     // Only a push is marked: leaving a page that was loaded with the flag must not go Back
     // out of Paradigm.
     if (history === "replace") this.history.replaceState({}, "", url);

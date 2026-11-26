@@ -31,3 +31,5 @@ How the app behaves. Kept up to date by each feature that changes it.
   then the open questions they are on); then Backlinks | Active, Archived. The People page:
   Open items (the default) / Everyone pills, columns Name, Role · organisation, On, Waiting on
   them (late in orange), I owe, To raise, Next together.
+  Enter on a Waiting on or I owe row opens that task's own page (tasks.md), not its note
+  (2026-11-26).

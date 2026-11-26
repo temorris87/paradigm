@@ -95,6 +95,11 @@ How the app behaves. Kept up to date by each feature that changes it.
   trashed with it and opens it: under its old parent, or at the top when that is still
   trashed (a meeting, decision or question waits for its hub). A title taken meanwhile gets
   " (restored)".
+  Trashing or restoring a note tells the other window, so a task page on it there redraws
+  ("Its note is in the trash"). When the main window shows the bare dashboard of a note
+  trashed from the note window, it moves to the dashboard of its parent (or the first
+  top-level dashboard) and says '"Title" was moved to the Trash'; it is never left empty and
+  never reports "No such note".
 - An image is deleted from the database once no note (trashed ones included) links to it any
   more, but only when Paradigm starts or stops: while a tab is open, `u` or `p` can bring a
   deleted link back.

@@ -262,7 +262,8 @@ test("live page: a note opened while the ask is out still switches the page", ()
 test("live page: a save of the hub under the page reloads it without leaving the page", async () => {
   const calls = [];
   const app = {
-    currentId: 4, session: { dirty: false, note: { version: 1 } }, agenda: { dirty: false, id: null },
+    currentId: 4, tree: new NoteTree([{ id: 4, parent_id: null, title: "Acme" }]),
+    session: { dirty: false, note: { version: 1 } }, agenda: { dirty: false, id: null },
     api: { get: async () => ({ id: 4, version: 2, body: "y" }) },
     open: async () => calls.push("open"),
     switchTo: async (id, options) => calls.push(["switchTo", id, options.discard, options.history]),

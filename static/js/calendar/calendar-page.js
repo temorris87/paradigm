@@ -2,11 +2,11 @@
 // week of meetings and task blocks with each day's capacity and what is due, the tray of tasks
 // to plan onto it, and the Outlook import. It loads what it shows from the server and tells
 // the other windows what it changed (connection/changes.js); a note opens in the note window
-// (openNote).
+// (openNote); a task's own page opens over its dashboard here (openTask, the block menu).
 //
 //   const page = new CalendarPage({ root, bar, side, week, api: { notes, meetings, tasks, calendar,
-//                                   plan?, time? }, changes, openNote(id), isShown(), today,
-//                                   onMove?(days), onDrawn?() });
+//                                   plan?, time? }, changes, openNote(id), openTask?(id), isShown(),
+//                                   today, onMove?(days), onDrawn?() });
 //     onMove: the week page moves the week (days: -7, 7, or 0 for this one); without it the
 //             page has its own ‹ Today › in its bar
 //   page.show() / page.focus()      when its page comes into view (loads it the first time)
@@ -45,13 +45,14 @@ const START_HOUR = 7;
 const SHORTEST = STEP;
 
 export class CalendarPage {
-  constructor({ root, bar, side, week, api, changes, openNote = () => {}, isShown = () => true, today = () => new Date(),
+  constructor({ root, bar, side, week, api, changes, openNote = () => {}, openTask = null, isShown = () => true, today = () => new Date(),
                 location = window.location, onMove = null, onDrawn = () => {} }) {
     this.onMove = onMove;
     this.onDrawn = onDrawn;
     this.settings = {};
     this.root = root;
     this.openNoteIn = openNote;
+    this.openTask = openTask;
     this.isShown = isShown;
     this.started = false;
     this.api = api;
@@ -317,6 +318,7 @@ export class CalendarPage {
     this.select(block.key);
     const entries = block.kind === "task" ? [
       { label: "Open its note", run: () => this.run(this.openNote(block.noteId)) },
+      ...(this.openTask ? [{ label: "Open task", run: () => this.openTask(block.taskId) }] : []),
       { label: block.done ? "Open it again" : "Mark done", run: () => this.run(this.setDone(block.taskId, !block.done)) },
       { label: "Edit time…", run: () => this.run(this.editTime(block)) },
       "separator",
@@ -332,7 +334,8 @@ export class CalendarPage {
       { label: "File it…", run: () => this.side.show("file") },
       { label: "Don't import", danger: true, run: () => this.run(this.ignore([block.id])) },
     ];
-    openMenu(node, entries, { label: block.title });
+    // The week redraws when the window regains focus or another window changes something.
+    openMenu(node, entries, { label: block.title, fallbackFocus: () => this.focusBlock(block) });
   }
 
   select(key) {

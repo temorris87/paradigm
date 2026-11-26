@@ -57,6 +57,20 @@ test("menu: Escape closes it and gives the focus back to its button", () => with
   assertEqual(anchor.getAttribute("aria-expanded"), "false");
 }));
 
+test("menu: Escape after the page redrew its button gives the focus to fallbackFocus", () => withAnchor((anchor) => {
+  const redrawn = document.createElement("button");
+  document.body.append(redrawn);
+  try {
+    openMenu(anchor, [{ label: "One", run: () => {} }], { fallbackFocus: () => redrawn.focus() });
+    anchor.remove();
+    key(document.querySelector(".menu"), "Escape");
+    assertEqual(document.querySelector(".menu"), null);
+    assertEqual(document.activeElement, redrawn);
+  } finally {
+    redrawn.remove();
+  }
+}));
+
 test("menu: opening another closes the first; a click outside closes it", () => withAnchor((anchor) => {
   openMenu(anchor, [{ label: "One", run: () => {} }]);
   openMenu(anchor, [{ label: "Two", run: () => {} }]);
@@ -135,6 +149,18 @@ test("form dialog: an empty required field is refused; Escape cancels with null"
   key(dialog.querySelector("input"), "Escape");
   assertEqual(await result, null);
   assertTrue(!ran);
+});
+
+test("confirm dialog: safeFocus opens it on Cancel", async () => {
+  let ran = false;
+  const result = confirmDialog({ title: "Delete?", text: "Really", confirm: "Delete", danger: true, safeFocus: true,
+    run: async () => { ran = true; } });
+  const dialog = document.querySelector("dialog.dialog");
+  assertEqual(document.activeElement?.textContent, "Cancel");
+  document.activeElement.click();
+  assertEqual(await result, null);
+  assertTrue(!ran);
+  assertTrue(!dialog.isConnected);
 });
 
 test("confirm dialog: the button runs the action", async () => {

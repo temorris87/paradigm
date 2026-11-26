@@ -31,7 +31,9 @@ How the app behaves. Kept up to date by each feature that changes it.
   row drops its estimate into the first free slot before its due day (no due date: within
   the next two weeks). `gw` (or opening Plan) puts the focus on the calendar, so `[` `]` `t`
   and `s` work at once. Drag a block to move it, its bottom edge to resize (15-minute
-  steps); click (or right-click) for its menu: open, done, Edit time…, remove or cancel. An
+  steps); click (or right-click) for its menu: open, Open task (a task's own page, tasks.md),
+  done, Edit time…, remove or cancel. Escape on the menu puts the focus back on the block,
+  even when the week was redrawn under it. An
   empty slot makes a meeting there. A block that has passed is time worked. Plan's footer:
   each code's hours so far, the week projected, Timesheet ↗. Its keys live in
   `js/calendar/calendar-keys.js`.

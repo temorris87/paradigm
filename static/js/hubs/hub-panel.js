@@ -4,8 +4,9 @@
 // the user asked for; HubPage decides the rest.
 //
 //   const panel = new HubPanel(sectionElement, { onRow(section, row), onToggle(section),
-//     onMore(section), onAdd(section), onRowAction(section, row, key), onCommand(action), onLeave(),
-//     renderSnippet(markdown) -> html });
+//     onExpand(section, row), onMore(section), onAdd(section), onRowAction(section, row, key),
+//     onCommand(action), onLeave(), renderSnippet(markdown) -> html });
+//     onExpand: z (or a click on its ▸) on a row that opens in place (row.expanded set)
 //   panel.draw(sections)            one lane (the note window)
 //   panel.draw({ wide, act, know })  two lanes side by side (the main window's dashboard),
 //                                   under the wide sections (full width)
@@ -135,12 +136,18 @@ export class HubPanel {
     const classes = ["hub__row", `hub__row--depth-${Math.min(row.depth ?? 0, MAX_DEPTH)}`, row.muted && "hub__row--muted",
       row.late && "hub__row--late", row.addSubtask && "hub__row--add", row.date && "hub__row--dated", row.box && "hub__row--box",
       row.health && `hub__row--health health--${row.health}`, row.statusHistory && "hub__row--add", row.bar && "hub__row--bar",
-      row.pre !== undefined && "hub__row--pre"];
+      row.pre !== undefined && "hub__row--pre",
+      (row.task !== undefined || row.addSubtask !== undefined) && "hub__row--task"];
     const node = this.option(element("div", classes.filter(Boolean).join(" ")), { type: "row", section, row });
     if (row.tip) node.title = row.tip;
     const line = element("div", "hub__line");
     if (row.task !== undefined && row.depth === 0 && !row.addSubtask) {
-      line.append(element("span", "hub__twisty hub__twisty--task", row.expanded ? "▾" : "▸"));
+      const twisty = element("span", "hub__twisty hub__twisty--task", row.expanded ? "▾" : "▸");
+      if (row.expanded !== undefined) {
+        twisty.dataset.action = "expand";
+        twisty.title = row.expanded ? "Close it (z)" : "Its notes and subtasks here (z)";
+      }
+      line.append(twisty);
     }
     if (row.task !== undefined && !row.addSubtask) line.append(element("span", "hub__box", row.done ? "☑" : "☐"));
     if (row.pre !== undefined) {
@@ -192,6 +199,7 @@ export class HubPanel {
     const action = event.target.closest("[data-action]")?.dataset.action;
     const option = this.options[index];
     if (action === "add") return this.handlers.onAdd(option.section);
+    if (action === "expand") return this.handlers.onExpand?.(option.section, option.row);
     if (action) return this.handlers.onRowAction(option.section, option.row, action);
     return this.activate(option);
   }
@@ -218,7 +226,7 @@ export class HubPanel {
       case "nextLane": return this.moveTo(this.laneTarget(1));
       case "previousLane": return this.moveTo(this.laneTarget(-1));
       case "open": return this.activate(option);
-      case "fold": return option && option.type !== "empty" ? this.handlers.onToggle(option.section) : undefined;
+      case "fold": return this.fold(option);
       case "add": return option?.section.add ? this.handlers.onAdd(option.section) : undefined;
       case "remove": return this.rowAction(option, ["remove"]);
       case "second": return this.rowAction(option, ["role", "answer"]);
@@ -231,6 +239,13 @@ export class HubPanel {
       case "editor": return this.handlers.onLeave();
       default: return undefined;
     }
+  }
+
+  /** z: a task row that opens in place opens or closes; anywhere else, the section folds. */
+  fold(option) {
+    if (!option || option.type === "empty") return undefined;
+    if (option.type === "row" && option.row.expanded !== undefined) return this.handlers.onExpand?.(option.section, option.row);
+    return this.handlers.onToggle(option.section);
   }
 
   rowAction(option, keys) {

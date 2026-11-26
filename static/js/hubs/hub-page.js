@@ -16,7 +16,7 @@
 //     tabActions: { add(sectionKey, owner), row(key, sectionKey, owner, row), command(action, owner) }
 //             (hub-actions.js); command: "logStatus", "plan";
 //             row keys besides the row's buttons: "addSubtask", "openFile", "openFolder",
-//             "openTemplate"
+//             "openTemplate", "openTask"
 //     at: { field, line } when a row points into the text (a mention)
 //     sheet: the note window's .sheet around the sections (section-sheet.js): they slide up
 //             over the text from a bar of counts; closed whenever another note opens
@@ -69,6 +69,7 @@ export class HubPage {
     this.panel = new HubPanel(section, {
       onRow: (sectionDef, row) => this.onRow(sectionDef, row),
       onToggle: (sectionDef) => this.toggle(sectionDef),
+      onExpand: (sectionDef, row) => this.expand(row),
       onMore: (sectionDef) => this.showAll(sectionDef),
       // A split section ("openQuestions") adds and acts as the section it is cut from.
       onAdd: (sectionDef) => this.tabActions.add(sectionDef.base ?? sectionDef.key, this.hub),
@@ -168,13 +169,16 @@ export class HubPage {
     if (row.template !== undefined) return this.tabActions.row("openTemplate", sectionDef.key, this.hub, row);
     if (row.statusEntry !== undefined || row.statusHistory) return this.tabActions.row("statusHistory", sectionDef.key, this.hub, row);
     if (row.digest) return this.tabActions.add("digest", this.hub);
-    // A task opens in place: its subtasks, notes and + Add subtask (Waiting on opens the note).
-    if (row.task !== undefined && sectionDef.key === "tasks" && row.depth === 0) {
-      if (this.expanded.has(row.task)) this.expanded.delete(row.task);
-      else this.expanded.add(row.task);
-      return this.redraw();
-    }
+    // A task (Tasks, Waiting on, I owe, a subtask opened in place) opens its own page.
+    if (row.task !== undefined) return this.tabActions.row("openTask", sectionDef.key, this.hub, row);
     return this.onOpen(row.id, row.at);
+  }
+
+  /** z on a task in Tasks: its notes, every level of subtasks and + Add subtask, in place. */
+  expand(row) {
+    if (this.expanded.has(row.task)) this.expanded.delete(row.task);
+    else this.expanded.add(row.task);
+    this.redraw();
   }
 
   toggle(sectionDef) {

@@ -23,7 +23,7 @@ class TasksCalendarTimeApiTest(unittest.TestCase):
         task = self.post("/api/task/create", {"note_id": note["id"], "title": "  Draft   it "})
         self.assertEqual((task["title"], task["done"], task["parent_id"]), ("Draft it", False, None))
         sub = self.post("/api/task/create", {"note_id": note["id"], "title": "Outline", "parent_id": task["id"]})
-        self.post("/api/task/create", {"note_id": note["id"], "title": "Deeper", "parent_id": sub["id"]}, 400)
+        deeper = self.post("/api/task/create", {"note_id": note["id"], "title": "Deeper", "parent_id": sub["id"]})
         self.post("/api/task/create", {"note_id": note["id"], "title": ""}, 400)
         session = self.post("/api/session/add", {"task_id": task["id"], "day": "2026-11-17", "start": "09:00",
                                                  "end": "10:00"})
@@ -44,8 +44,8 @@ class TasksCalendarTimeApiTest(unittest.TestCase):
         self.assertEqual((updated["notes"], updated["due"]), ("the outline", "2026-12-02"))
         _, week = self.running.get_json("/api/time/week?monday=2026-11-16")
         self.assertIn("BUD", [row["code"] for row in week["rows"]])
-        # Deleting the task with logged time keeps its row (and the hours); its subtask goes.
-        self.assertEqual(sorted(self.post("/api/task/remove", {"id": task["id"]})["removed"]), sorted([task["id"], sub["id"]]))
+        # Deleting the task with logged time keeps its row (and the hours); its subtasks go.
+        self.assertEqual(sorted(self.post("/api/task/remove", {"id": task["id"]})["removed"]), sorted([task["id"], sub["id"], deeper["id"]]))
         _, tasks = self.running.get_json("/api/tasks")
         self.assertEqual(tasks["tasks"], [])
         _, week = self.running.get_json("/api/time/week?monday=2026-11-16")

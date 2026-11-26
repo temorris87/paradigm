@@ -14,8 +14,9 @@ static/
   vendor/mermaid-12.3.0/ Mermaid exactly as audited (same check, mermaid-12.3.0.sha256)
   css/                   dashboard.css (the main window's dashboard: sections flowing down
                          columns, long text folded under Show more),
-                         gantt.css, plan-template.css, folder-page.css, oncall.css (the On call
-                         tab, the Week bar's line, Today's rows, a person's head line),
+                         gantt.css, plan-template.css, folder-page.css, task-page.css (a
+                         task's page: Subtask | Notes, stacked under 1400 px), oncall.css (the
+                         On call tab, the Week bar's line, Today's rows, a person's head line),
                          sheet.css (the note window's sections sheet and its bar),
                          live.css (the Live page: its head, the caret, the cursor's band),
                          nord.css (palette variables and THE design tokens: --font-ui,
@@ -72,8 +73,8 @@ static/
                          :dropwith :task :template :dashboard :plan :timecode :calendar :time :oncall :hub
                          :home :live :export :trash :trashed :find),
                          page-views.js (which page the main window shows: &home, &people,
-                         &meetings, &trash, &calendar, &time, &live, &template=ID; the URL flag
-                         and Back),
+                         &meetings, &trash, &calendar, &time, &live, &template=ID, &folder=ID,
+                         &task=ID; the URL flag and Back),
                          hub-groups.js (THE PARA group table: Inbox, Projects, Areas,
                          Resources; then People, Templates and the Archive, folded by
                          default; phase, milestone and template kinds),
@@ -199,9 +200,13 @@ static/
   js/files/              api.js, files-model.js (a page's files; folders of a hub and its
                          area; a folder's summary and the unlink confirm's text; pure),
                          file-commands.js (link and unlink a folder, add, open, remove)
-  js/tasks/              api.js, tasks-model.js (a page's tasks with subtask counts, never
-                         rolled up past their project; waiting on; the calendar's open list
-                         of mine and its filter; today's blocks; pure), task-commands.js
+  js/tasks/              api.js, tasks-model.js (a page's tasks with subtask counts at every
+                         level, never rolled up past their project; subtasks nest up to
+                         MAX_TASK_DEPTH; taskTree, J/K's moveTarget; waiting on; the calendar's
+                         open list of mine and its filter; today's blocks; pure),
+                         task-commands.js, task-page.js (a task's page in the main window,
+                         &task=ID: breadcrumb, head, Subtask | Notes table), task-page-keys.js
+                         (THE task page key table)
   js/calendar/           (the Week page's Plan) api.js (the import), week-model.js (days shown, the weekend rule,
                          blocks, side-by-side layout, 15-minute snap; pure), grid-view.js
                          (the week grid), drag.js (pointer drags: drop, move, resize),

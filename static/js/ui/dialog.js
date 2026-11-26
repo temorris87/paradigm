@@ -18,6 +18,8 @@
 //     ],                                // add: lines a click puts in the text box
 //     submit: "Rename",                 // or (values) => "Add new person": the label follows the fields
 //     danger: false,                    // a red submit button (trash)
+//     safeFocus: false,                 // opens on Cancel, so a reflex Enter changes nothing
+//                                       // (a confirm that deletes for good)
 //     live: (values) => "...",          // a line under the fields, worked out again as they
 //                                       // change (Edit dates' knock-on effect), in red; or
 //                                       // { text, plain: true }: dim, not a warning (a preview)
@@ -34,7 +36,7 @@ import { element, openModal, restoreFocus, uniqueId } from "./dom.js";
 import { uiAction } from "./ui-keys.js";
 
 export function formDialog({ title, text = "", lines = [], fields = [], submit = "OK", danger = false, run = async (values) => values,
-  returnFocus = null, fallbackFocus = () => {}, live = null }) {
+  returnFocus = null, fallbackFocus = () => {}, live = null, safeFocus = false }) {
   return new Promise((resolve) => {
     const before = document.activeElement;
     const dialog = element("dialog", "dialog");
@@ -125,7 +127,7 @@ export function formDialog({ title, text = "", lines = [], fields = [], submit =
         ok.disabled = false;
       }
     });
-    const first = inputs.values().next().value ?? ok;
+    const first = inputs.values().next().value ?? (safeFocus ? cancel : ok);
     openModal(dialog, first);
     if (first.select && first.type === "text") first.select();
   });

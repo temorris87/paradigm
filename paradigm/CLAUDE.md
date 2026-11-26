@@ -28,7 +28,7 @@ paradigm/                Python package
                          folders.py (/api/folders, /api/folder/create|rename|move|trash,
                          /api/note/folder: Resources' folders);
                          tasks.py (/api/tasks, /api/task/create|update|delegate|done|move|
-                         remove: tasks as records, one level of subtasks; /api/sessions,
+                         remove: tasks as records, subtasks 4 levels deep; /api/sessions,
                          /api/session/add|move|remove: blocks of time);
                          plans.py (/api/plan: phases, milestones, their date changes;
                          /api/phase/create|make|unmake, /api/milestone/create|done,
@@ -94,7 +94,8 @@ paradigm/                Python package
                          what was trashed over Config.trash_days (7) ago, at start and stop),
                          images_repo.py (image bytes in SQLite, deduped per note by sha256;
                          sweep_unused deletes images no note links to, at start and stop only),
-                         tasks_repo.py (tasks and subtasks, delegation, sessions; a task
+                         tasks_repo.py (tasks and subtasks 5 levels in all, delegation,
+                         sessions; done closes the subtree, remove takes it; a task
                          with logged time is only marked removed), plan_repo.py (phases,
                          milestones, every date change logged; a phases/milestones row
                          makes a note kind "phase"/"milestone"), plan_templates_repo.py

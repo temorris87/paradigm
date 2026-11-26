@@ -62,7 +62,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   the main window (a chart in days: drag; + Phase, + Milestone, + Task). "Apply plan
   template…" on a project's chart makes them from a start day, skipping weekends and the
   timesheet's holidays; the applied dates are the baseline; it never replaces anything.
-  "Save as plan template…" turns a project's plan into one on its area.
+  "Save as plan template…" turns a project's plan into one on its area; templates keep one
+  level of subtasks, so a subtask's own subtasks are left out (2026-11-26).
 - Note templates: top-level notes in the Templates group (+ on its heading). "Insert
   template…" (the note menu, `:template [name]`) puts one in below the cursor: `{{date}}`,
   `{{time}}`, `{{title}}` filled in, the cursor at `{{cursor}}`, and its `- [ ]` lines become

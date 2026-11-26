@@ -312,6 +312,7 @@ export function hubTabActions(app) {
       if (key === "openFile") return app.guard(openFile(app, row.file));
       if (key === "openFolder") return app.guard(addFileDialog(app, owner, { folderId: row.folder }));
       if (key === "openTemplate") return app.showTemplate(row.template);
+      if (key === "openTask") return app.guard(app.showTask(row.task));
       if (key !== "role") return undefined;
       const [hub, person] = owner.kind === "person" ? [app.tree.get(row.id), owner] : [owner, app.tree.get(row.id)];
       return app.guard(roleOn(hub, person, row.role ?? ""));
