@@ -342,18 +342,18 @@ export class NotesApp {
   }
 
   /** The note shown here went to the Trash from the other window. A page over it (a task
-   * page, Live) says so itself; a bare dashboard would be left empty, so move to its parent
-   * (or the first top-level note) and say where it went. */
+   * page, Live) says so itself; a bare dashboard (or the note window's note) would be left
+   * empty, so move to its parent's dashboard (or the first top-level one) and say so. */
   async leaveTrashed() {
     if (this.views?.shown) return;
     const gone = this.session.note;
-    const parent = gone?.parent_id ?? null;
-    // Only a dashboard shows here (as mainFromUrl picks): the parent's, else the first one.
-    const near = parent !== null && this.tree.has(parent)
-      ? (this.isDashboard(parent) ? parent : hubOf(this.tree, parent)?.id ?? null) : null;
-    const next = near ?? this.tree.children(null).find((note) => this.isDashboard(note.id))?.id ?? null;
+    const next = this.dashboardAfter(gone?.parent_id ?? null, gone?.id ?? null);
+    // The same quiet path as trashCommand: in the note window, the dashboard that opens next
+    // is not news for the Live page, so the main window stays where it is.
+    this.events.dispatchEvent(new CustomEvent("trashed", { detail: { id: gone?.id ?? this.currentId, next } }));
     this.session.close();
     if (next !== null) await this.switchTo(next, { discard: true, history: "replace", heading: "" });
+    else this.showNoNote();
     this.say(`"${gone?.title ?? "The note"}" was moved to the Trash`);
   }
 
@@ -505,6 +505,7 @@ export class NotesApp {
       if (!discard && !(await this.saveBeforeSwitching())) return false;
       const note = await this.api.get(id);
       this.session.open(note);
+      this.editor.readOnly = false;
       this.editor.value = note.body;
       this.agenda.open(note);
       if (history === "push") this.history.pushState({}, "", noteUrl(id));
@@ -1096,7 +1097,11 @@ export class NotesApp {
 
   async trashCommand(recursive) {
     const id = this.currentId;
-    const next = this.nextAfterDeleting(id);
+    // With no hub left the main window shows no note: say so, rather than send id null.
+    if (id === null) throw new Error("E: no note is open");
+    // The main window goes to a dashboard: a plain note would open in the note window and
+    // pull this window to the Live page.
+    const next = this.role === "main" ? this.dashboardAfter(this.tree.parentId(id), id) : this.nextAfterDeleting(id);
     await this.api.remove(id, recursive);
     this.events.dispatchEvent(new CustomEvent("trashed", { detail: { id, next } }));
     const title = this.session.note.title;
@@ -1105,6 +1110,9 @@ export class NotesApp {
     // The other window may show a page about this note (a task page): it redraws on this.
     this.changes.send({ type: "changed", what: ["notes", "tasks"] });
     if (next !== null) await this.open(next, { history: "replace", discard: true });
+    // No dashboard left: Home, rather than the gone note's page with nothing behind it.
+    else if (this.role === "main") this.showView("home", "push");
+    else this.showNoNote();
     this.say(`"${title}" moved to the Trash (kept for ${this.trash.days} days)`);
   }
 
@@ -1123,6 +1131,26 @@ export class NotesApp {
     await this.open(note.id);
     const where = this.tree.parentId(note.id) === null ? groupLabel(this.tree, note.id) : whereText(this.tree, note.id);
     this.say(`"${note.title}" restored to ${where}${renamed ? " (its title was taken there)" : ""}`);
+  }
+
+  /** Nothing left to open after a trash: the gone note's text would stay in the editor, and
+   * what is typed there would save nowhere, so the editor empties and takes no typing until a
+   * note opens (switchTo). */
+  showNoNote() {
+    if (this.role === "main") return;
+    this.editor.value = "";
+    this.editor.readOnly = true;
+    this.agenda?.open({});
+    this.redraw();
+  }
+
+  /** The dashboard to show once a note under parent (gone, if given) leaves: the parent's
+   * (the parent itself, else its hub), else the first top-level one. Null when there is none. */
+  dashboardAfter(parent, gone = null) {
+    const near = parent !== null && parent !== gone && this.tree.has(parent)
+      ? (this.isDashboard(parent) ? parent : hubOf(this.tree, parent)?.id ?? null) : null;
+    if (near !== null && near !== gone) return near;
+    return this.tree.children(null).find((note) => note.id !== gone && this.isDashboard(note.id))?.id ?? null;
   }
 
   /** Where to go once a note is gone: its parent, else a sibling, else any other top note. */

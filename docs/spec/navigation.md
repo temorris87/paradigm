@@ -111,6 +111,15 @@ How the app behaves. Kept up to date by each feature that changes it.
   trashed from the note window, it moves to the dashboard of its parent (or the first
   top-level dashboard) and says '"Title" was moved to the Trash'; it is never left empty and
   never reports "No such note".
+  A trash never pulls the main window to the Live page (Tyson, 2026-11-26): trashing from the
+  note window, even with a key pressed while it is under way, keeps the main window where it
+  is (a task page on the note says "Its note is in the trash"), and so does a note trashed
+  elsewhere that the note window was showing. Trashing from the main window (`:trash`, a
+  crumb's note menu) goes to the dashboard of the note's parent (or its hub, else the first
+  top-level one), never to a plain note; with no dashboard left it goes Home, and the note
+  window empties and takes no typing until a note opens. With no note open in the main window
+  (every hub trashed), `:trash` says "E: no note is open". A trashed note restored and opened
+  again shows on the Live page as usual.
 - An image is deleted from the database once no note (trashed ones included) links to it any
   more, but only when Paradigm starts or stops: while a tab is open, `u` or `p` can bring a
   deleted link back.
