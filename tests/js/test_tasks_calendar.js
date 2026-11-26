@@ -8,7 +8,7 @@ import { NoteTree } from "../../static/js/notes/tree-model.js";
 import { HUB_SECTIONS } from "../../static/js/hubs/hub-sections.js";
 import { Tasks, hubChoices, openCount, openTasks, subtaskText, taskEntries, tasksOn, todayTasks, waitingOn } from "../../static/js/tasks/tasks-model.js";
 import { gridHtml, gridText } from "../../static/js/timesheet/copy.js";
-import { isWideScreen, noteWindowBox, noteWindowUrl } from "../../static/js/windows/note-window.js";
+import { forgetPlaced, frameBorder, isWideScreen, isZoomed, noteWindowBox, noteWindowUrl, placeNoteWindow, placeOnFirstLoad } from "../../static/js/windows/note-window.js";
 import { assertEqual as same, assertTrue, test } from "./harness.js";
 
 // Values compared as JSON: arrays and objects by what they hold.
@@ -164,6 +164,87 @@ test("note window: the right third on a wide screen, the whole screen on a lapto
   assertEqual(noteWindowBox(ultrawide, "full").width, 3840);
   assertEqual(noteWindowBox({ ...ultrawide, availLeft: -3840 }).left, -1280);
   assertEqual(noteWindowUrl(5, { field: "agenda", line: 3 }), "/note.html?note=5&line=3&field=agenda");
+});
+
+test("note window: the 5120x2160 screen, the invisible border and device pixels", () => {
+  const work = { availLeft: 0, availTop: 0, availWidth: 5120, availHeight: 2112 };
+  assertEqual(noteWindowBox(work), { left: 3413, top: 0, width: 1707, height: 2112 });
+  assertEqual(noteWindowBox(work, "auto", { border: 8 }), { left: 3405, top: 0, width: 1723, height: 2120 });
+  // At 125% and 150% every number is a whole CSS px (moveTo/resizeTo drop fractions), the left
+  // edge is also a whole device pixel, and the right edge stays exactly on the screen's.
+  for (const [ratio, availWidth, availHeight] of [[1.25, 4096, 1690], [1.5, 3413, 1408]]) {
+    const scaled = { availLeft: 0, availTop: 0, availWidth, availHeight };
+    for (const border of [0, 7, 8]) {
+      const box = noteWindowBox(scaled, "auto", { border, ratio });
+      assertTrue(Object.values(box).every(Number.isInteger), `whole CSS px at ${ratio}`);
+      assertTrue(Number.isInteger(Math.round(box.left * ratio * 1e6) / 1e6), `device px at ${ratio}`);
+      assertEqual(box.left + box.width, availWidth + border, `right edge at ${ratio}`);
+      assertEqual(box.height, availHeight + border);
+    }
+  }
+  const at125 = { availLeft: 0, availTop: 0, availWidth: 4096, availHeight: 1690 };
+  assertEqual(noteWindowBox(at125, "auto", { ratio: 1.25 }), { left: 2732, top: 0, width: 1364, height: 1690 });
+  assertEqual(noteWindowBox(at125, "auto", { border: 8, ratio: 1.25 }), { left: 2724, top: 0, width: 1380, height: 1698 });
+  // No device pixel within 2 px (a zoomed page's ratio): the nearest whole CSS px.
+  assertEqual(noteWindowBox(work, "auto", { ratio: 1.1 }).left, 3413);
+  const ultrawide = { availLeft: 0, availTop: 0, availWidth: 3440, availHeight: 1400 };
+  assertEqual(noteWindowBox(ultrawide, "auto", { border: 7 }), { left: 2286, top: 0, width: 1161, height: 1407 });
+  // A laptop is still the whole screen, and the border doesn't grow it.
+  const laptop = { availLeft: 0, availTop: 0, availWidth: 1280, availHeight: 690 };
+  assertEqual(noteWindowBox(laptop, "auto", { border: 7, ratio: 1.5 }), { left: 0, top: 0, width: 1280, height: 690 });
+  assertEqual(noteWindowBox(work, "full", { border: 8 }), { left: 0, top: 0, width: 5120, height: 2112 });
+  assertEqual([frameBorder({ outerWidth: 1723, innerWidth: 1707 }), frameBorder({ outerWidth: 1707, innerWidth: 1707 }),
+    frameBorder({ outerWidth: 2400, innerWidth: 1700 }), frameBorder({})], [8, 0, 10, 0]);
+  assertEqual(frameBorder({ outerWidth: 1722, innerWidth: 1707 }), 8);
+  assertEqual([isZoomed({ outerWidth: 1723, innerWidth: 1707 }), isZoomed({ outerWidth: 1723, innerWidth: 1551 }),
+    isZoomed({ outerWidth: 1723, innerWidth: 1900 }), isZoomed({})], [false, true, true, false]);
+});
+
+test("note window: zoomed, it doesn't round to a device-pixel grid", () => {
+  const moves = [];
+  // 125% scaling and 110% zoom: devicePixelRatio 1.375 is no screen grid.
+  const win = { outerWidth: 1380, innerWidth: 1240, devicePixelRatio: 1.375,
+    screen: { availLeft: 0, availTop: 0, availWidth: 4096, availHeight: 1690 },
+    moveTo: (x, y) => moves.push(["move", x, y]), resizeTo: (w, h) => moves.push(["size", w, h]) };
+  placeNoteWindow(win, "split");
+  assertEqual(moves, [["move", 2731, 0], ["size", 1365, 1690], ["move", 2731, 0]]);
+});
+
+test("note window: a window wider than its box still lands on the right third (Chrome clamps)", () => {
+  // Like Blink: every rect is clamped to the screen's available area, size first, then place.
+  const screen = { availLeft: 0, availTop: 0, availWidth: 800, availHeight: 600 };
+  const rect = { x: 0, y: 0, w: 800, h: 600 };
+  const clamp = () => {
+    rect.w = Math.min(rect.w, screen.availWidth); rect.h = Math.min(rect.h, screen.availHeight);
+    rect.x = Math.min(Math.max(rect.x, 0), screen.availWidth - rect.w);
+    rect.y = Math.min(Math.max(rect.y, 0), screen.availHeight - rect.h);
+  };
+  const win = { outerWidth: 800, innerWidth: 800, devicePixelRatio: 1, screen,
+    moveTo: (x, y) => { Object.assign(rect, { x, y }); clamp(); },
+    resizeTo: (w, h) => { Object.assign(rect, { w, h }); clamp(); } };
+  placeNoteWindow(win, "split");
+  assertEqual(rect, { x: 533, y: 0, w: 267, h: 600 });
+  placeNoteWindow(win, "full");
+  assertEqual(rect, { x: 0, y: 0, w: 800, h: 600 });
+});
+
+test("note window: placed again on its first load only", () => {
+  const stored = new Map();
+  const storage = { getItem: (key) => stored.get(key) ?? null, setItem: (key, value) => stored.set(key, value) };
+  const moves = [];
+  const win = { opener: {}, outerWidth: 1723, innerWidth: 1707, devicePixelRatio: 1,
+    screen: { availLeft: 0, availTop: 0, availWidth: 5120, availHeight: 2112 },
+    moveTo: (x, y) => moves.push(["move", x, y]), resizeTo: (w, h) => moves.push(["size", w, h]) };
+  assertTrue(placeOnFirstLoad(win, { storage, mode: "auto" }));
+  // Not grown by the measured 8 px border (Chrome would clamp it back onto the screen), and
+  // moved again after the resize, which Chrome clamps too.
+  assertEqual(moves, [["move", 3413, 0], ["size", 1707, 2112], ["move", 3413, 0]]);
+  assertEqual(placeOnFirstLoad(win, { storage, mode: "auto" }), false);
+  assertEqual(placeOnFirstLoad({ ...win, opener: null }, { storage: { getItem: () => null, setItem() {} } }), false);
+  assertEqual(moves.length, 3);
+  // A main window opened from the note window drops its copy of the mark.
+  forgetPlaced({ removeItem: (key) => stored.delete(key) });
+  assertTrue(placeOnFirstLoad(win, { storage, mode: "auto" }));
 });
 
 test("timesheet: the grid copies as text and HTML", () => {

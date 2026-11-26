@@ -180,10 +180,15 @@ static/
   js/connection/         connection.js (event stream + beacon), banner.js, tab-id.js (a key
                          per window kind: a popup copies its opener's sessionStorage),
                          changes.js (BroadcastChannel between the app's windows: "changed",
-                         "open" a note)
+                         "open" a note, "place" the note window)
   js/windows/note-window.js  the note window: the right third on a wide screen (>= 2400 CSS
                          px and > 2.1 times as wide as tall), else the whole screen, or as
-                         the Window menu says; one window, reused; showMainWindow
+                         the Window menu says; one window, reused; showMainWindow;
+                         placed again once note.html loads (first load only) and from
+                         Window > right third: move, resize, move again (Chrome clamps each
+                         step to the screen, so it can't grow past it by Windows' invisible
+                         border), left edge on a whole device pixel (all whole CSS px; no
+                         rounding when the page is zoomed)
   js/plan/               api.js, plan-model.js (phases, milestones, slip against the
                          baseline, history; pure), plan-rows.js (a chart's rows: project,
                          area, template; the Plan strip and Portfolio bars; pure),
