@@ -16,7 +16,10 @@
 //         options: [["on_track", "On track", "1"], ...] },                     // the key picks it
 //       { key: "text", type: "textarea", add: { label: "Since last log:", lines: ["..."] } },
 //     ],                                // add: lines a click puts in the text box
-//     submit: "Rename",                 // or (values) => "Add new person": the label follows the fields
+//     submit: "Rename",                 // or (values) => "Add new person": the label follows the fields;
+//                                       // or (values) => { text, blocked: true }: Enter and the
+//                                       // button do nothing until the fields change ("2 people
+//                                       // match: type more")
 //     danger: false,                    // a red submit button (trash)
 //     safeFocus: false,                 // opens on Cancel, so a reflex Enter changes nothing
 //                                       // (a confirm that deletes for good)
@@ -70,8 +73,12 @@ export function formDialog({ title, text = "", lines = [], fields = [], submit =
     document.body.append(dialog);
 
     const values = () => Object.fromEntries([...inputs].map(([key, input]) => [key, input.value]));
+    let blocked = false;
     const label = () => {
-      ok.textContent = typeof submit === "function" ? submit(values()) : submit;
+      const button = typeof submit === "function" ? submit(values()) : submit;
+      ok.textContent = typeof button === "string" ? button : button.text ?? "";
+      blocked = typeof button !== "string" && Boolean(button.blocked);
+      ok.disabled = blocked;
       if (liveLine) {
         const said = live(values()) ?? "";
         liveLine.textContent = typeof said === "string" ? said : said.text ?? "";
@@ -112,6 +119,7 @@ export function formDialog({ title, text = "", lines = [], fields = [], submit =
     });
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
+      if (blocked || ok.disabled) return;
       const missing = fields.find((field) => field.type !== "select" && !field.optional && !String(inputs.get(field.key).value).trim());
       if (missing) {
         show(error, `${missing.label} is needed`);
@@ -124,7 +132,7 @@ export function formDialog({ title, text = "", lines = [], fields = [], submit =
         finish(result ?? true);
       } catch (failure) {
         show(error, failure?.message ?? String(failure));
-        ok.disabled = false;
+        label();
       }
     });
     const first = inputs.values().next().value ?? (safeFocus ? cancel : ok);

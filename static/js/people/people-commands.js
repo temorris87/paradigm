@@ -3,7 +3,7 @@
 // the app to show.
 import { isHub, isMeeting, isPerson } from "../notes/hub-groups.js";
 import { titleKey } from "../notes/titles.js";
-import { findPerson } from "./people-model.js";
+import { findPerson, matchPerson } from "./people-model.js";
 
 const FIELD_NAMES = { org: "Organisation", job: "Job title", email: "Email", phone: "Phone" };
 
@@ -86,12 +86,16 @@ export async function fieldCommand(app, field, arg) {
 }
 
 /**
- * The people with these names, for :attendee and :with. A name that isn't anyone yet is an
+ * The people with these names, for :attendee, :with and the person dialogs. A name means who
+ * matchPerson says ("dana" is Dana Northwind when she is the only one); one that matches
+ * several people is an error, so no duplicate is made. A name that matches no one is an
  * error, unless bang: then they are added to People. usage is the command for the hint
  * (":attendee"). Returns { people: [note], made: how many were added }.
  */
 export async function peopleNamed(app, names, bang, usage) {
-  const found = names.map((name) => ({ name, person: findPerson(app.tree, name) }));
+  const found = names.map((name) => ({ name, ...matchPerson(app.tree, name) }));
+  const unclear = found.find((each) => !each.person && each.matches.length > 1);
+  if (unclear) throw new Error(`E: ${unclear.matches.length} people match "${unclear.name}": type more`);
   const missing = found.filter((each) => !each.person).map((each) => each.name);
   const notPeople = missing.filter((name) => findOtherNote(app, name));
   if (notPeople.length) throw new Error(`E: "${notPeople[0]}" is a note, not a person`);

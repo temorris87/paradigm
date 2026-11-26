@@ -23,7 +23,7 @@ import { DEFAULT_LENGTH, clock, minutes } from "../calendar/week-model.js";
 import { planningSettings } from "../today/today-model.js";
 import { firstFreeSlot } from "../week/capacity.js";
 import { dayText } from "../ui/dates.js";
-import { allPeople, findPerson } from "../people/people-model.js";
+import { allPeople, matchPerson, personLabel } from "../people/people-model.js";
 import { MAX_TASK_DEPTH, estimateText, parseEstimate } from "./tasks-model.js";
 import { parseTaskText } from "../notes/capture.js";
 import { nextTogether } from "../people/one-on-one.js";
@@ -88,10 +88,12 @@ export function editTaskDialog(app, taskId) {
       ...(task.delegate_id === null ? [{ key: "forName", label: "For (optional): someone you owe it to",
         value: app.tree.get(task.for_person_id)?.title ?? "", optional: true, suggestions: allPeople(app.tree).map((person) => person.title) }] : []),
     ],
-    submit: "Save",
+    // Part of a name picks the one person it matches; several block Save until it is clear.
+    submit: ({ forName }) => personLabel(app.tree, forName ?? "", { empty: "Save", one: () => "Save", none: "Save" }),
     run: async (values) => {
       const name = (values.forName ?? "").trim();
-      const person = name ? findPerson(app.tree, name) : null;
+      const { person, matches } = name ? matchPerson(app.tree, name) : { person: null, matches: [] };
+      if (matches.length > 1 && !person) throw new Error(`${matches.length} people match "${name}": type more`);
       if (name && !person) throw new Error(`No one called "${name}" in People`);
       await app.tasksApi.update(taskId, { title: values.title, notes: values.notes, due: values.due,
         estimate_min: parseEstimate(values.estimate) });
@@ -121,12 +123,13 @@ export function delegateDialog(app, taskId) {
     ],
     live: ({ name, when }) => {
       if (when !== "meeting") return "";
-      const person = findPerson(app.tree, name);
+      const { person } = matchPerson(app.tree, name);
       const next = person ? nextTogether(app.tree, app.meetings, person.id, app.today()) : null;
       return next ? `${next.note.title}, ${dayText(next.meeting.day, { today: localDay(app.today()) })}: it goes on their To raise too.`
         : "No meeting with them coming: pick a day instead.";
     },
-    submit: ({ name }) => (!name.trim() || findPerson(app.tree, name) ? "Delegate" : "Delegate to a new person"),
+    submit: ({ name }) => personLabel(app.tree, name, { empty: "Delegate", one: (person) => `Delegate to ${person.title}`,
+      none: "Delegate to a new person" }),
     run: async ({ name, when, follow }) => {
       const { people: [person] } = await peopleNamed(app, [name.trim()], true, "");
       const next = when === "meeting" ? nextTogether(app.tree, app.meetings, person.id, app.today()) : null;

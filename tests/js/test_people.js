@@ -3,9 +3,9 @@ import { HUB_SECTIONS } from "../../static/js/hubs/hub-sections.js";
 import { NOTE_COMMANDS, runNoteCommand } from "../../static/js/notes/commands.js";
 import { NAV_GROUPS, groupOf, hubsIn, isHub, isPerson, PEOPLE_GROUP } from "../../static/js/notes/hub-groups.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
-import { splitNameRole } from "../../static/js/people/people-commands.js";
+import { peopleNamed, splitNameRole } from "../../static/js/people/people-commands.js";
 import { PAGE_KEYS, pageAction } from "../../static/js/pages/page-keys.js";
-import { People, filterOptions, filterPeople, findPerson, hubLinks, peopleOn, rolesText } from "../../static/js/people/people-model.js";
+import { People, filterOptions, filterPeople, findPerson, hubLinks, matchPerson, peopleOn, personLabel, rolesText } from "../../static/js/people/people-model.js";
 import { peoplePage } from "../../static/js/people/people-page.js";
 import { Meetings } from "../../static/js/meetings/meetings-model.js";
 import { Records } from "../../static/js/records/records-model.js";
@@ -50,6 +50,64 @@ test("people: findPerson matches the name ignoring case, people only", () => {
   assertEqual(findPerson(tree, "  jane doe ").id, 10);
   assertEqual(findPerson(tree, "Operations"), null);
   assertEqual(findPerson(tree, "Jane"), null);
+});
+
+const DANAS = [
+  { id: 20, parent_id: null, title: "Dana Northwind", kind: "person", updated_at: T },
+  { id: 21, parent_id: null, title: "Dana Okafor", kind: "person", updated_at: T },
+  { id: 22, parent_id: null, title: "Dana Archived", kind: "person", archived_at: T, updated_at: T },
+  { id: 23, parent_id: null, title: "Dana Trashed", kind: "person", deleted_at: T, updated_at: T },
+  { id: 24, parent_id: null, title: "Danube", kind: "project", updated_at: T },
+];
+const danaTree = (ids) => new NoteTree([...NOTES, ...DANAS.filter((note) => ids.includes(note.id))]);
+const meant = (tree, text) => {
+  const { person, matches } = matchPerson(tree, text);
+  return `${person?.title ?? "-"}|${matches.map((note) => note.title).join(",")}`;
+};
+
+test("people: matchPerson takes part of one live person's name", () => {
+  const tree = danaTree([20, 22, 23, 24]);
+  assertEqual(meant(tree, "Dana"), "Dana Northwind|Dana Northwind");
+  assertEqual(meant(tree, "  dan  nor "), "Dana Northwind|Dana Northwind");
+  assertEqual(meant(tree, "north"), "Dana Northwind|Dana Northwind");
+  assertEqual(meant(tree, "Dana Smith"), "-|", "a name that only partly matches is new");
+  assertEqual(meant(tree, "orth"), "-|", "a word must start a word of the name");
+  assertEqual(meant(tree, "trashed"), "-|", "trashed people don't count");
+  assertEqual(meant(tree, "arch"), "-|", "archived people don't count");
+  assertEqual(meant(tree, "dana archived"), "Dana Archived|Dana Archived", "an exact title wins, archived too");
+  assertEqual(meant(tree, "danube"), "-|", "people only");
+  assertEqual(meant(tree, ""), "-|");
+});
+
+test("people: matchPerson with two matches picks no one; an exact title wins", () => {
+  const tree = danaTree([20, 21]);
+  assertEqual(meant(tree, "dana"), "-|Dana Northwind,Dana Okafor");
+  assertEqual(meant(tree, "dana o"), "Dana Okafor|Dana Okafor");
+  const exact = new NoteTree([...NOTES, ...DANAS.slice(0, 2), { id: 25, parent_id: null, title: "Dana", kind: "person", updated_at: T }]);
+  assertEqual(meant(exact, "DANA"), "Dana|Dana");
+});
+
+test("people: personLabel names who it will be, blocks on several", () => {
+  const labels = { empty: "Delegate", one: (person) => `Delegate to ${person.title}`, none: "Delegate to a new person" };
+  const label = (tree, text) => { const { text: said, blocked } = personLabel(tree, text, labels); return `${said}${blocked ? "!" : ""}`; };
+  assertEqual(label(danaTree([20]), " "), "Delegate");
+  assertEqual(label(danaTree([20]), "Dana"), "Delegate to Dana Northwind");
+  assertEqual(label(danaTree([20, 21]), "Dana"), "2 people match: type more!");
+  assertEqual(label(danaTree([20, 21]), "Priya Example"), "Delegate to a new person");
+});
+
+test("people: peopleNamed picks the one match, refuses several, makes a new name", async () => {
+  const made = [];
+  const app = (ids) => ({ tree: danaTree(ids),
+    peopleApi: { create: async (name) => { made.push(name); return { note: { id: 99, title: name } }; } } });
+  let found = await peopleNamed(app([20]), ["dana nor"], true, "");
+  assertEqual(`${found.people[0].id} ${found.made} ${made.length}`, "20 0 0");
+  let failure = "";
+  try { await peopleNamed(app([20, 21]), ["Dana"], true, ""); } catch (error) { failure = error.message; }
+  assertEqual(failure, 'E: 2 people match "Dana": type more');
+  assertEqual(made.length, 0, "no duplicate made");
+  found = await peopleNamed(app([20]), ["Priya Example"], true, "");
+  assertEqual(`${found.people[0].title} ${found.made} ${made.join()}`, "Priya Example 1 Priya Example");
 });
 
 test("people: a person's hubs, live ones first; links to non-hubs are skipped", () => {

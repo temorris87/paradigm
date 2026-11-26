@@ -15,7 +15,7 @@ import { addAttendees, dropAttendee, makeMeeting, setMeetingWhen } from "../meet
 import { newNoteDialog } from "../notes/note-actions.js";
 import { HUB_GROUPS, groupForKind, hubOf, isArchived, isHub } from "../notes/hub-groups.js";
 import { linkPerson, peopleNamed, unlinkPerson } from "../people/people-commands.js";
-import { allPeople, filterOptions, findPerson } from "../people/people-model.js";
+import { allPeople, filterOptions, personLabel } from "../people/people-model.js";
 import { addPeopleTo, answerQuestion, defaultDay, dropPersonFrom, makeRecord, reopenQuestion,
   setRecordDay } from "../records/records-commands.js";
 import { PROJECT_STATUSES } from "./project-facts.js";
@@ -162,7 +162,9 @@ export function hubLineControls(app) {
 
 /**
  * A dialog asking for one person by name (suggesting everyone in People), plus any fields.
- * A name that isn't anyone yet adds them to People: the button says so ("Add new person"),
+ * Part of a name picks the one person it matches (matchPerson), and the button names them
+ * ("Add Dana Northwind"); one that matches several blocks Enter ("2 people match: type more").
+ * A name that matches no one adds them to People: the button says so ("Add new person"),
  * so a typo is seen before it makes someone. run gets { people: [note], made } and the values.
  */
 export function personDialog(app, { title, fields = [], submit = "Add", run }) {
@@ -170,7 +172,8 @@ export function personDialog(app, { title, fields = [], submit = "Add", run }) {
   return formDialog({
     title,
     fields: [{ key: "name", label: "Person", suggestions: names, placeholder: "a name in People, or a new one" }, ...fields],
-    submit: ({ name }) => (!name.trim() || findPerson(app.tree, name) ? submit : `${submit} new person`),
+    submit: ({ name }) => personLabel(app.tree, name, { empty: submit, one: (person) => `${submit} ${person.title}`,
+      none: `${submit} new person` }),
     run: async (values) => run(await peopleNamed(app, [values.name.trim()], true, ""), values),
     fallbackFocus: () => app.focusNote(),
   });
