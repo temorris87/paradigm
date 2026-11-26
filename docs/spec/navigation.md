@@ -57,7 +57,13 @@ How the app behaves. Kept up to date by each feature that changes it.
   section row, Go to, the calendar, a Gantt bar) shows it in the one note window, reused. Its
   place: the right third, full height, on a wide screen (`availWidth >= 2400` CSS px and
   over 2.1 times as wide as tall), else the whole screen (the laptop); the main window's
-  Window ▾ menu can force either. The page can't place the main window itself. In the note
+  Window ▾ menu can force either. The page can't place the main window itself. Once
+  `note.html` has loaded, the note window places itself again (first load only, so a second
+  note opened in it doesn't move it), and Window ▾ "right third" re-places an open window, so
+  a misplaced one is fixed without closing it (Tyson, 2026-11-26). The left edge falls on a
+  whole device pixel under display scaling (not when the page is zoomed); the box is exactly
+  the right third, not grown by Windows' invisible border, as Chrome keeps every window inside
+  the screen (Tyson checks it on the 5120×2160 work screen). In the note
   window, Dashboard (or `:dashboard`) shows the note's hub in the main window; Home,
   `:people`, `:calendar`... show there too (`showMainWindow`; Chrome may refuse to raise it).
   A hub's dashboard: its head and card, a project's Plan strip, its text rendered

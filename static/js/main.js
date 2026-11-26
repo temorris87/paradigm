@@ -20,7 +20,7 @@ import { OnCallPage } from "./oncall/oncall-page.js";
 import { onCallApi } from "./oncall/api.js";
 import { planApi } from "./plan/api.js";
 import { openMenu } from "./ui/menu.js";
-import { MAIN_WINDOW, WINDOW_MODES, setWindowMode, windowMode } from "./windows/note-window.js";
+import { MAIN_WINDOW, WINDOW_MODES, forgetPlaced, setWindowMode, windowMode } from "./windows/note-window.js";
 import { calendarApi } from "./calendar/api.js";
 import { meetingsApi } from "./meetings/api.js";
 import { notesApi } from "./notes/api.js";
@@ -28,6 +28,9 @@ import { tasksApi } from "./tasks/api.js";
 
 // The note window finds this one by name (its Dashboard button).
 window.name = MAIN_WINDOW;
+// Opened from the note window, this one has a copy of its "placed" mark: the next note
+// window would inherit it and skip its first-load place.
+forgetPlaced();
 setNotePath("/");
 
 const $ = (selector) => document.querySelector(selector);
@@ -76,7 +79,13 @@ const app = boot({
         checked: windowMode() === mode.key,
         run: () => {
           setWindowMode(mode.key);
-          app().say(`${mode.label} (${mode.help}). Close the note window for it to open there next time.`);
+          if (mode.key === "split") {
+            // An open note window moves there now; else it opens there next time.
+            changes.send({ type: "place", to: "note", mode: "split" });
+            app().say(`${mode.label} (${mode.help}). An open note window moves there now.`);
+          } else {
+            app().say(`${mode.label} (${mode.help}). Close the note window for it to open there next time.`);
+          }
         },
       })),
     ], { label: "Window" }));

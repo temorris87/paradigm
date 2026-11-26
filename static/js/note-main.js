@@ -4,6 +4,7 @@
 import { boot } from "./boot.js";
 import { startLiveSender } from "./live/live-sender.js";
 import { setNotePath } from "./notes/app.js";
+import { placeNoteWindow, placeOnFirstLoad } from "./windows/note-window.js";
 
 setNotePath("/note.html");
 
@@ -15,3 +16,11 @@ const app = boot({
   options: () => ({ buttons: { dashboard: $(".topbar__dashboard") } }),
 });
 startLiveSender(app);
+
+// Placed again once loaded (the frame can be measured now), and when the main window's
+// Window menu picks the right third.
+if (document.readyState === "complete") placeOnFirstLoad(window);
+else window.addEventListener("load", () => placeOnFirstLoad(window), { once: true });
+app.changes.listen((message) => {
+  if (message.type === "place" && message.to === "note") placeNoteWindow(window, message.mode);
+});
