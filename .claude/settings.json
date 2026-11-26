@@ -9,7 +9,11 @@
       "Bash(python tools/pipeline_gate.py:*)",
       "Bash(python tools/pipeline_state.py:*)",
       "Bash(python tools/run_js_tests.py:*)",
-      "Bash(python -m unittest discover tests/python:*)"
+      "Bash(python -m unittest discover tests/python:*)",
+      "Bash(python3 tools/pipeline_batch.py:*)",
+      "Bash(python3 tools/worktree.py:*)",
+      "Bash(python tools/pipeline_batch.py:*)",
+      "Bash(python tools/worktree.py:*)"
     ]
   },
   "hooks": {
@@ -21,6 +25,16 @@
             "type": "command",
             "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/claude_hooks.py\" commit-gate",
             "timeout": 600
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/claude_hooks.py\" edit-guard",
+            "timeout": 30
           }
         ]
       }

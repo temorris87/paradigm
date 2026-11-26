@@ -1,7 +1,7 @@
 export const meta = {
   name: 'feature-build',
   description: 'Build an approved Paradigm feature spec: lanes, integrate, gate, review + docs, fixes, browser check, close',
-  whenToUse: 'Started by the /feature skill once Tyson has approved a spec in docs/features/. Args: {slug, spec, today, lanes, item, integrate?, startAt?}.',
+  whenToUse: 'Started by the /feature skill once Tyson has approved a spec in docs/features/. Args: {slug, spec, today, lanes, item, integrate?, startAt?, root?, merge?}. feature-batch passes root (the feature worktree) and merge: false.',
   phases: [
     { title: 'Baseline', detail: 'the gate on the tree before any change' },
     { title: 'Implement', detail: 'backend and frontend lanes side by side' },
@@ -29,6 +29,18 @@ const startAt = args.startAt || 'implement'
 if (!STARTS.includes(startAt)) throw new Error(`startAt must be one of ${STARTS.join(', ')}`)
 const from = p => STARTS.indexOf(startAt) <= STARTS.indexOf(p)
 const PY = 'python3 (python on Windows)'
+// In a batch, the feature is built in its own git worktree (root), not in the main tree, and
+// every agent is told so: their tools start in the main tree. Without root, nothing changes.
+const root = args.root ? String(args.root).replace(/[\\/]+$/, '') : ''
+const where = root
+  ? `Work only in the git worktree ${root}: read and edit files there by absolute path, and run every ` +
+    `command as \`cd ${root} && ...\`. Paths below are relative to it. Never read from or write to the ` +
+    `main tree: another feature may be building there.\n`
+  : ''
+const here = root ? `cd ${root} && ` : ''
+// merge: false (a batch) commits the feature on its own branch and leaves backlog.md to the
+// merger, so ten branches don't all edit the same file.
+const merge = args.merge === undefined ? true : !!args.merge
 
 const LANE = {
   type: 'object',
@@ -78,6 +90,15 @@ const DOCS = {
   properties: { files: { type: 'array', items: { type: 'string' } }, summary: { type: 'string' } },
   required: ['files', 'summary'],
 }
+const CLOSED = {
+  type: 'object',
+  properties: {
+    committed: { type: 'boolean' },
+    sha: { type: 'string', description: 'the new commit, when committed' },
+    output: { type: 'string', description: 'what the commands printed' },
+  },
+  required: ['committed', 'output'],
+}
 const BROWSER = {
   type: 'object',
   properties: {
@@ -89,7 +110,7 @@ const BROWSER = {
   required: ['mode', 'checked', 'problems', 'not_checked'],
 }
 
-const specLine = `The feature is "${item}". Its approved spec is ${spec} (slug ${slug}); read it first.`
+const specLine = `${where}The feature is "${item}". Its approved spec is ${spec} (slug ${slug}); read it first.`
 const report = { slug, spec, startAt, lanes: {}, rounds: [], nits: [], docs: null, browser: null }
 // Fix rounds since the last review (what they were to fix, the files they changed), for the
 // re-check; and whether the whole change has had its one full review yet.
@@ -98,8 +119,8 @@ let reviewed = false
 
 function ledger(phase, status, note) {
   return agent(
-    `Run exactly this from the repo root and return its output: ` +
-    `${PY} tools/pipeline_state.py record ${phase} ${status} --note ${JSON.stringify(note || '')}`,
+    `${where}Run exactly this from the repo root and return its output: ` +
+    `${here}${PY} tools/pipeline_state.py record ${phase} ${status} --note ${JSON.stringify(note || '')}`,
     { label: `ledger: ${phase} ${status}`, effort: 'low' })
 }
 
@@ -109,7 +130,8 @@ async function blocked(phase, why) {
   return { status: 'blocked', phase, why, ...report }
 }
 
-function laneFor(file) {
+function laneFor(path) {
+  const file = root && path.startsWith(root + '/') ? path.slice(root.length + 1) : path
   if (file.startsWith('static/') || file.startsWith('tests/js/')) return 'frontend'
   if (file.startsWith('paradigm') || file.startsWith('tests/python/')) return 'backend'
   return 'integrator'
@@ -135,7 +157,7 @@ async function fix(problems, round, source) {
 
 function runGate() {
   return agent(
-    `Run \`${PY} tools/pipeline_gate.py\` from the repo root (it can take a few minutes) and report whether ` +
+    `${where}Run \`${here}${PY} tools/pipeline_gate.py\` from the repo root (it can take a few minutes) and report whether ` +
     `it printed GATE PASS, and every FAIL line with the lines under it. Change nothing.`,
     { label: 'gate', phase: 'Gate', schema: GATE, effort: 'low' })
 }
@@ -275,11 +297,23 @@ if (from('docs')) {
 }
 
 phase('Close')
-const close = await agent(
-  `In backlog.md, change exactly this item's "- [ ]" to "- [x]" and add " (done ${today})" at the end of its ` +
-  `last line, changing nothing else in the file: "${item}". Then run ` +
-  `\`${PY} tools/pipeline_state.py record close pass --note "backlog checked off"\` and ` +
-  `\`${PY} tools/pipeline_state.py finish\`, and return their output.`,
-  { label: 'close', phase: 'Close', effort: 'low' })
+const close = await agent(merge
+  ? `In backlog.md, change exactly this item's "- [ ]" to "- [x]" and add " (done ${today})" at the end of its ` +
+    `last line, changing nothing else in the file: "${item}". Then run ` +
+    `\`${PY} tools/pipeline_state.py record close pass --note "backlog checked off"\` and ` +
+    `\`${PY} tools/pipeline_state.py finish\`, and return their output.`
+  : `${where}This feature is part of a batch: leave backlog.md alone (the merger ticks it). Run these in order ` +
+    `and return their output:\n` +
+    `1. \`${here}${PY} tools/pipeline_state.py record close pass --note "built on its branch"\`\n` +
+    `2. \`${here}git add -A\`, then commit with \`git -C ${root} commit -F <a message file in your scratchpad>\`. ` +
+    `Write the message in the style of \`git log --oneline -5\`: a short subject saying what the feature does, ` +
+    `a blank line, a line or two of detail, and the commit attribution lines your instructions give. Never name ` +
+    `the employer. The commit hook runs the gate on the worktree.\n` +
+    `3. \`${here}${PY} tools/pipeline_state.py finish\`\n` +
+    `If the commit is refused, stop there: don't run finish, and return committed=false with the hook's message.`,
+  merge ? { label: 'close', phase: 'Close', effort: 'low' }
+    : { label: 'close', phase: 'Close', effort: 'low', schema: CLOSED })
 report.close = close
+if (!merge && (!close || !close.committed)) return await blocked('close', 'the commit on the feature branch was refused: ' +
+  (close ? close.output.slice(0, 400) : 'the close step did not finish'))
 return { status: 'done', fix_rounds: round, ...report }

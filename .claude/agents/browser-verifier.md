@@ -49,3 +49,7 @@ Return:
 ## Git
 Other agents may share this working tree. Never run `git stash`, `reset`, `restore`, `checkout`,
 `switch` or `clean`: the hook refuses them while a feature is in progress.
+
+In a batch, several features are built at once, each in its own git worktree, and the prompt
+names yours. Every path you read or edit and every command you run is in that worktree
+(`cd <worktree> && ...`), never in the main tree, which another feature's agents share.

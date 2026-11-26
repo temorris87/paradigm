@@ -32,3 +32,7 @@ hook refuses them while a feature is in progress. To see what HEAD had, use `git
 `git show HEAD:<path> > <scratchpad>/<name>`, or for a whole clean copy (to tell whether a
 failure was already there before the feature) `git worktree add <scratchpad>/head HEAD`, run it
 there, then `git worktree remove <scratchpad>/head`.
+
+In a batch, several features are built at once, each in its own git worktree, and the prompt
+names yours. Every path you read or edit and every command you run is in that worktree
+(`cd <worktree> && ...`), never in the main tree, which another feature's agents share.

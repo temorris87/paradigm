@@ -42,8 +42,9 @@ keybindings).
   ("the company", "work") and made-up names (Acme, Northwind) instead. The repo is public.
 
 ## Working with Tyson
-- One feature at a time. Discuss the design in prose in plan mode. He answers by rejecting
-  ExitPlanMode with comments, so don't use multiple-choice popups for open design questions.
+- One feature at a time, or one batch of them (`/features`). Discuss the design in prose in
+  plan mode. He answers by rejecting ExitPlanMode with comments, so don't use multiple-choice
+  popups for open design questions.
 - Commit or push only when asked, straight to `main`. The work PC only pulls and never pushes.
 - **A push is done only when CI on it is green.** After every `git push`, the `ci-check` hook
   (`tools/claude_hooks.py`, `tools/ci_check.py`) waits for the GitHub Actions run on the pushed
@@ -73,6 +74,11 @@ keybindings).
   `tests/js/` (`main.js`, `commands.js`, `page-views.js`, `hub-sections.js`, the key tables,
   `index.html`, `note.html` and `tests/js/index.html` included). The integration step joins them
   against the spec's API contract; docs are the docs step's.
+- When Tyson types **"build features"** (or `/features`): up to 10 open items at once, each
+  built in its own git worktree (`../paradigm-wt/<slug>`), then joined by the `feature-merger`
+  into one `batch/<date>` branch that `main` is fast-forwarded to when he says commit. See
+  `docs/pipeline.md` and `.claude/skills/features/SKILL.md`. While a batch runs, the main tree's
+  code is left alone (the `edit-guard` hook).
 - Never reorder, reword or delete his items. Suggest new items in chat, and add them only when
   he agrees.
 
@@ -97,6 +103,8 @@ changes. How the app behaves, by area, is in `docs/spec/`: read the area's file 
   timesheet), `navigation.md` (navigator, tree, backlinks, Today, note menu, top bar and
   palette, main-window keys, two windows, trash, images).
 - `docs/windows.md`: what we learned on the Windows work PC.
-- `docs/features/`: one build spec per feature, written by the pipeline.
+- `docs/features/`: one build spec per feature, written by the pipeline; `batch-<date>.md`, one
+  merge report per batch.
+- `docs/pipeline.md`: how the pipeline's tools, hooks and ledgers fit together, batches included.
 - `docs/security/`: vendor-audit.md (KaTeX + Mermaid go/no-go, conditions for use) and one
   .sha256 manifest per audited vendor version.

@@ -1,6 +1,7 @@
 """The feature pipeline's ledger: which phases a feature has been through, and on what code.
 
-One feature at a time. `.pipeline/current` names it; `.pipeline/<slug>/state.json` holds its
+One feature at a time in each working tree; a batch gives each feature its own worktree
+(tools/pipeline_batch.py). `.pipeline/current` names it; `.pipeline/<slug>/state.json` holds its
 phases. Each record keeps a fingerprint of the source tree, so a check made before a later code
 change no longer counts (see FRESH). `.pipeline/` is not in git.
 
@@ -142,6 +143,9 @@ def main(argv=None):
     if args.command == "start":
         if current_slug():
             raise SystemExit(f"{current_slug()!r} is still in progress: one feature at a time")
+        if (STATE_DIR / "batch.json").is_file():
+            # The batch fast-forwards main at the end; a feature built here would be in its way.
+            raise SystemExit("a batch is in progress (tools/pipeline_batch.py status): finish it first")
         spec = REPO / args.spec
         if not spec.is_file():
             raise SystemExit(f"the spec {args.spec} does not exist: the plan phase writes it first")

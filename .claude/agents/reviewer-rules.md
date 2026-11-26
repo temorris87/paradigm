@@ -39,3 +39,8 @@ files the fix changed. Check only that:
 - the fix itself (`git diff` on those files) brings no new `important` problem.
 
 Don't review the rest of the feature again.
+
+## Git
+In a batch, several features are built at once, each in its own git worktree, and the prompt
+names yours. Every path you read or edit and every command you run is in that worktree
+(`cd <worktree> && ...`), never in the main tree, which another feature's agents share.
