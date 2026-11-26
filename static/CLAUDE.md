@@ -116,8 +116,9 @@ static/
                          today-keys.js (THE Today key table), context-strip.js (the note
                          window's NOW strip)
   js/week/               capacity.js (working hours, a day's meetings / focus / free,
-                         free gaps, the first free slot; pure), tray-model.js (the tray's
-                         groups, the "due" strip, the week's totals; pure), week-page.js
+                         free gaps, the first free slot, days off and their chips; pure),
+                         tray-model.js (the tray's groups, the "due" strip, the week's
+                         totals; pure), week-page.js
                          (&week: the bar, Plan | Timesheet | Settings, time so far)
   js/pages/              list-page.js (a list page in place of the note: filters, search
                          box, one-focus-stop listbox), page-keys.js (THE key table of the

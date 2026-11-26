@@ -37,6 +37,16 @@ How the app behaves. Kept up to date by each feature that changes it.
   empty slot makes a meeting there. A block that has passed is time worked. Plan's footer:
   each code's hours so far, the week projected, Timesheet ↗. Its keys live in
   `js/calendar/calendar-keys.js`.
+- Days off on Plan (Tyson, 2026-11-26): a holiday, time off or a sick day gets a chip first in
+  its "due" cell: the holiday's name ("Thanksgiving"), "Time off" or "Sick"; a part day adds its
+  hours ("Time off · 4 h"), and the chip's title shows the note. A whole day off (its hours
+  cover the working day) is shaded (head, due cell and column), its head says "Off" in place of
+  "N h free", and it has no capacity bar; meetings and blocks on it still show, and dragging
+  onto it still works, but `s` skips it and the week's free total leaves it out. A part day
+  off is hours off the day, not a time range: its free hours, capacity bar and room for `s`
+  shrink by them. The days come from `/api/time/week`'s `pto` for the week shown, so a past
+  week shows its own holidays; beyond it (where `s` may look), the upcoming holidays and the
+  time off in Settings. Today's `s` and free gaps don't count time off yet.
 - The day heads, the all-day row and the hour grid keep the same columns whatever scroll bar
   the system draws (Windows' classic one, the Mac's overlay, a wide one under high contrast or
   scaling): above the hour grid's scroll bar the heads leave an empty strip in their own

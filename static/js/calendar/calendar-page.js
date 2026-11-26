@@ -11,7 +11,9 @@
 //             page has its own ‹ Today › in its bar
 //   page.show() / page.focus()      when its page comes into view (loads it the first time)
 //   page.setMonday(day)             show that week
-//   page.data, page.settings, page.days()    what it shows (the week page's summary)
+//   page.data, page.settings, page.days()    what it shows (the week page's summary);
+//                                   settings.off: the days off (week/capacity.js timeOffDays),
+//                                   the shown week's from /api/time/week's pto
 // Its keys work while the focus is inside root (calendar-keys.js).
 //
 // What the pointer does (week-model.js, grid-view.js, drag.js):
@@ -34,8 +36,7 @@ import { GridView } from "./grid-view.js";
 import { TaskSidebar } from "./task-sidebar.js";
 import { DAY_MINUTES, DEFAULT_LENGTH, STEP, calendarBlocks, clock, shownDays, snap, weekDays, weekOf } from "./week-model.js";
 import { Plan } from "../plan/plan-model.js";
-import { planningSettings } from "../today/today-model.js";
-import { dayCapacity, firstFreeSlot, isWorkingDay } from "../week/capacity.js";
+import { dayCapacity, dayOff, firstFreeSlot, isWorkingDay, offChip, timeOffDays } from "../week/capacity.js";
 import { dueChips } from "../week/tray-model.js";
 
 // Blocks are read this far ahead of today too: how much of a task is placed already.
@@ -131,14 +132,16 @@ export class CalendarPage {
     const first = days[0] < today ? days[0] : today;
     const ahead = localDay(addDays(dateOf(today), PLACED_AHEAD_DAYS));
     const last = days[6] > ahead ? days[6] : ahead;
-    const [notes, meetings, tasks, sessions, pending, status, plan, time] = await Promise.all([
+    const [notes, meetings, tasks, sessions, pending, status, plan, time, report] = await Promise.all([
       this.api.notes.list(), this.api.meetings.list(), this.api.tasks.list(),
       this.api.tasks.sessions(first, last), this.api.calendar.pending(), this.api.calendar.status(),
       this.api.plan?.list() ?? undefined, this.api.time?.settings().catch(() => null) ?? null,
+      this.api.time?.week(this.monday).catch(() => null) ?? null,
     ]);
     this.data = { tree: new NoteTree(notes), meetings: new Meetings(meetings), tasks: new Tasks(tasks), sessions, pending,
       plan: new Plan(plan) };
-    this.settings = planningSettings(time);
+    // The days off replace Today's upcoming holidays here, so a past week shows its own.
+    this.settings = { ...(time?.settings ?? {}), off: timeOffDays(time, report?.pto ?? null, days) };
     this.status = status;
     this.draw();
   }
@@ -150,8 +153,10 @@ export class CalendarPage {
     const now = this.today();
     const capacity = Object.fromEntries(shown.filter((day) => isWorkingDay(day, this.settings))
       .map((day) => [day, dayCapacity(this.data, day, this.settings)]));
+    const off = Object.fromEntries(shown.map((day) => [day, dayOff(day, this.settings)]).filter(([, each]) => each)
+      .map(([day, each]) => [day, { ...offChip(each), whole: each.whole }]));
     this.grid.draw({ days: shown, blocks: this.blocks, today: localDay(now), now: now.getHours() * 60 + now.getMinutes(),
-      selected: this.selected, capacity, chips: dueChips(this.data, days) });
+      selected: this.selected, capacity, chips: dueChips(this.data, days), off });
     if (this.bar.week) this.bar.week.textContent = weekLabel(days);
     this.bar.weekend.setAttribute("aria-pressed", String(this.weekend));
     // Off, a weekend day still shows when something is on it; on, both always show.
