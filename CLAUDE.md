@@ -45,6 +45,11 @@ keybindings).
 - One feature at a time. Discuss the design in prose in plan mode. He answers by rejecting
   ExitPlanMode with comments, so don't use multiple-choice popups for open design questions.
 - Commit or push only when asked, straight to `main`. The work PC only pulls and never pushes.
+- **A push is done only when CI on it is green.** After every `git push`, the `ci-check` hook
+  (`tools/claude_hooks.py`, `tools/ci_check.py`) waits for the GitHub Actions run on the pushed
+  commit. A red run comes back with its failing jobs and error lines: diagnose it, fix it, commit
+  and push again, and tell Tyson what failed. If CI could not be verified (no `gh`, signed out, no
+  run), say so. By hand: `python tools/ci_check.py [SHA]`.
 
 ## Feature pipeline
 - `backlog.md` lists features as `- [ ] Feature`. Tyson writes and orders it.

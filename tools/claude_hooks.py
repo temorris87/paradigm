@@ -4,6 +4,10 @@
                while a feature is in progress, git commands that rewrite the shared working tree
                (stash, reset, restore, checkout, switch, clean) are refused: the lanes edit it
                side by side, and one agent's stash takes the other's work away.
+  ci-check     PostToolUse on Bash: after a `git push`, waits for the GitHub Actions run on the
+               pushed commit (tools/ci_check.py). Red sends the failing jobs and their error
+               lines back to be diagnosed and fixed; green, or not verified, is reported as
+               context, so a push is never called done on CI that wasn't seen.
   stop-check   Stop: while a feature is in progress, a session can't end with phases still owed,
                unless one runs in the background or waits on Tyson (`running` / `blocked`).
 
@@ -15,6 +19,7 @@ import re
 import subprocess
 import sys
 
+import ci_check
 import pipeline_state
 
 GIT_COMMIT = re.compile(r"(^|[;&|(]|\s)git(\s+-\S+(\s+\S+)?)*\s+commit\b")
@@ -42,6 +47,23 @@ def commit_gate(event):
     return 2
 
 
+def ci_after_push(event):
+    command = (event.get("tool_input") or {}).get("command", "")
+    if not ci_check.is_push(command):
+        return 0
+    outcome = ci_check.check()
+    if outcome.state == ci_check.RED:
+        reason = (outcome.text() + "\nDiagnose the failure (`gh run view <id> --log-failed`), fix it, "
+                  "and push again; the push is not done until CI is green. Tell Tyson what failed.")
+        print(json.dumps({"decision": "block", "reason": reason}))
+        return 0
+    context = outcome.text()
+    if outcome.state == ci_check.UNKNOWN:
+        context += "\nSay so when reporting the push: CI was not verified."
+    print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": context}}))
+    return 0
+
+
 def stop_check(event):
     if event.get("stop_hook_active"):
         return 0  # already sent back once this turn: don't loop
@@ -59,7 +81,7 @@ def stop_check(event):
 
 
 def main():
-    hooks = {"commit-gate": commit_gate, "stop-check": stop_check}
+    hooks = {"commit-gate": commit_gate, "ci-check": ci_after_push, "stop-check": stop_check}
     if len(sys.argv) != 2 or sys.argv[1] not in hooks:
         print(f"usage: claude_hooks.py {'|'.join(hooks)}", file=sys.stderr)
         return 1

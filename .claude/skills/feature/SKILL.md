@@ -74,6 +74,12 @@ When the workflow finishes, read what it returned and `python3 tools/pipeline_st
     Windows-only behaviour included.
 
   An `api` mode check never drove a real browser: say so plainly. Don't commit unless he asks; a commit runs the gate again.
+
+## 5. Push (only when he asks)
+A push runs the `ci-check` hook: it waits for CI on the pushed commit (Python on Windows, Mac and
+Linux; JS in Chrome and Firefox). Green: report it with the push. Red: the hook sends back the
+failing jobs and their error lines. Diagnose the cause, fix it, re-run the gate, commit, and push
+again until CI is green, then tell Tyson what failed and what fixed it. Not verified: say so.
 - **blocked**: tell him the phase, why, and what was tried. The ledger says `blocked`, so the
   session can end. Fix it only once he says how.
 

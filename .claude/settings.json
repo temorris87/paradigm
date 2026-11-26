@@ -25,6 +25,18 @@
         ]
       }
     ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/claude_hooks.py\" ci-check",
+            "timeout": 1200
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
