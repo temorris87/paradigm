@@ -79,6 +79,7 @@ export class CalendarPage {
       onSlotClick: (day, minute) => this.run(this.newMeetingAt(day, snap(minute - STEP / 2))),
       onBlockMenu: (block, node) => this.blockMenu(block, node),
       onChip: (chip) => this.run(this.openNote(chip.noteId)),
+      onFocusLost: () => this.focus(),
     });
     root.addEventListener("keydown", (event) => this.onKey(event));
     // Coming back to the window: the import folder may hold today's export by now.
@@ -317,22 +318,22 @@ export class CalendarPage {
     if (!node) return;
     this.select(block.key);
     const entries = block.kind === "task" ? [
-      { label: "Open its note", run: () => this.run(this.openNote(block.noteId)) },
+      { label: "Open its note", run: () => this.stayOn(block, this.openNote(block.noteId)) },
       ...(this.openTask ? [{ label: "Open task", run: () => this.openTask(block.taskId) }] : []),
-      { label: block.done ? "Open it again" : "Mark done", run: () => this.run(this.setDone(block.taskId, !block.done)) },
+      { label: block.done ? "Open it again" : "Mark done", run: () => this.stayOn(block, this.setDone(block.taskId, !block.done)) },
       { label: "Edit time…", run: () => this.run(this.editTime(block)) },
       "separator",
-      { label: "Remove from calendar", danger: true, run: () => this.run(this.removeBlock(block)) },
+      { label: "Remove from calendar", danger: true, run: () => this.stayOn(block, this.removeBlock(block)) },
     ] : block.kind === "meeting" ? [
-      { label: "Open the meeting", run: () => this.run(this.openNote(block.noteId)) },
-      ...(this.data.meetings.get(block.id).join_url ? [{ label: "Join ↗", run: () => window.open(this.data.meetings.get(block.id).join_url, "_blank", "noopener") }] : []),
+      { label: "Open the meeting", run: () => this.stayOn(block, this.openNote(block.noteId)) },
+      ...(this.data.meetings.get(block.id).join_url ? [{ label: "Join ↗", run: () => this.stayOn(block, window.open(this.data.meetings.get(block.id).join_url, "_blank", "noopener")) }] : []),
       { label: "Edit time…", run: () => this.run(this.editTime(block)) },
       "separator",
-      block.cancelled ? { label: "Not cancelled", run: () => this.run(this.cancelMeeting(block, false)) }
+      block.cancelled ? { label: "Not cancelled", run: () => this.stayOn(block, this.cancelMeeting(block, false)) }
         : { label: "Cancel the meeting", danger: true, run: () => this.run(this.cancelMeeting(block, true)) },
     ] : [
       { label: "File it…", run: () => this.side.show("file") },
-      { label: "Don't import", danger: true, run: () => this.run(this.ignore([block.id])) },
+      { label: "Don't import", danger: true, run: () => this.stayOn(block, this.ignore([block.id])) },
     ];
     // The week redraws when the window regains focus or another window changes something.
     openMenu(node, entries, { label: block.title, fallbackFocus: () => this.focusBlock(block) });
@@ -348,6 +349,17 @@ export class CalendarPage {
   // without this it would stay there once the dialog closes. The block may have been redrawn.
   focusBlock(block) {
     (this.grid.blockNodeFor(block.key) ?? this.root).focus({ preventScroll: true });
+  }
+
+  // A menu choice with no dialog: the menu took the focus with it, so the block gets it now and
+  // again once the choice is done (the calendar, if it removed the block). The second time only
+  // when nothing else took the focus meanwhile.
+  stayOn(block, work) {
+    this.focusBlock(block);
+    this.run(Promise.resolve(work).finally(() => {
+      const active = document.activeElement;
+      if (!active || active === document.body) this.focusBlock(block);
+    }));
   }
 
   editTime(block) {

@@ -1,8 +1,9 @@
-// The calendar's dialogs give the focus back to the block they were opened for: a menu's choice
-// removed the menu, so before the dialog the focus was on the page body. If the block was
-// redrawn away, the calendar gets it.
+// The calendar's dialogs and menu choices give the focus back to the block they were opened
+// for: a menu's choice removed the menu, so the focus was on the page body. If the block was
+// redrawn away, the calendar gets it. A redraw keeps a focused block focused.
 import { CalendarPage } from "../../static/js/calendar/calendar-page.js";
-import { assertEqual as same, test } from "./harness.js";
+import { GridView } from "../../static/js/calendar/grid-view.js";
+import { assertEqual as same, assertTrue, test } from "./harness.js";
 
 const key = (target, name) => target.dispatchEvent(new KeyboardEvent("keydown", { key: name, bubbles: true, cancelable: true }));
 
@@ -48,6 +49,85 @@ test("calendar focus: a block redrawn away leaves the focus on the calendar", as
   const closed = page.editTime(BLOCK);
   key(document.activeElement, "Escape");
   await closed;
+  same(document.activeElement, root);
+  root.remove();
+});
+
+// ---- a redraw while a block has the focus (the import on window focus, another window's change)
+
+const DAY = "2026-11-23";
+const STANDUP = { key: "m1", kind: "meeting", title: "Standup", day: DAY, timed: true, start: 540, end: 570 };
+const REVIEW = { key: "m2", kind: "meeting", title: "Review", day: DAY, timed: true, start: 600, end: 630 };
+
+/** A week grid of one day in the page; lost counts the onFocusLost calls. */
+function gridWith(...blocks) {
+  const week = document.createElement("div");
+  document.body.append(week);
+  const counts = { lost: 0 };
+  const grid = new GridView(week, { onBlockDown() {}, onSlotClick() {}, onBlockMenu() {}, onChip() {},
+    onFocusLost: () => { counts.lost += 1; } });
+  const draw = (...shown) => grid.draw({ days: [DAY], blocks: shown, today: DAY, now: null, selected: null });
+  draw(...blocks);
+  return { week, grid, draw, counts };
+}
+
+test("calendar focus: a redraw keeps the focus on the block's new node", () => {
+  const { week, grid, draw, counts } = gridWith(STANDUP, REVIEW);
+  const old = grid.blockNodeFor("m2");
+  old.focus();
+  draw(STANDUP, REVIEW);
+  assertTrue(grid.blockNodeFor("m2") !== old, "the node was rebuilt");
+  same(document.activeElement, grid.blockNodeFor("m2"));
+  same(counts.lost, 0);
+  week.remove();
+});
+
+test("calendar focus: a redraw without the focused block calls onFocusLost", () => {
+  const { week, grid, draw, counts } = gridWith(STANDUP, REVIEW);
+  grid.blockNodeFor("m2").focus();
+  draw(STANDUP);
+  same(counts.lost, 1);
+  week.remove();
+});
+
+test("calendar focus: a redraw leaves focus elsewhere alone", () => {
+  const { week, grid, draw, counts } = gridWith(STANDUP);
+  const input = document.createElement("input");
+  document.body.append(input);
+  input.focus();
+  draw(STANDUP);
+  same(document.activeElement, input);
+  same(counts.lost, 0);
+  document.activeElement?.blur();
+  draw(STANDUP);
+  same(document.activeElement, document.body, "no focus stays no focus");
+  same(counts.lost, 0);
+  input.remove();
+  week.remove();
+});
+
+// ---- a menu choice with no dialog
+
+test("calendar focus: a menu choice with no dialog ends on the block", async () => {
+  const { page, root, nodes } = calendarWith("m1");
+  let finish;
+  page.stayOn(BLOCK, new Promise((resolve) => { finish = resolve; }));
+  same(document.activeElement, nodes.get("m1"), "at once");
+  document.activeElement.blur();
+  finish();
+  await new Promise((resolve) => setTimeout(resolve));
+  same(document.activeElement, nodes.get("m1"), "once it is done");
+  root.remove();
+});
+
+test("calendar focus: a menu choice that removed the block ends on the calendar", async () => {
+  const { page, root, nodes } = calendarWith("m1");
+  const removed = Promise.resolve().then(() => {
+    nodes.get("m1").remove();
+    nodes.delete("m1");
+  });
+  page.stayOn(BLOCK, removed);
+  await new Promise((resolve) => setTimeout(resolve));
   same(document.activeElement, root);
   root.remove();
 });

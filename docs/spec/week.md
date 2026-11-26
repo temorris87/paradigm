@@ -33,7 +33,11 @@ How the app behaves. Kept up to date by each feature that changes it.
   and `s` work at once. Drag a block to move it, its bottom edge to resize (15-minute
   steps); click (or right-click) for its menu: open, Open task (a task's own page, tasks.md),
   done, Edit time…, remove or cancel. Escape on the menu puts the focus back on the block,
-  even when the week was redrawn under it. An
+  even when the week was redrawn under it (the window-focus import, another window's change,
+  a resize). A choice with no dialog (open, done, Not cancelled, Join ↗, Don't import) leaves
+  the focus on the block; Remove from calendar leaves it on the calendar. A redraw keeps the
+  focus on a focused block (on the calendar if the block is gone) and leaves focus elsewhere
+  alone. An
   empty slot makes a meeting there. A block that has passed is time worked. Plan's footer:
   each code's hours so far, the week projected, Timesheet ↗. Its keys live in
   `js/calendar/calendar-keys.js`.
@@ -42,7 +46,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   scaling): above the hour grid's scroll bar the heads leave an empty strip in their own
   background, kept even when the day fits without scrolling; on the Mac it has no width
   (Tyson, 2026-11-26). When Edit time… or Cancel the meeting closes (Esc, Cancel or Save), the
-  focus goes back to the block, or to the calendar if the block was redrawn.
+  focus goes back to the block, and stays on it when the week redraws after (on the calendar
+  if the block is gone).
 - Outlook import (worknotes' rules): each morning, Outlook File › Save Calendar, Next 7 days,
   Full details, into `<data>/import/` (made at start). It is read at start, when the calendar
   window gets focus, and with Import (or Import a file…, or a drop on the calendar); the file
