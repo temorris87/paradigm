@@ -346,6 +346,24 @@ body.is-dragging * {
   background-color: color-mix(in srgb, var(--nord1) 60%, transparent);
 }
 
+/* A whole day off (a holiday, time off, sick): a muted wash over its head, all-day row and
+   column; after --today, so it wins on a day off today. */
+.cal-dayhead--off,
+.cal-allday__cell--off,
+.cal-col--off {
+  background-color: color-mix(in srgb, var(--nord3) 35%, transparent);
+}
+
+.cal-dayhead--off:not(.cal-dayhead--today) .cal-dayhead__date {
+  color: var(--text-dim);
+}
+
+.cal-allday .cal-chip--off {
+  flex-shrink: 0;
+  color: var(--text-dim);
+  cursor: default;
+}
+
 .cal-now {
   position: absolute;
   left: 0;

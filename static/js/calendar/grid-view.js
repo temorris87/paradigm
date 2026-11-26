@@ -6,9 +6,11 @@
 //
 //   const grid = new GridView(element, { onBlockDown(block, event, part), onSlotClick(day, minute),
 //                                        onBlockMenu(block, node), onChip(chip) });
-//   grid.draw({ days, blocks, today, now, selected, capacity?, chips? })
+//   grid.draw({ days, blocks, today, now, selected, capacity?, chips?, off? })
 //     part: "body" | "end" (the bottom edge); capacity: { day: { workMin, meetingMin, focusMin,
-//     freeMin } }; chips: { day: [{ key, kind, label, noteId }] } (week/tray-model.js dueChips)
+//     freeMin } }; chips: { day: [{ key, kind, label, noteId }] } (week/tray-model.js dueChips);
+//     off: { day: { label, title, whole } }: a day off's chip first in its all-day row; a whole
+//     one shades its head and column, and its head says Off
 //   grid.slotAt(clientX, clientY)  -> { day, minute } over the timed grid, or null
 //   grid.showGhost(day, start, end, title) / grid.hideGhost()
 //   grid.scrollToMinute(minute)
@@ -57,7 +59,7 @@ export class GridView {
   }
 
   draw(state) {
-    const { days, blocks, today, now, selected = null, capacity = {}, chips = {} } = state;
+    const { days, blocks, today, now, selected = null, capacity = {}, chips = {}, off = {} } = state;
     this.last = state;
     const minute = this.scroller.scrollTop / this.hourPx * 60;
     if (this.scroller.clientHeight) this.hourPx = hourPxFor(this.scroller.clientHeight);
@@ -67,19 +69,27 @@ export class GridView {
     this.root.style.setProperty("--cal-days", String(days.length));
     this.head.replaceChildren(element("div", "cal-corner"), ...days.map((day) => {
       const date = dateOf(day);
-      const node = element("div", `cal-dayhead${day === today ? " cal-dayhead--today" : ""}`);
+      const whole = Boolean(off[day]?.whole);
+      const node = element("div", `cal-dayhead${day === today ? " cal-dayhead--today" : ""}${whole ? " cal-dayhead--off" : ""}`);
       const line = element("div", "cal-dayhead__line");
       line.append(element("span", "cal-dayhead__name", WEEKDAYS[date.getDay()]),
         element("span", "cal-dayhead__date", String(date.getDate())));
-      const room = capacity[day];
-      if (room?.workMin) line.append(element("span", "cal-dayhead__free", `${hoursText(room.freeMin)} free`));
+      const room = whole ? null : capacity[day];
+      if (whole) line.append(element("span", "cal-dayhead__free", "Off"));
+      else if (room?.workMin) line.append(element("span", "cal-dayhead__free", `${hoursText(room.freeMin)} free`));
       node.append(line);
       if (room?.workMin) node.append(capacityBar(room));
       node.title = day;
       return node;
     }));
     this.allDay.replaceChildren(element("div", "cal-corner cal-corner--label", "due"), ...days.map((day) => {
-      const cell = element("div", "cal-allday__cell");
+      const cell = element("div", `cal-allday__cell${off[day]?.whole ? " cal-allday__cell--off" : ""}`);
+      if (off[day]) {
+        // Nothing to open: a label, not a button.
+        const node = element("span", "cal-chip cal-chip--off", off[day].label);
+        node.title = off[day].title;
+        cell.append(node);
+      }
       for (const chip of chips[day] ?? []) {
         const node = element("button", `cal-chip cal-chip--${chip.kind}`, chip.label);
         node.type = "button";
@@ -98,7 +108,7 @@ export class GridView {
       gutter.append(label);
     }
     const columns = days.map((day) => {
-      const column = element("div", `cal-col${day === today ? " cal-col--today" : ""}`);
+      const column = element("div", `cal-col${day === today ? " cal-col--today" : ""}${off[day]?.whole ? " cal-col--off" : ""}`);
       column.dataset.day = day;
       for (const block of layoutDay(blocks.filter((each) => each.day === day))) column.append(this.blockNode(block, selected, true));
       if (day === today && now !== null) {

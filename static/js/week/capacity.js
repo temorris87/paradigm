@@ -16,8 +16,19 @@
 //                                          { day, start, end } of the first free stretch that
 //                                          long on a working day (not a weekend, not one of
 //                                          the timesheet's holidays), on or before until; null
-//   isWorkingDay(day, settings)
+//   isWorkingDay(day, settings)            not a weekend, a holiday or a whole day off
+//   timeOffDays(timeSettings, pto, days)   { day: { kind, name, hours, note } }: the days off,
+//                                          for settings.off. pto (/api/time/week's) is the truth
+//                                          for the days shown; past them, the upcoming holidays
+//                                          and the time off ranges (hours null: the whole day)
+//   dayOff(day, settings)                  { kind, name, hours, note, offMin, whole } or null:
+//                                          offMin the working minutes it takes, whole when that
+//                                          is all of them
+//   offChip(off)                           { label, title }: "Thanksgiving", "Time off · 4 h"
 //   hoursText(minutes)                     "3.5 h", "45 min"
+//
+// settings: the timesheet's settings plus holidays: [day] (Today's) and off: { day: off }
+// (the calendar's). A part day off shrinks the day's working minutes; it isn't a time range.
 import { addDays, dateOf, localDay } from "../meetings/meeting-days.js";
 import { allMeetings } from "../meetings/meetings-model.js";
 import { DEFAULT_LENGTH, STEP, minutes } from "../calendar/week-model.js";
@@ -84,7 +95,7 @@ export function dayCapacity(ctx, day, settings) {
   const busy = busyOn(ctx, day);
   const meetingSpans = clip(busy.meetings, work);
   const focusSpans = subtract(clip(busy.focus, work), meetingSpans);
-  const workMin = total(work);
+  const workMin = total(work) - (dayOff(day, settings)?.offMin ?? 0);
   const meetingMin = total(meetingSpans);
   const focusMin = total(focusSpans);
   return { workMin, meetingMin, focusMin, freeMin: Math.max(0, workMin - meetingMin - focusMin) };
@@ -99,7 +110,51 @@ export function freeGaps(ctx, day, settings, from = 0) {
 export function isWorkingDay(day, settings = {}) {
   const weekday = dateOf(day).getDay();
   if (weekday === 0 || weekday === 6) return false;
-  return !(settings.holidays ?? []).includes(day);
+  if ((settings.holidays ?? []).includes(day)) return false;
+  return !dayOff(day, settings)?.whole;
+}
+
+const OFF_LABELS = { time_off: "Time off", sick: "Sick" };
+// A holiday first, then sick time, then time off: the server's order (db/time_repo.py).
+const OFF_RANK = { holiday: 0, sick: 1, time_off: 2 };
+
+export function timeOffDays(timeSettings, pto = [], days = []) {
+  const off = {};
+  const put = (day, entry) => {
+    const weekday = dateOf(day).getDay();
+    if (weekday === 0 || weekday === 6) return;
+    if (!off[day] || OFF_RANK[entry.kind] < OFF_RANK[off[day].kind]) off[day] = entry;
+  };
+  for (const { day, name } of timeSettings?.upcoming ?? []) put(day, { kind: "holiday", name, hours: null, note: "" });
+  const ranges = timeSettings?.time_off ?? [];
+  for (const range of ranges) {
+    for (let date = dateOf(range.first), day = range.first; day <= (range.last || range.first); date = addDays(date, 1), day = localDay(date)) {
+      put(day, { kind: range.kind, name: OFF_LABELS[range.kind] ?? "Time off", hours: range.hours > 0 ? range.hours : null, note: range.note ?? "" });
+    }
+  }
+  if (pto) {
+    for (const day of days) delete off[day];
+    for (const { day, kind, name, hours } of pto) {
+      const range = ranges.find((each) => each.kind === kind && each.first <= day && day <= (each.last || each.first));
+      off[day] = { kind, name, hours, note: kind === "holiday" ? "" : range?.note ?? "" };
+    }
+  }
+  return off;
+}
+
+export function dayOff(day, settings = {}) {
+  const entry = settings.off?.[day];
+  if (!entry) return null;
+  const workMin = total(workingSpans(settings));
+  const offMin = entry.hours === null || entry.hours === undefined ? workMin : Math.min(workMin, Math.max(0, entry.hours * 60));
+  return { ...entry, offMin, whole: offMin >= workMin };
+}
+
+export function offChip(off) {
+  const name = off.kind === "holiday" ? off.name || "Holiday" : OFF_LABELS[off.kind] ?? "Time off";
+  const label = off.whole ? name : `${name} · ${Number((off.offMin / 60).toFixed(2))} h`;
+  const title = [label, off.note].filter(Boolean).join("\n");
+  return { label, title };
 }
 
 export function firstFreeSlot(ctx, { length = DEFAULT_LENGTH, from, until = "", settings = {} }) {
@@ -108,6 +163,8 @@ export function firstFreeSlot(ctx, { length = DEFAULT_LENGTH, from, until = "", 
     if (!isWorkingDay(day, settings)) continue;
     // Today starts at the next quarter hour, not in the past.
     const start = day === from.day ? Math.ceil(from.minute / STEP) * STEP : 0;
+    // A part day off is less room, not a time range: no slot once it leaves too little.
+    if (dayOff(day, settings) && dayCapacity(ctx, day, settings).freeMin < length) continue;
     const gap = freeGaps(ctx, day, settings, start).find(([s, e]) => e - s >= length);
     if (gap) return { day, start: gap[0], end: gap[0] + length };
   }

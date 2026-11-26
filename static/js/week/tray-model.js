@@ -18,7 +18,8 @@
 //                                     label, noteId, taskId? }] }: open tasks due that day
 //                                     (placed or not) and milestones on it
 //   weekSummary(data, days, settings) { focusMin, meetingMin, freeMin } over the week's
-//                                     working days
+//                                     working days (a whole day off skipped, a part day's
+//                                     hours off its room: settings.off, week/capacity.js)
 import { hubScope } from "../people/people-model.js";
 import { milestonesOf } from "../plan/plan-model.js";
 import { estimateText, taskEntries } from "../tasks/tasks-model.js";
