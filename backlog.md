@@ -165,3 +165,5 @@ Features in build order. "build feature" takes the first unchecked item.
 - [ ] Holiday time and PTO time should show on calendar.
 - [ ] Work display resolution is 5120x2160, the right 1/3 is slightly misaligned by default when
   it loads.
+- [ ] The "Cancel the meeting" dialog opens with the focus on its destructive button, so
+  pressing Enter straight away cancels the meeting: focus the safe choice instead.
