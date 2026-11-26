@@ -3,6 +3,7 @@ import { NoteTree } from "../../static/js/notes/tree-model.js";
 import { Plan } from "../../static/js/plan/plan-model.js";
 import { planStrip, portfolioBars, weekdaysBetween } from "../../static/js/plan/plan-rows.js";
 import { Records } from "../../static/js/records/records-model.js";
+import { logStatusDialog } from "../../static/js/status/status-commands.js";
 import { StatusLogs, digest, digestHtml, firstSentence, healthOf, sinceLastLog } from "../../static/js/status/status-model.js";
 import { Tasks } from "../../static/js/tasks/tasks-model.js";
 import { outcomeLine } from "../../static/js/hubs/dash-head.js";
@@ -130,4 +131,20 @@ test("plan: a move's knock-on effect, and a slip in words", async () => {
   assertEqual(moveImpact(tree(), plan, 5, { start: "2026-11-09", end: "2026-11-27" }), "", "nothing moved");
   assertEqual(slipWords({ days: 9, moves: 3 }), "9 days later than planned, moved 3 times");
   assertEqual(slipWords({ days: 0, moves: 0 }), "");
+});
+
+test("log status: opened from a menu that is gone, Escape gives the focus back to the page", async () => {
+  // The crumb's ▾ menu item that opened it is removed by the time the dialog closes.
+  const opener = document.createElement("button");
+  document.body.append(opener);
+  opener.focus();
+  let focused = 0;
+  const app = { tree: tree(), plan: new Plan([]), records: new Records([]), tasks: new Tasks([]), statusLogs: LOGS,
+    today: () => new Date("2026-11-23T12:00:00"), focusNote: () => { focused += 1; } };
+  const result = logStatusDialog(app, tree().get(2));
+  opener.remove();
+  const dialog = document.querySelector("dialog.dialog");
+  dialog.querySelector("textarea").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+  assertEqual(await result, null);
+  assertEqual(focused, 1, "the page has the focus again, so L works without a click");
 });

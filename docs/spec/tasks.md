@@ -70,7 +70,9 @@ How the app behaves. Kept up to date by each feature that changes it.
   track, at risk, blocked) and a few words (`status_logs`), never in its text. Log status… (the
   head's button, `L` in the sections, `:log`, first on its note menu) has the health as three
   buttons (`1` `2` `3`), the words, and "since last log" lines to click in (date moves,
-  decisions, answers, done tasks); Ctrl-Enter logs it. The newest entry is its health: the
+  decisions, answers, done tasks); Ctrl-Enter logs it. Escape from it or its history puts the
+  focus back on the page, even when the menu item that opened it is gone. The newest entry is
+  its health: the
   dashboard head's badge, "Where I am" first in Act (the newest boxed, two older, History),
   an area's Projects table (Health, Latest status, Updated, Next milestone, Open; the Next
   action column went with the next action, 2026-11-26). On hold beats it; none logged reads "—" / "log one"; stale at `Config.stale_days`

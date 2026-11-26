@@ -252,6 +252,207 @@ test("live sender: a trash with no next note holds nothing; a note opened then i
   assertTrue(!channel.sent.at(-1).trashed && !channel.sent.at(-1).reply);
 });
 
+function trashScene() {
+  const channel = fakeChannel();
+  const clock = { now: 1000 };
+  const pending = [];
+  const timers = { setTimeout: (fn) => pending.push(fn) && pending.length, clearTimeout: () => pending.splice(0) };
+  const editor = new EventTarget();
+  editor.value = "hello";
+  const app = { tree: new NoteTree([{ id: 1, parent_id: null, title: "Acme", kind: "project" },
+    { id: 2, parent_id: 1, title: "Kickoff" }, { id: 3, parent_id: 1, title: "Next" }, { id: 4, parent_id: null, title: "Elsewhere" }]),
+  currentId: 2, editor, agendaEditor: null, agenda: { id: null }, highlightsOf: () => [], events: new EventTarget() };
+  const sender = new LiveSender(app, channel, { clock: () => clock.now, timers });
+  sender.listen(new EventTarget());
+  app.events.dispatchEvent(new Event("redraw"));
+  const key = (col) => editor.dispatchEvent(new CustomEvent("cursor", { detail: { line: 0, col, mode: "normal" } }));
+  const trash = (id, next) => app.events.dispatchEvent(new CustomEvent("trashed", { detail: { id, next } }));
+  const show = (id) => {
+    app.currentId = id;
+    app.events.dispatchEvent(new Event("redraw"));
+  };
+  return { channel, clock, pending, app, key, trash, show };
+}
+
+test("live sender: a key while the trash is in flight never lets the next note out as news", () => {
+  const { channel, clock, key, trash, show } = trashScene();
+  clock.now += 100;
+  trash(2, 3);
+  const trashedAt = channel.sent.length;
+  clock.now += 100;
+  key(4);
+  assertEqual(channel.sent.length, trashedAt, "the trashed note is not sent again over its trashed line");
+  show(null);
+  clock.now += 100;
+  show(3);
+  const next = channel.sent.at(-1);
+  assertEqual(next.id, 3, "the next note goes out");
+  assertTrue(next.reply, "as a reply: the main window stays where it is");
+  clock.now += 100;
+  key(1);
+  assertTrue(!channel.sent.at(-1).reply, "once it has gone out, keys are news again");
+});
+
+test("live sender: a send waiting on its timer after a trash keeps its reply flag", () => {
+  const { channel, clock, pending, key, trash, show } = trashScene();
+  clock.now += 100;
+  trash(2, 3);
+  show(null);
+  show(3);
+  const at = channel.sent.length;
+  key(1);
+  assertTrue(channel.sent.at(-1).reply, "the first after the hold");
+  key(2);
+  assertEqual(channel.sent.length, at + 1, "too soon: waits");
+  clock.now += 50;
+  pending.shift()();
+  assertEqual(channel.sent.at(-1).col, 2);
+  assertTrue(!channel.sent.at(-1).reply, "queued after the next note went out: news");
+  // Now a key mid-trash queues a send, and the quiet ends (an ask answered) before it fires.
+  clock.now += 100;
+  key(9);
+  trash(3, 1);
+  key(3);
+  assertEqual(pending.length, 1, "queued: the last send was just now");
+  show(null);
+  show(1);
+  channel.deliver({ type: "live-ask" });
+  clock.now += 50;
+  pending.shift()();
+  assertEqual(channel.sent.at(-1).id, 1);
+  assertTrue(channel.sent.at(-1).reply, "it carries the flag it was queued with");
+});
+
+test("live sender: a note opened on purpose after a trash is still news", () => {
+  const { channel, clock, trash, show } = trashScene();
+  clock.now += 100;
+  trash(2, 3);
+  show(null);
+  clock.now += 100;
+  show(4);
+  assertEqual(channel.sent.at(-1).id, 4);
+  assertTrue(!channel.sent.at(-1).reply, "not the note that opens by itself");
+});
+
+test("live sender: the trashed note, restored and opened again while the next is untouched, is news", () => {
+  const { channel, clock, key, trash, show } = trashScene();
+  clock.now += 100;
+  trash(2, 3);
+  show(null);
+  show(3);
+  const held = channel.sent.length;
+  clock.now += 100;
+  show(2);
+  assertEqual(channel.sent.length, held + 1, "the reopened note goes out");
+  assertEqual(channel.sent.at(-1).id, 2);
+  assertTrue(!channel.sent.at(-1).trashed && !channel.sent.at(-1).reply, "as news, over its trashed line");
+  clock.now += 100;
+  key(1);
+  assertEqual(channel.sent.at(-1).col, 1, "and typing in it reaches the Live page");
+});
+
+test("live sender: a note trashed elsewhere (already gone from the tree) still holds the next one", () => {
+  const { channel, clock, app, trash, show } = trashScene();
+  clock.now += 100;
+  app.tree = new NoteTree([{ id: 1, parent_id: null, title: "Acme", kind: "project" }, { id: 3, parent_id: 1, title: "Next" }]);
+  const at = channel.sent.length;
+  trash(2, 1);
+  assertEqual(channel.sent.length, at, "nothing to say about a note no longer in the tree");
+  show(1);
+  assertEqual(channel.sent.length, at, "the next note is held");
+});
+
+function trashApp({ role, notes, currentId, parent = null }) {
+  const opened = [];
+  const switched = [];
+  const events = [];
+  const shown = [];
+  const app = {
+    role, currentId, tree: new NoteTree(notes),
+    trash: { days: 7 },
+    events: new EventTarget(),
+    views: { shown: null },
+    session: { note: { id: currentId, title: "Gone", parent_id: parent }, close() {} },
+    api: { remove: async () => {} },
+    changes: { send() {} },
+    refreshTree: async () => {},
+    open: async (id) => opened.push(id),
+    switchTo: async (id) => switched.push(id),
+    showView: (view) => shown.push(view),
+    say() {},
+    editor: { value: "the gone note's text", readOnly: false },
+    agenda: { open: (note) => { app.agendaOpened = note; } },
+    redraw() {},
+  };
+  for (const name of ["isDashboard", "dashboardAfter", "nextAfterDeleting", "trashCommand", "leaveTrashed", "showNoNote"]) {
+    app[name] = NotesApp.prototype[name];
+  }
+  app.events.addEventListener("trashed", (event) => events.push(event.detail));
+  return { app, opened, switched, events, shown };
+}
+
+test("trash in the main window: a hub's goes to the next dashboard, never a plain note", async () => {
+  const notes = [{ id: 1, parent_id: null, title: "Loose note" }, { id: 2, parent_id: null, title: "Acme", kind: "project" },
+    { id: 3, parent_id: null, title: "Northwind", kind: "area" }];
+  const { app, opened, shown } = trashApp({ role: "main", notes, currentId: 2 });
+  await app.trashCommand(true);
+  assertEqual(opened.join(), "3", "the first top-level dashboard, not the plain note before it");
+  const alone = trashApp({ role: "main", notes: notes.slice(0, 2), currentId: 2 });
+  await alone.app.trashCommand(true);
+  assertEqual(alone.opened.length, 0, "no dashboard left: nothing opens, so nothing goes to the note window");
+  assertEqual(alone.shown.join(), "home", "and the main window goes Home, not left on the gone hub");
+  assertEqual(shown.length, 0, "a dashboard to go to: no Home");
+});
+
+test("trash in the main window with no note open: says so and sends nothing", async () => {
+  const removed = [];
+  const { app, opened, shown } = trashApp({ role: "main", notes: [{ id: 1, parent_id: null, title: "Loose note" }], currentId: null });
+  app.api.remove = async (id) => removed.push(id);
+  let message = "";
+  try { await app.trashCommand(false); } catch (error) { message = error.message; }
+  assertEqual(message, "E: no note is open");
+  assertEqual(removed.length, 0, "no delete with id null");
+  assertEqual(opened.length + shown.length, 0, "and the window stays where it is");
+});
+
+test("trash in the main window: a nested dashboard goes to its parent's hub", async () => {
+  const notes = [{ id: 1, parent_id: null, title: "Loose note" }, { id: 2, parent_id: null, title: "Acme", kind: "project" },
+    { id: 5, parent_id: 2, title: "Folder" }, { id: 6, parent_id: 5, title: "Inner", kind: "person" }];
+  const { app, opened } = trashApp({ role: "main", notes, currentId: 6 });
+  await app.trashCommand(true);
+  assertEqual(opened.join(), "2");
+});
+
+test("trash in the note window: still opens the parent, and tells the sender what opens next", async () => {
+  const notes = [{ id: 2, parent_id: null, title: "Acme", kind: "project" }, { id: 7, parent_id: 2, title: "Kickoff" }];
+  const { app, opened, events } = trashApp({ role: "note", notes, currentId: 7 });
+  await app.trashCommand(false);
+  assertEqual(opened.join(), "2");
+  assertEqual(JSON.stringify(events), JSON.stringify([{ id: 7, next: 2 }]));
+});
+
+test("a note trashed in the other window: leaving it goes the trash's quiet way", async () => {
+  // Already gone from the tree, as reloadIfChanged finds it.
+  const notes = [{ id: 1, parent_id: null, title: "Loose note" }, { id: 2, parent_id: null, title: "Acme", kind: "project" }];
+  const { app, switched, events } = trashApp({ role: "note", notes, currentId: 7, parent: 2 });
+  await app.leaveTrashed();
+  assertEqual(switched.join(), "2");
+  assertEqual(JSON.stringify(events), JSON.stringify([{ id: 7, next: 2 }]), "the sender holds the dashboard that opens next");
+});
+
+test("the last hub trashed in the other window: the note window empties and takes no typing", async () => {
+  const notes = [{ id: 1, parent_id: null, title: "Loose note" }];
+  const { app, switched } = trashApp({ role: "note", notes, currentId: 7 });
+  await app.leaveTrashed();
+  assertEqual(switched.length, 0, "no dashboard left: nothing opens");
+  assertEqual(app.editor.value, "", "the gone note's text is not left behind");
+  assertTrue(app.editor.readOnly, "typing would save nowhere");
+  assertEqual(JSON.stringify(app.agendaOpened), "{}", "and a meeting's agenda box closes too");
+  const main = trashApp({ role: "main", notes, currentId: 7 });
+  await main.app.leaveTrashed();
+  assertEqual(main.app.editor.value, "the gone note's text", "the main window shows no editor: left alone");
+});
+
 test("live page: a note opened while the ask is out still switches the page", () => withPage(({ page, switched }) => {
   page.receive(live("a", { id: 2 }));
   assertEqual(switched.join(), "2");

@@ -7,7 +7,9 @@
 // active, line, col, mode, trashed } after an edit, a cursor move, a mode change or a redraw
 // (a note opened, renamed, reloaded); answers "live-ask" at once, with reply: true so the main
 // window doesn't take the answer for a newly opened note (and so the first one after a
-// trash's hold ends); "live-closed" on pagehide.
+// trash's hold ends); "live-closed" on pagehide. From a trash until the next note has gone out
+// once, every message is a reply: the note that opens by itself after a trash never pulls the
+// main window to Live, whatever keys, clicks and redraws come in between.
 import { fieldsFor } from "../hubs/fields.js";
 import { groupOf, hubOf } from "../notes/hub-groups.js";
 
@@ -38,6 +40,11 @@ export class LiveSender {
     // The hold ended by a key or a click: the next message is not news either, or the main
     // window, still on the trashed id, would switch to Live on typing alone.
     this.quiet = false;
+    // After a trash with a next note: { id, next } until a note other than the trashed one
+    // has been sent; till then every message goes out as a reply.
+    this.afterTrash = null;
+    // The reply flag the send waiting on the timer was queued with.
+    this.queuedReply = false;
   }
 
   listen(win) {
@@ -86,8 +93,10 @@ export class LiveSender {
       this.active = "body";
       this.quiet = false;
       // No note for a moment (the trashed one closed), then the next one: still held. Any
-      // other note was opened on purpose: news.
+      // other note was opened on purpose: news. That includes the trashed one, restored and
+      // opened again: a new note, so its quiet is over too.
       if (this.hold && id !== null && id !== this.hold.next) this.hold = null;
+      if (this.afterTrash && id !== null && id !== this.afterTrash.next) this.afterTrash = null;
     }
     if (this.hold) return;
     this.schedule();
@@ -95,47 +104,69 @@ export class LiveSender {
 
   trashed(id, next) {
     this.flush();
+    // Gone from the tree already (trashed in the other window): nothing to say about it, but
+    // the next note still opens by itself.
     const message = this.message(id);
-    if (!message) return;
-    this.changes.send({ ...message, fields: [], trashed: true });
+    if (message) this.changes.send({ ...message, fields: [], trashed: true });
     // With no next note nothing opens by itself, so there is nothing to hold.
     this.hold = next === null ? null : { next };
+    this.afterTrash = next === null ? null : { id, next };
   }
 
   /** A main window asked (it opened or reloaded): it gets what is shown, held or not. */
   answerAsk() {
     const message = this.message(this.app.currentId);
-    if (message) this.changes.send({ ...message, reply: true });
+    if (!message) return;
+    this.changes.send({ ...message, reply: true });
+    this.sentAfterTrash(message.id);
   }
 
   /** Sends now if the last one went long enough ago, else once that time is up. */
   schedule() {
-    if (this.timer !== null) return;
+    if (this.timer !== null) {
+      this.queuedReply ||= this.replying();
+      return;
+    }
     const wait = this.lastSent + THROTTLE_MS - this.clock();
     if (wait <= 0) {
       this.sendNow();
       return;
     }
+    this.queuedReply = this.replying();
     this.timer = this.timers.setTimeout(() => {
       this.timer = null;
       this.sendNow();
     }, wait);
   }
 
+  /** Whether a message sent now is no news: the first after a hold, or any after a trash. */
+  replying() {
+    return this.quiet || this.afterTrash !== null;
+  }
+
+  /** A note other than the trashed one went out: the trash's quiet is over. */
+  sentAfterTrash(id) {
+    if (this.afterTrash && id !== this.afterTrash.id) this.afterTrash = null;
+  }
+
   flush() {
+    this.queuedReply = false;
     if (this.timer === null) return;
     this.timers.clearTimeout(this.timer);
     this.timer = null;
   }
 
   sendNow() {
+    const queued = this.queuedReply;
     this.flush();
     if (this.hold) return;
     const message = this.message(this.app.currentId);
-    if (!message) return;
+    // The trashed note, still open for a moment: sending it again would undo "Moved to trash".
+    if (!message || message.id === this.afterTrash?.id) return;
     this.lastSent = this.clock();
-    this.changes.send(this.quiet ? { ...message, reply: true } : message);
+    this.changes.send(queued || this.replying() ? { ...message, reply: true } : message);
     this.quiet = false;
+    this.sentAfterTrash(message.id);
   }
 
   /** The live message for a note, or null when none is open. */

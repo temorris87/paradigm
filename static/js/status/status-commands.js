@@ -25,6 +25,12 @@ export function statusHubOf(app, id = app.currentId) {
   return top && (top.kind === "project" || top.kind === "area") ? top : null;
 }
 
+// Opened from a menu (the crumb's ▾), the dialog's opener is gone when it closes: the focus
+// goes back to the page, or L and the other page keys do nothing until a click.
+function backToPage(app) {
+  return { fallbackFocus: () => app.focusNote?.() };
+}
+
 function ctxOf(app) {
   return { tree: app.tree, plan: app.plan, records: app.records, tasks: app.tasks, statusLogs: app.statusLogs };
 }
@@ -49,6 +55,7 @@ export function logStatusDialog(app, hub) {
       app.say(`Logged: ${hub.title} is ${healthLabel(health).toLowerCase()}`);
       return true;
     },
+    ...backToPage(app),
   });
 }
 
@@ -62,6 +69,7 @@ export function statusHistoryDialog(app, hub) {
     lines: entries.map((entry) => `${dayText(entry.day, { today })} · ${healthLabel(entry.health)} — ${entry.text}`),
     submit: "Close",
     run: async () => true,
+    ...backToPage(app),
   });
 }
 
