@@ -34,11 +34,35 @@ test("calendar focus: Esc in Edit time… puts the focus on the block", async ()
   root.remove();
 });
 
-test("calendar focus: Cancel in Cancel the meeting puts the focus on the block", async () => {
+test("calendar focus: Keep the meeting in Cancel the meeting puts the focus on the block", async () => {
   const { page, root, nodes } = calendarWith("m1");
   const closed = page.cancelMeeting(BLOCK, true);
-  [...document.querySelectorAll("dialog .dialog__button")].find((button) => button.textContent === "Cancel").click();
+  same(document.activeElement?.textContent, "Keep the meeting", "opens on the safe button");
+  // Enter on a focused button clicks it, as the browser does.
+  document.activeElement.click();
   same(await closed, null, "nothing changed");
+  same(document.activeElement, nodes.get("m1"));
+  root.remove();
+});
+
+test("calendar focus: Cancel the meeting, confirmed, cancels it and puts the focus on the block", async () => {
+  const { page, root, nodes } = calendarWith("m1");
+  const calls = [];
+  Object.assign(page, { api: { meetings: { cancel: async (...args) => { calls.push(args); } } }, changed: async () => {} });
+  const closed = page.cancelMeeting(BLOCK, true);
+  document.querySelector("dialog .dialog__button--ok").click();
+  same(await closed, true, "confirmed");
+  same(JSON.stringify(calls), JSON.stringify([[1, true]]), "the meeting is cancelled");
+  same(document.activeElement, nodes.get("m1"));
+  root.remove();
+});
+
+test("calendar focus: Not cancelled, with no dialog, puts the focus on the block", async () => {
+  const { page, root, nodes } = calendarWith("m1");
+  const calls = [];
+  Object.assign(page, { api: { meetings: { cancel: async (...args) => { calls.push(args); } } }, changed: async () => {} });
+  await page.cancelMeeting({ ...BLOCK, cancelled: true }, false);
+  same(JSON.stringify(calls), JSON.stringify([[1, false]]), "the meeting is no longer cancelled");
   same(document.activeElement, nodes.get("m1"));
   root.remove();
 });

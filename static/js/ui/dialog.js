@@ -17,9 +17,10 @@
 //       { key: "text", type: "textarea", add: { label: "Since last log:", lines: ["..."] } },
 //     ],                                // add: lines a click puts in the text box
 //     submit: "Rename",                 // or (values) => "Add new person": the label follows the fields
-//     danger: false,                    // a red submit button (trash)
+//     danger: false,                    // a red submit button (trash); implies safeFocus
 //     safeFocus: false,                 // opens on Cancel, so a reflex Enter changes nothing
-//                                       // (a confirm that deletes for good)
+//                                       // (every red confirm; Tab, a click or Ctrl-Enter confirms)
+//     cancel: "Cancel",                 // the safe button's label ("Keep the meeting")
 //     live: (values) => "...",          // a line under the fields, worked out again as they
 //                                       // change (Edit dates' knock-on effect), in red; or
 //                                       // { text, plain: true }: dim, not a warning (a preview)
@@ -36,7 +37,7 @@ import { element, openModal, restoreFocus, uniqueId } from "./dom.js";
 import { uiAction } from "./ui-keys.js";
 
 export function formDialog({ title, text = "", lines = [], fields = [], submit = "OK", danger = false, run = async (values) => values,
-  returnFocus = null, fallbackFocus = () => {}, live = null, safeFocus = false }) {
+  returnFocus = null, fallbackFocus = () => {}, live = null, safeFocus = false, cancel: cancelLabel = "Cancel" }) {
   return new Promise((resolve) => {
     const before = document.activeElement;
     const dialog = element("dialog", "dialog");
@@ -61,7 +62,7 @@ export function formDialog({ title, text = "", lines = [], fields = [], submit =
     error.hidden = true;
     const ok = element("button", `dialog__button dialog__button--ok${danger ? " dialog__button--danger" : ""}`);
     ok.type = "submit";
-    const cancel = element("button", "dialog__button", "Cancel");
+    const cancel = element("button", "dialog__button", cancelLabel);
     cancel.type = "button";
     const buttons = element("div", "dialog__buttons");
     buttons.append(cancel, ok);
@@ -127,14 +128,15 @@ export function formDialog({ title, text = "", lines = [], fields = [], submit =
         ok.disabled = false;
       }
     });
-    const first = inputs.values().next().value ?? (safeFocus ? cancel : ok);
+    // A red confirm destroys something, so a reflex Enter must land on the safe button.
+    const first = inputs.values().next().value ?? (safeFocus || danger ? cancel : ok);
     openModal(dialog, first);
     if (first.select && first.type === "text") first.select();
   });
 }
 
-export function confirmDialog({ title, text, lines = [], confirm = "OK", danger = false, run = async () => true, ...focus }) {
-  return formDialog({ title, text, lines, submit: confirm, danger, run, ...focus });
+export function confirmDialog({ title, text, lines = [], confirm = "OK", danger = false, run = async () => true, ...rest }) {
+  return formDialog({ title, text, lines, submit: confirm, danger, run, ...rest });
 }
 
 function fieldInput(field) {

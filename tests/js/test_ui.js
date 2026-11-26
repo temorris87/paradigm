@@ -163,6 +163,38 @@ test("confirm dialog: safeFocus opens it on Cancel", async () => {
   assertTrue(!dialog.isConnected);
 });
 
+test("confirm dialog: a red confirm opens on Cancel without safeFocus", async () => {
+  let ran = false;
+  const result = confirmDialog({ title: "Trash?", text: "Really", confirm: "Move to trash", danger: true,
+    run: async () => { ran = true; } });
+  const dialog = document.querySelector("dialog.dialog");
+  assertEqual(document.activeElement?.textContent, "Cancel");
+  document.activeElement.click();
+  assertEqual(await result, null);
+  assertTrue(!ran);
+  assertTrue(!dialog.isConnected);
+});
+
+test("confirm dialog: a red confirm still confirms with Ctrl-Enter", async () => {
+  let ran = false;
+  const result = confirmDialog({ title: "Trash?", text: "Really", confirm: "Move to trash", danger: true,
+    run: async () => { ran = true; } });
+  document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", ctrlKey: true, bubbles: true, cancelable: true }));
+  assertEqual(await result, true);
+  assertTrue(ran);
+});
+
+test("confirm dialog: the safe button takes a label; a plain confirm opens on OK", async () => {
+  const kept = confirmDialog({ title: "Cancel?", text: "Really", confirm: "Cancel the meeting", cancel: "Keep the meeting", danger: true });
+  assertEqual(document.activeElement?.textContent, "Keep the meeting");
+  document.activeElement.click();
+  assertEqual(await kept, null);
+  const plain = confirmDialog({ title: "Plain?", text: "Really", confirm: "Make it a plain note" });
+  assertEqual(document.activeElement?.textContent, "Make it a plain note");
+  document.activeElement.click();
+  assertEqual(await plain, true);
+});
+
 test("confirm dialog: the button runs the action", async () => {
   let ran = false;
   const result = confirmDialog({ title: "Sure?", text: "Really", confirm: "Do it", run: async () => { ran = true; } });
