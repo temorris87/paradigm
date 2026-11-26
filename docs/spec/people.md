@@ -33,3 +33,13 @@ How the app behaves. Kept up to date by each feature that changes it.
   them (late in orange), I owe, To raise, Next together.
   Enter on a Waiting on or I owe row opens that task's own page (tasks.md), not its note
   (2026-11-26).
+- Person fields (2026-11-26): every dialog field that names one person and makes them when
+  they are new (Delegate's To, Add attendee, Add with, the hub's other person dialogs, Edit…'s
+  For) and `:attendee` / `:with` take part of a name: an exact title wins, else every typed
+  word must start a word of one live person's name ("Dana", "dan nor", "north": Dana
+  Northwind; archived and trashed people don't count). One match: the button names them
+  ("Delegate to Dana Northwind") and Enter picks them. Two or more: the button reads "2 people
+  match: type more", dimmed, and Enter does nothing (a command says the same as an error).
+  None: "Delegate to a new person" / "Add new person", as before. To make someone whose name
+  starts like another's, type the full name ("Dana Smith" matches no Dana Northwind). Nothing
+  is typed into the box for you (default, approved by Tyson, 2026-11-26).

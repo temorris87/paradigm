@@ -176,6 +176,13 @@
   background: var(--nord10);
 }
 
+/* A submit that can't go yet ("2 people match: type more"): dim, not clickable. */
+.dialog__button:disabled {
+  background: var(--nord2);
+  color: var(--text-dim);
+  cursor: default;
+}
+
 .dialog__button--danger {
   background: var(--nord11);
   color: var(--nord0);

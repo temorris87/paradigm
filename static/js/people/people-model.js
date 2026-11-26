@@ -9,6 +9,8 @@
 //   peopleOn(tree, people, hub)              who is on a hub (an area: its projects too)
 //   filterPeople(tree, people, filters)      the People page's list
 //   filterOptions(tree, people)              what its dropdowns offer
+//   matchPerson(tree, text)                  who a typed name means: { person, matches }
+//   personLabel(tree, text, labels)          a person field's submit button: { text, blocked }
 import { projectsIn } from "../hubs/hub-areas.js";
 import { isArchived, isHub, isPerson } from "../notes/hub-groups.js";
 import { NoteTree } from "../notes/tree-model.js";
@@ -35,6 +37,39 @@ export function allPeople(tree) {
 /** The person called name (ignoring case), or null. */
 export function findPerson(tree, name) {
   return NoteTree.pick(allPeople(tree), String(name ?? "").trim());
+}
+
+/**
+ * Who a name typed in a person field means: { person: note | null, matches: [notes] }.
+ * An exact title (ignoring case) wins. Otherwise every typed word must start a word of a live
+ * person's name ("dan nor", "north": Dana Northwind); archived and trashed people don't count.
+ * person is set only when one person is meant; two or more leave it null with matches listed,
+ * and none (a new name) leaves both empty. "Dana Smith" matches no Dana Northwind.
+ */
+export function matchPerson(tree, text) {
+  const exact = findPerson(tree, text);
+  if (exact) return { person: exact, matches: [exact] };
+  const typed = titleKey(String(text ?? "")).split(" ").filter(Boolean);
+  if (!typed.length) return { person: null, matches: [] };
+  const matches = allPeople(tree).filter((note) => {
+    if (note.deleted_at || isArchived(tree, note.id)) return false;
+    const words = titleKey(note.title).split(" ");
+    return typed.every((word) => words.some((each) => each.startsWith(word)));
+  });
+  return { person: matches.length === 1 ? matches[0] : null, matches };
+}
+
+/**
+ * The submit button of a dialog with a person field, from what is typed there:
+ * labels { empty, one(person), none } give the text with nothing typed, one person meant, and a
+ * new name. Two or more matches block it ({ blocked: true }), so Enter makes no duplicate.
+ */
+export function personLabel(tree, text, { empty, one, none }) {
+  if (!String(text ?? "").trim()) return { text: empty, blocked: false };
+  const { person, matches } = matchPerson(tree, text);
+  if (person) return { text: one(person), blocked: false };
+  if (matches.length > 1) return { text: `${matches.length} people match: type more`, blocked: true };
+  return { text: none, blocked: false };
 }
 
 /** [{ hub, role }] for each hub the person is on: live hubs by title, then archived ones. */

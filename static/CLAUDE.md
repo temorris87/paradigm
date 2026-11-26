@@ -125,7 +125,7 @@ static/
                          People and Meetings pages)
   js/people/             one-on-one.js (I owe them, to raise, next together; pure),
                          topic-commands.js (+ Add, Raised, Start 1:1 notes), api.js, people-model.js (who is on a hub, an area with its projects;
-                         the People page filters; pure), people-page.js (the People page,
+                         the People page filters; matchPerson, who a typed name means; pure), people-page.js (the People page,
                          a ListPage), people-commands.js
   js/meetings/           api.js, prep-model.js (a meeting's prep: open questions with its
                          attendees, what they owe, last time; pure), meeting-days.js (local days, today/tomorrow, times, the
@@ -167,7 +167,7 @@ static/
                          day and time format: "Wed 25 Nov", 24-hour, the year only when not
                          this year; pure), menu.js (a popup menu
                          under a button), dialog.js (formDialog, confirmDialog on <dialog>:
-                         errors show inside and keep it open), picker.js (a text box over a
+                         errors show inside and keep it open; a blocked submit), picker.js (a text box over a
                          filtered list; filterItems is pure), ui-keys.js (THE key table of
                          menus, pickers and dialogs), dom.js, rendered-text.js (rendered
                          Markdown in the main window, the dashboard's and the Live page's:
