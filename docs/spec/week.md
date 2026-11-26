@@ -53,7 +53,9 @@ How the app behaves. Kept up to date by each feature that changes it.
   scaling): above the hour grid's scroll bar the heads leave an empty strip in their own
   background, kept even when the day fits without scrolling; on the Mac it has no width
   (Tyson, 2026-11-26). When Edit time… or Cancel the meeting closes (Esc, Cancel or Save), the
-  focus goes back to the block, or to the calendar if the block was redrawn.
+  focus goes back to the block, or to the calendar if the block was redrawn; so does Not
+  cancelled, which has no dialog. Cancel the meeting opens on "Keep the meeting" (its safe
+  button, not "Cancel"), so Enter straight away keeps it (Tyson, 2026-11-26).
 - Outlook import (worknotes' rules): each morning, Outlook File › Save Calendar, Next 7 days,
   Full details, into `<data>/import/` (made at start). It is read at start, when the calendar
   window gets focus, and with Import (or Import a file…, or a drop on the calendar); the file

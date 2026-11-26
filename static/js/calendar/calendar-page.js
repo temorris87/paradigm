@@ -384,9 +384,10 @@ export class CalendarPage {
       await this.api.meetings.cancel(block.id, cancelled);
       await this.changed(["meetings"]);
     };
-    if (!cancelled) return run();
+    // Not cancelled has no dialog to hand the focus back, and the menu that chose it is gone.
+    if (!cancelled) return run().then(() => this.focusBlock(block));
     return confirmDialog({ title: `Cancel "${block.title}"?`, text: "It stays on the calendar, struck through, and is not counted as time worked.",
-      confirm: "Cancel the meeting", danger: true, run, fallbackFocus: () => this.focusBlock(block) });
+      confirm: "Cancel the meeting", cancel: "Keep the meeting", danger: true, run, fallbackFocus: () => this.focusBlock(block) });
   }
 
   async setDone(taskId, done) {

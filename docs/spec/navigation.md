@@ -36,6 +36,11 @@ How the app behaves. Kept up to date by each feature that changes it.
   trash (with a confirm); a project's or area's starts with Log status…. The table is
   `static/js/notes/note-menu.js`. Menus, pickers and dialogs share `static/js/ui/` and its
   keys (`ui-keys.js`).
+- A red confirm (Cancel the meeting, Move to trash, Clear rota, Remove a holiday, Unlink
+  folder, Remove from the template, Delete plan template, Delete task) opens on its safe
+  button, so Enter straight away closes it and changes nothing; Tab then Enter, a click or
+  Ctrl-Enter confirms. Non-red confirms (Make it a plain note, Make it a decision) still open
+  on OK, and a dialog with fields starts in its first field (Tyson, 2026-11-26).
 - Top bar and palette (Tyson, 2026-11-22): the main window's bar is ☰, Today | Week, the
   breadcrumb, the palette's field and Window ▾ (Go to, Home, People, Meetings, Calendar and
   Time left it; Live note added 2026-11-26). The note window's: ☰, the breadcrumb, Go to…, Dashboard ↗. The palette
