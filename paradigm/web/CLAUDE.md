@@ -10,6 +10,11 @@
   browsers send `Origin: null` on POSTs and our own requests get refused.
 - The CSP forbids inline scripts, inline `style=""` attributes, `eval` and outside URLs. Keep JS
   in modules and styles in `static/css/`.
+- One exception, picked by `headers_for(path)` on the exact path (the query string never
+  changes it): `/diagram-frame.html`, the hidden frame Mermaid draws in, also allows inline
+  styles (`style-src 'self' 'unsafe-inline'`) and may be framed by our own pages only
+  (`frame-ancestors 'self'`, `X-Frame-Options: SAMEORIGIN`). Scripts stay `'self'` only. Every
+  other response keeps the strict headers; don't add another exception for one library.
 - Event streams are capped at `Config.max_streams` (50); past that, 503.
 - Every security change is checked in a real browser too. Unit tests cannot see what headers a
   browser actually sends (that is how the `Origin: null` problem was caught).

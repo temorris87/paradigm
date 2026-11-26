@@ -249,6 +249,19 @@ body.is-dragging * {
   border-bottom: 1px solid var(--nord2);
 }
 
+/* Only .cal-scroll scrolls, so a classic scroll bar (Windows) narrows the body's columns and
+   not the heading's or the all-day row's: Friday's heading ended up a scroll bar's width right
+   of its column. All three keep the scroll bar's room, always, so their columns match; the
+   head rows never scroll, they only leave the strip empty. Overlay scroll bars (the Mac) take
+   no room, so nothing changes there. Clipping turns their automatic min-height to 0, so they
+   must not shrink, or the tall scroller would squash them in the .cal-week column. */
+.cal-head,
+.cal-allday {
+  flex-shrink: 0;
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
+
 .cal-dayhead {
   display: flex;
   align-items: baseline;
@@ -297,6 +310,7 @@ body.is-dragging * {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .cal-body {

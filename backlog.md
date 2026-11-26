@@ -153,7 +153,7 @@ Features in build order. "build feature" takes the first unchecked item.
   causing. The real time view on the main 2/3 screen page should show where the cursor is so
   when I share my screen with just the 2/3 window, people are able to see where I'm typing while
   I focus on the right 1/3. (done 2026-11-26)
-- [ ] On Chrome on windows, the heading and column on the calendar doesn't align with the content.
+- [x] On Chrome on windows, the heading and column on the calendar doesn't align with the content. (done 2026-11-26)
 - [ ] I want to remove the next task feature and show all tasks on the calendar view when
   scheduling my week and days. I should be able to filter by project / area so I can narrow in
   on what I want to work on.

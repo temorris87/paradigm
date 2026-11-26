@@ -5,13 +5,12 @@
 //   - rendering is slow and blocks the page, so diagrams render one at a time, only when a
 //     placeholder is actually drawn (a block shown rendered, never while it is edited), and
 //     results are cached by source;
-//   - a failed render shows the source and the message, and Mermaid's temporary elements go
-//     (it renders inside work-area.js's element, which is emptied after each diagram).
-// Mermaid is 5 MB, so it is loaded the first time a diagram is seen.
+//   - a failed render shows the source and the message.
+// Mermaid itself runs in a hidden frame page with its own CSP (frame-client.js says why); it
+// is loaded there the first time a diagram is seen, and the frame is emptied after each one.
+import { diagramFrame } from "./frame-client.js";
 import { insertSvg } from "./insert-svg.js";
-import { mermaidWorkArea } from "./work-area.js";
 
-const MERMAID_URL = new URL("../../vendor/mermaid-12.3.0/dist/mermaid.esm.min.mjs", import.meta.url).href;
 const CACHE_LIMIT = 50;
 const MESSAGE_LIMIT = 500;
 const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
@@ -53,10 +52,10 @@ function nordColour(name) {
 }
 
 /**
- * A renderer around one Mermaid instance. `load()` resolves to the mermaid API
- * ({ initialize, render }); tests pass a fake.
+ * A renderer around one Mermaid. `load()` resolves to the mermaid API's shape
+ * ({ initialize, render }): the window's diagram frame; tests pass a fake.
  */
-export function createDiagramRenderer({ load = () => import(MERMAID_URL).then((module) => module.default) } = {}) {
+export function createDiagramRenderer({ load = async () => diagramFrame() } = {}) {
   const cache = new Map(); // source -> { svg } | { error }, oldest first
   const waiting = new Map(); // source -> Set of placeholder elements
   const pending = new Map(); // source -> Promise of its result, while queued or rendering
@@ -93,12 +92,10 @@ export function createDiagramRenderer({ load = () => import(MERMAID_URL).then((m
     let result;
     try {
       const api = await mermaid();
-      const { svg } = await api.render(id, source, workArea());
+      const { svg } = await api.render(id, source);
       result = { svg, id };
     } catch (error) {
       result = { error: messageOf(error) };
-    } finally {
-      workArea().replaceChildren(); // Mermaid's temporary elements, left behind by an error
     }
     remember(source, result);
     const elements = waiting.get(source) ?? new Set();
@@ -182,10 +179,6 @@ function fill(element, source, result) {
 function messageOf(error) {
   const text = String(error?.message ?? error ?? "The diagram could not be drawn.");
   return text.length > MESSAGE_LIMIT ? `${text.slice(0, MESSAGE_LIMIT)}…` : text;
-}
-
-function workArea() {
-  return mermaidWorkArea(FONT);
 }
 
 const shared = createDiagramRenderer();

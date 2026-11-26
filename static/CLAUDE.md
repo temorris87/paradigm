@@ -7,6 +7,8 @@ layout when the structure here changes.
 static/
   index.html             the main window (js/main.js): dashboards, pages, calendar, timesheet
   note.html              the note window (js/note-main.js): one note, written there
+  diagram-frame.html     hidden frame Mermaid draws in (js/diagrams/frame-main.js); the one
+                         page served with its own CSP (paradigm/web/CLAUDE.md)
   vendor/katex-0.19.1/   KaTeX exactly as audited (package paths kept; checked against
                          docs/security/katex-0.19.1.sha256 by tests/python/test_vendor.py)
   vendor/mermaid-12.3.0/ Mermaid exactly as audited (same check, mermaid-12.3.0.sha256)
@@ -141,8 +143,12 @@ static/
                          in the page, since Chrome ignores it inside a shadow root
   js/diagrams/           mermaid.js: draws the renderer's .md-mermaid placeholders (Mermaid
                          loaded on first use, strict, one render at a time, cached by source;
-                         onDiagramDrawn tells the editor to remeasure); work-area.js: the
-                         off-screen element Mermaid lays out in; insert-svg.js: puts SVG in
+                         onDiagramDrawn tells the editor to remeasure); frame-client.js: the
+                         window's hidden diagram frame, Mermaid's {initialize, render} over
+                         postMessage, 20 s per diagram; frame-main.js + frame-listener.js: the
+                         frame page's side (Mermaid loaded there, answers only its parent at
+                         our origin); work-area.js: the off-screen element in the frame that
+                         Mermaid lays out in; insert-svg.js: puts SVG in
                          under the CSP (constructed sheets + CSSOM styles, links allowlisted),
                          syncDiagramSheets keeps a root's sheets in step with its diagrams
   js/export/             :export, one self-contained .html file: scope.js (which linked notes

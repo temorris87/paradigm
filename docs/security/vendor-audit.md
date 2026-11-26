@@ -243,7 +243,8 @@ Mermaid itself tried to add.
    and show the raw source with the error message.
 6. Expect CSP violation messages in the browser console during each render (from Mermaid's
    temporary element). They are harmless, but they are noise; don't mistake them for a
-   regression.
+   regression. (Since 2026-11-26 there are none: Mermaid draws in a frame page with its own
+   CSP, see "As built" below. A violation during a render is now a regression.)
 7. Two KaTeX copies will be in the repo (ours, and Mermaid's bundled one for maths in
    diagrams). Upgrade Mermaid when its bundled KaTeX or DOMPurify gets an advisory.
 
@@ -262,6 +263,22 @@ As built (2026-11-21, `static/js/diagrams/`): all seven conditions hold.
 - The CSP also blocks the `max-width` that Mermaid sets on the `<svg>` during render. The insert
   helper restores it from the `viewBox`, so diagrams keep their natural width.
 - On top of DOMPurify, the helper drops `<script>` and `on*` attributes.
+
+As built (2026-11-26, feature 005, Tyson: "fix the blockers as part of this release"): Mermaid no
+longer draws in the app's pages. Each render logged about 14 violations (its `<style>` and
+`style=""` writes into the work element), so it now draws in a hidden, same-origin frame page,
+`static/diagram-frame.html` (`frame-main.js`, `frame-listener.js`), one per window, made on first
+use (`frame-client.js`). Only that page is served with `style-src 'self' 'unsafe-inline'`,
+`frame-ancestors 'self'` and `X-Frame-Options: SAMEORIGIN` (`headers_for` in
+`paradigm/web/security.py`, exact path match); scripts stay `'self'`, outside URLs stay barred,
+and every other response keeps the strict CSP. The frame answers `postMessage` only from its
+parent at our origin, re-applies `securityLevel: "strict"` whatever config arrives, and sends back
+the SVG text, which is still cleaned and inserted through the insert helper under the strict CSP.
+A diagram the frame doesn't answer within 20 s fails with "The diagram could not be drawn.", so
+the queue never sticks. Condition 5 holds in the frame: its work element is emptied after each
+render. Mermaid's own `<style>` now applies while it measures; the work element's `p { margin: 0 }`
+rule was kept, since no test yet shows the label sizes match without it. Result: 0 violations on
+Welcome, the rendered note, the Live page and `:export`.
 
 ---
 

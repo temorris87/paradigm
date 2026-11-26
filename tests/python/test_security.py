@@ -1,7 +1,8 @@
 import unittest
 
 from helpers import RunningServer, wait_until
-from paradigm.web.security import refusal_reason
+from paradigm.web.security import (DIAGRAM_FRAME_HEADERS, SECURITY_HEADERS, headers_for,
+                                    refusal_reason)
 
 PORT = 8765
 
@@ -59,6 +60,32 @@ class OriginTest(unittest.TestCase):
         self.assertIsNone(reason("/", Origin="http://evil.example", Sec_Fetch_Site="cross-site"))
 
 
+FRAME_CSP = ("default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+             "object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'")
+
+
+class HeadersForTest(unittest.TestCase):
+    def test_the_diagram_frame_gets_its_own_policy(self) -> None:
+        headers = dict(headers_for("/diagram-frame.html"))
+        self.assertEqual(headers["Content-Security-Policy"], FRAME_CSP)
+        self.assertEqual(headers["X-Frame-Options"], "SAMEORIGIN")
+
+    def test_the_frame_keeps_the_other_headers(self) -> None:
+        strict, frame = dict(SECURITY_HEADERS), dict(DIAGRAM_FRAME_HEADERS)
+        self.assertEqual(set(frame), set(strict))
+        for name in strict:
+            if name not in ("Content-Security-Policy", "X-Frame-Options"):
+                with self.subTest(name=name):
+                    self.assertEqual(frame[name], strict[name])
+
+    def test_every_other_path_keeps_the_strict_policy(self) -> None:
+        for path in ("/", "", "/index.html", "/note.html", "/api/ping", "/missing",
+                     "/js/diagrams/frame-main.js", "/diagram-frame.html/", "/x/diagram-frame.html",
+                     "/DIAGRAM-FRAME.HTML", "/diagram%2Dframe.html", "//diagram-frame.html"):
+            with self.subTest(path=path):
+                self.assertIs(headers_for(path), SECURITY_HEADERS)
+
+
 class ServerSecurityTest(unittest.TestCase):
     def setUp(self) -> None:
         self.running = RunningServer(max_streams=2)
@@ -96,6 +123,25 @@ class ServerSecurityTest(unittest.TestCase):
                 self.assertEqual(headers["X-Content-Type-Options"], "nosniff")
                 self.assertEqual(headers["X-Frame-Options"], "DENY")
                 self.assertEqual(headers["Referrer-Policy"], "same-origin")
+
+    def test_diagram_frame_headers(self) -> None:
+        for path in ("/diagram-frame.html", "/diagram-frame.html?x=1"):
+            for method in ("GET", "HEAD"):
+                with self.subTest(path=path, method=method):
+                    _, headers, _ = self.running.request(method, path)
+                    self.assertEqual(headers["Content-Security-Policy"], FRAME_CSP)
+                    self.assertEqual(headers["X-Frame-Options"], "SAMEORIGIN")
+                    self.assertEqual(headers["X-Content-Type-Options"], "nosniff")
+                    self.assertEqual(headers["Referrer-Policy"], "same-origin")
+
+    def test_the_query_does_not_pick_the_frame_policy(self) -> None:
+        for path in ("/?p=/diagram-frame.html", "/note.html?diagram-frame.html",
+                     "/api/ping?path=/diagram-frame.html", "/note.html", "/unknown"):
+            with self.subTest(path=path):
+                _, headers, _ = self.running.request("GET", path)
+                self.assertIn("frame-ancestors 'none'", headers["Content-Security-Policy"])
+                self.assertNotIn("unsafe-inline", headers["Content-Security-Policy"])
+                self.assertEqual(headers["X-Frame-Options"], "DENY")
 
     def try_stream(self, tab: str):
         """Open an event stream; the response if it opened, else None (closed)."""

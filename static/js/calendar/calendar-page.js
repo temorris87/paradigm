@@ -341,9 +341,16 @@ export class CalendarPage {
     this.grid.blockNodeFor(key)?.classList.add("cal-block--selected");
   }
 
+  // A menu's choice removes the menu, so the focus is on the page body when a dialog opens:
+  // without this it would stay there once the dialog closes. The block may have been redrawn.
+  focusBlock(block) {
+    (this.grid.blockNodeFor(block.key) ?? this.root).focus({ preventScroll: true });
+  }
+
   editTime(block) {
     return formDialog({
       title: `When is "${block.title}"?`,
+      fallbackFocus: () => this.focusBlock(block),
       fields: [
         { key: "day", label: "Date", type: "date", value: block.day },
         { key: "start", label: "Starts", type: "time", value: block.timed ? clock(block.start) : "", optional: block.kind === "meeting" },
@@ -371,7 +378,7 @@ export class CalendarPage {
     };
     if (!cancelled) return run();
     return confirmDialog({ title: `Cancel "${block.title}"?`, text: "It stays on the calendar, struck through, and is not counted as time worked.",
-      confirm: "Cancel the meeting", danger: true, run });
+      confirm: "Cancel the meeting", danger: true, run, fallbackFocus: () => this.focusBlock(block) });
   }
 
   async setDone(taskId, done) {

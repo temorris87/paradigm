@@ -6,7 +6,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from paradigm import __version__
 from paradigm.web.responses import send_error_json
-from paradigm.web.security import SECURITY_HEADERS, refusal_reason
+from paradigm.web.security import headers_for, refusal_reason
 from paradigm.web.static import serve_static
 
 log = logging.getLogger(__name__)
@@ -65,7 +65,10 @@ class RequestHandler(BaseHTTPRequestHandler):
                 pass
 
     def end_headers(self) -> None:
-        for name, value in SECURITY_HEADERS:
+        # The path, not the query, picks the policy. Errors sent before a request line
+        # was read have no path, and get the strict headers.
+        path = urlsplit(getattr(self, "path", "") or "").path
+        for name, value in headers_for(path):
             self.send_header(name, value)
         super().end_headers()
 

@@ -10,13 +10,15 @@ requests to it, so two checks run before routing:
   Requests with neither header (Python's urllib, curl) are local programs and allowed.
   Static files skip this check: they are the public code of the app.
 """
-from typing import Mapping, Optional
+from typing import Mapping, Optional, Tuple
 
 LOCAL_HOSTS = ("127.0.0.1", "localhost")
 API_PREFIX = "/api/"
 FOREIGN_FETCH_SITES = ("cross-site", "same-site")
 
-SECURITY_HEADERS = (
+Headers = Tuple[Tuple[str, str], ...]
+
+SECURITY_HEADERS: Headers = (
     # Only our own files; no framing by other sites (the editor will take keystrokes).
     ("Content-Security-Policy",
      "default-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; "
@@ -28,6 +30,25 @@ SECURITY_HEADERS = (
     ("Referrer-Policy", "same-origin"),
     ("Cross-Origin-Resource-Policy", "same-origin"),
 )
+
+
+# Mermaid writes a <style> element and style="" attributes while it lays a diagram out, which
+# the app's CSP blocks. It draws in this hidden frame page instead, which alone allows inline
+# styles. Scripts stay 'self' only, outside URLs stay barred, and only our own pages may frame it.
+DIAGRAM_FRAME_PATH = "/diagram-frame.html"
+DIAGRAM_FRAME_HEADERS: Headers = (
+    ("Content-Security-Policy",
+     "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+     "object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'"),
+    ("X-Frame-Options", "SAMEORIGIN"),
+) + tuple(header for header in SECURITY_HEADERS
+          if header[0] not in ("Content-Security-Policy", "X-Frame-Options"))
+
+
+def headers_for(path: str) -> Headers:
+    """The security headers for a URL path (no query string): the frame page has its own."""
+    # An exact match: any other spelling of the path gets the strict headers, which fails safe.
+    return DIAGRAM_FRAME_HEADERS if path == DIAGRAM_FRAME_PATH else SECURITY_HEADERS
 
 
 def allowed_hosts(port: int):

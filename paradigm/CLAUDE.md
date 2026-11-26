@@ -15,6 +15,7 @@ paradigm/                Python package
   notify.py              startup errors: console pause, or a message box with no console
   web/                   server.py (ThreadingHTTPServer), handler.py, router.py,
                          static.py (serves static/), responses.py, security.py
+                         (headers_for: the diagram frame page's own CSP)
   api/                   JSON endpoints; session.py = /api/ping, /api/events, /api/closing;
                          notes.py (also /api/note/status|due: a project's); images.py
                          (raw-bytes upload, GET /api/image?id=N cached);

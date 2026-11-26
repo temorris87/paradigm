@@ -230,7 +230,9 @@ test("diagrams: real Mermaid draws a flowchart and a parse error", async () => {
   assertTrue(svg.getBoundingClientRect().height > 10, "laid out");
   assertTrue(bad.classList.contains("md-mermaid-error"), bad.outerHTML.slice(0, 200));
   assertTrue(document.querySelector('[id^="dpd-mermaid-"]') === null, "no temporary elements left");
-  assertEqual(document.querySelector(".pd-mermaid-work").childElementCount, 0);
+  assertTrue(document.querySelector(".pd-mermaid-work") === null, "laid out in the frame, not here");
+  const work = document.querySelector("iframe.pd-diagram-frame").contentDocument.querySelector(".pd-mermaid-work");
+  assertEqual(work.childElementCount, 0, "the frame's work element is emptied");
   const label = svg.querySelector("foreignObject");
   const text = label.querySelector("p").getBoundingClientRect().height;
   assertTrue(label.getBoundingClientRect().height < text * 1.5, "label box fits its text");
