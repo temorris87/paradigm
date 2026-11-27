@@ -12,7 +12,8 @@ const NOTES = [{ id: 2, parent_id: null, title: "Acme", kind: "project" }, { id:
 // Every command that acts on "this note" (spec 016), by name; the filing commands are :kind.
 const ON_NOTE = ["trash", "rename", "parent", "project", "area", "resource", "inbox", "inarea", "archive", "restore",
   "export", "timecode", "date", "addperson", "dropperson", "org", "job", "email", "phone", "meeting", "attendee",
-  "dropattendee", "decision", "question", "answered", "reopen", "with", "dropwith", "task", "t", "log", "dashboard"];
+  "dropattendee", "decision", "question", "answered", "reopen", "with", "dropwith", "task", "t", "log", "dashboard",
+  "new", "child"];
 
 function mainApp(shown, { live = null, role = "main", currentId = 2 } = {}) {
   return { role, currentId, tree: new NoteTree(NOTES),

@@ -31,9 +31,9 @@ const FILING_COMMANDS = HUB_GROUPS.map((group) => ({
 export const NOTE_COMMANDS = [
   { name: "edit", label: "Open a note…", min: 1, usage: ":e[dit][!] {note}", help: "open a note (:e! drops unsaved changes; with no note, reloads this one)",
     run: (app, { arg, bang }) => app.editCommand(arg, bang) },
-  { name: "new", label: "New note beside…", min: 3, usage: ":new {title}", help: "make a note beside this one and open it",
+  { name: "new", onNote: true, label: "New note beside…", min: 3, usage: ":new {title}", help: "make a note beside this one and open it",
     run: (app, { arg }) => app.createCommand(arg, "beside") },
-  { name: "child", label: "New note under…", min: 5, usage: ":child {title}", help: "make a note under this one and open it",
+  { name: "child", onNote: true, label: "New note under…", min: 5, usage: ":child {title}", help: "make a note under this one and open it",
     run: (app, { arg }) => app.createCommand(arg, "under") },
   { name: "rename", onNote: true, label: "Rename…", min: 6, usage: ":rename {title}", help: "rename this note",
     run: (app, { arg }) => app.renameCommand(arg) },

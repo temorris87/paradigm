@@ -63,6 +63,13 @@ How the app behaves. Kept up to date by each feature that changes it.
   the task); on Today, Week, People, Meetings, Trash, a template or a Resources folder they say
   "E: no note on this page" and change nothing. The palette's "on {title}" label names the same
   note: none on a page without one, the Live note on Live. The note window is unchanged.
+- `:new {title}` (beside) and `:child {title}` (under) take their place from the same note on
+  screen (Tyson, 2026-11-27): on a dashboard or Plan, beside or under the hub; on Live, beside or
+  under the Live note; on a task page the task refusal; on Today, Week, People, Meetings, Trash,
+  a template or folder page, Home, or with no note open at all (an empty database), "E: no note
+  on this page" and nothing is made. A top-level note on screen gives a top-level note with
+  `:new`. In the note window they use its open note; the note menu's new beside / under are
+  unchanged. Afterwards a plain note opens in the note window and a hub opens its dashboard.
 - Main-window keys (`static/js/layout/main-keys.js`, read in the capture phase): `:` the palette,
   `gt` Today, `gw` the Week, `gn` the Live page, `gp` the plan of the project or area on the dashboard (anywhere on
   it; on another page it says to open one; `:plan` in the palette). `g` waits for a second key everywhere (as in Vim): `gg` is the
