@@ -18,6 +18,8 @@ box is the screen's right third in CSS px. Two things are left out:
   device px.
 
 ## What it does
+(As planned. The border growth below was dropped in the build: see "As built".)
+
 - Once `note.html` has loaded, the note window places itself again with the same box. When it
   is the window that was opened onto the right third (not forced to the whole screen, and only
   on first load, not on every note), it grows by the invisible border. That border is estimated
