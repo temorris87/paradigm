@@ -22,11 +22,11 @@
 }
 
 .meetings__prep {
-  color: var(--nord15);
+  color: var(--kind-question-fg);
 }
 
 .meetings__prep--late {
-  color: var(--nord12);
+  color: var(--state-warning-fg);
 }
 
 @media (max-width: 1000px) {

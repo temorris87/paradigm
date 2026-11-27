@@ -7,11 +7,11 @@
   flex-direction: column;
   gap: var(--sp-1);
   padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--nord2);
+  border: 1px solid var(--border-divider);
   border-radius: 6px;
-  background: var(--nord1);
+  background: var(--surface-raised);
   font-size: var(--fs-md);
-  color: var(--nord4);
+  color: var(--text);
 }
 
 .hub-line__row {
@@ -28,7 +28,7 @@
 }
 
 .hub-line__kind {
-  color: var(--nord7);
+  color: var(--text-code);
   font-weight: 600;
 }
 
@@ -46,15 +46,15 @@
 }
 
 .hub-line__separator {
-  color: var(--nord3);
+  color: var(--text-muted);
 }
 
 .hub-line__text--none {
-  color: var(--nord3);
+  color: var(--text-muted);
 }
 
 .hub-line__archived {
-  color: var(--nord12);
+  color: var(--state-warning-fg);
   font-weight: 600;
 }
 
@@ -62,13 +62,13 @@
   padding: 0;
   border: none;
   background: none;
-  color: var(--nord8);
+  color: var(--link);
   font: inherit;
   cursor: pointer;
 }
 
 .hub-line__link--archived {
-  color: var(--nord4);
+  color: var(--text);
   opacity: 0.55;
 }
 
@@ -133,7 +133,7 @@
 /* The sections under the text: one listbox, each section a heading and its rows. */
 .hub {
   flex: none;
-  border-top: 1px solid var(--nord2);
+  border-top: 1px solid var(--border-divider);
   padding-top: var(--sp-1);
 }
 
@@ -159,7 +159,7 @@
   align-items: baseline;
   gap: var(--sp-2);
   padding: var(--sp-1) var(--sp-2);
-  border-bottom: 1px solid var(--nord2);
+  border-bottom: 1px solid var(--border-divider);
   border-radius: 3px 3px 0 0;
   margin-bottom: var(--sp-1);
   font-size: var(--fs-sm);
@@ -225,7 +225,7 @@
 }
 
 .hub__empty-item:hover {
-  background: var(--nord1);
+  background: var(--surface-row-hover);
 }
 
 .hub__empty-label {
@@ -234,17 +234,17 @@
 
 .hub__empty-add {
   padding: 0 var(--sp-1);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 3px;
   background: none;
-  color: var(--nord9);
+  color: var(--link-secondary);
   font: inherit;
   line-height: 1.2;
   cursor: pointer;
 }
 
 .hub__empty-add:hover {
-  border-color: var(--nord9);
+  border-color: var(--border-accent);
 }
 
 /* THE section heading (also Home's, the dashboard's text label and the field labels): sentence
@@ -281,17 +281,17 @@
 .hub__row:hover,
 .hub__heading:hover,
 .hub__more:hover {
-  background: var(--nord1);
+  background: var(--surface-row-hover);
 }
 
 /* The active option: marked always, outlined while the sections have the focus. */
 .hub__list [aria-selected="true"] {
-  background: var(--nord2);
-  color: var(--nord6);
+  background: var(--surface-selected);
+  color: var(--text-strong);
 }
 
 .hub__list:focus [aria-selected="true"] {
-  box-shadow: inset 0 0 0 1px var(--nord9);
+  box-shadow: inset 0 0 0 1px var(--focus-ring);
 }
 
 .hub__title {
@@ -347,7 +347,7 @@
 .hub__snippet {
   margin: var(--sp-0) 0 var(--sp-1) var(--sp-4);
   padding-left: var(--sp-3);
-  border-left: 2px solid var(--nord3);
+  border-left: 2px solid var(--border-default);
   font-size: var(--fs-sm);
 }
 
@@ -358,7 +358,7 @@
 .hub__more {
   padding: var(--sp-0) var(--sp-2);
   border-radius: 3px;
-  color: var(--nord9);
+  color: var(--link-secondary);
   font-size: var(--fs-sm);
   cursor: pointer;
 }
@@ -385,18 +385,18 @@
 .hub-line__control:focus-visible,
 .hub-line__control[aria-expanded="true"] {
   outline: none;
-  background: var(--nord2);
-  color: var(--nord6);
+  background: var(--surface-selected);
+  color: var(--text-strong);
 }
 
 .hub-line__control.hub-line__kind {
-  color: var(--nord7);
+  color: var(--text-code);
 }
 
 .hub-line__when,
 .hub-line__state {
-  color: var(--nord4);
-  text-decoration: underline dotted var(--nord3);
+  color: var(--text);
+  text-decoration: underline dotted var(--link-underline);
   text-underline-offset: 3px;
 }
 
@@ -404,11 +404,11 @@
   margin-left: var(--sp-1);
   font-size: 0.8em;
   font-weight: normal;
-  color: var(--nord4);
+  color: var(--text);
 }
 
 .hub-line__set {
-  color: var(--nord9);
+  color: var(--link-secondary);
 }
 
 .hub-line__mini {
@@ -419,10 +419,10 @@
 .hub__add {
   flex: none;
   padding: var(--sp-0) var(--sp-3);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
   background: none;
-  color: var(--nord9);
+  color: var(--link-secondary);
   font: inherit;
   font-size: var(--fs-sm);
   cursor: pointer;
@@ -433,8 +433,8 @@
 }
 
 .hub__add:hover {
-  border-color: var(--nord9);
-  color: var(--nord6);
+  border-color: var(--border-accent);
+  color: var(--text-strong);
 }
 
 /* A row's own buttons (Role…, Remove, Answer…): shown on the active or hovered row. */
@@ -473,27 +473,27 @@
   top: 0;
   right: 0;
   padding-left: var(--sp-2);
-  background: var(--nord1);
+  background: var(--surface-row-hover);
 }
 
 .hub__row-action {
   padding: 0 var(--sp-2);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 3px;
-  background: var(--nord1);
-  color: var(--nord4);
+  background: var(--surface-raised);
+  color: var(--text);
   font: inherit;
   font-size: var(--fs-sm);
   cursor: pointer;
 }
 
 .hub__row-action:hover {
-  border-color: var(--nord9);
-  color: var(--nord6);
+  border-color: var(--border-accent);
+  color: var(--text-strong);
 }
 
 .hub-line__when--late {
-  color: var(--nord11);
+  color: var(--state-danger-fg);
 }
 
 .hub-line__list .mini-button {
@@ -503,7 +503,7 @@
 /* A timesheet code on the card. */
 .hub-line__code {
   font-family: var(--font-mono);
-  color: var(--nord8);
+  color: var(--link);
 }
 
 /* Late: an overdue task or milestone, a follow-up past its day, a plan that keeps slipping. */
@@ -512,13 +512,13 @@
 .hub__row--late:not(.hub__row--dated) .hub__detail::before,
 .hub__row--late .hub__date::before {
   content: "● ";
-  color: var(--nord11);
+  color: var(--state-danger-fg);
 }
 
 /* A task's box and its ▸ (z, or a click on it, shows its subtasks in place). */
 .hub__box {
   flex: none;
-  color: var(--nord4);
+  color: var(--text);
   opacity: 0.8;
 }
 
@@ -528,19 +528,19 @@
 }
 
 .hub__row--add .hub__title {
-  color: var(--nord9);
+  color: var(--link-secondary);
   font-size: var(--fs-sm);
 }
 
 /* A phase's or milestone's slip on its card: red once it keeps slipping. */
 .hub-line__slip--late {
-  color: var(--nord11);
+  color: var(--state-danger-fg);
 }
 
 /* Health, wherever it shows (a status entry, the Projects table, a badge): its colour only. */
-.health--on_track { --health: var(--nord14); }
-.health--at_risk { --health: var(--nord12); }
-.health--blocked { --health: var(--nord11); }
+.health--on_track { --health: var(--state-success-solid); }
+.health--at_risk { --health: var(--state-warning-solid); }
+.health--blocked { --health: var(--state-danger-solid); }
 .health--on_hold,
 .health--none { --health: var(--text-faint); }
 
@@ -554,11 +554,11 @@
 }
 
 .hub__cell--action {
-  color: var(--nord9);
+  color: var(--link-secondary);
 }
 
 .hub__cell--late {
-  color: var(--nord11);
+  color: var(--state-danger-fg);
 }
 
 /* Where I am: the newest entry in a box, its words in full under its health and day. */
@@ -566,7 +566,7 @@
   padding: var(--sp-2) var(--sp-3);
   margin-bottom: var(--sp-1);
   border-radius: 6px;
-  background: var(--nord1);
+  background: var(--surface-raised);
 }
 
 .hub__row--box .hub__snippet {
@@ -610,7 +610,7 @@
   position: relative;
   height: 18px;
   border-radius: 3px;
-  background: var(--nord1);
+  background: var(--surface-raised);
 }
 
 .hub__bar-fill {
@@ -620,11 +620,11 @@
   left: calc(var(--left) * 100%);
   width: max(4px, calc(var(--width) * 100%));
   border-radius: 3px;
-  background: var(--nord9);
+  background: var(--chart-gantt-project);
 }
 
 .hub__row--late .hub__bar-fill {
-  box-shadow: inset 0 -3px 0 var(--nord11);
+  box-shadow: inset 0 -3px 0 var(--state-danger-solid);
 }
 
 /* On hold: dimmed as the design asks; the bar is a shape, not text, so opacity is fine. */
@@ -638,7 +638,7 @@
   bottom: -3px;
   left: calc(var(--at) * 100%);
   width: 2px;
-  background: var(--nord12);
+  background: var(--chart-today-line);
 }
 
 .hub__row--bar.hub__row--late .hub__detail::before {
@@ -650,7 +650,7 @@
   margin: 0;
   padding: var(--sp-2) var(--sp-3);
   border-radius: 6px;
-  background: var(--nord1);
+  background: var(--surface-sunken);
   color: var(--text);
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
@@ -663,28 +663,28 @@
 .hub-line__badge {
   padding: 0 var(--sp-1);
   border-radius: 3px;
-  color: var(--nord0);
+  color: var(--text-on-solid);
   font-size: var(--fs-xs);
   font-weight: 600;
   text-transform: uppercase;
 }
 
-.hub-line__badge--question { background: var(--nord15); }
-.hub-line__badge--decision { background: var(--nord8); }
+.hub-line__badge--question { background: var(--kind-question-solid); }
+.hub-line__badge--decision { background: var(--kind-decision-solid); }
 
 .hub-line__ok {
-  color: var(--nord14);
+  color: var(--state-success-fg);
 }
 
 .hub-line__action {
   padding: var(--sp-0) var(--sp-3);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
   font-size: var(--fs-sm);
 }
 
 .hub-line__action--answer {
-  border-color: var(--nord14);
+  border-color: var(--state-success-solid);
 }
 
 /* A phase's mini bar: its dates over its baseline (dashed under), and today. */
@@ -695,7 +695,7 @@
   height: 14px;
   margin-right: var(--sp-3);
   border-radius: 3px;
-  background: var(--nord2);
+  background: var(--chart-track);
   vertical-align: middle;
 }
 
@@ -711,7 +711,7 @@
   top: 0;
   bottom: 3px;
   border-radius: 3px;
-  background: var(--nord10);
+  background: var(--chart-gantt-bar);
 }
 
 .hub-line__bar-baseline {
@@ -723,7 +723,7 @@
   top: -3px;
   bottom: -3px;
   width: 2px;
-  background: var(--nord12);
+  background: var(--chart-today-line);
 }
 
 .hub-line__text--dim {

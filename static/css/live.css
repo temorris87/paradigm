@@ -47,9 +47,9 @@
 
 .live__open {
   padding: var(--sp-1) var(--sp-3);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
-  background: var(--nord1);
+  background: var(--surface-raised);
   color: var(--text);
   font: inherit;
   cursor: pointer;
@@ -57,7 +57,7 @@
 
 .live__open:hover,
 .live__open:focus-visible {
-  border-color: var(--nord8);
+  border-color: var(--border-focus);
 }
 
 .live__body {
@@ -79,11 +79,11 @@
   margin-top: 0;
 }
 
-/* The block holding the cursor: a faint band, and a nord8 bar at its left edge. Shadows, not
+/* The block holding the cursor: a faint band, and an accent bar at its left edge. Shadows, not
    padding or borders, so the text does not move as the cursor goes from block to block. */
 .live-block--cursor {
-  background: var(--nord1);
-  box-shadow: calc(-1 * var(--sp-2)) 0 0 var(--nord1), calc(-1 * var(--sp-2) - 2px) 0 0 var(--nord8);
+  background: var(--surface-raised);
+  box-shadow: calc(-1 * var(--sp-2)) 0 0 var(--surface-raised), calc(-1 * var(--sp-2) - 2px) 0 0 var(--live-caret);
 }
 
 /* The caret: a bar in insert and replace mode, a block over its character otherwise. */
@@ -92,13 +92,13 @@
   width: 0;
   height: 1.2em;
   margin-right: -2px;
-  border-left: 2px solid var(--nord8);
+  border-left: 2px solid var(--live-caret);
   vertical-align: text-bottom;
 }
 
 .live-caret--block {
-  background: var(--nord8);
-  color: var(--nord0);
+  background: var(--live-caret);
+  color: var(--text-on-solid);
 }
 
 .live-caret--block.live-caret--empty {
@@ -117,7 +117,7 @@
 .pd-highlight {
   background: none;
   color: inherit;
-  text-decoration: underline dotted var(--nord9);
+  text-decoration: underline dotted var(--highlight);
   text-underline-offset: 3px;
   cursor: pointer;
 }
@@ -125,9 +125,9 @@
 .pd-highlight__badge {
   margin-left: var(--sp-2);
   padding: 0 var(--sp-2);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 3px;
-  color: var(--nord9);
+  color: var(--highlight);
   font-family: var(--font-ui);
   font-size: var(--fs-xs);
   vertical-align: 0.1em;
@@ -139,15 +139,15 @@
   margin: 0 var(--sp-1) 0 0;
   padding: 0 var(--sp-1);
   border-radius: 3px;
-  color: var(--nord0);
+  color: var(--text-on-solid);
   font-size: var(--fs-xs);
   font-weight: 600;
   text-transform: uppercase;
 }
 
-.pd-highlight__badge--task { background: var(--nord14); }
-.pd-highlight__badge--decision { background: var(--nord8); }
-.pd-highlight__badge--question { background: var(--nord15); }
+.pd-highlight__badge--task { background: var(--kind-task-solid); }
+.pd-highlight__badge--decision { background: var(--kind-decision-solid); }
+.pd-highlight__badge--question { background: var(--kind-question-solid); }
 
 .pd-highlight--capture {
   text-decoration: none;

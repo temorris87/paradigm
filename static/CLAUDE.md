@@ -19,10 +19,14 @@ static/
                          On call tab, the Week bar's line, Today's rows, a person's head line),
                          sheet.css (the note window's sections sheet and its bar),
                          live.css (the Live page: its head, the caret, the cursor's band),
-                         nord.css (palette variables and THE design tokens: --font-ui,
-                         --font-mono, --fs-xs..xl, --sp-0..6, --text/-dim/-faint), base.css (the
-                         page grid, color-scheme dark; one column under 1400 px), one file per component (topbar.css, navigator.css...)
-                         (export.css styles only the exported file, never the app)
+                         tokens.css (THE design tokens: --font-ui, --font-mono, --fs-xs..2xl,
+                         --sp-0..6, --radius-sm/md/lg; no colours), themes/ (one file per
+                         theme, setting every role token under :root[data-theme="<id>"]:
+                         nord-dark.css; _template.css lists every token with what it is for,
+                         never loaded), base.css (the page grid; one column under 1400 px),
+                         one file per component (topbar.css, navigator.css...)
+                         (export.css styles only the exported file, never the app; it sets
+                         color-scheme normal over the theme's, as the export always had)
                          (editor.css is loaded inside <pd-editor>'s shadow root;
                          markdown.css styles rendered notes under .md-doc)
   js/boot.js             what both windows start with (connection, navigator, NotesApp)
@@ -156,11 +160,15 @@ static/
                          Mermaid lays out in; insert-svg.js: puts SVG in
                          under the CSP (constructed sheets + CSSOM styles, links allowlisted),
                          syncDiagramSheets keeps a root's sheets in step with its diagrams
+  js/theme/themes.js     THE theme table (id, label, file, colorScheme), DEFAULT_THEME,
+                         themeOf, currentTheme (<html data-theme>), applyTheme; no switcher yet
   js/export/             :export, one self-contained .html file: scope.js (which linked notes
                          come along: beside, under, or under a note beside; pure),
                          render-notes.js (sections, links inside the file; pure), page.js (the
                          file + its own no-script CSP; pure), assets.js (MathML, cleaned SVG,
                          images as data: URLs, in an inert document), download.js, export.js
+                         (inlines tokens.css, the current theme's file, markdown.css and
+                         export.css; the file's <html> carries the same data-theme)
   js/status/             api.js, status-model.js (health, stale, since last log, the weekly
                          digest; pure), status-commands.js (Log status…, history, :log,
                          Copy weekly digest)
@@ -252,17 +260,21 @@ static/
   key table, and it is the only source for both the mappings and any help listing.
 
 ## Look
-- Nord palette, defined as CSS variables in `static/css/nord.css`. Components use the variables,
-  never raw hex values.
-- Tokens (also `nord.css`): fonts only `--font-ui` (Segoe UI first) and `--font-mono` (Consolas
+- Colours are role tokens (`--surface-*`, `--text-*`, `--border-*`, `--link`, `--accent`,
+  `--state-*`, `--kind-*`, `--chart-*`...), set per theme in `static/css/themes/` and picked by
+  `<html data-theme>` (the table: `static/js/theme/themes.js`). Components use only the role
+  tokens, named by what the colour is for: never `--nordN` (a theme's own primitives) and never
+  raw hex or `rgb()` (`tests/python/test_theme_tokens.py` fails on them). A new role goes in
+  `_template.css` with its comment and in every theme.
+- Tokens (`tokens.css`): fonts only `--font-ui` (Segoe UI first) and `--font-mono` (Consolas
   first); sizes only `--fs-xs` 12, `--fs-sm` 13, `--fs-md` 15 (body), `--fs-lg` 18, `--fs-xl` 22;
   weights 400 and 600; spacing only `--sp-0`..`--sp-6` (2, 4, 8, 12, 16, 24, 32 px). Muted text
-  uses `--text-dim` / `--text-faint`, never opacity. `color-scheme: dark` keeps native controls
-  and scrollbars dark. Section headings are one style everywhere (sentence case, `--fs-sm`, 600).
+  uses `--text-dim` / `--text-faint`, never opacity. The theme's `color-scheme` keeps native
+  controls and scrollbars in step. Section headings are one style everywhere (sentence case, `--fs-sm`, 600).
 - Titles beat details: in a row the detail shrinks first (`flex-shrink: 100`). Red marks only the
   signal (a dot, a date), never a whole row.
 - Dates on screen go through `static/js/ui/dates.js` ("Wed 25 Nov", "14:00–15:00"); the API and
   ex commands keep "YYYY-MM-DD"; the timesheet's clipboard copy keeps "Mon 11/23".
-- Links are nord8 (frost cyan). Headings are all nord13 (one colour, set apart from the
-  nord4 text), never nord8: size, weight and a rule under H1 and H2 tell the levels apart
+- Links are `--link`. Headings are all `--text-heading` (one colour, set apart from the
+  body text), never `--link`: size, weight and a rule under H1 and H2 tell the levels apart
   (raw lines, one row high: an underline on H1 and H2).

@@ -6,7 +6,7 @@
     inset: 0 auto 0 0;
     z-index: 20;
     width: min(20rem, 85vw);
-    box-shadow: 0 0 1.5rem color-mix(in srgb, var(--nord0) 70%, transparent);
+    box-shadow: 0 0 1.5rem color-mix(in srgb, var(--shadow-tint) 70%, transparent);
     transform: translateX(-100%);
     visibility: hidden;
     /* Hidden only once it has slid out. */
@@ -23,7 +23,7 @@
     position: fixed;
     inset: 0;
     z-index: 10;
-    background: color-mix(in srgb, var(--nord0) 60%, transparent);
+    background: color-mix(in srgb, var(--backdrop-tint) 60%, transparent);
   }
 }
 
@@ -62,12 +62,12 @@
 
 .navigator__pin:hover,
 .navigator__pin:focus-visible {
-  background: var(--nord2);
+  background: var(--surface-hover);
   outline: none;
 }
 
 .navigator__pin--active {
-  background: var(--nord2);
+  background: var(--surface-selected);
   color: var(--text-strong);
   font-weight: 600;
 }
@@ -80,7 +80,7 @@
 }
 
 .navigator__pin-detail--late {
-  color: var(--nord11);
+  color: var(--state-danger-fg);
   font-weight: 600;
 }
 
@@ -90,7 +90,7 @@
   align-items: center;
   margin-top: auto;
   padding-top: var(--sp-2);
-  border-top: 1px solid var(--nord2);
+  border-top: 1px solid var(--border-divider);
 }
 
 .navigator__save {
@@ -101,11 +101,11 @@
 }
 
 .navigator__save::first-letter {
-  color: var(--save, var(--nord14));
+  color: var(--save, var(--state-success-fg));
 }
 
-.navigator__save--saved { --save: var(--nord14); }
+.navigator__save--saved { --save: var(--state-success-fg); }
 .navigator__save--saving,
-.navigator__save--unsaved { --save: var(--nord13); }
+.navigator__save--unsaved { --save: var(--state-caution-fg); }
 .navigator__save--offline,
-.navigator__save--failed { --save: var(--nord11); }
+.navigator__save--failed { --save: var(--state-danger-fg); }

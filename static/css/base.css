@@ -10,10 +10,9 @@ body {
   height: 100%;
 }
 
-/* Dark native controls and scrollbars (checkboxes, selects, date inputs), in every window. */
+/* Scrollbars in the theme's colour; the theme sets color-scheme (native controls, scrollbars). */
 :root {
-  color-scheme: dark;
-  scrollbar-color: var(--nord3) transparent;
+  scrollbar-color: var(--scrollbar) transparent;
 }
 
 /* A hint inside an empty box never reads like a value. */
@@ -23,7 +22,7 @@ body {
 }
 
 body {
-  background: var(--nord0);
+  background: var(--surface-page);
   color: var(--text);
   font-family: var(--font-ui);
   font-size: var(--fs-md);
@@ -31,7 +30,7 @@ body {
 }
 
 a {
-  color: var(--nord8);
+  color: var(--link);
 }
 
 /* The sidebar comes after the note in the page (for Tab order) but shows on the left. */
@@ -49,15 +48,15 @@ a {
   gap: var(--sp-3);
   min-height: 0;
   padding: var(--sp-5) var(--sp-3);
-  background: var(--nord1);
-  border-right: 1px solid var(--nord2);
+  background: var(--surface-raised);
+  border-right: 1px solid var(--border-divider);
   overflow: auto;
 }
 
 .app__title {
   margin: 0 var(--sp-2);
   font-size: var(--fs-lg);
-  color: var(--nord6);
+  color: var(--text-strong);
   font-weight: 600;
 }
 
@@ -99,10 +98,10 @@ a {
   max-width: min(40rem, 80vw);
   padding: var(--sp-1) var(--sp-3);
   border-radius: 4px;
-  background: var(--nord1);
-  color: var(--nord5);
+  background: var(--surface-overlay);
+  color: var(--text-label);
   font-size: var(--fs-sm);
-  box-shadow: 0 0 0 1px var(--nord3);
+  box-shadow: 0 0 0 1px var(--border-default);
 }
 
 .status-line:empty {
@@ -110,8 +109,8 @@ a {
 }
 
 .status-line--error {
-  color: var(--nord11);
-  box-shadow: 0 0 0 1px var(--nord11);
+  color: var(--state-danger-fg);
+  box-shadow: 0 0 0 1px var(--state-danger-solid);
 }
 
 /* Narrow (the note window, the laptop): one column; the sidebar becomes a drawer

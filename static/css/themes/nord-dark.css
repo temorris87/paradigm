@@ -1,0 +1,140 @@
+/* Nord Dark: the first theme, the look Paradigm has always had (https://www.nordtheme.com).
+   The --nordN primitives are this file's own: components use only the role tokens below,
+   which _template.css lists with what each is for. */
+:root[data-theme="nord-dark"] {
+  color-scheme: dark;
+
+  /* Primitives: Polar Night (0-3), Snow Storm (4-6), Frost (7-10), Aurora (11-15). */
+  --nord0: #2e3440;
+  --nord1: #3b4252;
+  --nord2: #434c5e;
+  --nord3: #4c566a;
+  --nord4: #d8dee9;
+  --nord5: #e5e9f0;
+  --nord6: #eceff4;
+  --nord7: #8fbcbb;
+  --nord8: #88c0d0;
+  --nord9: #81a1c1;
+  --nord10: #5e81ac;
+  --nord11: #bf616a;
+  --nord12: #d08770;
+  --nord13: #ebcb8b;
+  --nord14: #a3be8c;
+  --nord15: #b48ead;
+
+  /* Surfaces */
+  --surface-page: var(--nord0);
+  --surface-raised: var(--nord1);
+  --surface-sunken: var(--nord1);
+  --surface-hover: var(--nord2);
+  --surface-row-hover: var(--nord1);
+  --surface-overlay: var(--nord1);
+  --surface-selected: var(--nord2);
+  --surface-input: var(--nord0);
+  --surface-elevated: var(--nord2);
+  --surface-muted: var(--nord3);
+
+  /* Text */
+  --text-strong: var(--nord6);
+  --text: var(--nord4);
+  --text-dim: color-mix(in srgb, var(--nord4) 72%, var(--nord0));
+  --text-faint: color-mix(in srgb, var(--nord4) 48%, var(--nord0));
+  --text-muted: var(--nord3);
+  --text-heading: var(--nord13);
+  --text-code: var(--nord7);
+  --text-control: var(--nord5);
+  --text-label: var(--nord5);
+  --text-math: var(--nord10);
+  --text-on-accent: var(--nord6);
+  --text-on-solid: var(--nord0);
+
+  /* Borders */
+  --border-faint: var(--nord1);
+  --border-divider: var(--nord2);
+  --border-default: var(--nord3);
+  --border-strong: var(--nord4);
+  --border-focus: var(--nord8);
+  --border-primary: var(--nord8);
+  --border-selected: var(--nord8);
+  --border-accent: var(--nord9);
+  --focus-ring: var(--nord9);
+
+  /* Accent and links */
+  --accent: var(--nord10);
+  --link: var(--nord8);
+  --link-secondary: var(--nord9);
+  --link-underline: var(--nord3);
+  --list-marker: var(--nord9);
+
+  /* States: -fg for text, -bg for a tint behind it, -solid for dots, bars and borders */
+  --state-danger-fg: var(--nord11);
+  --state-danger-bg: color-mix(in srgb, var(--nord11) 18%, var(--nord1));
+  --state-danger-solid: var(--nord11);
+  --state-warning-fg: var(--nord12);
+  --state-warning-bg: color-mix(in srgb, var(--nord12) 18%, var(--nord1));
+  --state-warning-solid: var(--nord12);
+  --state-caution-fg: var(--nord13);
+  --state-caution-bg: color-mix(in srgb, var(--nord13) 18%, var(--nord1));
+  --state-caution-solid: var(--nord13);
+  --state-success-fg: var(--nord14);
+  --state-success-bg: color-mix(in srgb, var(--nord14) 18%, var(--nord1));
+  --state-success-solid: var(--nord14);
+  --state-info-fg: var(--nord8);
+  --state-info-bg: color-mix(in srgb, var(--nord8) 18%, var(--nord1));
+  --state-info-solid: var(--nord8);
+  --state-neutral-solid: var(--nord3);
+
+  /* Kinds: tasks, decisions, questions, meetings */
+  --kind-task-fg: var(--nord14);
+  --kind-task-bg: color-mix(in srgb, var(--nord14) 18%, var(--nord1));
+  --kind-task-solid: var(--nord14);
+  --kind-decision-fg: var(--nord8);
+  --kind-decision-bg: color-mix(in srgb, var(--nord8) 18%, var(--nord1));
+  --kind-decision-solid: var(--nord8);
+  --kind-question-fg: var(--nord15);
+  --kind-question-bg: color-mix(in srgb, var(--nord15) 18%, var(--nord1));
+  --kind-question-solid: var(--nord15);
+  --kind-meeting-fg: var(--nord9);
+  --kind-meeting-bg: color-mix(in srgb, var(--nord9) 18%, var(--nord1));
+  --kind-meeting-solid: var(--nord10);
+
+  /* Charts */
+  --chart-capacity-meeting: var(--nord10);
+  --chart-capacity-focus: var(--nord14);
+  --chart-capacity-free: var(--nord2);
+  --chart-gantt-bar: var(--nord10);
+  --chart-gantt-project: var(--nord9);
+  --chart-gantt-done: var(--nord3);
+  --chart-milestone: var(--nord13);
+  --chart-now-line: var(--nord11);
+  --chart-today-line: var(--nord12);
+  --chart-track: var(--nord2);
+  --chart-progress: var(--nord14);
+  --chart-selected: var(--nord13);
+  --chart-step: var(--nord3);
+  --chart-step-done: var(--nord8);
+
+  /* Callouts (others use the state -solid tokens) */
+  --callout-note: var(--nord10);
+  --callout-todo: var(--nord7);
+  --callout-bug: var(--nord11);
+  --callout-example: var(--nord15);
+  --callout-quote: var(--nord3);
+
+  /* The editor and marks */
+  --cursor: var(--nord4);
+  --selection: var(--nord2);
+  --search-match: var(--nord3);
+  --search-current: var(--nord13);
+  --mark-bg: var(--nord13);
+  --live-caret: var(--nord8);
+  --highlight: var(--nord9);
+  --scrollbar: var(--nord3);
+
+  /* Shadows and backdrops */
+  --shadow: rgb(0 0 0 / 0.35);
+  --shadow-strong: rgb(0 0 0 / 0.45);
+  --shadow-tint: var(--nord0);
+  --backdrop: rgb(46 52 64 / 0.6);
+  --backdrop-tint: var(--nord0);
+}

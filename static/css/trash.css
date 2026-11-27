@@ -17,13 +17,13 @@
 }
 
 .trash__gone--soon {
-  color: var(--nord12);
+  color: var(--state-warning-fg);
 }
 
 .trash__where,
 .trash__inside,
 .trash__when {
-  color: var(--nord4);
+  color: var(--text);
   font-size: var(--fs-sm);
 }
 
@@ -41,7 +41,7 @@
   border: none;
   border-radius: 4px;
   background: none;
-  color: var(--nord4);
+  color: var(--text);
   font: inherit;
   font-size: var(--fs-sm);
   cursor: pointer;
@@ -51,6 +51,6 @@
 .navigator__trash:focus-visible,
 .app__note[data-view="trash"] ~ .app__sidebar .navigator__trash {
   outline: none;
-  background: var(--nord2);
-  color: var(--nord6);
+  background: var(--surface-selected);
+  color: var(--text-strong);
 }

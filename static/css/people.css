@@ -13,7 +13,7 @@
 }
 
 .people__count--late {
-  color: var(--nord12);
+  color: var(--state-warning-fg);
 }
 
 @media (max-width: 1000px) {

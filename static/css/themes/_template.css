@@ -1,0 +1,124 @@
+/* The theme template: every role token a theme sets, each with what it is for. Never loaded.
+   To add a theme: copy this file to css/themes/<id>.css, fill every value (palette
+   primitives of your own are fine, prefixed and used only in the file), set its id in the
+   selector, and add a row to js/theme/themes.js. tests/python/test_theme_tokens.py fails on a
+   theme that misses a token here or adds one that is not. */
+:root[data-theme="TEMPLATE"] {
+  color-scheme: ; /* light or dark: native controls and scrollbars */
+
+  /* Surfaces */
+  --surface-page: ; /* the page behind everything: body, the editor, the Gantt's label column */
+  --surface-raised: ; /* panels and bars on the page: sidebar, cards, status bars, buttons, the cursor's band */
+  --surface-sunken: ; /* wells set into the text: code, pre, table heads, callouts, the digest */
+  --surface-hover: ; /* a hovered menu item, tree row, picker row or top-bar link */
+  --surface-row-hover: ; /* a hovered row in a page's list (Today, list pages, a task page, sections) */
+  --surface-overlay: ; /* what floats over the page: menus, dialogs, the completion list, the status line */
+  --surface-selected: ; /* the selected row, the current tab or segment, an open menu's button */
+  --surface-input: ; /* text boxes, choice tiles and tabs set into a raised bar */
+  --surface-elevated: ; /* a surface on an overlay: dialog buttons, the editor's hint */
+  --surface-muted: ; /* shading for days off and pending blocks in the calendar (mixed, never solid) */
+
+  /* Text */
+  --text-strong: ; /* titles, selected rows, bold text */
+  --text: ; /* body text, the default */
+  --text-dim: ; /* details beside a title; muted text uses these colours, never opacity */
+  --text-faint: ; /* hints, placeholders, the least important detail */
+  --text-muted: ; /* empty states, separators, struck-through and done text, the editor's markers */
+  --text-heading: ; /* headings: Markdown headings, page and bar headings, week ranges */
+  --text-code: ; /* inline code, kind labels, the palette's command hints */
+  --text-control: ; /* the text on buttons and in inputs */
+  --text-label: ; /* small labels drawn on charts and lists: milestone names, the status line, timesheet rows */
+  --text-math: ; /* raw maths in the editor */
+  --text-on-accent: ; /* text on an accent or danger fill: Gantt bars, calendar blocks, the connection banner */
+  --text-on-solid: ; /* dark text on a light solid fill: badges, the mark, the cursor's character, pills */
+
+  /* Borders */
+  --border-faint: ; /* the editor's edge when it is not focused */
+  --border-divider: ; /* dividers and panel edges, grid lines */
+  --border-default: ; /* controls: buttons, inputs, menus, dialogs, Markdown rules and tables */
+  --border-strong: ; /* dashed outlines of what is not saved yet: pending blocks, the Gantt's ghost */
+  --border-focus: ; /* a focused or hovered control's border */
+  --border-primary: ; /* the primary button's border */
+  --border-selected: ; /* the selected tab, pill or choice; the shown on-call week */
+  --border-accent: ; /* a hovered add or row-action button; diagram node borders */
+  --focus-ring: ; /* the inset ring on the focused list's selected row, focus outlines */
+
+  /* Accent and links */
+  --accent: ; /* the primary action's fill (a dialog's OK) */
+  --link: ; /* links and what opens like one */
+  --link-secondary: ; /* crumbs, "more" links, add links, missing wiki-links */
+  --link-underline: ; /* the underline under links and dotted state toggles */
+  --list-marker: ; /* list bullets and numbers, rendered and raw */
+
+  /* States: -fg for text, -bg for a tint behind it, -solid for dots, bars and borders */
+  --state-danger-fg: ; /* late, failed, errors */
+  --state-danger-bg: ; /* a danger tint */
+  --state-danger-solid: ; /* danger fills and borders: the banner, the delete button, late marks */
+  --state-warning-fg: ; /* follow-ups, at risk, unsaved, unplaced */
+  --state-warning-bg: ; /* a warning tint */
+  --state-warning-solid: ; /* warning fills and borders (at risk health) */
+  --state-caution-fg: ; /* due, pending, today and now */
+  --state-caution-bg: ; /* a caution tint */
+  --state-caution-solid: ; /* caution fills: the Inbox count pill, warning callouts */
+  --state-success-fg: ; /* done, saved, placed, on track */
+  --state-success-bg: ; /* a success tint */
+  --state-success-solid: ; /* success fills and borders: done marks, on-track health */
+  --state-info-fg: ; /* information text */
+  --state-info-bg: ; /* an information tint */
+  --state-info-solid: ; /* information fills */
+  --state-neutral-solid: ; /* a dot with no state set (no health) */
+
+  /* Kinds: tasks, decisions, questions, meetings */
+  --kind-task-fg: ; /* a task's text label */
+  --kind-task-bg: ; /* a task tint */
+  --kind-task-solid: ; /* task badges, checkboxes, task blocks in the calendar */
+  --kind-decision-fg: ; /* a decision's text label */
+  --kind-decision-bg: ; /* a decision tint */
+  --kind-decision-solid: ; /* decision badges */
+  --kind-question-fg: ; /* questions: labels, asked reasons, prep */
+  --kind-question-bg: ; /* a question tint */
+  --kind-question-solid: ; /* question badges */
+  --kind-meeting-fg: ; /* meeting totals' text */
+  --kind-meeting-bg: ; /* a meeting tint */
+  --kind-meeting-solid: ; /* meeting blocks in the calendar */
+
+  /* Charts */
+  --chart-capacity-meeting: ; /* the meetings part of a day's capacity bar */
+  --chart-capacity-focus: ; /* the focus part of a day's capacity bar, and its total */
+  --chart-capacity-free: ; /* the free part (the bar's track) */
+  --chart-gantt-bar: ; /* Gantt and plan-strip bars, the current phase */
+  --chart-gantt-project: ; /* a project's bar on the Gantt and the Portfolio */
+  --chart-gantt-done: ; /* a done phase */
+  --chart-milestone: ; /* milestone marks and the milestone kind */
+  --chart-now-line: ; /* the calendar's now line */
+  --chart-today-line: ; /* the Gantt's, plan's and bars' today line */
+  --chart-track: ; /* empty bar tracks: progress bars, a card's plan bar */
+  --chart-progress: ; /* how far the current meeting has gone */
+  --chart-selected: ; /* the selected calendar block and the dragged ghost */
+  --chart-step: ; /* a triage step not done yet */
+  --chart-step-done: ; /* a triage step done */
+
+  /* Callouts (others use the state -solid tokens) */
+  --callout-note: ; /* note, info and the default callout */
+  --callout-todo: ; /* tip, abstract and todo callouts */
+  --callout-bug: ; /* failure, danger and bug callouts */
+  --callout-example: ; /* example callouts */
+  --callout-quote: ; /* quote callouts */
+
+  /* The editor and marks */
+  --cursor: ; /* the editor's cursor and the command line's */
+  --selection: ; /* selected text in the editor */
+  --search-match: ; /* a search match in the editor */
+  --search-current: ; /* the current search match */
+  --mark-bg: ; /* ==marked== text */
+  --live-caret: ; /* the Live page's caret and the bar beside the cursor's block */
+  --highlight: ; /* a record's underline and badge text on the Live page */
+  --scrollbar: ; /* scrollbar thumbs */
+
+  /* Shadows and backdrops */
+  --shadow: ; /* menus and the completion list */
+  --shadow-strong: ; /* dialogs */
+  --shadow-tint: ; /* mixed into the drawer's and the sheet's shadows */
+  --backdrop: ; /* behind a dialog */
+  --backdrop-tint: ; /* mixed into the drawer's and the image viewer's backdrops */
+}
