@@ -175,3 +175,36 @@ Features in build order. "build feature" takes the first unchecked item.
 - [ ] `:trash` in the main window acts on the note behind its view (the dashboard last open
   behind the Live page, the task page or Today), not on the note on screen: it can trash a
   whole hub by mistake.
+- [ ] Theme tokens, no visual change: every color moves to role tokens (surface, text, border,
+  accent, state, kind, chart; list in docs/ui-audit.md), the current look becomes
+  `css/themes/nord-dark.css`, plus `css/themes/_template.css` and a theme table
+  (`js/theme/themes.js`, `<html data-theme>`); a gate test fails on `--nordN` or raw hex outside
+  `themes/` and on a theme missing a token. Screens match before and after.
+- [ ] Nord Light, the default theme: `themes/nord-light.css` from the Figma "Paradigm UI"
+  variables (Foundations page), text colors at 4.5:1 or better; dark stays as a file, out of the
+  table.
+- [ ] Shared look from the redesign: status chips (state and kind tones), the key-hint bar at
+  the foot of each view, one focus ring, menus and dialogs on the overlay surface.
+- [ ] People and the person page as in Figma (People, Person · Ada Park): Waiting on / I owe
+  aligned on the 3-column grid; "Next 1:1" counts only meetings still to come.
+- [ ] Week as in Figma (Week · imported / not imported): calendar import is file-only. With no
+  import this week, the calendar greys out under a centered Import panel (drop the .ics, or
+  `i` to pick it; "Plan without it"). The `<data>/import/` folder scan goes.
+- [ ] Today as in Figma (Today): the same Import panel ("Not today"), and plain wording for
+  the free time left.
+- [ ] Project page as in Figma (Project, Project history): it shows now and next (this week
+  on); each section's older entries go to the project's own History page (`g h`).
+- [ ] Task page as in Figma (Task): Notes is the main column; Subtasks, Emails, Files, From and
+  History in a side column, so it reads well shared at 1280 with the note window on the right
+  third.
+- [ ] Capture by key (Figma: Note window · capture by key, Share · meeting capture): `\t` `\q`
+  `\d` on a line open a capture sheet docked at the foot of the editor (who, I owe / they owe,
+  follow-up day; Enter / Tab / Esc) and replace the `T:` `Q:` `D:` syntax; the meeting page shows
+  "Agreed in this meeting". Old `T:` lines stay plain text.
+- [ ] Files: "Add file…" opens the Windows file picker (tkinter's dialog in its own process,
+  starting in the hub's linked OneDrive folder) in place of the text-search picker; a file from
+  a folder not linked yet offers to link it. If tkinter is missing, a folder browser inside
+  Paradigm.
+- [ ] Emails on tasks: drag a .msg from Outlook onto a task (or `:attach`); our own stdlib .msg
+  reader (compound file) takes subject, sender and date; "Reply needed" / "Replied" on each;
+  Open / Reply opens the saved .msg in Outlook.
