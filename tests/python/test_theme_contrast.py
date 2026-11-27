@@ -31,11 +31,11 @@ TONES = ("--state-danger", "--state-warning", "--state-caution", "--state-succes
 FOCUS_TOKENS = ("--border-focus", "--focus-ring")
 FOCUS_SURFACES = ("--surface-page", "--surface-raised")
 # The fills `--text-on-solid` is drawn on, found by grepping its uses in static/css: the tree's
-# Inbox pill, the capture and card badges, <mark> and the current search match. The spec's
-# default success and info solids carry no text, so they are not here. StylesheetDriftTest
-# keeps this list equal to what the stylesheets draw.
-TEXT_SOLIDS = ("--state-caution-solid", "--kind-task-solid", "--kind-decision-solid",
-               "--kind-question-solid", "--mark-bg", "--search-current")
+# Inbox pill, <mark> and the current search match. The capture and card badges became tinted
+# chips (spec 019), so the kind solids only colour a chip's dot and carry no text. The success
+# and info solids carry no text either. StylesheetDriftTest keeps this list equal to what the
+# stylesheets draw.
+TEXT_SOLIDS = ("--state-caution-solid", "--mark-bg", "--search-current")
 
 DECLARATION = re.compile(r"(--[A-Za-z0-9_-]+)\s*:\s*([^;]*);")
 VAR_ONLY = re.compile(r"^var\(\s*(--[A-Za-z0-9_-]+)\s*\)$")
@@ -281,9 +281,9 @@ class ThemeCheckTest(unittest.TestCase):
                          ["--focus-ring on --surface-page", "--focus-ring on --surface-raised"])
 
     def test_text_on_a_dark_solid_is_caught(self) -> None:
-        problems = self.check({**GOOD_THEME, "--kind-question-solid": "#6c4f6a"})
+        problems = self.check({**GOOD_THEME, "--state-caution-solid": "#6c4f6a"})
         self.assertEqual([p.split(":")[0] for p in problems],
-                         ["--text-on-solid on --kind-question-solid"])
+                         ["--text-on-solid on --state-caution-solid"])
 
     def test_text_on_a_dark_mark_is_caught(self) -> None:
         problems = self.check({**GOOD_THEME, "--mark-bg": "#4c566a", "--search-current": "#3b4252"})

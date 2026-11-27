@@ -30,7 +30,7 @@ How the app behaves. Kept up to date by each feature that changes it.
   calendar is in. One focus stop, starting on Up next; `j k gg G`, `}` `{`, Space done (a
   question: Answer…), `s` into the first free slot before it is due (its estimate or 30 min,
   working days only, the timesheet's holidays skipped), `d` delegate, `z` snooze to tomorrow,
-  `o`/Enter open (`static/js/today/today-keys.js`, also the hint line).
+  `o`/Enter open (`static/js/today/today-keys.js`, also the key-hint bar at the foot).
 - Note menu: clicking the open note's name (the last crumb, with ▾) opens its menu: rename,
   move (a picker), new note beside / under, file as, archive or restore, export, move to
   trash (with a confirm); a project's or area's starts with Log status…. The table is
@@ -72,7 +72,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   unchanged. Afterwards a plain note opens in the note window and a hub opens its dashboard.
 - Main-window keys (`static/js/layout/main-keys.js`, read in the capture phase): `:` the palette,
   `gt` Today, `gw` the Week, `gn` the Live page, `gp` the plan of the project or area on the dashboard (anywhere on
-  it; on another page it says to open one; `:plan` in the palette). `g` waits for a second key everywhere (as in Vim): `gg` is the
+  it; on another page it says to open one; `:plan` in the palette), `?` every key of the view
+  shown (2026-11-27). `g` waits for a second key everywhere (as in Vim): `gg` is the
   first row in every list (`static/js/ui/key-sequence.js` reads two-key entries; a page-wide
   key clears a list's waiting `g`).
 - Look (Tyson, 2026-11-26): both windows open in Nord Light, the default and only theme
@@ -82,9 +83,36 @@ How the app behaves. Kept up to date by each feature that changes it.
   bars, on-hold projects) wash the fill and keep the text readable. Headings stand out by
   weight, not colour. Nord Dark stays on disk for a switcher later; there is no switcher yet.
   One focus ring (Tyson, 2026-11-27): every button-like control (top bar, crumb menu,
-  dashboard head, navigator pins and Trash, hub-line controls, dialog buttons) shows a 2 px
-  focus-colour outline on keyboard focus; a tint is for hover only. List rows keep their inset
-  ring.
+  dashboard head, navigator pins and Trash, hub-line controls, dialog buttons, fields,
+  segmented buttons, the palette's field) shows a 2 px `--border-focus` outline 1 px outside it
+  on keyboard focus; a tint is for hover only. A control in a box that scrolls draws it 2 px
+  inside instead, so the box can't clip it: the navigator's Today and Week pins, as the sidebar
+  scrolls (Tyson, 2026-11-27). List rows keep their inset ring. `tests/js/test_focus_ring.js`
+  fails on any other ring.
+- Shared look (2026-11-27; feature 019): status shows as one chip everywhere, a short label on
+  its tone's tint (a dashboard's and Today's health with a dot, Today's Up next reasons, the
+  hub-line question and decision badges, Live's highlights, the Gantt's late badge, the list
+  pages' filter pills: the one on is info). Missed due dates, late and blocked are danger;
+  at risk warning; due today or soon caution; on track success; follow-ups and waiting on info,
+  however late (the text says how late: Tyson, 2026-11-27); on hold neutral; tasks, decisions,
+  questions and meetings their kind's colour (`static/js/ui/chip-tones.js`). Calendar chips and
+  the tree's count pills are not status and keep their look. One key cap (mono, boxed) is used
+  by the bar, the palette, triage, the top bar and Today. Menus, dialogs, the palette, the
+  picker, triage, the `?` list, the editor's completion list and the status line all float on
+  the overlay surface with a thin border and a strong shadow; a dialog also dims the page.
+- Key-hint bar (Tyson, 2026-11-27): a 35 px bar at the foot of the page shows the main keys of
+  the view on screen, each as a key cap and a word or two, and changes with the view (Today,
+  each Week tab, People, Meetings, a dashboard, a task page, Plan, a template, a folder, Live,
+  Trash). It shows only keys the view's key table binds (the entries with `hint:`), and in the
+  main window ends with `? all keys`. A dashboard that isn't a project's or an area's leaves out
+  `L`; the Trash leaves out New and calls Enter "restore". Live has no keys of its own, so it
+  shows `g t` Today, `g w` Week, `:` command, `? all keys`. `?` (outside text boxes, the editor
+  and dialogs) opens a read-only list of every key of the view, grouped as its table groups
+  them, then "Anywhere in this window"; Esc or Close shuts it and the focus goes back where it
+  was. The note window's bar has no `?` (there it is the editor's search backwards): `i`
+  insert, `Esc` normal, `:w` save, `/` search, and `Tab` sheet when the note has its sections
+  sheet. The status line sits just above the bar. `static/js/ui/key-hints.js`,
+  `static/js/layout/view-keys.js`.
 - Two windows (Tyson, 2026-11-22): the main window (`/`, left 2/3 of the ultrawide) shows
   dashboards and pages and never edits text; the note window (`/note.html`) is where notes
   are written. Opening any note in the main window that isn't a hub or a person (tree, a

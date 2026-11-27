@@ -6,7 +6,8 @@ import { NoteTree } from "../../static/js/notes/tree-model.js";
 import { Records } from "../../static/js/records/records-model.js";
 import { StatusLogs } from "../../static/js/status/status-model.js";
 import { Tasks } from "../../static/js/tasks/tasks-model.js";
-import { TODAY_KEYS, todayHints } from "../../static/js/today/today-keys.js";
+import { TODAY_KEYS } from "../../static/js/today/today-keys.js";
+import { hintsOf } from "../../static/js/ui/key-hints.js";
 import { dayTimeline, nowBlock, projectRows, upNext } from "../../static/js/today/today-model.js";
 import { TodayPage } from "../../static/js/today/today-page.js";
 import { dayCapacity, firstFreeSlot, hoursText, workingSpans } from "../../static/js/week/capacity.js";
@@ -109,7 +110,7 @@ test("prep: open questions with the attendees, what they owe, last time", () => 
 
 test("today: keys from the table; the page starts on Up next and runs its actions", () => {
   assertTrue(TODAY_KEYS.every((entry) => entry.help));
-  assertEqual(todayHints().map(([key]) => key).join(), "j k,Space,s,d,z,o");
+  assertEqual(hintsOf(TODAY_KEYS).map(({ cap }) => cap).join(), "j k,Space,s,d,z,o");
   const section = document.createElement("section");
   document.body.append(section);
   try {

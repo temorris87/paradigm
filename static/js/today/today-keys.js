@@ -1,11 +1,11 @@
-// THE key table for the Today page (static/js/today/today-page.js). Its key handling, its
-// hint line under Up next and any help listing all read it; nothing else binds keys there.
+// THE key table for the Today page (static/js/today/today-page.js). Its key handling, the
+// key-hint bar and the ? list all read it; nothing else binds keys there.
 // Keys with Ctrl, Alt or Cmd held are left to the browser, and Tab moves the focus on, as
-// everywhere. hint: shown in the page's key line (in this order).
+// everywhere. hint: shown in the key-hint bar (in this order), label: its key cap (ui/key-hints.js).
 import { keyReader } from "../ui/key-sequence.js";
 
 export const TODAY_KEYS = [
-  { keys: ["j", "ArrowDown"], action: "next", help: "next row", hint: "move" },
+  { keys: ["j", "ArrowDown"], action: "next", help: "next row", hint: "move", label: "j k" },
   { keys: ["k", "ArrowUp"], action: "previous", help: "previous row" },
   { keys: ["gg", "Home"], action: "first", help: "first row" },
   { keys: ["G", "End"], action: "last", help: "last row" },
@@ -25,10 +25,4 @@ const read = keyReader(TODAY_KEYS);
 /** The action a keydown means on Today ("pending" partway through gg), or null. */
 export function todayAction(event) {
   return read(event);
-}
-
-/** [[key, words]] for the page's hint line, from the table. */
-export function todayHints() {
-  return TODAY_KEYS.filter((entry) => entry.hint).map((entry) => [entry.keys[0] === " " ? "Space" : entry.keys.join(" "), entry.hint])
-    .map(([key, hint]) => [key === "j ArrowDown" ? "j k" : key === "o Enter" ? "o" : key, hint]);
 }

@@ -5,7 +5,7 @@
   --cal-gutter: 3.5rem;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 4.5rem);
+  height: calc(100vh - 4.5rem - var(--key-hints-height));
   min-height: 30rem;
   border: 1px solid var(--border-divider);
   border-radius: 6px;

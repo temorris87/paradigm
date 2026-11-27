@@ -3,12 +3,16 @@
 // highlight is: the page reports a click with the highlight's data.
 //
 //   markHighlights(node, highlights)   wraps the first match of each highlight in node
-//     highlight: { text, label, title, data, capture?, meta? }; capture ("task", "decision",
+//     highlight: { text, label, title, data, kind?, capture?, meta? }; kind: the tone of its
+//     badge (toneOf; else capture's, else the label's); capture ("task", "decision",
 //     "question"): the badge goes before the text, in its colour, in place of the "T:" the
 //     line starts with; meta: words after it ("→ Priya Shah · due Wed")
 //
 // A highlight's text is raw Markdown, so it is matched against the rendered text by its
 // words: its first line, Markdown marks dropped, spaces squeezed.
+import { chip } from "../ui/chip.js";
+import { toneOf } from "../ui/chip-tones.js";
+
 export function markHighlights(node, highlights) {
   highlights.forEach((highlight, index) => {
     const words = plainWords(highlight.text);
@@ -68,16 +72,16 @@ function markFirst(node, words, index, highlight) {
     mark.append(middle);
     marks.unshift(mark);
   }
-  const badge = node.ownerDocument.createElement("span");
-  badge.className = "pd-highlight__badge";
+  // The badge is a status chip in the kind's tone (an answered question is still a question);
+  // data-badge tells it from the marked text.
+  const tone = toneOf(highlight.kind ?? highlight.capture ?? highlight.label);
+  const badge = chip(highlight.label, tone, { title: highlight.title });
   badge.dataset.highlight = String(index);
-  badge.textContent = highlight.label;
-  if (highlight.title) badge.title = highlight.title;
+  badge.dataset.badge = highlight.capture ? "capture" : "after";
   if (!highlight.capture) {
     marks[marks.length - 1].after(badge);
     return;
   }
-  badge.classList.add("pd-highlight__badge--capture", `pd-highlight__badge--${highlight.capture}`);
   for (const mark of marks) mark.classList.add("pd-highlight--capture");
   // The "T: " before the text: the badge says it now. The text may start inside a link (a
   // mention), so look for the text just before it in reading order.

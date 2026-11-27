@@ -33,6 +33,8 @@
   <link rel="stylesheet" href="/css/live.css">
   <link rel="stylesheet" href="/css/image-viewer.css">
   <link rel="stylesheet" href="/css/ui.css">
+  <link rel="stylesheet" href="/css/chip.css">
+  <link rel="stylesheet" href="/css/key-hints.css">
   <script type="module" src="/js/main.js"></script>
 </head>
 <body>
@@ -49,7 +51,7 @@
         <button type="button" class="topbar__palette" title="Go to a note or a page, or run a command (:)">
           <span class="topbar__palette-text topbar__palette-text--long">Go to a note, page or command…</span>
           <span class="topbar__palette-text topbar__palette-text--short">Go to or run…</span>
-          <kbd class="topbar__key">:</kbd>
+          <kbd class="key">:</kbd>
         </button>
         <button type="button" class="topbar__page topbar__window" aria-haspopup="menu" title="Where the note window opens">Window ▾</button>
       </header>
@@ -101,6 +103,8 @@
       <section class="live-view" aria-label="Live note" hidden></section>
       <div class="status-line" role="status"></div>
     </main>
+    <!-- The keys of the view shown (ui/key-hints.js), at the foot of the page. -->
+    <footer class="key-hints" aria-label="Keys"></footer>
     <div class="navigator__backdrop" hidden></div>
     <nav class="app__sidebar" id="navigator" aria-label="Notes">
       <h1 class="app__title">Paradigm</h1>

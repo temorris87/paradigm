@@ -166,8 +166,8 @@
 }
 
 .folder-page__row:focus-visible {
-  outline: 2px solid var(--border-focus);
-  outline-offset: 1px;
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--focus-ring);
 }
 
 .folder-page__row--folder {

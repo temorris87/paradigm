@@ -4,6 +4,8 @@
 import { boot } from "./boot.js";
 import { startLiveSender } from "./live/live-sender.js";
 import { setNotePath } from "./notes/app.js";
+import { noteHints } from "./layout/view-keys.js";
+import { drawKeyHints } from "./ui/key-hints.js";
 import { placeNoteWindow, placeOnFirstLoad } from "./windows/note-window.js";
 
 setNotePath("/note.html");
@@ -16,6 +18,12 @@ const app = boot({
   options: () => ({ buttons: { dashboard: $(".topbar__dashboard") } }),
 });
 startLiveSender(app);
+
+// The key-hint bar: the editor's few keys that matter most, and Tab when the note has its
+// sections sheet. No ?: here it is the editor's search backwards.
+const drawHints = () => drawKeyHints($(".key-hints"), noteHints({ sheet: !$(".sheet").hidden }));
+app.events.addEventListener("redraw", drawHints);
+drawHints();
 
 // Placed again once loaded (the frame can be measured now), and when the main window's
 // Window menu picks the right third.

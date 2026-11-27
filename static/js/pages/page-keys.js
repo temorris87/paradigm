@@ -6,16 +6,16 @@
 import { keyReader } from "../ui/key-sequence.js";
 
 export const PAGE_KEYS = [
-  { scope: "list", keys: ["j", "ArrowDown"], action: "next", help: "next row" },
+  { scope: "list", keys: ["j", "ArrowDown"], action: "next", help: "next row", hint: "move", label: "j k" },
   { scope: "list", keys: ["k", "ArrowUp"], action: "previous", help: "previous row" },
   { scope: "list", keys: ["gg", "Home"], action: "first", help: "first row" },
   { scope: "list", keys: ["G", "End"], action: "last", help: "last row" },
-  { scope: "list", keys: ["Enter"], action: "open", help: "open the row's note" },
-  { scope: "list", keys: ["/"], action: "search", help: "go to the search box" },
+  { scope: "list", keys: ["Enter"], action: "open", help: "open the row's note", hint: "open" },
+  { scope: "list", keys: ["/"], action: "search", help: "go to the search box", hint: "search" },
   { scope: "list", keys: ["}"], action: "nextGroup", help: "the next day's first row (Meetings)" },
   { scope: "list", keys: ["{"], action: "previousGroup", help: "this day's first row, then the day before (Meetings)" },
   { scope: "list", keys: ["p"], action: "prepOnly", help: "Meetings: only those with something to prep, or all again" },
-  { scope: "list", keys: ["a"], action: "add", help: "the page's New button (New person, New meeting)" },
+  { scope: "list", keys: ["a"], action: "add", help: "the page's New button (New person, New meeting)", hint: "new" },
   { scope: "list", keys: ["Escape"], action: "leave", help: "back to the note" },
   { scope: "search", keys: ["Enter", "Escape", "ArrowDown"], action: "list", help: "back to the list" },
 ];

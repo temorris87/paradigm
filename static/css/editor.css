@@ -199,7 +199,7 @@
   background: var(--surface-overlay);
   border: 1px solid var(--border-default);
   border-radius: 4px;
-  box-shadow: 0 4px 12px var(--shadow);
+  box-shadow: 0 4px 12px var(--shadow-strong);
   font-family: var(--font-ui);
   font-size: var(--fs-md);
   white-space: nowrap;

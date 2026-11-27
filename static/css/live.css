@@ -122,32 +122,20 @@
   cursor: pointer;
 }
 
-.pd-highlight__badge {
-  margin-left: var(--sp-2);
-  padding: 0 var(--sp-2);
-  border: 1px solid var(--border-default);
-  border-radius: 3px;
-  color: var(--highlight);
-  font-family: var(--font-ui);
-  font-size: var(--fs-xs);
-  vertical-align: 0.1em;
+/* Its badge is a status chip (chip.css): after the text, or, on a captured line, before it in
+   place of the "T:" (TASK, DECISION, QUESTION), with its meta after. */
+.chip[data-badge] {
   cursor: pointer;
 }
 
-/* A captured line's badge, before its text (TASK, DECISION, QUESTION), and its meta after. */
-.pd-highlight__badge--capture {
-  margin: 0 var(--sp-1) 0 0;
-  padding: 0 var(--sp-1);
-  border-radius: 3px;
-  color: var(--text-on-solid);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  text-transform: uppercase;
+.chip[data-badge="after"] {
+  margin-left: var(--sp-2);
 }
 
-.pd-highlight__badge--task { background: var(--kind-task-solid); }
-.pd-highlight__badge--decision { background: var(--kind-decision-solid); }
-.pd-highlight__badge--question { background: var(--kind-question-solid); }
+.chip[data-badge="capture"] {
+  margin-right: var(--sp-1);
+  text-transform: uppercase;
+}
 
 .pd-highlight--capture {
   text-decoration: none;

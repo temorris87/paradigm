@@ -13,6 +13,8 @@
 // drag opens the row. The chart is one focus stop (a listbox of its rows); its keys are in
 // gantt-keys.js.
 import { barBox, chartAxis, dayAt, dragged, fitDayPx, markLeft, ticksFor } from "./gantt-model.js";
+import { chip } from "../ui/chip.js";
+import { toneOf } from "../ui/chip-tones.js";
 import { ganttAction } from "./gantt-keys.js";
 
 const LABEL_PX = 220;
@@ -87,7 +89,8 @@ export class GanttView {
     label.setAttribute("role", "option");
     label.dataset.index = String(index);
     label.append(element("span", "gantt__name", row.label));
-    if (row.badge) label.append(element("span", `gantt__badge${row.late ? " gantt__badge--late" : ""}`, row.badge));
+    // A row that keeps slipping says so in a danger chip; any other slip stays a quiet line.
+    if (row.badge) label.append(row.late ? chip(row.badge, toneOf("late")) : element("span", "gantt__badge", row.badge));
     if (row.note) label.append(element("span", `gantt__note-line gantt__note-line--${row.noteTone ?? "dim"}`, row.note));
     label.title = [row.label, row.detail, row.badge].filter(Boolean).join("\n");
     label.addEventListener("click", () => {

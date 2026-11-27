@@ -129,8 +129,8 @@
   color: var(--state-caution-fg);
 }
 
-.gantt__badge--late {
-  color: var(--state-danger-fg);
+.gantt__label .chip {
+  align-self: flex-start;
 }
 
 .gantt__track {

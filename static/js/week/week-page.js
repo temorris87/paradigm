@@ -6,8 +6,9 @@
 // (calendar/calendar-page.js), the timesheet (timesheet/time-page.js) and the rota
 // (oncall/oncall-page.js) draw the rest.
 //
-//   const page = new WeekPage({ root, bar, plan, time, oncall, foot, api: timeApi, changes, today });
-//     plan, time, oncall: the bodies; foot: Plan's footer
+//   const page = new WeekPage({ root, bar, plan, time, oncall, foot, api: timeApi, changes, today, onView });
+//     plan, time, oncall: the bodies; foot: Plan's footer; onView(view): a tab came up (the
+//     key-hint bar follows it)
 //   page.hold(calendar, timesheet, onCallPage)
 //   page.show(view?)    view: "plan" | "timesheet" | "settings" | "oncall" (the last one if none)
 //   page.redraw(ctx)    the app drew: its tree and rota (ctx.onCall) for the bar's On call line
@@ -28,7 +29,7 @@ export const WEEK_VIEWS = [
 ];
 
 export class WeekPage {
-  constructor({ root, bar, plan, time, oncall, foot, api, changes, today = () => new Date() }) {
+  constructor({ root, bar, plan, time, oncall, foot, api, changes, today = () => new Date(), onView = () => {} }) {
     this.root = root;
     this.planBody = plan;
     this.timeBody = time;
@@ -38,6 +39,7 @@ export class WeekPage {
     this.foot = foot;
     this.api = api;
     this.today = today;
+    this.onView = onView;
     this.monday = weekOf(localDay(today()));
     this.view = "plan";
     this.calendar = null;
@@ -111,6 +113,7 @@ export class WeekPage {
       this.timesheet.show();
     }
     this.loadFoot();
+    this.onView(view);
   }
 
   moveWeek(days) {

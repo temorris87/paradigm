@@ -4,7 +4,7 @@
 import { keyReader } from "../ui/key-sequence.js";
 
 export const HUB_KEYS = [
-  { keys: ["j", "ArrowDown"], action: "next", help: "next row" },
+  { keys: ["j", "ArrowDown"], action: "next", help: "next row", hint: "move", label: "j k" },
   { keys: ["k", "ArrowUp"], action: "previous", help: "previous row" },
   { keys: ["gg", "Home"], action: "first", help: "first row" },
   { keys: ["G", "End"], action: "last", help: "last row" },
@@ -12,17 +12,17 @@ export const HUB_KEYS = [
   { keys: ["{"], action: "previousSection", help: "this section's heading, then the previous one's" },
   { keys: ["ArrowRight"], action: "nextLane", help: "on a dashboard: across to the right-hand lane (to look up)" },
   { keys: ["ArrowLeft"], action: "previousLane", help: "on a dashboard: back to the left-hand lane (to act on)" },
-  { keys: ["Enter"], action: "open", help: "open the row's note (a task: its own page; a file: open it); on a heading, fold or unfold it; Show all" },
-  { keys: ["z"], action: "fold", help: "fold or unfold the section; on a task, open or close it in place (its notes and subtasks)" },
-  { keys: ["a"], action: "add", help: "the section's add button: new note, add person, new meeting..." },
+  { keys: ["Enter"], action: "open", help: "open the row's note (a task: its own page; a file: open it); on a heading, fold or unfold it; Show all", hint: "open" },
+  { keys: ["z"], action: "fold", help: "fold or unfold the section; on a task, open or close it in place (its notes and subtasks)", hint: "fold" },
+  { keys: ["a"], action: "add", help: "the section's add button: new note, add person, new meeting...", hint: "add" },
   { keys: ["m"], action: "menu", help: "the section's \"···\" menu (Files: Search linked files…, Link a folder…, Unlink a folder…)" },
   { keys: ["x", "Delete"], action: "remove", help: "take the row off (a person, a project from an area, a file); delete a task" },
   { keys: ["r"], action: "second", help: "the row's other button: Role… on a person, Answer… on a question" },
-  { keys: [" "], action: "toggle", help: "tick a task (or a milestone) done, or reopen it" },
-  { keys: ["e"], action: "edit", help: "Edit… a task: its text, notes and due date" },
+  { keys: [" "], action: "toggle", help: "tick a task (or a milestone) done, or reopen it", hint: "done" },
+  { keys: ["e"], action: "edit", help: "Edit… a task: its text, notes and due date", hint: "edit" },
   { keys: ["d"], action: "delegate", help: "Delegate… a task to someone, or take it back" },
   { keys: ["h"], action: "history", help: "the date history of a phase or milestone" },
-  { keys: ["L"], action: "logStatus", help: "Log status… of the project or area: its health and where it is", command: "log" },
+  { keys: ["L"], action: "logStatus", help: "Log status… of the project or area: its health and where it is", command: "log", hint: "log status" },
   { keys: ["gp"], action: "plan", help: "the project's full plan (its Gantt chart) in the main window" },
   { keys: ["Escape"], action: "editor", help: "back to the text" },
 ];

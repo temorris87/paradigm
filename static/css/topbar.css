@@ -34,7 +34,7 @@
 }
 
 .topbar__nav:focus-visible {
-  outline: 1px solid var(--focus-ring);
+  outline: 2px solid var(--border-focus);
   outline-offset: 1px;
 }
 
@@ -57,7 +57,7 @@
 }
 
 .topbar__page:focus-visible {
-  outline: 1px solid var(--focus-ring);
+  outline: 2px solid var(--border-focus);
   outline-offset: 1px;
 }
 
@@ -130,15 +130,6 @@
 
 .app__note[data-view="home"] .topbar__palette-text--long {
   display: inline;
-}
-
-.topbar__key {
-  padding: 0 var(--sp-1);
-  border: 1px solid var(--border-default);
-  border-radius: 3px;
-  color: var(--text-faint);
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
 }
 
 .topbar__window {

@@ -20,6 +20,10 @@ import { OnCallPage } from "./oncall/oncall-page.js";
 import { onCallApi } from "./oncall/api.js";
 import { planApi } from "./plan/api.js";
 import { openMenu } from "./ui/menu.js";
+import { drawKeyHints } from "./ui/key-hints.js";
+import { openKeysDialog } from "./ui/keys-dialog.js";
+import { viewHints, viewKeyGroups, viewTable } from "./layout/view-keys.js";
+import { statusHubOf } from "./status/status-commands.js";
 import { MAIN_WINDOW, WINDOW_MODES, forgetPlaced, setWindowMode, windowMode } from "./windows/note-window.js";
 import { calendarApi } from "./calendar/api.js";
 import { meetingsApi } from "./meetings/api.js";
@@ -36,15 +40,27 @@ setNotePath("/");
 
 const $ = (selector) => document.querySelector(selector);
 
+// The Week page, once made: its tab says which keys the bar shows. The app as boot() holds it
+// (the Week's first tab can come up while the app starts, before boot returns).
+let weekPage = null;
+let appNow = () => null;
+const weekTab = () => weekPage?.view ?? "plan";
+const hintBar = $(".key-hints");
+// L on a dashboard logs status only when the note belongs to a project or an area.
+const hintOptions = (app) => ({ logStatus: Boolean(app?.tree && statusHubOf(app)) });
+const drawHints = () => drawKeyHints(hintBar, viewHints(appNow()?.views?.shown ?? null, weekTab(), hintOptions(appNow())));
+
 const app = boot({
   role: "main",
   kind: "",
   options: (app) => {
+    appNow = app;
     const shown = (key) => () => app()?.views.shown === key;
     const weekRoot = $(".week-view");
     const changes = new Changes();
     const week = new WeekPage({ root: weekRoot, bar: $(".week-bar"), plan: $(".week-plan"), time: $(".week-time"),
-      oncall: $(".week-oncall"), foot: $(".week-foot"), api: timeApi, changes });
+      oncall: $(".week-oncall"), foot: $(".week-foot"), api: timeApi, changes, onView: () => drawHints() });
+    weekPage = week;
     const calendar = new CalendarPage({
       root: $(".week-plan"),
       bar: $(".cal-bar"),
@@ -117,8 +133,19 @@ const app = boot({
   },
 });
 
+// The key-hint bar follows the view shown: every redraw (a page shown, left, the note opened),
+// and the Week's tabs.
+app.events.addEventListener("redraw", drawHints);
+drawHints();
+
+/** ? : every key of the view shown, in a list. */
+function showKeys() {
+  const view = app.views?.shown ?? null;
+  return openKeysDialog({ title: `Keys: ${viewTable(view, weekTab()).name}`, groups: viewKeyGroups(view, weekTab(), hintOptions(app)) });
+}
+
 // Keys of the whole main window (layout/main-keys.js): the palette, Today, the Week, the plan,
-// the Live note.
+// the Live note, the ? list.
 installMainKeys(window, {
   // Typed, : starts a command, as in the editor; the bar's field opens it empty.
   palette: () => app.guard(openPalette(app, ":")),
@@ -126,4 +153,5 @@ installMainKeys(window, {
   week: () => app.calendarCommand(),
   plan: () => app.guard(app.planKey()),
   live: () => app.showView("live", "push"),
+  keys: () => app.guard(showKeys()),
 });

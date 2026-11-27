@@ -182,9 +182,18 @@ test("highlights: quoted Markdown is found in the rendered text and marked", () 
   node.innerHTML = renderMarkdown("Then: **Who** owns comms? Nobody.");
   markHighlights(node, [{ text: "- **Who** owns comms?", label: "Question", title: "t", data: 7 }]);
   assertEqual([...node.querySelectorAll(".pd-highlight")].map((m) => m.textContent).join("|"), "Who| owns comms?");
-  assertEqual(node.querySelector(".pd-highlight__badge").textContent, "Question");
+  assertEqual(node.querySelector("[data-badge]").textContent, "Question");
   markHighlights(node, [{ text: "not there", label: "x" }]);
-  assertEqual(node.querySelectorAll(".pd-highlight__badge").length, 1);
+  assertEqual(node.querySelectorAll("[data-badge]").length, 1);
+});
+
+test("highlights: the badge takes its kind's tone, not its label's (an answered question)", () => {
+  const node = document.createElement("div");
+  node.innerHTML = renderMarkdown("Who owns comms? Nobody.");
+  markHighlights(node, [{ text: "Who owns comms?", label: "Answered", kind: "question", title: "t", data: 7 }]);
+  const badge = node.querySelector("[data-badge]");
+  assertEqual(badge.textContent, "Answered");
+  assertTrue(badge.classList.contains("chip--question"), badge.className);
 });
 
 test("element: a right-click sends menu with the selection; a cancelled one keeps the browser's away", () => {

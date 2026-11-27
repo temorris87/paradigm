@@ -2,10 +2,10 @@
 // nothing else binds keys there. Keys typed in a text box or dialog are theirs; keys with Ctrl,
 // Alt or Cmd held are left to the browser, and Tab moves the focus on, as everywhere.
 export const TIME_KEYS = [
-  { keys: ["[", "h"], action: "previousWeek", help: "the week before" },
+  { keys: ["[", "h"], action: "previousWeek", help: "the week before", hint: "week", label: "[ ]" },
   { keys: ["]", "l"], action: "nextWeek", help: "the week after" },
-  { keys: ["t"], action: "thisWeek", help: "this week" },
-  { keys: ["c"], action: "copy", help: "copy the grid" },
+  { keys: ["t"], action: "thisWeek", help: "this week", hint: "this week" },
+  { keys: ["c"], action: "copy", help: "copy the grid", hint: "copy the grid" },
 ];
 
 const BY_KEY = new Map(TIME_KEYS.flatMap(({ keys, action }) => keys.map((key) => [key, action])));
