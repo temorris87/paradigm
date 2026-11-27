@@ -48,9 +48,12 @@
 }
 
 .navigator__trash:hover,
-.navigator__trash:focus-visible,
 .app__note[data-view="trash"] ~ .app__sidebar .navigator__trash {
-  outline: none;
   background: var(--surface-selected);
   color: var(--text-strong);
+}
+
+.navigator__trash:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
 }

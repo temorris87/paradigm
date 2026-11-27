@@ -85,13 +85,12 @@
   padding-left: 3px;
   border-left: 1px solid var(--border-divider);
   font-size: var(--fs-xs);
-  color: var(--text);
-  opacity: 0.65;
+  color: var(--text-faint);
   white-space: nowrap;
 }
 
 .gantt__tick--major {
-  opacity: 1;
+  color: var(--text);
   border-left-color: var(--border-default);
 }
 
@@ -161,7 +160,7 @@
   overflow: hidden;
   padding: 0 var(--sp-2);
   background: var(--chart-gantt-bar);
-  color: var(--text-on-accent);
+  color: var(--text-strong);
   font-size: var(--fs-xs);
   line-height: 1.3rem;
   white-space: nowrap;
@@ -174,8 +173,12 @@
   cursor: pointer;
 }
 
+/* Muted: the page washed over the fill, the name kept at full colour (opacity took it under
+   2:1 on light). */
 .gantt__bar--muted {
-  opacity: 0.5;
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--surface-page) 50%, transparent),
+    color-mix(in srgb, var(--surface-page) 50%, transparent));
 }
 
 .gantt__bar--late {

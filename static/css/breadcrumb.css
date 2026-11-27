@@ -48,10 +48,13 @@
 }
 
 .crumbs__menu:hover,
-.crumbs__menu:focus-visible,
 .crumbs__menu[aria-expanded="true"] {
-  outline: none;
   background: var(--surface-selected);
+}
+
+.crumbs__menu:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
 }
 
 .crumbs__title {

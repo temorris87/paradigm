@@ -53,6 +53,7 @@
   --border-divider: var(--nord2);
   --border-default: var(--nord3);
   --border-strong: var(--nord4);
+  --border-control: var(--nord3);
   --border-focus: var(--nord8);
   --border-primary: var(--nord8);
   --border-selected: var(--nord8);
@@ -70,6 +71,7 @@
   --state-danger-fg: var(--nord11);
   --state-danger-bg: color-mix(in srgb, var(--nord11) 18%, var(--nord1));
   --state-danger-solid: var(--nord11);
+  --state-danger-fill: var(--nord11);
   --state-warning-fg: var(--nord12);
   --state-warning-bg: color-mix(in srgb, var(--nord12) 18%, var(--nord1));
   --state-warning-solid: var(--nord12);

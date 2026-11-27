@@ -60,10 +60,15 @@
   cursor: pointer;
 }
 
-.navigator__pin:hover,
-.navigator__pin:focus-visible {
+.navigator__pin:hover {
   background: var(--surface-hover);
-  outline: none;
+}
+
+/* The ring tells focus apart from the lit (current) pin, which has a near-equal background.
+   It sits inside the pin: the sidebar scrolls (overflow: auto) and would clip one outside. */
+.navigator__pin:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: -2px;
 }
 
 .navigator__pin--active {

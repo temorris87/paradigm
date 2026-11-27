@@ -1,0 +1,147 @@
+/* Nord Light: the default theme. Nord's Snow Storm surfaces, Polar Night text and Frost
+   accents (https://www.nordtheme.com), with the base roles taken from the Figma "Paradigm UI"
+   Color collection (Foundations page). Values are plain hex so the contrast test
+   (tests/python/test_theme_contrast.py) can read them: every text colour reaches 4.5:1 on the
+   surfaces it sits on. Components use only the role tokens below; the --nordN primitives are
+   this file's own. */
+:root[data-theme="nord-light"] {
+  color-scheme: light;
+
+  /* Primitives: Polar Night (0-3), Snow Storm (4-6), Frost (7-10), Aurora (11-15). */
+  --nord0: #2e3440;
+  --nord1: #3b4252;
+  --nord2: #434c5e;
+  --nord3: #4c566a;
+  --nord4: #d8dee9;
+  --nord5: #e5e9f0;
+  --nord6: #eceff4;
+  --nord7: #8fbcbb;
+  --nord8: #88c0d0;
+  --nord9: #81a1c1;
+  --nord10: #5e81ac;
+  --nord11: #bf616a;
+  --nord12: #d08770;
+  --nord13: #ebcb8b;
+  --nord14: #a3be8c;
+  --nord15: #b48ead;
+
+  /* Surfaces */
+  --surface-page: var(--nord6);
+  --surface-raised: #f8f9fb;
+  --surface-sunken: var(--nord5);
+  --surface-hover: #dde2ec;
+  --surface-row-hover: #e6eaf1; /* a step from raised toward hover */
+  --surface-overlay: #ffffff;
+  --surface-selected: #e2e8f0;
+  --surface-input: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-muted: var(--nord4); /* only ever mixed into the page; #aeb5c3 left a chip on a day off
+                                    under 4.5:1 */
+
+  /* Text */
+  --text-strong: #242933;
+  --text: var(--nord0);
+  --text-dim: var(--nord3);
+  --text-faint: #5c6575; /* Figma #606979, darkened to reach 4.5:1 on hover */
+  --text-muted: #586172;
+  --text-heading: #242933; /* headings stand out by weight, not colour */
+  --text-code: #2a6c7f; /* a shade under --kind-decision-fg: 4.5:1 on hover */
+  --text-control: var(--nord0);
+  --text-label: var(--nord3);
+  --text-math: #3f5f86;
+  --text-on-accent: #ffffff;
+  --text-on-solid: #242933;
+
+  /* Borders */
+  --border-faint: var(--nord5);
+  --border-divider: #e0e5ed; /* lighter than the card border */
+  --border-default: var(--nord4);
+  --border-strong: #aeb5c3;
+  --border-control: #858e9e; /* 3.1:1 on raised, 3.3:1 on input; #aeb5c3 is only 1.95:1 */
+  --border-focus: #486b96;
+  --border-primary: #5179a9;
+  --border-selected: #486b96;
+  --border-accent: #5179a9;
+  --focus-ring: #486b96;
+
+  /* Accent and links */
+  --accent: #5179a9;
+  --link: #436690; /* Figma #486b96 (kept for focus), darkened for 4.5:1 on hover */
+  --link-secondary: #3f5f86;
+  --link-underline: #aeb5c3;
+  --list-marker: #486b96;
+
+  /* States: -fg for text, -bg for a tint behind it, -solid for dots, bars and borders */
+  --state-danger-fg: #ac3f49;
+  --state-danger-bg: #eedee1;
+  --state-danger-solid: var(--nord11);
+  --state-danger-fill: #b3535c; /* white on #bf616a is 4.09:1; on this, 4.87:1 */
+  --state-warning-fg: #a64c2f;
+  --state-warning-bg: #f1e4e2;
+  --state-warning-solid: var(--nord12);
+  --state-caution-fg: #896111;
+  --state-caution-bg: #f6f1e7;
+  --state-caution-solid: var(--nord13);
+  --state-success-fg: #54703c;
+  --state-success-bg: #e9eee7;
+  --state-success-solid: var(--nord14);
+  --state-info-fg: #2f7184;
+  --state-info-bg: #e4eff3;
+  --state-info-solid: var(--nord8);
+  --state-neutral-solid: #a0a8b6;
+
+  /* Kinds: tasks, decisions, questions, meetings */
+  --kind-task-fg: #54703c;
+  --kind-task-bg: #e9eee7;
+  --kind-task-solid: var(--nord14);
+  --kind-decision-fg: #2f7184;
+  --kind-decision-bg: #e4eff3;
+  --kind-decision-solid: var(--nord8);
+  --kind-question-fg: #8a5880;
+  --kind-question-bg: #ece6ed;
+  --kind-question-solid: var(--nord15);
+  --kind-meeting-fg: #436b94;
+  --kind-meeting-bg: #e3e9f1;
+  --kind-meeting-solid: #88a6c4; /* a shade over --nord9: --text-dim on a meeting block's fill
+                                   reaches 4.6:1 (4.5 with --nord9) */
+
+  /* Charts */
+  --chart-capacity-meeting: var(--nord9);
+  --chart-capacity-focus: var(--nord14);
+  --chart-capacity-free: var(--nord4);
+  --chart-gantt-bar: var(--nord9);
+  --chart-gantt-project: var(--nord8);
+  --chart-gantt-done: #a0a8b6;
+  --chart-milestone: #896111; /* also the milestone kind's label, so a text colour */
+  --chart-now-line: var(--nord11);
+  --chart-today-line: var(--nord12);
+  --chart-track: var(--nord4);
+  --chart-progress: var(--nord14);
+  --chart-selected: #896111;
+  --chart-step: var(--nord4);
+  --chart-step-done: var(--nord10);
+
+  /* Callouts (others use the state -fg tokens): each is the title's text colour too */
+  --callout-note: #436690;
+  --callout-todo: #2f7184;
+  --callout-bug: #ac3f49;
+  --callout-example: #8a5880;
+  --callout-quote: #5c6575;
+
+  /* The editor and marks */
+  --cursor: var(--nord0); /* reverse video: the character under it takes the page colour */
+  --selection: #d0e0ee;
+  --search-match: #f5e7c6;
+  --search-current: var(--nord13);
+  --mark-bg: var(--nord13);
+  --live-caret: #486b96;
+  --highlight: #486b96;
+  --scrollbar: #aeb5c3;
+
+  /* Shadows and backdrops */
+  --shadow: rgb(46 52 64 / 0.12);
+  --shadow-strong: rgb(46 52 64 / 0.2);
+  --shadow-tint: #aeb5c3;
+  --backdrop: rgb(46 52 64 / 0.35);
+  --backdrop-tint: var(--nord3);
+}

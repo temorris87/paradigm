@@ -191,10 +191,14 @@
   border-color: var(--state-success-solid);
 }
 
-.today-now__button:hover,
+.today-now__button:hover {
+  border-color: var(--border-focus);
+}
+
 .today-now__button:focus-visible {
   border-color: var(--border-focus);
-  outline: none;
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
 }
 
 /* ---- the day ---- */

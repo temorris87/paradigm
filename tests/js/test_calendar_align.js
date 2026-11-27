@@ -5,7 +5,7 @@ import { GridView } from "../../static/js/calendar/grid-view.js";
 import { assertEqual as same, assertTrue, test } from "./harness.js";
 
 const DAYS = ["2026-11-23", "2026-11-24", "2026-11-25", "2026-11-26", "2026-11-27"];
-const SHEETS = ["../../static/css/tokens.css", "../../static/css/themes/nord-dark.css", "../../static/css/calendar.css"];
+const SHEETS = ["../../static/css/tokens.css", "../../static/css/themes/nord-light.css", "../../static/css/calendar.css"];
 // A Windows-like scroll bar, 17 px and always shown. Every box that keeps the scroll bar's room
 // gets it, as the system's scroll bar would be on all of them. Chrome only: Firefox has no way
 // to force a width, so there the check runs on whatever scroll bar it draws.

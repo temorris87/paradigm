@@ -201,7 +201,7 @@
 
 .time-input {
   padding: var(--sp-1) var(--sp-2);
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--border-control);
   border-radius: 4px;
   background: var(--surface-raised);
   color: var(--text-control);

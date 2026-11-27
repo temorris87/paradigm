@@ -63,7 +63,7 @@
   min-width: 8rem;
   max-width: 14rem;
   padding: var(--sp-0) var(--sp-2);
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--border-control);
   border-radius: 3px;
   background: var(--surface-raised);
   color: var(--text-strong);
@@ -136,11 +136,16 @@
   cursor: pointer;
 }
 
-.list-page__add:hover,
-.list-page__add:focus-visible {
-  outline: none;
+.list-page__add:hover {
   border-color: var(--focus-ring);
   color: var(--text-strong);
+}
+
+.list-page__add:focus-visible {
+  border-color: var(--focus-ring);
+  color: var(--text-strong);
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
 }
 
 /* What a page says (page.say): the editor's status line is hidden under a page. */

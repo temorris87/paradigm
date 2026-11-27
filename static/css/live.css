@@ -98,7 +98,7 @@
 
 .live-caret--block {
   background: var(--live-caret);
-  color: var(--text-on-solid);
+  color: var(--surface-page); /* reverse video, as the editor's cursor */
 }
 
 .live-caret--block.live-caret--empty {

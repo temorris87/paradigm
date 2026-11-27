@@ -180,9 +180,9 @@ Features in build order. "build feature" takes the first unchecked item.
   `css/themes/nord-dark.css`, plus `css/themes/_template.css` and a theme table
   (`js/theme/themes.js`, `<html data-theme>`); a gate test fails on `--nordN` or raw hex outside
   `themes/` and on a theme missing a token. Screens match before and after. (done 2026-11-27)
-- [ ] Nord Light, the default theme: `themes/nord-light.css` from the Figma "Paradigm UI"
+- [x] Nord Light, the default theme: `themes/nord-light.css` from the Figma "Paradigm UI"
   variables (Foundations page), text colors at 4.5:1 or better; dark stays as a file, out of the
-  table.
+  table. (done 2026-11-27)
 - [ ] Shared look from the redesign: status chips (state and kind tones), the key-hint bar at
   the foot of each view, one focus ring, menus and dialogs on the overlay surface.
 - [ ] People and the person page as in Figma (People, Person · Ada Park): Waiting on / I owe
@@ -211,3 +211,8 @@ Features in build order. "build feature" takes the first unchecked item.
 - [ ] `:new` and `:child` in the main window place the new note beside or under the note on
   screen (016's `screenNoteId()`), not the hub hidden behind a page: on Today, Week or People
   they say "E: no note on this page"; on Live they use the Live note.
+- [ ] A plain note's URL opened straight in the main window (`/?note=16`) leaves the note before
+  it as the note on screen, so `:trash` there trashed that one (Ada Park, in a browser check on
+  sample data). The note on screen must follow what the main window shows.
+- [ ] Week, Timesheet tab at 1400 px wide: the right-hand panel ("Check before you submit", "This
+  week off", "Not counted") is drawn over the hours grid's Thu, Fri and Total columns.

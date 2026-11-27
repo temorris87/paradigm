@@ -15,13 +15,33 @@ async function readCss(path) {
 }
 
 test("themes: one row per theme, ids unique, the default among them", () => {
-  assertEqual(THEMES.map((theme) => theme.id).join(), "nord-dark");
+  assertEqual(THEMES.map((theme) => theme.id).join(), "nord-light");
   assertEqual(new Set(THEMES.map((theme) => theme.id)).size, THEMES.length, "unique ids");
-  assertEqual(DEFAULT_THEME, "nord-dark");
-  const dark = themeOf("nord-dark");
-  assertEqual(dark.label, "Nord Dark");
-  assertEqual(dark.file, "css/themes/nord-dark.css");
-  assertEqual(dark.colorScheme, "dark");
+  assertEqual(DEFAULT_THEME, "nord-light");
+  const light = themeOf("nord-light");
+  assertEqual(light.label, "Nord Light");
+  assertEqual(light.file, "css/themes/nord-light.css");
+  assertEqual(light.colorScheme, "light");
+});
+
+test("themes: nord-dark stays on disk, out of the table, so it means the default", async () => {
+  assertEqual(themeOf("nord-dark").id, DEFAULT_THEME);
+  const css = await readCss("css/themes/nord-dark.css");
+  assertTrue(css.includes(':root[data-theme="nord-dark"]'), "the file is kept");
+});
+
+test("themes: both windows' markup carries the default and links its file", async () => {
+  const theme = themeOf(DEFAULT_THEME);
+  for (const page of ["index.html", "note.html"]) {
+    const html = await readCss(page);
+    assertTrue(html.includes(`<html lang="en" data-theme="${theme.id}">`), `${page}: data-theme`);
+    assertTrue(html.includes(`href="/${theme.file}"`), `${page}: the theme's file`);
+  }
+});
+
+test("themes: Mermaid draws light under the default", () => {
+  // The test page carries no data-theme, so it is drawn with the default.
+  assertEqual(mermaidConfig(() => "").themeVariables.darkMode, false);
 });
 
 test("themes: an unknown or missing id means the default", () => {
@@ -35,9 +55,9 @@ test("themes: an unknown or missing id means the default", () => {
 
 test("themes: applyTheme sets <html data-theme>, which currentTheme reads back", () => {
   const root = document.createElement("html");
-  assertEqual(applyTheme("nord-dark", root), "nord-dark");
-  assertEqual(root.getAttribute("data-theme"), "nord-dark");
-  assertEqual(currentTheme(root), "nord-dark");
+  assertEqual(applyTheme("nord-light", root), "nord-light");
+  assertEqual(root.getAttribute("data-theme"), "nord-light");
+  assertEqual(currentTheme(root), "nord-light");
   assertEqual(applyTheme("sepia", root), DEFAULT_THEME, "unknown falls back");
   assertEqual(root.getAttribute("data-theme"), DEFAULT_THEME);
 });
@@ -45,7 +65,9 @@ test("themes: applyTheme sets <html data-theme>, which currentTheme reads back",
 test("themes: every theme file sets exactly the template's tokens under its own id", async () => {
   const template = tokenNames(await readCss("css/themes/_template.css"));
   assertTrue(template.size > 50, "the template lists the role tokens");
-  for (const theme of THEMES) {
+  // nord-dark is out of the table but kept complete for a switcher later.
+  const dark = { id: "nord-dark", file: "css/themes/nord-dark.css", colorScheme: "dark" };
+  for (const theme of [...THEMES, dark]) {
     const css = await readCss(theme.file);
     assertTrue(css.includes(`:root[data-theme="${theme.id}"]`), `${theme.id}: its selector`);
     assertTrue(css.includes(`color-scheme: ${theme.colorScheme}`), `${theme.id}: its color-scheme`);
@@ -64,7 +86,7 @@ test("themes: Mermaid's dark mode and the export's <html> follow the theme", () 
   mermaidConfig((name) => { asked.push(name); return ""; }, true);
   assertTrue(asked.length > 0 && asked.every((name) => !/^--nord\d/.test(name)), "role tokens only");
   assertTrue(buildPage({ title: "t", css: "", content: "" }).includes(`data-theme="${DEFAULT_THEME}"`), "default");
-  assertTrue(buildPage({ title: "t", css: "", content: "", theme: "nord-dark" }).includes('data-theme="nord-dark"'));
+  assertTrue(buildPage({ title: "t", css: "", content: "", theme: "nord-light" }).includes('data-theme="nord-light"'));
 });
 
 test("themes: the export keeps the browser's default color-scheme whatever the theme", async () => {

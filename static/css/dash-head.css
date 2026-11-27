@@ -81,10 +81,14 @@
   background: var(--surface-raised);
 }
 
-.dash-head__button:hover:not(:disabled),
+.dash-head__button:hover:not(:disabled) {
+  border-color: var(--border-focus);
+}
+
 .dash-head__button:focus-visible {
   border-color: var(--border-focus);
-  outline: none;
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
 }
 
 .dash-head__button:disabled {

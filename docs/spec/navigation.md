@@ -68,6 +68,16 @@ How the app behaves. Kept up to date by each feature that changes it.
   it; on another page it says to open one; `:plan` in the palette). `g` waits for a second key everywhere (as in Vim): `gg` is the
   first row in every list (`static/js/ui/key-sequence.js` reads two-key entries; a page-wide
   key clears a list's waiting `g`).
+- Look (Tyson, 2026-11-26): both windows open in Nord Light, the default and only theme
+  (Snow Storm backgrounds, Frost accents, dark text; native scrollbars and checkboxes light),
+  and Mermaid diagrams and `:export` follow it. Every text colour reaches 4.5:1 on the
+  surfaces it sits on, and things dimmed for being muted (cancelled or past blocks, done Gantt
+  bars, on-hold projects) wash the fill and keep the text readable. Headings stand out by
+  weight, not colour. Nord Dark stays on disk for a switcher later; there is no switcher yet.
+  One focus ring (Tyson, 2026-11-27): every button-like control (top bar, crumb menu,
+  dashboard head, navigator pins and Trash, hub-line controls, dialog buttons) shows a 2 px
+  focus-colour outline on keyboard focus; a tint is for hover only. List rows keep their inset
+  ring.
 - Two windows (Tyson, 2026-11-22): the main window (`/`, left 2/3 of the ultrawide) shows
   dashboards and pages and never edits text; the note window (`/note.html`) is where notes
   are written. Opening any note in the main window that isn't a hub or a person (tree, a

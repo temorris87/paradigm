@@ -22,8 +22,10 @@ static/
                          tokens.css (THE design tokens: --font-ui, --font-mono, --fs-xs..2xl,
                          --sp-0..6, --radius-sm/md/lg; no colours), themes/ (one file per
                          theme, setting every role token under :root[data-theme="<id>"]:
-                         nord-dark.css; _template.css lists every token with what it is for,
-                         never loaded), base.css (the page grid; one column under 1400 px),
+                         nord-light.css, the default and the only row in the table;
+                         nord-dark.css, kept complete on disk, out of the table;
+                         _template.css lists every token with what it is for, never
+                         loaded), base.css (the page grid; one column under 1400 px),
                          one file per component (topbar.css, navigator.css...)
                          (export.css styles only the exported file, never the app; it sets
                          color-scheme normal over the theme's, as the export always had)
@@ -266,6 +268,14 @@ static/
   tokens, named by what the colour is for: never `--nordN` (a theme's own primitives) and never
   raw hex or `rgb()` (`tests/python/test_theme_tokens.py` fails on them). A new role goes in
   `_template.css` with its comment and in every theme.
+- Nord Light is the default (Tyson, 2026-11-26): its text tokens reach 4.5:1 on page, raised,
+  sunken, hover, selected and input, and focus 3:1 (`tests/python/test_theme_contrast.py`).
+  White text on danger uses `--state-danger-fill`, never `--state-danger-solid`; a visible input
+  edge is `--border-control`. Muted things wash their fill with the page (a `color-mix`
+  gradient), never `opacity` on text.
+- One focus ring (Tyson, 2026-11-27): a button-like control's `:focus-visible` is
+  `outline: 2px solid var(--border-focus); outline-offset: 1px` (inside, `-2px`, where the
+  parent scrolls); a background tint is for hover only. List rows keep the inset `--focus-ring`.
 - Tokens (`tokens.css`): fonts only `--font-ui` (Segoe UI first) and `--font-mono` (Consolas
   first); sizes only `--fs-xs` 12, `--fs-sm` 13, `--fs-md` 15 (body), `--fs-lg` 18, `--fs-xl` 22;
   weights 400 and 600; spacing only `--sp-0`..`--sp-6` (2, 4, 8, 12, 16, 24, 32 px). Muted text

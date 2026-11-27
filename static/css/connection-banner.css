@@ -3,7 +3,7 @@
   top: 0;
   z-index: 100;
   padding: var(--sp-3) var(--sp-5);
-  background: var(--state-danger-solid);
+  background: var(--state-danger-fill);
   color: var(--text-on-accent);
   font-weight: 600;
   text-align: center;

@@ -81,7 +81,7 @@
 
 .pd-editor--focused .pd-row .pd-cursor {
   background: var(--cursor);
-  color: var(--text-on-solid);
+  color: var(--surface-page); /* reverse video: the page's colour on the cursor's */
   outline: none;
 }
 

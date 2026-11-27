@@ -105,10 +105,14 @@
   max-width: 560px;
 }
 
-.topbar__palette:hover,
+.topbar__palette:hover {
+  border-color: var(--border-default);
+}
+
 .topbar__palette:focus-visible {
   border-color: var(--border-default);
-  outline: none;
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
 }
 
 .topbar__palette-text {

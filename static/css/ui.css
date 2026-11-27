@@ -36,6 +36,12 @@
   color: var(--text-strong);
 }
 
+/* The menu scrolls (overflow: auto), so the ring sits inside the item, not clipped by it. */
+.menu__item:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: -2px;
+}
+
 .menu__item[aria-disabled="true"] {
   opacity: 0.45;
   cursor: default;
@@ -119,7 +125,7 @@
 .dialog__input {
   width: 100%;
   padding: var(--sp-1) var(--sp-2);
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--border-control);
   border-radius: 3px;
   background: var(--surface-input);
   color: var(--text-strong);
@@ -166,14 +172,19 @@
   cursor: pointer;
 }
 
-.dialog__button:hover,
+.dialog__button:hover {
+  border-color: var(--focus-ring);
+}
+
 .dialog__button:focus-visible {
   border-color: var(--focus-ring);
-  outline: none;
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
 }
 
 .dialog__button--ok {
   background: var(--accent);
+  color: var(--text-on-accent);
 }
 
 /* A submit that can't go yet ("2 people match: type more"): dim, not clickable. */
@@ -184,8 +195,8 @@
 }
 
 .dialog__button--danger {
-  background: var(--state-danger-solid);
-  color: var(--text-on-solid);
+  background: var(--state-danger-fill);
+  color: var(--text-on-accent);
 }
 
 /* A choice: equal buttons, one on (Log status' health). Each in its own colour when on. */
@@ -218,9 +229,9 @@
   font-weight: 600;
 }
 
-.dialog__choice--on_track[aria-checked="true"] { --choice: var(--state-success-solid); }
-.dialog__choice--at_risk[aria-checked="true"] { --choice: var(--state-warning-solid); }
-.dialog__choice--blocked[aria-checked="true"] { --choice: var(--state-danger-solid); }
+.dialog__choice--on_track[aria-checked="true"] { --choice: var(--state-success-fg); }
+.dialog__choice--at_risk[aria-checked="true"] { --choice: var(--state-warning-fg); }
+.dialog__choice--blocked[aria-checked="true"] { --choice: var(--state-danger-fg); }
 
 .dialog__choice-key {
   color: var(--text-faint);
@@ -337,20 +348,21 @@
   border: none;
   border-radius: 3px;
   background: none;
-  color: var(--text);
+  color: var(--text-dim);
   font: inherit;
   font-size: var(--fs-sm);
   line-height: 1.4;
-  opacity: 0.65;
   cursor: pointer;
 }
 
-.mini-button:hover,
-.mini-button:focus-visible {
-  outline: none;
+.mini-button:hover {
   background: var(--surface-hover);
   color: var(--text-strong);
-  opacity: 1;
+}
+
+.mini-button:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
 }
 
 /* A list under a dialog's words (a date history). */

@@ -66,22 +66,21 @@
 .md-doc .md-wikilink:not([href]) {
   cursor: default;
 }
+/* A link to a note not written yet: faint text under the link's dotted line (opacity took it
+   under 4.5:1 on light). */
 .md-doc .md-wikilink-missing {
-  color: var(--link-secondary);
-  opacity: 0.75;
+  color: var(--text-faint);
 }
 /* An @mention of someone in People: a link to them, no underline. */
 .md-doc .md-mention {
   text-decoration: none;
 }
 .md-doc .md-mention-archived {
-  color: var(--text);
-  opacity: 0.55;
+  color: var(--text-faint);
 }
 /* A link into an archived hub: still a link, greyed so finished work stands back. */
 .md-doc .md-wikilink-archived {
-  color: var(--text);
-  opacity: 0.55;
+  color: var(--text-faint);
 }
 
 .md-doc strong { color: var(--text-strong); font-weight: 700; }
@@ -227,9 +226,9 @@
 .md-doc .md-callout-tip,
 .md-doc .md-callout-abstract,
 .md-doc .md-callout-todo { --callout: var(--callout-todo); }
-.md-doc .md-callout-success { --callout: var(--state-success-solid); }
+.md-doc .md-callout-success { --callout: var(--state-success-fg); }
 .md-doc .md-callout-question,
-.md-doc .md-callout-warning { --callout: var(--state-caution-solid); }
+.md-doc .md-callout-warning { --callout: var(--state-caution-fg); }
 .md-doc .md-callout-failure,
 .md-doc .md-callout-danger,
 .md-doc .md-callout-bug { --callout: var(--callout-bug); }

@@ -408,8 +408,12 @@ body.is-dragging * {
   cursor: pointer;
 }
 
+/* Muted (cancelled, done, to file): the page washed over the fill, the text kept at full
+   colour (opacity took the title to 3.2:1 on light). */
 .cal-block--muted {
-  opacity: 0.6;
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--surface-page) 40%, transparent),
+    color-mix(in srgb, var(--surface-page) 40%, transparent));
 }
 
 .cal-block--cancelled .cal-block__title {

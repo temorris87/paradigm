@@ -4,10 +4,11 @@
 // A switcher later is a row here plus a command; nothing is remembered yet.
 
 export const THEMES = Object.freeze([
-  Object.freeze({ id: "nord-dark", label: "Nord Dark", file: "css/themes/nord-dark.css", colorScheme: "dark" }),
+  Object.freeze({ id: "nord-light", label: "Nord Light", file: "css/themes/nord-light.css", colorScheme: "light" }),
 ]);
 
-export const DEFAULT_THEME = "nord-dark";
+// css/themes/nord-dark.css stays complete on disk, out of the table, for a switcher later.
+export const DEFAULT_THEME = "nord-light";
 
 /** The theme with this id, or the default's when there is none. */
 export function themeOf(id) {

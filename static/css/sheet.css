@@ -33,7 +33,11 @@
 .sheet__bar:focus-visible {
   border-color: var(--border-default);
   color: var(--text);
-  outline: none;
+}
+
+.sheet__bar:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
 }
 
 .sheet--open .sheet__bar {

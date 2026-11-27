@@ -68,8 +68,7 @@
 }
 
 .hub-line__link--archived {
-  color: var(--text);
-  opacity: 0.55;
+  color: var(--text-faint);
 }
 
 .hub-line__link:hover,
@@ -382,11 +381,14 @@
 }
 
 .hub-line__control:hover,
-.hub-line__control:focus-visible,
 .hub-line__control[aria-expanded="true"] {
-  outline: none;
   background: var(--surface-selected);
   color: var(--text-strong);
+}
+
+.hub-line__control:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
 }
 
 .hub-line__control.hub-line__kind {
@@ -538,9 +540,9 @@
 }
 
 /* Health, wherever it shows (a status entry, the Projects table, a badge): its colour only. */
-.health--on_track { --health: var(--state-success-solid); }
-.health--at_risk { --health: var(--state-warning-solid); }
-.health--blocked { --health: var(--state-danger-solid); }
+.health--on_track { --health: var(--state-success-fg); }
+.health--at_risk { --health: var(--state-warning-fg); }
+.health--blocked { --health: var(--state-danger-fg); }
 .health--on_hold,
 .health--none { --health: var(--text-faint); }
 

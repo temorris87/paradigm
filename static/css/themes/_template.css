@@ -29,7 +29,7 @@
   --text-control: ; /* the text on buttons and in inputs */
   --text-label: ; /* small labels drawn on charts and lists: milestone names, the status line, timesheet rows */
   --text-math: ; /* raw maths in the editor */
-  --text-on-accent: ; /* text on an accent or danger fill: Gantt bars, calendar blocks, the connection banner */
+  --text-on-accent: ; /* text on an accent or --state-danger-fill: Gantt bars, calendar blocks, the connection banner */
   --text-on-solid: ; /* dark text on a light solid fill: badges, the mark, the cursor's character, pills */
 
   /* Borders */
@@ -37,6 +37,7 @@
   --border-divider: ; /* dividers and panel edges, grid lines */
   --border-default: ; /* controls: buttons, inputs, menus, dialogs, Markdown rules and tables */
   --border-strong: ; /* dashed outlines of what is not saved yet: pending blocks, the Gantt's ghost */
+  --border-control: ; /* an input's visible edge (dialog input, list filter, time input): 3:1 on raised */
   --border-focus: ; /* a focused or hovered control's border */
   --border-primary: ; /* the primary button's border */
   --border-selected: ; /* the selected tab, pill or choice; the shown on-call week */
@@ -53,7 +54,8 @@
   /* States: -fg for text, -bg for a tint behind it, -solid for dots, bars and borders */
   --state-danger-fg: ; /* late, failed, errors */
   --state-danger-bg: ; /* a danger tint */
-  --state-danger-solid: ; /* danger fills and borders: the banner, the delete button, late marks */
+  --state-danger-solid: ; /* danger dots, bars and borders: late marks, the now line's kin */
+  --state-danger-fill: ; /* a danger fill with --text-on-accent on it: the banner, the delete button */
   --state-warning-fg: ; /* follow-ups, at risk, unsaved, unplaced */
   --state-warning-bg: ; /* a warning tint */
   --state-warning-solid: ; /* warning fills and borders (at risk health) */
