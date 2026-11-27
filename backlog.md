@@ -172,14 +172,14 @@ Features in build order. "build feature" takes the first unchecked item.
 - [x] Escape on a calendar block's menu leaves the focus on the page body instead of the block. (done 2026-11-26)
 - [x] The main window once jumped to the Live page instead of staying on the task page it had
   open, after a note had been trashed (seen once, not reproduced). (done 2026-11-26)
-- [ ] `:trash` in the main window acts on the note behind its view (the dashboard last open
+- [x] `:trash` in the main window acts on the note behind its view (the dashboard last open
   behind the Live page, the task page or Today), not on the note on screen: it can trash a
-  whole hub by mistake.
-- [ ] Theme tokens, no visual change: every color moves to role tokens (surface, text, border,
+  whole hub by mistake. (done 2026-11-27)
+- [x] Theme tokens, no visual change: every color moves to role tokens (surface, text, border,
   accent, state, kind, chart; list in docs/ui-audit.md), the current look becomes
   `css/themes/nord-dark.css`, plus `css/themes/_template.css` and a theme table
   (`js/theme/themes.js`, `<html data-theme>`); a gate test fails on `--nordN` or raw hex outside
-  `themes/` and on a theme missing a token. Screens match before and after.
+  `themes/` and on a theme missing a token. Screens match before and after. (done 2026-11-27)
 - [ ] Nord Light, the default theme: `themes/nord-light.css` from the Figma "Paradigm UI"
   variables (Foundations page), text colors at 4.5:1 or better; dark stays as a file, out of the
   table.

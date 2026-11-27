@@ -95,9 +95,9 @@ How the app behaves. Kept up to date by each feature that changes it.
 - Live page (Tyson, 2026-11-26; `&live`, `static/js/live/`): the main window shows the note
   open in the note window, rendered as on a dashboard (math, Mermaid, images, links) under its
   breadcrumb title, updated as it is typed (every keystroke, not on save, at most every 50 ms),
-  so a screen share of the main window alone shows the typing. A nord8 caret sits where the
+  so a screen share of the main window alone shows the typing. A caret in the Live caret color (`--live-caret`) sits where the
   cursor is: a thin bar in insert and replace mode, a block in every other mode; the block
-  holding the cursor gets a band with a nord8 bar at its left edge. Where no caret can sit in
+  holding the cursor gets a band with a `--live-caret` bar at its left edge. Where no caret can sit in
   rendered text (a fence line, a table's `|---|` row, a rule, a link's URL or an image's path,
   maths, a diagram's source, a blank line) only the band shows; on a heading, list or quote
   marker the caret goes to the start of the text. It scrolls only to keep the caret in its

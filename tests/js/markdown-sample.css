@@ -6,6 +6,6 @@
 }
 
 .sample__status {
-  color: var(--nord3);
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
