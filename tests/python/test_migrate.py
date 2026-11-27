@@ -126,7 +126,7 @@ class MigrateTest(unittest.TestCase):
                          "VALUES (2, 1, 'Review', 1, '2026-11-20', 2, 'x')")
             conn.execute("INSERT INTO tasks (id, note_id, parent_id, title, position, created_at) "
                          "VALUES (3, 1, 1, 'Outline', 1, 'x')")
-        self.assertEqual(migrate(self.db), 29)
+        self.assertEqual(migrate(self.db), migrations()[-1][0])
         with self.db.reading() as conn:
             columns = {row[1] for row in conn.execute("PRAGMA table_info(tasks)")}
             rows = [tuple(row) for row in conn.execute(

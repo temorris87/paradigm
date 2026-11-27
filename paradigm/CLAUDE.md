@@ -43,6 +43,8 @@ paradigm/                Python package
                          pending|file|ignore); timesheet.py (/api/time/week, /api/time/
                          settings, holiday/add|update|remove, off/add|remove);
                          oncall.py (/api/oncall, /api/oncall/paste|clear: the on-call rota);
+                         emails.py (/api/task/emails, /api/task/email/upload|reply|open|
+                         remove: Outlook .msg files on tasks; the upload's own 30 MB cap);
                          answers.py (result or expected error -> response)
   db/                    (migrations: 001 notes, 002 images, 003 notes.kind for PARA hubs,
                          004 notes.area_id: a project's area, 005 notes.archived_at:
@@ -75,7 +77,8 @@ paradigm/                Python package
                          tasks.estimate_min, 026 task_sources (a captured T: line) +
                          tasks.for_person_id (I owe them), 027 person_topics (to raise at
                          the next 1:1), 028 on_call (week's Monday, role, name as pasted),
-                         029 drops tasks.is_next: the next action is gone)
+                         029 drops tasks.is_next: the next action is gone, 030 task_emails:
+                         a task's .msg files, their reply state)
                          connection.py (one locked connection, transactions, VACUUM at start
                          when worth it), migrate.py
                          (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py,
@@ -116,10 +119,14 @@ paradigm/                Python package
                          start and when the calendar asks), time_repo.py (settings, holidays,
                          time off; gathers a week for the report; holiday_dates),
                          oncall_repo.py (the rota: a paste replaces the weeks it holds, keeps
-                         the rest; clear)
+                         the rest; clear), emails_repo.py (a task's emails: the row, and the
+                         .msg saved at <data>/emails/<task>/<id>.msg in the same transaction;
+                         drop_emails/remove_saved: task remove and trash purge take them)
   files/                 folders.py (a synced OneDrive folder: OneDrive roots from the
                          environment, listing files and folders, paths kept inside the
-                         folder, opening a file with this computer's program)
+                         folder, opening a file with this computer's program), msg_reader.py
+                         (our own OLE compound-file reader for Outlook .msg: subject, sender,
+                         sent time; capped, refuses broken files with ValueError; pure)
   calendar/              ics.py (reads Outlook's .ics: unfolding, its own VTIMEZONE rules,
                          then this computer's local time; pure), import_rules.py (skipped,
                          cancelled, moved, title, agenda, join link, attendees; pure),

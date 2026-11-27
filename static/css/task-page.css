@@ -331,3 +331,117 @@ span.task-page__box {
     display: none;
   }
 }
+
+/* The Emails section (static/js/tasks/task-emails.js): under the subtasks, one row per saved
+   Outlook message. */
+.task-emails {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-0);
+}
+
+.task-emails__heading {
+  margin: 0 0 var(--sp-1);
+  padding: 0 var(--sp-2) var(--sp-1);
+  border-bottom: 1px solid var(--border-divider);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.task-emails__hint {
+  margin: 0;
+  padding: 0 var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--text-faint);
+}
+
+.task-emails__row {
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.task-emails__row:hover {
+  background: var(--surface-row-hover);
+}
+
+.task-emails__line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.task-emails__icon {
+  flex: none;
+  color: var(--text-dim);
+}
+
+/* Titles beat details: the subject keeps its room, the chip and the link never shrink. */
+.task-emails__subject {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+/* Feature 019 brings a shared .chip; the merger moves these tones onto it. */
+.task-emails__chip {
+  flex: none;
+  padding: 0 var(--sp-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.task-emails__chip--caution {
+  background: var(--state-caution-bg);
+  color: var(--state-caution-fg);
+}
+
+.task-emails__chip--success {
+  background: var(--state-success-bg);
+  color: var(--state-success-fg);
+}
+
+.task-emails__link {
+  flex: none;
+  margin-left: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.task-emails__link:hover {
+  text-decoration: underline;
+}
+
+.task-emails__link:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+.task-emails__sender {
+  margin: 0;
+  padding-left: calc(1em + var(--sp-2));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+/* .msg files held over the page: it takes them. */
+.task-page--drop {
+  outline: 2px dashed var(--border-focus);
+  outline-offset: -2px;
+  border-radius: var(--radius-md);
+}

@@ -15,6 +15,9 @@
   styles (`style-src 'self' 'unsafe-inline'`) and may be framed by our own pages only
   (`frame-ancestors 'self'`, `X-Frame-Options: SAMEORIGIN`). Scripts stay `'self'` only. Every
   other response keeps the strict headers; don't add another exception for one library.
+- Request bodies are capped at `MAX_BODY_BYTES` (8 MB), checked from Content-Length before the
+  body is read. A route may set its own cap (`Router.add(..., max_body=N)`); only the .msg
+  upload (`/api/task/email/upload`, 30 MB) does.
 - Event streams are capped at `Config.max_streams` (50); past that, 503.
 - Every security change is checked in a real browser too. Unit tests cannot see what headers a
   browser actually sends (that is how the `Origin: null` problem was caught).
