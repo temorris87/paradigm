@@ -58,12 +58,6 @@
   font-size: var(--fs-sm);
 }
 
-.today__key {
-  color: var(--text-faint);
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-}
-
 /* Any row: the listbox's options. */
 .today__grid [role="option"] {
   border-radius: 3px;
@@ -285,21 +279,13 @@
 
 .today-next__row {
   display: grid;
-  grid-template-columns: 112px 18px minmax(0, 1fr) auto auto;
+  /* The reason is a chip now: its side padding needs room so "FOLLOW UP 12 D" and
+     "OVERDUE 120 D" show whole, and every row keeps one column width so they line up. */
+  grid-template-columns: 140px 18px minmax(0, 1fr) auto auto;
   align-items: baseline;
   gap: var(--sp-3);
   padding: var(--sp-1) var(--sp-2);
 }
-
-.today-next__reason {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-}
-
-.today-next__row--overdue .today-next__reason { color: var(--state-danger-fg); }
-.today-next__row--followup .today-next__reason { color: var(--state-warning-fg); }
-.today-next__row--due .today-next__reason { color: var(--state-caution-fg); }
-.today-next__row--asked .today-next__reason { color: var(--kind-question-fg); }
 
 .today-next__glyph {
   color: var(--text-dim);
@@ -323,16 +309,6 @@
 
 .today-next__place--placed {
   color: var(--state-success-fg);
-}
-
-.today-next__keys {
-  margin: var(--sp-4) 0 0;
-  padding-top: var(--sp-2);
-  border-top: 1px solid var(--border-divider);
-  color: var(--text-faint);
-  font-size: var(--fs-sm);
-  line-height: 2;
-  white-space: pre-wrap;
 }
 
 /* ---- Projects, Inbox, the import ---- */
@@ -364,12 +340,6 @@
 
 .today-projects__row--hold .today-projects__title {
   color: var(--text-faint);
-}
-
-.today-projects__health {
-  color: var(--health);
-  font-size: var(--fs-xs);
-  font-weight: 600;
 }
 
 .today-projects__line {

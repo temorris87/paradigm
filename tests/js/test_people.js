@@ -262,7 +262,7 @@ function withPeoplePage(body) {
   try {
     page.show(ctx());
     // These tests read the whole directory: Everyone (Open items is the default).
-    [...section.querySelectorAll(".list-page__pill")].find((pill) => pill.textContent.startsWith("Everyone")).click();
+    [...section.querySelectorAll(".list-page__pills .chip")].find((pill) => pill.textContent.startsWith("Everyone")).click();
     body({ section, page, opened, left: () => left });
   } finally {
     section.remove();
@@ -341,7 +341,7 @@ test("people page: Open items by default; the 1:1 counts", async () => {
   try {
     const page = peoplePage(section, { onOpen() {}, onLeave() {} });
     page.show(ctx());
-    assertEqual([...section.querySelectorAll(".list-page__pill")].map((pill) => pill.textContent).join(), "Open items · 0,Everyone · 3");
+    assertEqual([...section.querySelectorAll(".list-page__pills .chip")].map((pill) => pill.textContent).join(), "Open items · 0,Everyone · 3");
     assertEqual(section.querySelectorAll("[role=option]").length, 0, "no one has anything open here");
     const counts = personCounts({ ...ctx(), topics: [{ id: 1, person_id: 10, text: "x", raised_at: "" }] }, 10, new Date(2026, 10, 23));
     assertEqual([counts.waiting, counts.owe, counts.raise].join(), "0,0,1");

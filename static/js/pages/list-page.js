@@ -28,6 +28,7 @@
 // The list is one focus stop (a listbox with aria-activedescendant, as on the hub panel);
 // the filters are ordinary form fields, so Tab goes through them like on any web page.
 import { pageAction } from "./page-keys.js";
+import { chip } from "../ui/chip.js";
 
 export class ListPage {
   constructor(section, spec) {
@@ -133,9 +134,10 @@ export class ListPage {
     const list = choices(this.ctx, this.values);
     if (!list.some(([value]) => value === this.values[key])) this.values[key] = list[0]?.[0] ?? "";
     this.pills.replaceChildren(...list.map(([value, text]) => {
-      const pill = element("button", "list-page__pill", text);
-      pill.type = "button";
-      pill.setAttribute("aria-pressed", String(value === this.values[key]));
+      // A filter pill is a chip you press: the one on is info, the others neutral.
+      const on = value === this.values[key];
+      const pill = chip(text, on ? "info" : "neutral", { tag: "button" });
+      pill.setAttribute("aria-pressed", String(on));
       pill.addEventListener("click", () => {
         this.setFilter(key, value);
         this.drawPills();

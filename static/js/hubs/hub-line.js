@@ -26,6 +26,8 @@ import { localDay } from "../meetings/meeting-days.js";
 import { NO_CONTROLS, factButton, miniButton } from "./hub-line-controls.js";
 import { dueText, isOverdue, statusLabel } from "./project-facts.js";
 import { dayText } from "../ui/dates.js";
+import { chip } from "../ui/chip.js";
+import { toneOf } from "../ui/chip-tones.js";
 
 export function showHubLine(line, ctx, hub, onOpen, controls = NO_CONTROLS) {
   line.hidden = !hub;
@@ -39,7 +41,7 @@ export function showHubLine(line, ctx, hub, onOpen, controls = NO_CONTROLS) {
   const first = [filable
     ? factButton("hub-line__kind", label, "File it as a project, an area, a resource or in the Inbox",
       (button) => controls.file(button, hub), { caret: true })
-    : span(hub.kind === "decision" || hub.kind === "question" ? `hub-line__kind hub-line__badge hub-line__badge--${hub.kind}` : "hub-line__kind", label)];
+    : hub.kind === "decision" || hub.kind === "question" ? chip(label, toneOf(hub.kind)) : span("hub-line__kind", label)];
   if (isArchived(tree, hub.id)) first.unshift(span("hub-line__archived", "Archived"), separator());
   const [more, ...rest] = detailsOf(ctx, hub, onOpen, controls);
   if (more.length) first.push(separator(), ...more);

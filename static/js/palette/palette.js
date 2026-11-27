@@ -38,7 +38,7 @@ export function openPalette(app, query = "") {
     list.setAttribute("role", "listbox");
     box.setAttribute("aria-controls", list.id);
     const foot = element("p", "palette__keys");
-    for (const [key, words] of uiHints("palette")) foot.append(element("kbd", "palette__key", key), ` ${words}   `);
+    for (const [key, words] of uiHints("palette")) foot.append(element("kbd", "key", key), ` ${words}   `);
     dialog.append(row, list, foot);
     document.body.append(dialog);
 

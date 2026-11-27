@@ -19,6 +19,8 @@ static/
                          On call tab, the Week bar's line, Today's rows, a person's head line),
                          sheet.css (the note window's sections sheet and its bar),
                          live.css (the Live page: its head, the caret, the cursor's band),
+                         chip.css (THE status chip: .chip and its tones), key-hints.css
+                         (THE key cap .key, the key-hint bar at the foot, the ? list),
                          tokens.css (THE design tokens: --font-ui, --font-mono, --fs-xs..2xl,
                          --sp-0..6, --radius-sm/md/lg; no colours), themes/ (one file per
                          theme, setting every role token under :root[data-theme="<id>"]:
@@ -34,7 +36,9 @@ static/
   js/boot.js             what both windows start with (connection, navigator, NotesApp)
   js/main.js             the main window: its pages, the dashboard, the Window menu
   js/note-main.js        the note window
-  js/layout/main-keys.js THE main window's own key table (: gt gw gp gn)
+  js/layout/main-keys.js THE main window's own key table (: gt gw gp gn ?)
+  js/layout/view-keys.js which key table each main-window view reads (its hint bar, its ?
+                         list) and the note window's short fixed hints; pure
   js/layout/navigator-parts.js  the navigator's pinned Today / Week and its save state
   js/live/               the Live page (&live): the note window's note rendered in the main
                          window as it is typed, with a caret where the cursor is:
@@ -174,7 +178,11 @@ static/
   js/status/             api.js, status-model.js (health, stale, since last log, the weekly
                          digest; pure), status-commands.js (Log status…, history, :log,
                          Copy weekly digest)
-  js/ui/                 shared pieces that know nothing about notes: key-sequence.js
+  js/ui/                 shared pieces that know nothing about notes: chip.js (THE status
+                         chip), chip-tones.js (a state or kind -> its tone; pure),
+                         key-hints.js (the key-hint bar from a table's hint:/label:; key
+                         caps; pure apart from drawing), keys-dialog.js (the ? list),
+                         key-sequence.js
                          (two-key entries in a key table: gg, gp; pure), clipboard.js
                          (copyRich: HTML + text), dates.js (THE on-screen
                          day and time format: "Wed 25 Nov", 24-hour, the year only when not
@@ -260,6 +268,12 @@ static/
   `static/js/images/viewer-keys.js`).
 - App-level keys are designed fresh with Tyson, one feature at a time. Each scope has one central
   key table, and it is the only source for both the mappings and any help listing.
+- The key-hint bar at the foot of each view shows a table's entries that carry `hint:` (its
+  words); `label:` is the key cap when the first key alone would mislead (`"j k"`). Every
+  cap must name keys its table binds (`tests/js/test_key_hints.js`). `?` in the main window
+  lists the view's whole table (`layout/view-keys.js` says which table a view reads).
+- Status (overdue, blocked, on track...) and kinds (task, decision...) show as the shared chip
+  (`ui/chip.js`), toned by `ui/chip-tones.js`; never a page's own badge.
 
 ## Look
 - Colours are role tokens (`--surface-*`, `--text-*`, `--border-*`, `--link`, `--accent`,

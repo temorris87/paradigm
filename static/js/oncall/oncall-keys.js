@@ -3,11 +3,11 @@
 // Ctrl, Alt or Cmd held are left to the browser (Ctrl-V pastes the sheet), and Tab moves the
 // focus on, as everywhere.
 export const ONCALL_KEYS = [
-  { keys: ["[", "h"], action: "previousWeek", help: "the week before" },
+  { keys: ["[", "h"], action: "previousWeek", help: "the week before", hint: "week", label: "[ ]" },
   { keys: ["]", "l"], action: "nextWeek", help: "the week after" },
-  { keys: ["t"], action: "thisWeek", help: "this week" },
-  { keys: ["p"], action: "paste", help: "Paste sheet…: paste the Excel on-call sheet into a box" },
-  { keys: ["e"], action: "earlier", help: "show or hide the weeks before this one" },
+  { keys: ["t"], action: "thisWeek", help: "this week", hint: "this week" },
+  { keys: ["p"], action: "paste", help: "Paste sheet…: paste the Excel on-call sheet into a box", hint: "paste sheet" },
+  { keys: ["e"], action: "earlier", help: "show or hide the weeks before this one", hint: "earlier weeks" },
 ];
 
 const BY_KEY = new Map(ONCALL_KEYS.flatMap(({ keys, action }) => keys.map((key) => [key, action])));

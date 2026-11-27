@@ -160,7 +160,7 @@ test("live page: a capture badge opens its record; a new note switches the page,
   const highlights = [{ text: "Ship it", label: "Decision", title: "Decision: Ship it", data: 9, capture: "decision", meta: "" }];
   page.receive(live("D: Ship it", { fields: [{ name: "body", label: "Notes", text: "D: Ship it", highlights }], col: 0, mode: "normal", reply: true }));
   assertEqual(switched.length, 0, "the answer to live-ask");
-  const badge = section.querySelector(".pd-highlight__badge");
+  const badge = section.querySelector("[data-badge]");
   assertEqual(badge.textContent, "Decision");
   badge.click();
   assertEqual(app.opened.join(), "9");
@@ -183,7 +183,7 @@ test("live page: the block caret covers its character on a captured line, past t
   caret = section.querySelector(".live-caret--block");
   assertEqual(caret.textContent, "U", "on the U");
   assertTrue(!caret.classList.contains("live-caret--empty"));
-  const badge = section.querySelector(".pd-highlight__badge");
+  const badge = section.querySelector("[data-badge]");
   assertTrue(badge.compareDocumentPosition(caret) & Node.DOCUMENT_POSITION_FOLLOWING, "after the badge");
   assertTrue(caret.closest(".pd-highlight") !== null, "inside the highlight, so the U stays underlined");
   assertTrue(section.textContent.includes("Use the Acme vendor"));

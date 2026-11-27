@@ -1,8 +1,8 @@
 // The Today page (the start page, &home), in place of a dashboard: three columns.
 //   1. Now: the task block on now (time left, a bar, Done / Open note / +15 min), or the next
 //      one; then the day: meetings, blocks, free gaps, and a Log status reminder.
-//   2. Up next: one list ranked across every project (today-model.js upNext), with the keys
-//      under it.
+//   2. Up next: one list ranked across every project (today-model.js upNext); its keys are in
+//      the window's key-hint bar (layout/view-keys.js).
 //   3. Who is on call this week (the rota, oncall/), Projects with their latest status, the
 //      Inbox, and whether today's calendar is in.
 // It draws what today-model.js works out and reports what was asked (actions); the app runs
@@ -16,13 +16,15 @@
 // The Now card's bar moves on once a minute while the page shows.
 import { localDay } from "../meetings/meeting-days.js";
 import { nextMeeting, inboxNotes } from "./today-facts.js";
-import { todayAction, todayHints } from "./today-keys.js";
+import { todayAction } from "./today-keys.js";
 import { dayTimeline, nowBlock, projectRows, upNext } from "./today-model.js";
 import { hoursText } from "../week/capacity.js";
 import { clock } from "../calendar/week-model.js";
 import { dayText, whenText } from "../ui/dates.js";
 import { allMeetings, shortTitle } from "../meetings/meetings-model.js";
 import { cellPeople } from "../oncall/oncall-model.js";
+import { chip } from "../ui/chip.js";
+import { toneOf } from "../ui/chip-tones.js";
 
 const MINUTE_MS = 60 * 1000;
 
@@ -184,16 +186,12 @@ export class TodayPage {
       const node = element("div", `today-next__row today-next__row--${item.reasonKind}`);
       const title = element("span", "today-next__title", item.title);
       if (item.detail) title.append(element("span", "today-next__detail", ` · ${item.detail}`));
-      node.append(element("span", "today-next__reason", item.reason.toUpperCase()), element("span", "today-next__glyph", item.glyph),
+      node.append(chip(item.reason.toUpperCase(), toneOf(item.reasonKind)), element("span", "today-next__glyph", item.glyph),
         title, element("span", "today-next__estimate", item.estimate || (item.kind === "task" ? "" : "")),
         element("span", `today-next__place${item.placed ? " today-next__place--placed" : ""}`, item.place));
       rows.append(this.option(node, register("next", item.key, item), "next"));
     }
-    const hints = element("p", "today-next__keys");
-    for (const [key, words] of todayHints()) {
-      hints.append(element("kbd", "today__key", key), ` ${words}  `);
-    }
-    part.append(rows, hints);
+    part.append(rows);
     return part;
   }
 
@@ -234,8 +232,8 @@ export class TodayPage {
     for (const row of projects) {
       const node = element("div", `today-projects__row${row.health === "on_hold" ? " today-projects__row--hold" : ""}`);
       const top = element("div", "today-projects__top");
-      top.append(element("span", "today-projects__title", row.title),
-        element("span", `today-projects__health health health--${row.health}`, row.label === "—" ? "" : row.label.toUpperCase()));
+      top.append(element("span", "today-projects__title", row.title));
+      if (row.label !== "—") top.append(chip(row.label.toUpperCase(), toneOf(row.health), { dot: true }));
       const line = element("div", "today-projects__line");
       if (row.stale && row.health !== "on_hold") {
         line.append(element("span", "today-projects__dot", "● "),
@@ -261,7 +259,7 @@ export class TodayPage {
       file.type = "button";
       file.tabIndex = -1;
       file.title = "Go through the Inbox one note at a time (f)";
-      file.append(element("kbd", "today__key", "f"));
+      file.append(element("kbd", "key", "f"));
       file.addEventListener("click", (event) => {
         event.stopPropagation();
         this.actions.fileAll();
@@ -398,7 +396,7 @@ function cardButton(text, key, className, run) {
   const node = element("button", `today-now__button ${className}`.trim(), text);
   node.type = "button";
   node.tabIndex = -1;
-  if (key) node.append(" ", element("kbd", "today__key", key));
+  if (key) node.append(" ", element("kbd", "key", key));
   node.addEventListener("click", (event) => {
     event.stopPropagation();
     run();

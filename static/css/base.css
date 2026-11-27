@@ -33,11 +33,22 @@ a {
   color: var(--link);
 }
 
-/* The sidebar comes after the note in the page (for Tab order) but shows on the left. */
+/* One focus ring for every control (static/CLAUDE.md "Look"): a button, a link, a field, a
+   segmented button. :where() keeps it weak, so a control in a scrolling box can draw it
+   inside (-2px). List rows draw the inset --focus-ring instead; tests/js/test_focus_ring.js
+   holds every :focus-visible rule to one of the two. */
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+/* The sidebar comes after the note in the page (for Tab order) but shows on the left. The
+   key-hint bar (key-hints.css) is the note column's foot. */
 .app {
   display: grid;
   grid-template-columns: minmax(14rem, 21rem) minmax(0, 1fr);
-  grid-template-areas: "sidebar note";
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "sidebar note" "sidebar hints";
   height: 100%;
 }
 
@@ -97,11 +108,12 @@ a {
   z-index: 15;
   max-width: min(40rem, 80vw);
   padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
   background: var(--surface-overlay);
   color: var(--text-label);
   font-size: var(--fs-sm);
-  box-shadow: 0 0 0 1px var(--border-default);
+  box-shadow: 0 4px 14px var(--shadow-strong);
 }
 
 .status-line:empty {
@@ -109,8 +121,8 @@ a {
 }
 
 .status-line--error {
+  border-color: var(--state-danger-solid);
   color: var(--state-danger-fg);
-  box-shadow: 0 0 0 1px var(--state-danger-solid);
 }
 
 /* Narrow (the note window, the laptop): one column; the sidebar becomes a drawer
@@ -118,7 +130,7 @@ a {
 @media (max-width: 1399.98px) {
   .app {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "note";
+    grid-template-areas: "note" "hints";
   }
 
   .app__note {

@@ -1,0 +1,49 @@
+/* THE status chip (static/js/ui/chip.js): a state (overdue, blocked, on track...) or a kind
+   (task, decision, question, meeting) as a short label in its tone; the tone for each is
+   static/js/ui/chip-tones.js's. States take --state-*, kinds --kind-*. */
+.chip {
+  display: inline-block;
+  box-sizing: border-box;
+  max-width: 100%;
+  height: 21px;
+  padding: 0 var(--sp-2);
+  overflow: hidden;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--chip-bg);
+  color: var(--chip-fg);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 21px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* A chip you can press (a filter pill). */
+button.chip {
+  font-family: var(--font-ui);
+  cursor: pointer;
+}
+
+.chip__dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--chip-solid);
+  vertical-align: 1px;
+}
+
+.chip--danger { --chip-bg: var(--state-danger-bg); --chip-fg: var(--state-danger-fg); --chip-solid: var(--state-danger-solid); }
+.chip--warning { --chip-bg: var(--state-warning-bg); --chip-fg: var(--state-warning-fg); --chip-solid: var(--state-warning-solid); }
+.chip--caution { --chip-bg: var(--state-caution-bg); --chip-fg: var(--state-caution-fg); --chip-solid: var(--state-caution-solid); }
+.chip--success { --chip-bg: var(--state-success-bg); --chip-fg: var(--state-success-fg); --chip-solid: var(--state-success-solid); }
+.chip--info { --chip-bg: var(--state-info-bg); --chip-fg: var(--state-info-fg); --chip-solid: var(--state-info-solid); }
+.chip--neutral { --chip-bg: var(--surface-sunken); --chip-fg: var(--text-dim); --chip-solid: var(--state-neutral-solid); }
+.chip--task { --chip-bg: var(--kind-task-bg); --chip-fg: var(--kind-task-fg); --chip-solid: var(--kind-task-solid); }
+.chip--decision { --chip-bg: var(--kind-decision-bg); --chip-fg: var(--kind-decision-fg); --chip-solid: var(--kind-decision-solid); }
+.chip--question { --chip-bg: var(--kind-question-bg); --chip-fg: var(--kind-question-fg); --chip-solid: var(--kind-question-solid); }
+.chip--meeting { --chip-bg: var(--kind-meeting-bg); --chip-fg: var(--kind-meeting-fg); --chip-solid: var(--kind-meeting-solid); }

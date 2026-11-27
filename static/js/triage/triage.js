@@ -76,13 +76,13 @@ export function triageInbox(app) {
         const row = element("li", `picker__row triage__option${option.danger ? " triage__option--danger" : ""}`);
         row.setAttribute("role", "option");
         row.dataset.index = String(index);
-        row.append(element("kbd", "triage__key", keyOf(option.action)), element("span", "picker__title", option.label));
+        row.append(element("kbd", "key", keyOf(option.action)), element("span", "picker__title", option.label));
         if (option.detail) row.append(element("span", "picker__detail", option.detail));
         row.addEventListener("click", () => run(option.action));
         list.append(row);
       });
       const foot = element("p", "triage__keys");
-      for (const [key, words] of triageHints()) foot.append(element("kbd", "triage__key", key), ` ${words}   `);
+      for (const [key, words] of triageHints()) foot.append(element("kbd", "key", key), ` ${words}   `);
       dialog.replaceChildren(head, ticks, preview, hint, list, foot);
       mark();
       return undefined;

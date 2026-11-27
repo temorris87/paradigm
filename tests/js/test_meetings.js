@@ -151,7 +151,7 @@ test("meetings page: Upcoming, Past and Needs notes, grouped by day, with prep",
     assertEqual(groups(), "TODAY · SAT 21 NOV | TUE 24 NOV");
     const first = section.querySelector("[role=option]");
     assertEqual([...first.children].map((n) => n.textContent).slice(0, 3).join("|"), "09:30|Review|Operations");
-    const pills = [...section.querySelectorAll(".list-page__pill")];
+    const pills = [...section.querySelectorAll(".list-page__pills .chip")];
     assertEqual(pills.map((pill) => pill.textContent).join(), "Upcoming,Past,Needs notes · 0", "notes here are not marked empty");
     pills[1].click();
     assertEqual(shown(), "Planning", "past: latest first; an archived hub's left out");

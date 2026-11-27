@@ -313,7 +313,7 @@ function coverNextCharacter(caret) {
   let next = caret.nextSibling;
   while (next) {
     if (next.nodeType === Node.TEXT_NODE && !next.data) next = next.nextSibling;
-    else if (next.matches?.(".pd-highlight__badge--capture")) {
+    else if (next.matches?.("[data-badge=\"capture\"]")) {
       next.after(caret);
       next = caret.nextSibling;
     } else break;
@@ -337,7 +337,7 @@ function coverNextCharacter(caret) {
  * line break, a badge, maths). */
 function leadingText(node) {
   if (node.nodeType === Node.TEXT_NODE) return node.data ? node : null;
-  if (node.nodeType !== Node.ELEMENT_NODE || node.matches(".pd-highlight__badge, .md-math, .md-mermaid, br")) return null;
+  if (node.nodeType !== Node.ELEMENT_NODE || node.matches("[data-badge], .md-math, .md-mermaid, br")) return null;
   for (const child of node.childNodes) {
     if (child.nodeType === Node.TEXT_NODE && !child.data) continue;
     return leadingText(child);

@@ -1,8 +1,8 @@
 // THE key table of a folder's page (folder-page.js). Its key handling and any help listing
 // read it; nothing else binds keys there. Text boxes keep their keys.
 export const FOLDER_KEYS = [
-  { keys: ["a"], action: "newNote", help: "New note… in this folder" },
-  { keys: ["Escape"], action: "leave", help: "back to where you were" },
+  { keys: ["a"], action: "newNote", help: "New note… in this folder", hint: "new note" },
+  { keys: ["Escape"], action: "leave", help: "back to where you were", hint: "back" },
 ];
 
 const BY_KEY = new Map(FOLDER_KEYS.flatMap(({ keys, action }) => keys.map((key) => [key, action])));

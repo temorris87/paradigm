@@ -32,6 +32,11 @@
   font-weight: 600;
 }
 
+/* A decision's or question's kind chip reads in capitals (DECISION). */
+.hub-line .chip {
+  text-transform: uppercase;
+}
+
 .hub-line__label {
   color: var(--text-dim);
 }
@@ -539,7 +544,7 @@
   color: var(--state-danger-fg);
 }
 
-/* Health, wherever it shows (a status entry, the Projects table, a badge): its colour only. */
+/* Health as a colour (a status entry, the Projects table, the tree's dot); as a badge it is a chip (chip.css). */
 .health--on_track { --health: var(--state-success-fg); }
 .health--at_risk { --health: var(--state-warning-fg); }
 .health--blocked { --health: var(--state-danger-fg); }
@@ -660,19 +665,8 @@
   white-space: pre-wrap;
 }
 
-/* A decision's or question's card: its kind as a badge, where to raise an open question, and
-   its buttons (Answer…, Turn into decision, Make a task to find out). */
-.hub-line__badge {
-  padding: 0 var(--sp-1);
-  border-radius: 3px;
-  color: var(--text-on-solid);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.hub-line__badge--question { background: var(--kind-question-solid); }
-.hub-line__badge--decision { background: var(--kind-decision-solid); }
+/* A decision's or question's card: its kind as a chip (chip.css), where to raise an open
+   question, and its buttons (Answer…, Turn into decision, Make a task to find out). */
 
 .hub-line__ok {
   color: var(--state-success-fg);

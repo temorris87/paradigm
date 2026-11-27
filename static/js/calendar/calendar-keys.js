@@ -2,13 +2,13 @@
 // nothing else binds keys there. Keys typed in a text box, list or dialog are theirs; keys
 // with Ctrl, Alt or Cmd held are left to the browser, and Tab moves the focus on, as everywhere.
 export const CALENDAR_KEYS = [
-  { keys: ["[", "h"], action: "previousWeek", help: "the week before" },
+  { keys: ["[", "h"], action: "previousWeek", help: "the week before", hint: "week", label: "[ ]" },
   { keys: ["]", "l"], action: "nextWeek", help: "the week after" },
-  { keys: ["t"], action: "today", help: "this week" },
-  { keys: ["w"], action: "weekend", help: "show or hide Saturday and Sunday" },
-  { keys: ["i"], action: "import", help: "import the calendar files waiting in the folder" },
-  { keys: ["Enter"], action: "open", help: "open the chosen block's note" },
-  { keys: ["s"], action: "schedule", help: "put the tray's task under the focus in the first free slot before it is due" },
+  { keys: ["t"], action: "today", help: "this week", hint: "this week" },
+  { keys: ["w"], action: "weekend", help: "show or hide Saturday and Sunday", hint: "weekend" },
+  { keys: ["i"], action: "import", help: "import the calendar files waiting in the folder", hint: "import" },
+  { keys: ["Enter"], action: "open", help: "open the chosen block's note", hint: "open" },
+  { keys: ["s"], action: "schedule", help: "put the tray's task under the focus in the first free slot before it is due", hint: "schedule" },
   { keys: ["Delete", "x"], action: "remove", help: "take the chosen task block off the calendar" },
   { keys: ["Escape"], action: "deselect", help: "choose no block" },
 ];

@@ -14,6 +14,8 @@ import { fieldsFor } from "./fields.js";
 import { nextTogether } from "../people/one-on-one.js";
 import { nextOnCall, nextOnCallText } from "../oncall/oncall-model.js";
 import { dayText } from "../ui/dates.js";
+import { chip } from "../ui/chip.js";
+import { toneOf } from "../ui/chip-tones.js";
 
 export class DashHead {
   constructor(root, { onLog, onDigest, onEdit, onOneOnOne = () => {} }) {
@@ -36,7 +38,7 @@ export class DashHead {
     const main = element("div", "dash-head__main");
     main.append(element("h1", "dash-head__title", note.title));
     const meta = element("div", "dash-head__meta");
-    if (health.key !== "none") meta.append(element("span", `dash-head__badge health health--${health.key}`, health.label));
+    if (health.key !== "none") meta.append(chip(health.label, toneOf(health.key), { dot: true }));
     if (health.stale) meta.append(element("span", "dash-head__stale", `No update for ${health.age} d`));
     else if (health.never && note.status !== "on_hold") meta.append(element("span", "dash-head__stale dash-head__stale--never", "No status logged yet"));
     const line = outcomeLine(body);

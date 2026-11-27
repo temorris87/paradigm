@@ -73,8 +73,8 @@
 
 .list-page__filter:focus-visible,
 .list-page__search:focus-visible {
-  outline: 1px solid var(--focus-ring);
-  outline-offset: 0;
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
 }
 
 .list-page__list {
@@ -180,26 +180,6 @@
   display: flex;
   align-self: center;
   gap: var(--sp-1);
-}
-
-.list-page__pill {
-  padding: var(--sp-0) var(--sp-3);
-  border: 1px solid var(--border-default);
-  border-radius: 12px;
-  background: none;
-  color: var(--text);
-  font: inherit;
-  font-size: var(--fs-sm);
-  cursor: pointer;
-}
-
-.list-page__pill[aria-pressed="true"] {
-  border-color: var(--border-selected);
-  color: var(--text-strong);
-}
-
-.list-page__pill:focus-visible {
-  outline: 1px solid var(--focus-ring);
 }
 
 /* A day's heading over its rows (Meetings): today's in yellow. */

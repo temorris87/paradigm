@@ -653,6 +653,7 @@ export class NotesApp {
         label: record.kind === "question" && record.answered ? "Answered" : labels[record.kind],
         title: `${labels[record.kind]}: ${this.tree.get(record.id).title} (click to open)`,
         data: record.id,
+        kind: record.kind,
         ...(line ? { capture: record.kind, meta: line.people.length ? `with ${line.people.map((person) => person.title).join(", ")}` : "" } : {}),
       };
     });
@@ -660,7 +661,7 @@ export class NotesApp {
       const delegate = this.tree.get(task.delegate_id);
       const owed = this.tree.get(task.for_person_id);
       return {
-        text: task.quote, label: "Task", capture: "task", data: null,
+        text: task.quote, label: "Task", kind: "task", capture: "task", data: null,
         title: `Task on ${this.tree.get(task.note_id)?.title ?? "the hub"}: ${task.title}`,
         meta: [delegate ? `→ ${delegate.title}` : owed ? `for ${owed.title}` : "", task.due ? `due ${dayText(task.due, { today })}` : ""]
           .filter(Boolean).join(" · "),

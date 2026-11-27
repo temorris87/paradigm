@@ -1,0 +1,100 @@
+/* The key-hint bar at the foot of each view (static/js/ui/key-hints.js), THE key cap (.key:
+   the bar, the palette, triage, the top bar, Today's buttons, the ? list) and the ? list
+   (static/js/ui/keys-dialog.js). The bar is the .app grid's last row under the page, so it
+   stays at the foot while the page scrolls. */
+:root {
+  --key-hints-height: 35px;
+}
+
+.key {
+  display: inline-block;
+  box-sizing: border-box;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  line-height: 18px;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.key-hints {
+  grid-area: hints;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: var(--key-hints-height);
+  min-width: 0;
+  padding: 0 var(--sp-4) 0 20px;
+  overflow: hidden;
+  border-top: 1px solid var(--border-default);
+  background: var(--surface-raised);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+
+.key-hints:empty {
+  display: none;
+}
+
+.key-hints__hint {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+
+.key-hints__label {
+  color: var(--text-dim);
+}
+
+/* The main window's messages sit over the bar, not on it. */
+.status-line {
+  bottom: calc(var(--key-hints-height) + var(--sp-2));
+}
+
+/* The ? list: a wider dialog, its groups scrolling inside. */
+.keys-dialog {
+  width: min(40rem, calc(100vw - 2rem));
+}
+
+.keys-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  max-height: min(32rem, 70vh);
+  margin: var(--sp-3) 0;
+  overflow: auto;
+}
+
+.keys-dialog__name {
+  margin: 0 0 var(--sp-2);
+  color: var(--text-heading);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.keys-dialog__list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--sp-1) var(--sp-4);
+  margin: 0;
+}
+
+.keys-dialog__keys {
+  white-space: nowrap;
+}
+
+.keys-dialog__help {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-sm);
+}

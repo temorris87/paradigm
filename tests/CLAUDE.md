@@ -9,7 +9,9 @@ tests/python/            unittest; helpers.py runs a real server on a free port
                          test_theme_contrast.py: nord-light's text at 4.5:1 on its surfaces,
                          focus at 3:1, TEXT_SOLIDS equal to the fills --text-on-solid is on)
 tests/js/                index.html runner, harness.js, fakes.js, editor-helpers.js, test_*.js
-                         (test_editor_vim_cases.js: key sequences checked against real Vim)
+                         (test_editor_vim_cases.js: key sequences checked against real Vim;
+                         test_key_hints.js: every hint: key bound in its table;
+                         test_focus_ring.js: every :focus-visible rule one of the two rings)
                          markdown-sample.html: dev-only page rendering every Markdown construct
 ```
 
