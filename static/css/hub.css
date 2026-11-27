@@ -262,6 +262,17 @@
   margin-left: auto;
 }
 
+/* A heading's "···" menu sits right after its add button (the Files section's). */
+.hub__heading .hub__add + .hub__menu,
+.hub__empty-add + .hub__empty-add {
+  margin-left: var(--sp-1);
+}
+
+.hub__menu {
+  padding: var(--sp-0) var(--sp-2);
+  letter-spacing: 0.1em;
+}
+
 .hub__row {
   display: flex;
   flex-direction: column;

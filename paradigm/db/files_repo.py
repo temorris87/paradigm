@@ -11,13 +11,13 @@ from typing import Callable, Dict, List, Optional
 from paradigm.db.connection import Database
 from paradigm.db.notes_repo import NoteError, NotFound, live_note_row, top_note_row, utc_now
 from paradigm.files import folders as disk
-from paradigm.files.folders import BadFolder, clean_folder, inside, list_files
+from paradigm.files.folders import BadFolder, clean_file, clean_folder, inside, list_files
 from paradigm.notes.hubs import HUB_KINDS
 
 Clock = Callable[[], str]
 Opener = Callable[[Path], None]
 
-__all__ = ["FileRepository", "NotFound", "BadFolder", "NotAHub", "FolderLinked"]
+__all__ = ["FileRepository", "NotFound", "BadFolder", "NotAHub", "FolderLinked", "NotLinked"]
 
 
 class NotAHub(NoteError):
@@ -26,6 +26,14 @@ class NotAHub(NoteError):
 
 class FolderLinked(NoteError):
     pass
+
+
+class NotLinked(NoteError):
+    """A file in no linked folder; folder is its own folder, to offer to link."""
+
+    def __init__(self, folder: str):
+        super().__init__("not in a linked folder")
+        self.folder = folder
 
 
 class FileRepository:
@@ -61,15 +69,49 @@ class FileRepository:
         """Links a folder on this computer to a hub, and reads it."""
         path = clean_folder(raw_path)
         with self._db.transaction() as conn:
-            hub = top_note_row(conn, note_id)
-            if hub["id"] != note_id or hub["is_person"] or hub["is_template"] or hub["kind"] not in HUB_KINDS:
-                raise NotAHub("A folder is linked to a project or an area")
+            _hub_row(conn, note_id)
             taken = conn.execute("SELECT 1 FROM file_folders WHERE note_id = ? AND path = ?", (note_id, str(path))).fetchone()
             if taken:
                 raise FolderLinked("That folder is linked here already")
             folder_id = conn.execute("INSERT INTO file_folders (note_id, path, created_at) VALUES (?, ?, ?)",
                                      (note_id, str(path), self._clock())).lastrowid
         return self.scan(folder_id)
+
+    def pick_start(self, note_id: int) -> Dict:
+        """{title, folder} for a hub's file dialog: folder is its oldest linked folder still on
+        disk, else None."""
+        with self._db.reading() as conn:
+            hub = _hub_row(conn, note_id, "Files are added on a project or an area")
+            paths = [row["path"] for row in conn.execute(
+                "SELECT path FROM file_folders WHERE note_id = ? ORDER BY created_at, id", (note_id,))]
+        folder = next((path for path in paths if Path(path).is_dir()), None)
+        return {"title": hub["title"], "folder": folder}
+
+    def attach_path(self, note_id: int, raw_path: object) -> Dict:
+        """Attaches the file at an absolute path to a note, through the linked folder holding
+        it (on any live hub). Returns {file, link}; a file the note has already gives its
+        existing link. NotLinked when no linked folder holds it."""
+        path = clean_file(raw_path)
+        with self._db.reading() as conn:
+            note = live_note_row(conn, note_id)
+            if note["is_template"]:
+                raise NotAHub("A template holds no files")
+            folders = conn.execute(
+                "SELECT file_folders.* FROM file_folders JOIN notes ON notes.id = file_folders.note_id "
+                "WHERE notes.deleted_at IS NULL ORDER BY file_folders.id").fetchall()
+        folder, rel_path = _holder(folders, path, note_id)
+        self.scan(folder["id"])
+        with self._db.transaction() as conn:
+            row = conn.execute("SELECT * FROM files WHERE folder_id = ? AND rel_path = ?",
+                               (folder["id"], rel_path)).fetchone()
+            if row is None:
+                raise BadFolder('Paradigm does not list "{}" (a hidden or lock file, or too deep)'.format(path.name))
+            live_note_row(conn, note_id)
+            conn.execute("INSERT OR IGNORE INTO file_links (file_id, note_id, added_at) VALUES (?, ?, ?)",
+                         (row["id"], note_id, self._clock()))
+            link = conn.execute("SELECT * FROM file_links WHERE file_id = ? AND note_id = ?", (row["id"], note_id)).fetchone()
+            return {"file": _file(row), "link": {"file_id": link["file_id"], "note_id": link["note_id"],
+                                                 "added_at": link["added_at"]}}
 
     def unlink_folder(self, folder_id: int) -> None:
         """Unlinks a folder: its files leave the notes they were attached to (nothing on disk
@@ -143,6 +185,30 @@ class FileRepository:
             row = _file_row(conn, file_id)
             folder = _folder_row(conn, row["folder_id"])
         return str(inside(Path(folder["path"]), row["rel_path"]))
+
+
+def _hub_row(conn: sqlite3.Connection, note_id: int, refusal: str = "A folder is linked to a project or an area") -> sqlite3.Row:
+    hub = top_note_row(conn, note_id)
+    if hub["id"] != note_id or hub["is_person"] or hub["is_template"] or hub["kind"] not in HUB_KINDS:
+        raise NotAHub(refusal)
+    return hub
+
+
+def _holder(folders: List[sqlite3.Row], path: Path, note_id: int):
+    """(folder row, rel_path) of the linked folder holding path: one on this note first, then
+    the nearest (the deepest, when linked folders nest)."""
+    found = []
+    for row in folders:
+        base = Path(row["path"]).resolve()
+        if base not in path.parents:
+            continue
+        rel_path = path.relative_to(base).as_posix()
+        inside(base, rel_path)  # refuses anything that would leave the folder
+        found.append((row["note_id"] != note_id, -len(base.parts), row["id"], row, rel_path))
+    if not found:
+        raise NotLinked(str(path.parent))
+    best = min(found, key=lambda entry: entry[:3])
+    return best[3], best[4]
 
 
 def _folder(row: sqlite3.Row) -> Dict:

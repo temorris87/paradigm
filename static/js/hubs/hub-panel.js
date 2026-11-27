@@ -4,14 +4,16 @@
 // the user asked for; HubPage decides the rest.
 //
 //   const panel = new HubPanel(sectionElement, { onRow(section, row), onToggle(section),
-//     onExpand(section, row), onMore(section), onAdd(section), onRowAction(section, row, key),
+//     onExpand(section, row), onMore(section), onAdd(section), onMenu(section, button),
+//     onRowAction(section, row, key),
 //     onCommand(action), onLeave(), renderSnippet(markdown) -> html });
 //     onExpand: z (or a click on its ▸) on a row that opens in place (row.expanded set)
 //   panel.draw(sections)            one lane (the note window)
 //   panel.draw({ wide, act, know })  two lanes side by side (the main window's dashboard),
 //                                   under the wide sections (full width)
-//     each section: { key, label, detail, folded, rows, empty, add, addPlain, more, columns? }
-//     add: the button's label or null (addPlain: without the "+"); more: how many rows
+//     each section: { key, label, detail, folded, rows, empty, add, addPlain, menu, more, columns? }
+//     add: the button's label or null (addPlain: without the "+"); menu: the label of a
+//     "···" button after it (onMenu opens the menu under it) or null; more: how many rows
 //     "Show all" would add (0: none);
 //     columns: a table's column names (its rows carry cells)
 //   panel.focus()
@@ -55,6 +57,7 @@ export class HubPanel {
   draw(layout) {
     const hadFocus = this.hasFocus();
     const activeId = this.options[this.active]?.id;
+    const activeSection = this.options[this.active]?.section.key;
     const lanes = Array.isArray(layout) ? [{ key: "page", label: "Sections", sections: layout }]
       : [...(layout.wide?.length ? [{ key: "wide", label: "Overview", sections: layout.wide }] : []),
         { key: "act", label: "To act on", sections: layout.act }, { key: "know", label: "To look up", sections: layout.know }];
@@ -62,13 +65,23 @@ export class HubPanel {
     this.options = [];
     this.list.classList.toggle("hub__list--lanes", lanes.length > 1);
     this.list.replaceChildren(...lanes.map((lane, index) => this.lane(lane, index)));
-    const again = this.options.findIndex((option) => option.id === activeId);
+    const again = this.againIndex(activeId, activeSection);
     // Untouched, the panel starts on the first task, the row most likely acted on.
     const first = this.touched ? -1
       : this.options.findIndex((option) => option.row?.task !== undefined && !option.row.addSubtask);
     this.active = Math.max(0, first >= 0 ? first : again);
     this.markActive();
     if (hadFocus) this.focus();
+  }
+
+  /**
+   * The option to select again after a redraw: the same one, else its section's first (a
+   * section that gained its first row or lost its last swaps its empty item for a heading).
+   */
+  againIndex(activeId, sectionKey) {
+    const same = this.options.findIndex((option) => option.id === activeId);
+    if (same >= 0 || sectionKey === undefined) return same;
+    return this.options.findIndex((option) => option.section.key === sectionKey);
   }
 
   lane(lane, index) {
@@ -93,6 +106,7 @@ export class HubPanel {
       item.title = section.empty;
       item.append(element("span", "hub__empty-label", section.label));
       if (section.add) item.append(button("hub__empty-add", "+", `${section.add} (a)`, "add"));
+      if (section.menu) item.append(menuButton("hub__empty-add", section));
       line.append(item);
     });
     return line;
@@ -109,6 +123,7 @@ export class HubPanel {
     heading.append(element("span", "hub__twisty", section.folded ? "▸" : "▾"), label,
       element("span", "hub__count", section.detail));
     if (section.add) heading.append(button("hub__add", section.addPlain ? section.add : `+ ${section.add}`, `${section.add} (a)`, "add"));
+    if (section.menu) heading.append(menuButton("hub__add hub__menu", section));
     group.append(heading);
     if (section.folded) return group;
     if (!section.rows.length) {
@@ -196,9 +211,11 @@ export class HubPanel {
     this.active = index;
     this.markActive();
     this.focus();
-    const action = event.target.closest("[data-action]")?.dataset.action;
+    const actionNode = event.target.closest("[data-action]");
+    const action = actionNode?.dataset.action;
     const option = this.options[index];
     if (action === "add") return this.handlers.onAdd(option.section);
+    if (action === "menu") return this.handlers.onMenu?.(option.section, actionNode);
     if (action === "expand") return this.handlers.onExpand?.(option.section, option.row);
     if (action) return this.handlers.onRowAction(option.section, option.row, action);
     return this.activate(option);
@@ -228,6 +245,7 @@ export class HubPanel {
       case "open": return this.activate(option);
       case "fold": return this.fold(option);
       case "add": return option?.section.add ? this.handlers.onAdd(option.section) : undefined;
+      case "menu": return this.openMenu(option);
       case "remove": return this.rowAction(option, ["remove"]);
       case "second": return this.rowAction(option, ["role", "answer"]);
       case "toggle": return this.rowAction(option, ["done"]);
@@ -239,6 +257,13 @@ export class HubPanel {
       case "editor": return this.handlers.onLeave();
       default: return undefined;
     }
+  }
+
+  /** m: the section's "···" menu, opened under its button (the heading's, or the empty item's). */
+  openMenu(option) {
+    if (!option?.section.menu) return undefined;
+    const anchor = [...this.list.querySelectorAll("[data-action=menu]")].find((node) => node.dataset.section === option.section.key);
+    return anchor ? this.handlers.onMenu?.(option.section, anchor) : undefined;
   }
 
   /** z: a task row that opens in place opens or closes; anywhere else, the section folds. */
@@ -331,6 +356,15 @@ function button(className, text, title, action) {
   const node = element("button", className, text);
   Object.assign(node, { type: "button", tabIndex: -1, title });
   node.dataset.action = action;
+  return node;
+}
+
+/** A heading's "···" button: a menu of the section's less used actions (also m). */
+function menuButton(className, section) {
+  const node = button(className, "···", `${section.menu} (m)`, "menu");
+  node.dataset.section = section.key;
+  node.setAttribute("aria-label", section.menu);
+  node.setAttribute("aria-haspopup", "menu");
   return node;
 }
 

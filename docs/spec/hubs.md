@@ -74,17 +74,37 @@ How the app behaves. Kept up to date by each feature that changes it.
   attaches one (one record, on any number of notes); Enter opens it with this computer's
   program (`os.startfile`); Remove takes it off that note only. A file gone from the folder
   is flagged, kept while attached. A project's Files include its phases' and notes'.
+- Add file (Tyson, 2026-11-27): "+ Add file" (`a`) opens the system's own file dialog
+  (tkinter, run by the server in a child process, so tk never runs in a server thread),
+  titled `Add a file to <hub>`, brought to the front, starting in the hub's oldest linked
+  folder (tkinter takes one start folder), or the OneDrive root when none is linked. A file
+  in a linked folder (one linked to another hub counts) is attached: `"<name>" added`. A file
+  outside them asks *Link "<its own folder>" to <hub>? Its files show under Files.* (Link /
+  Cancel); Link links that folder, then attaches the file; Cancel attaches nothing. Closing
+  the dialog does nothing and says nothing; after 10 minutes open it counts as a cancel. A
+  file the hub already has shows once.
+- Folder browser: when tkinter is missing, the child fails to start, or the server runs with
+  `PARADIGM_FILE_PICKER=browser`, Add file opens Paradigm's own browser instead, starting in
+  the same folder: the path at the top, folders then files, each by name. `j` / `k`, `gg` /
+  `G`, Enter or `l` opens a folder or picks a file, `h` / Backspace goes up (at a root, the
+  roots), `/` filters by name (a second `/` selects the old text, so typing replaces it;
+  Enter or Esc back to the list), Esc cancels. Keys: `folder-browser-keys.js`.
+- Files "···" menu: the Files heading has a "···" button, `m` on the heading or its rows
+  (the hub key for a section's menu): Search linked files… (the text-search picker over the
+  linked folders' files), Link a folder…, Unlink a folder…. In the main window and the note
+  window's sheet; Esc, or a dialog from it closing, puts the focus back on the list, so the
+  sheet stays open.
 - Linked folders (Tyson, 2026-11-25): a project or area's own Files section lists its linked
   folders first, above the files (in Files, not a section of their own): `📁 Contracts`,
   `OneDrive folder · 12 files · 3 on notes`, the path on hover. Pages inside the hub show
   only files; the section's count and the sheet bar count files, not folders. Enter on a
-  folder row opens Add file over that folder's files only. Unlink (the row's ⋯, or `x` /
+  folder row opens Search linked files over that folder's files only. Unlink (the row's ⋯, or `x` /
   `Delete`) asks first, danger: *Unlink "Contracts" from "Northwind rollout"? Its 3 files on
   notes come off them (Kickoff, Phase 1, Review, …). Nothing in OneDrive changes.* (up to
   three notes named; attachments on notes in the trash are counted too: "1 attachment on notes
   in the trash goes too, for good"). It drops the folder, its files and their attachments on every note, and
-  can't be undone; nothing on disk changes. The Add file picker has "Unlink a folder…" under
-  "Link a OneDrive folder…" when the hub has folders, so a phase or note page reaches it too.
+  can't be undone; nothing on disk changes. The Files "···" menu has "Unlink a folder…"
+  under "Link a folder…" when the hub has folders, so a phase or note page reaches it too.
   A hub with no folder left can be filed as a resource again, if nothing else stops it.
   Unlink and Enter on a folder row reload the page's data first: a row left over after the
   other window unlinked it says "that folder is no longer linked" instead.

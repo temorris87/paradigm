@@ -13,8 +13,9 @@
 //     labels: { main, agenda, agendaField }: the label elements over the text boxes, and the
 //             agenda's wrapper (shown on a meeting only)
 //     controls: the card's buttons (hub-actions.js hubLineControls)
-//     tabActions: { add(sectionKey, owner), row(key, sectionKey, owner, row), command(action, owner) }
-//             (hub-actions.js); command: "logStatus", "plan";
+//     tabActions: { add(sectionKey, owner), menu(sectionKey, owner, anchorButton, back),
+//             row(key, sectionKey, owner, row), command(action, owner) }
+//             (hub-actions.js); menu: a heading's "···" button (back() refocuses the list); command: "logStatus", "plan";
 //             row keys besides the row's buttons: "addSubtask", "openFile", "openFolder",
 //             "openTemplate", "openTask"
 //     at: { field, line } when a row points into the text (a mention)
@@ -73,6 +74,9 @@ export class HubPage {
       onMore: (sectionDef) => this.showAll(sectionDef),
       // A split section ("openQuestions") adds and acts as the section it is cut from.
       onAdd: (sectionDef) => this.tabActions.add(sectionDef.base ?? sectionDef.key, this.hub),
+      // The menu (and any dialog from it) gives the focus back to the list, so the sheet stays open.
+      onMenu: (sectionDef, anchor) => this.tabActions.menu?.(sectionDef.base ?? sectionDef.key, this.hub, anchor,
+        () => this.panel.focus()),
       onRowAction: (sectionDef, row, key) => this.tabActions.row(key, sectionDef.base ?? sectionDef.key, this.hub, row),
       // Keys about the page's owner, not a row: L (Log status…), gp (the full plan).
       onCommand: (action) => this.tabActions.command?.(action, this.hub),
@@ -148,6 +152,7 @@ export class HubPage {
       empty: section.empty(hub),
       add: section.add?.label ?? null,
       addPlain: Boolean(section.add?.plain),
+      menu: section.menu?.label ?? null,
     };
   }
 

@@ -342,6 +342,33 @@
   color: var(--text-dim);
 }
 
+/* The folder browser (static/js/files/folder-browser.js): a picker over one folder at a time,
+   its path on top. The list itself takes the focus, so its selected row carries the ring. */
+.folder-browser__path {
+  margin: 0 0 var(--sp-2);
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+.folder-browser__filter[hidden] {
+  display: none;
+}
+
+.folder-browser__list:focus {
+  outline: none;
+}
+
+.folder-browser__list:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: -2px;
+}
+
+.folder-browser__row--folder .picker__title {
+  color: var(--text-strong);
+}
+
 /* A small icon-like button beside a fact: ▾ ✎ + × (the hub line, the tree's groups). */
 .mini-button {
   padding: 0 var(--sp-1);

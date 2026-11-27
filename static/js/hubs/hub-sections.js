@@ -36,6 +36,8 @@
 //   section.detail(rows)       beside the heading ("3 open")
 //   section.empty(note)        what it says when it has no rows
 //   section.add                { label } of its add button (hub-actions.js), or null
+//   section.menu               { label } of its heading's "···" menu button (hub-actions.js
+//                              menu: the Files section's), or none
 //   section.limit              rows shown before "Show all"
 //   section.pinned(row)        true for rows always shown, outside the limit and Show all's
 //                              count (the Files section's folder rows)
@@ -279,6 +281,8 @@ export const HUB_SECTIONS = [
     pinned: (row) => row.folder !== undefined,
     empty: () => "No files yet. Link a OneDrive folder, then add its files here.",
     add: { label: "Add file" },
+    // Search linked files…, Link a folder…, Unlink a folder…
+    menu: { label: "More file actions" },
     limit: 8,
   },
   {

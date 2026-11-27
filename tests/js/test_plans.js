@@ -16,7 +16,7 @@ import { assertEqual as same, assertTrue, test } from "./harness.js";
 import "../../static/js/hubs/hub-actions.js";
 import "../../static/js/hubs/dashboard.js";
 import "../../static/js/plan/template-page.js";
-import { addFileDialog, unlinkFolderDialog } from "../../static/js/files/file-commands.js";
+import { searchFilesDialog, unlinkFolderDialog } from "../../static/js/files/file-commands.js";
 import "../../static/js/templates/template-commands.js";
 import "../../static/js/notes/app.js";
 import "../../static/js/calendar/calendar-page.js";
@@ -231,5 +231,5 @@ test("files: a folder row left over after an unlink elsewhere says the folder is
   };
   assertEqual(await rejects(unlinkFolderDialog(app, 1)), "E: that folder is no longer linked");
   app.files = new Files({ folders: [{ id: 1, note_id: 2, path: "/od/C", name: "C" }] });
-  assertEqual(await rejects(addFileDialog(app, app.tree.get(2), { folderId: 1 })), "E: that folder is no longer linked");
+  assertEqual(await rejects(searchFilesDialog(app, app.tree.get(2), { folderId: 1 })), "E: that folder is no longer linked");
 });

@@ -1,12 +1,18 @@
-// What the Files section's buttons do: link a OneDrive folder to a hub, add a file from it to
-// a note, open a file (with this computer's program for it), take a file off a note, unlink a
-// folder from its hub, read a folder again. Each takes the NotesApp (static/js/notes/app.js); errors are thrown for the
-// app (or the dialog) to show.
+// What the Files section's buttons do: add a file to a note through the computer's own file
+// dialog (or Paradigm's folder browser), search the linked folders' files, link a OneDrive
+// folder to a hub, open a file (with this computer's program for it), take a file off a note,
+// unlink a folder from its hub, read a folder again. Each takes the NotesApp
+// (static/js/notes/app.js); errors are thrown for the app (or the dialog) to show.
 //
-//   addFileDialog(app, owner, { folderId? })   a picker over the files of the folders linked
-//                                    there, with "Link a OneDrive folder…" first and "Unlink a
-//                                    folder…" under it when the hub has folders; folderId: only
-//                                    that folder's files (Enter on a folder row)
+//   addFileDialog(app, owner)        the server opens the file dialog (in the hub's oldest
+//                                    linked folder, else OneDrive); when it can't, the folder
+//                                    browser (folder-browser.js) opens at the same folder.
+//                                    The file picked is attached (attachPicked)
+//   attachPicked(app, owner, hub, path)  attaches a picked file; from a folder not linked yet,
+//                                    a confirm offers to link the file's own folder to the hub
+//   searchFilesDialog(app, owner, { folderId? })   a picker over the files of the folders
+//                                    linked there; folderId: only that folder's files (Enter
+//                                    on a folder row)
 //   linkFolderDialog(app, hub)       a picker over the folders OneDrive syncs here, or a path
 //   pickFolderToUnlink(app, hub)     a picker over the hub's own folders, then the confirm
 //   unlinkFolderDialog(app, folderId)  the confirm, naming the notes its files come off; then
@@ -17,37 +23,75 @@ import { hubOf } from "../notes/hub-groups.js";
 import { pickFrom } from "../ui/picker.js";
 import { confirmDialog } from "../ui/dialog.js";
 import { fileDir, folderFiles, folderSummary, foldersFor, foldersOf, unlinkText } from "./files-model.js";
-
-const LINK = "link-folder";
-const UNLINK = "unlink-folder";
+import { browseForFile } from "./folder-browser.js";
 
 async function changed(app) {
   app.changes.send({ type: "changed", what: ["files"] });
   await app.refreshTree();
 }
 
-export async function addFileDialog(app, owner, { folderId = null } = {}) {
+function hubFor(app, owner) {
   const hub = hubOf(app.tree, owner.id);
   if (!hub) throw new Error(`E: "${owner.title}" is in no hub: file it in a project or an area first`);
+  return hub;
+}
+
+export async function addFileDialog(app, owner) {
+  const hub = hubFor(app, owner);
+  // The dialog starts in the hub's own folders, so the hub (not a note inside it) is asked for.
+  const picked = await app.filesApi.pick(hub.id);
+  let path = picked?.path ?? null;
+  if (!path && picked?.fallback === "browser") {
+    path = await browseForFile({ api: app.filesApi, start: picked.start ?? null, title: `Add a file to ${hub.title}`,
+      fallbackFocus: () => app.focusNote() });
+  }
+  // A cancelled dialog changes nothing and says nothing.
+  if (!path) return null;
+  return attachPicked(app, owner, hub, path);
+}
+
+export async function attachPicked(app, owner, hub, path) {
+  let result = await app.filesApi.attachPath(owner.id, path);
+  if (!result.file) {
+    const folder = result.folder;
+    let linked = false;
+    result = await confirmDialog({
+      title: "Link folder",
+      text: `Link "${folder}" to ${hub.title}? Its files show under Files.`,
+      confirm: "Link",
+      run: async () => {
+        if (!linked) await app.filesApi.linkFolder(hub.id, folder);
+        linked = true;
+        const attached = await app.filesApi.attachPath(owner.id, path);
+        if (!attached.file) throw new Error(`E: "${folder}" is linked, but the file is still not in it`);
+        return attached;
+      },
+      fallbackFocus: () => app.focusNote(),
+    });
+    if (!result) {
+      // Linked, then the attach failed and the dialog was closed: the folder still shows.
+      if (linked) await changed(app);
+      return null;
+    }
+  }
+  await changed(app);
+  app.say(`"${result.file.name}" added`);
+  return result;
+}
+
+export async function searchFilesDialog(app, owner, { folderId = null } = {}) {
+  hubFor(app, owner);
   // The page's copy may be stale (unlinked in the other window): reload before trusting it.
   if (folderId !== null) await app.refreshTree();
   const one = folderId === null ? null : app.files.folder(folderId);
   if (folderId !== null && !one) throw new Error("E: that folder is no longer linked");
   const folders = one ? [one] : foldersFor(app.tree, app.files, owner.id);
   const attached = new Set(app.files.onNote(owner.id));
-  // Opened from a folder row, the picker lists only that folder's files.
-  const fixed = one ? [] : [
-    { id: LINK, title: "Link a OneDrive folder…", detail: `its files can then be added anywhere in ${hub.title}` },
-    ...(foldersOf(app.files, hub.id).length ? [{ id: UNLINK, title: "Unlink a folder…", detail: `take a folder off ${hub.title}` }] : []),
-  ];
-  const items = [
-    ...fixed,
-    ...folderFiles(app.files, folders.map((folder) => folder.id)).filter((file) => !attached.has(file.id)).map((file) => ({
-      id: file.id, title: file.name,
-      detail: [app.files.folder(file.folder_id).name, fileDir(file), file.missing ? "not in the folder any more" : ""].filter(Boolean).join(" › "),
-      muted: file.missing,
-    })),
-  ];
+  const items = folderFiles(app.files, folders.map((folder) => folder.id)).filter((file) => !attached.has(file.id)).map((file) => ({
+    id: file.id, title: file.name,
+    detail: [app.files.folder(file.folder_id).name, fileDir(file), file.missing ? "not in the folder any more" : ""].filter(Boolean).join(" › "),
+    muted: file.missing,
+  }));
   const picked = await pickFrom({
     title: one ? `Add a file from "${one.name}" to "${owner.title}"` : `Add a file to "${owner.title}"`,
     placeholder: folders.length ? "part of the file's name or folder" : "no folder linked yet: link one first",
@@ -56,14 +100,6 @@ export async function addFileDialog(app, owner, { folderId = null } = {}) {
     fallbackFocus: () => app.focusNote(),
   });
   if (!picked?.item) return;
-  if (picked.item.id === LINK) {
-    await linkFolderDialog(app, hub);
-    return;
-  }
-  if (picked.item.id === UNLINK) {
-    await pickFolderToUnlink(app, hub);
-    return;
-  }
   await app.filesApi.attach(picked.item.id, owner.id);
   await changed(app);
   app.say(`"${picked.item.title}" added to "${owner.title}"`);
