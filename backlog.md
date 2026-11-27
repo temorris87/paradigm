@@ -208,3 +208,6 @@ Features in build order. "build feature" takes the first unchecked item.
 - [ ] Emails on tasks: drag a .msg from Outlook onto a task (or `:attach`); our own stdlib .msg
   reader (compound file) takes subject, sender and date; "Reply needed" / "Replied" on each;
   Open / Reply opens the saved .msg in Outlook.
+- [ ] `:new` and `:child` in the main window place the new note beside or under the note on
+  screen (016's `screenNoteId()`), not the hub hidden behind a page: on Today, Week or People
+  they say "E: no note on this page"; on Live they use the Live note.

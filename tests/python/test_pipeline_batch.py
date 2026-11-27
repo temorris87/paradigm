@@ -1,6 +1,7 @@
 """The batch pipeline's tools: worktrees, the batch ledger, and hooks that judge a command in the
 tree it runs in. Each test makes its own throwaway git repo in a temporary folder."""
 import json
+import os
 import pathlib
 import shutil
 import subprocess
@@ -17,6 +18,21 @@ import pipeline_batch  # noqa: E402
 import worktree  # noqa: E402
 
 GIT = shutil.which("git")
+
+# Inside a git hook (the pre-commit gate), git exports GIT_DIR, GIT_INDEX_FILE and the like. Every
+# git call here would inherit them and act on the real repository, not the throwaway one: on
+# 2026-11-27 `git init` set the real repo's core.bare and `commit` put a commit on a batch branch.
+# So the whole module runs with git's variables taken out.
+_ENV = mock.patch.dict(os.environ, {k: v for k, v in os.environ.items() if not k.startswith("GIT_")},
+                       clear=True)
+
+
+def setUpModule():
+    _ENV.start()
+
+
+def tearDownModule():
+    _ENV.stop()
 
 
 def run_git(cwd, *args):
@@ -39,6 +55,11 @@ class RepoCase(unittest.TestCase):
         (self.repo / "tools" / "x.py").write_text("x = 1\n", encoding="utf-8")
         run_git(self.repo, "add", "-A")
         run_git(self.repo, "commit", "-q", "-m", "first")
+
+
+class GitEnvironmentTest(unittest.TestCase):
+    def test_no_git_variable_reaches_the_git_calls(self):
+        self.assertEqual([k for k in os.environ if k.startswith("GIT_")], [])
 
 
 class WorktreeTest(RepoCase):
