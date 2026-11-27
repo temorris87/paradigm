@@ -72,6 +72,9 @@ static/
                          :attendee :dropattendee :decision :question :answered :reopen :with
                          :dropwith :task :template :dashboard :plan :timecode :calendar :time :oncall :hub
                          :home :live :export :trash :trashed :find),
+                         screen-note.js (the note on screen, which every "this note" command
+                         acts on: a main-window page hides the dashboard; Live is the note
+                         window's note; pure),
                          page-views.js (which page the main window shows: &home, &people,
                          &meetings, &trash, &calendar, &time, &live, &template=ID, &folder=ID,
                          &task=ID; the URL flag and Back),

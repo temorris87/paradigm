@@ -7,12 +7,13 @@
 //   openPalette(app, query = "")      app: the NotesApp; resolves when it closes
 import { goToItems, whereText } from "../notes/note-actions.js";
 import { NOTE_COMMANDS, runNoteCommand } from "../notes/commands.js";
+import { screenNoteId } from "../notes/screen-note.js";
 import { HUB_KEYS } from "../hubs/hub-keys.js";
 import { MAIN_KEYS } from "../layout/main-keys.js";
 import { TODAY_KEYS } from "../today/today-keys.js";
 import { element, openModal, restoreFocus, uniqueId } from "../ui/dom.js";
 import { uiAction, uiHints } from "../ui/ui-keys.js";
-import { commandKeys, findCommand, parseCommand, paletteGroups } from "./palette-model.js";
+import { commandContext, commandKeys, findCommand, parseCommand, paletteGroups } from "./palette-model.js";
 import { recentIds } from "./recent.js";
 
 const KEYS = commandKeys([MAIN_KEYS, HUB_KEYS, TODAY_KEYS]);
@@ -52,9 +53,9 @@ export function openPalette(app, query = "") {
       const groups = paletteGroups({ query: box.value, recent, notes, commands: NOTE_COMMANDS, keys: KEYS, window: app.role });
       items = groups.flatMap((group) => group.items);
       active = Math.min(active, Math.max(0, items.length - 1));
-      const command = box.value.trim().startsWith(":");
-      const hub = app.tree.get(app.currentId);
-      context.textContent = command && hub ? `on ${hub.title}` : "";
+      // The note a command acts on: on a page with none (Today), no label.
+      const id = screenNoteId(app);
+      context.textContent = commandContext(box.value, id === null ? null : app.tree.get(id));
       let index = 0;
       list.replaceChildren(...(groups.length ? groups.flatMap((group) => [element("p", "palette__group", group.label),
         ...group.items.map((item) => option(item, index++))]) : [element("p", "picker__empty", "Nothing matches")]));

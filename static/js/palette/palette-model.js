@@ -14,6 +14,8 @@
 //   parseCommand(text)                  ":log! x" -> { name, bang, arg } (name as typed)
 //   findCommand(commands, name)         the command an abbreviation means (as Vim: name
 //                                       starts with it and it is at least min long), or null
+//   commandContext(query, note)         "on {title}" while a command is typed, naming the note
+//                                       it acts on (screen-note.js; null: none, no label)
 import { filterItems } from "../ui/picker.js";
 
 export const PAGES = [
@@ -78,4 +80,8 @@ export function paletteGroups({ query = "", recent = [], notes = [], commands = 
   groups.push({ label: "Notes", items: filterItems(notes, text).slice(0, MAX_NOTES).map((item) => ({ ...item, kind: "note", key: `note:${item.id}` })) });
   groups.push({ label: "Pages", items: filterItems(pageItems(keys), text) });
   return groups.filter((group) => group.items.length);
+}
+
+export function commandContext(query, note) {
+  return String(query ?? "").trim().startsWith(":") && note ? `on ${note.title}` : "";
 }

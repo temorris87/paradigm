@@ -51,6 +51,18 @@ How the app behaves. Kept up to date by each feature that changes it.
   tables' `command` fields), then notes. Enter opens or runs, Shift-Enter opens in the note
   window, Tab completes a command. Buttons never show `:command` names; the palette's command
   mode is the one place they appear.
+- Note commands act on the note on screen (Tyson, 2026-11-27). In the main window a page is
+  drawn over the dashboard, which stays open under it, so every "this note" command (`:trash`,
+  `:rename`, `:parent`, the kind commands, `:inarea`, `:archive`, `:restore`, `:export`,
+  `:timecode`, `:date`, the person fields, `:addperson`, `:dropperson`, `:meeting`,
+  `:attendee`, `:decision`, `:question`, `:answered`, `:reopen`, `:with`, `:task`, `:t`, `:log`,
+  `:dashboard`) acts on the note shown (`static/js/notes/screen-note.js`), never on the hidden
+  hub: on a bare dashboard or Plan, the hub; on Live, the note window's note (the note window
+  is told, so its title, place and fields follow; `:export` takes the text the Live page shows);
+  on a task page they say "E: this page shows a task: x deletes it" (`x` / Delete still deletes
+  the task); on Today, Week, People, Meetings, Trash, a template or a Resources folder they say
+  "E: no note on this page" and change nothing. The palette's "on {title}" label names the same
+  note: none on a page without one, the Live note on Live. The note window is unchanged.
 - Main-window keys (`static/js/layout/main-keys.js`, read in the capture phase): `:` the palette,
   `gt` Today, `gw` the Week, `gn` the Live page, `gp` the plan of the project or area on the dashboard (anywhere on
   it; on another page it says to open one; `:plan` in the palette). `g` waits for a second key everywhere (as in Vim): `gg` is the
@@ -115,7 +127,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   note window, even with a key pressed while it is under way, keeps the main window where it
   is (a task page on the note says "Its note is in the trash"), and so does a note trashed
   elsewhere that the note window was showing. Trashing from the main window (`:trash`, a
-  crumb's note menu) goes to the dashboard of the note's parent (or its hub, else the first
+  crumb's note menu; on Live, `:trash` trashes the Live note, not the hub under it, whose
+  unsaved edits are kept, and the URL leaves `&live` so a reload shows the dashboard) goes to the dashboard of the note's parent (or its hub, else the first
   top-level one), never to a plain note; with no dashboard left it goes Home, and the note
   window empties and takes no typing until a note opens. With no note open in the main window
   (every hub trashed), `:trash` says "E: no note is open". A trashed note restored and opened

@@ -100,7 +100,8 @@ const app = boot({
         folder: { section: $(".folder-view"), show: (ctx) => folder.show(ctx), focus: () => folder.focus() },
         task: { section: $(".task-view"), show: (ctx) => task.show(ctx), focus: () => task.focus() },
         plan: { section: $(".plan-view"), show: (ctx) => plan.show(ctx), focus: () => plan.focus() },
-        live: { section: $(".live-view"), show: () => live.show(), focus: () => live.focus() },
+        // state: what the Live page shows, which note commands read (notes/screen-note.js).
+        live: { section: $(".live-view"), show: () => live.show(), focus: () => live.focus(), get state() { return live.state; } },
       },
       buttons: { today: $(".topbar__today"), week: $(".topbar__week"), palette: $(".topbar__palette") },
       status: $(".status-line"),

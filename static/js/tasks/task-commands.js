@@ -28,6 +28,7 @@ import { MAX_TASK_DEPTH, estimateText, parseEstimate } from "./tasks-model.js";
 import { parseTaskText } from "../notes/capture.js";
 import { nextTogether } from "../people/one-on-one.js";
 import { hubOf } from "../notes/hub-groups.js";
+import { screenNoteId } from "../notes/screen-note.js";
 import { peopleNamed } from "../people/people-commands.js";
 import { confirmDialog, formDialog } from "../ui/dialog.js";
 
@@ -214,7 +215,7 @@ export function removeTaskText(task, subtasks) {
 
 /** :task {title}: a task on the open note (due today with a "!" in front: ":task !Call Jo"). */
 export async function taskCommand(app, arg) {
-  const id = app.currentId;
+  const id = screenNoteId(app);
   if (id === null) throw new Error("E: no note is open");
   let title = arg.trim();
   if (!title) throw new Error("E471: Argument required: :task {what to do}");
@@ -227,10 +228,11 @@ export async function taskCommand(app, arg) {
 }
 
 export async function quickTaskCommand(app, arg) {
-  if (app.currentId === null) throw new Error("E: no note is open");
+  const id = screenNoteId(app);
+  if (id === null) throw new Error("E: no note is open");
   const parsed = parseTaskText(arg.trim(), app.tree, app.today());
   if (!parsed.title) throw new Error("E: :t needs some text: :t send the numbers @Tom !fri");
-  const owner = hubOf(app.tree, app.currentId) ?? app.tree.get(app.currentId);
+  const owner = hubOf(app.tree, id) ?? app.tree.get(id);
   const task = await app.tasksApi.create(owner.id, parsed.title, { due: parsed.due });
   if (parsed.delegate) await app.tasksApi.delegate(task.id, parsed.delegate.id, "");
   else if (parsed.forPerson) await app.tasksApi.setFor(task.id, parsed.forPerson.id);

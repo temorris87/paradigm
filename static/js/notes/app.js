@@ -31,6 +31,7 @@ import { hubLineControls, hubTabActions, newMeetingDialog, personDetailsDialog }
 import { HubPage } from "../hubs/hub-page.js";
 import { showBreadcrumb } from "./breadcrumb.js";
 import { registerNoteCommands, runNoteCommand } from "./commands.js";
+import { liveBodyOf, screenNoteId } from "./screen-note.js";
 import { headingLine } from "./headings.js";
 import { groupOf, hubOf, isArchived, isHub, isMeeting, isPerson, topNoteOf } from "./hub-groups.js";
 import { captureLines, captureText, parseTaskText, toPayload, topicLines } from "./capture.js";
@@ -250,6 +251,24 @@ export class NotesApp {
 
   get currentId() {
     return this.session.note?.id ?? null;
+  }
+
+  /** The note on screen, which the note commands act on (screen-note.js): in the main window
+   * a page over the dashboard hides currentId; Live shows the note window's note. */
+  screenNoteId() {
+    return screenNoteId(this);
+  }
+
+  /** A note's saved fields changed: the open note's session takes them too. */
+  updateMetaIfOpen(note) {
+    if (note.id === this.currentId) this.session.updateMeta(note);
+  }
+
+  /** A note command changed a note: this window's tree, then the other window's. On Live the
+   * note is the note window's, which shows its title and place only from its own tree. */
+  async noteChanged(what = ["notes"]) {
+    await this.refreshTree();
+    this.changes.send({ type: "changed", what });
   }
 
   listen() {
@@ -486,6 +505,9 @@ export class NotesApp {
     if (leftView) {
       this.views.hide();
       if (history === "push" && id === this.currentId) this.history.pushState({}, "", noteUrl(id));
+      // switchTo skips the note already open, so the view's flag must leave the URL here
+      // (:trash on Live goes back to the hub under the page).
+      if (history === "replace" && id === this.currentId) this.history.replaceState({}, "", noteUrl(id));
     }
     const result = await this.switchTo(id, { history, discard, heading });
     // The open note's changes couldn't be saved: it stays, but the URL must leave the view.
@@ -788,9 +810,9 @@ export class NotesApp {
 
   async renameCommand(title) {
     if (!title.trim()) throw new Error("E471: Argument required: the new title");
-    const note = await this.api.rename(this.currentId, title);
-    this.session.updateMeta(note);
-    await this.refreshTree();
+    const note = await this.api.rename(this.screenNoteId(), title);
+    this.updateMetaIfOpen(note);
+    await this.noteChanged();
     this.say(`Renamed to "${note.title}"`);
   }
 
@@ -799,28 +821,28 @@ export class NotesApp {
     if (!text) throw new Error("E471: Argument required: the note to put this one under, or /");
     let parentId = null;
     if (text !== "/") {
-      const found = resolveLink(this.tree, this.currentId, text);
+      const found = resolveLink(this.tree, this.screenNoteId(), text);
       if (!found.note) throw new Error(explainMissing(text, found));
       parentId = found.note.id;
     }
     await this.moveUnder(parentId);
   }
 
-  /** Puts the open note under another note (null: the top level). */
+  /** Puts the note on screen under another note (null: the top level). */
   async moveUnder(parentId) {
-    const note = await this.api.move(this.currentId, parentId);
-    this.session.updateMeta(note);
-    await this.refreshTree();
+    const note = await this.api.move(this.screenNoteId(), parentId);
+    this.updateMetaIfOpen(note);
+    await this.noteChanged();
     this.say(`Now at ${this.tree.pathText(note.id)}`);
   }
 
   async kindCommand(group) {
-    const before = this.session.note;
-    if (!before) throw new Error("E: no note is open");
-    const wasNested = this.tree.parentId(before.id) !== null;
-    const note = await this.api.setKind(before.id, group.kind);
-    this.session.updateMeta(note);
-    await this.refreshTree();
+    const id = this.screenNoteId();
+    if (id === null) throw new Error("E: no note is open");
+    const wasNested = this.tree.parentId(id) !== null;
+    const note = await this.api.setKind(id, group.kind);
+    this.updateMetaIfOpen(note);
+    await this.noteChanged();
     const moved = wasNested ? " moved to the top level and" : "";
     this.say(`"${note.title}"${moved} is now ${group.asWhat}`);
   }
@@ -878,7 +900,7 @@ export class NotesApp {
   /** :dashboard, the Dashboard button (the note window): the open note's hub (or person) on
    * the main window. */
   dashboardCommand() {
-    const id = this.currentId;
+    const id = this.screenNoteId();
     const target = id === null ? null : this.isDashboard(id) ? id : hubOf(this.tree, id)?.id ?? null;
     if (this.role === "main") {
       if (target !== null) this.guard(this.open(target));
@@ -998,43 +1020,43 @@ export class NotesApp {
     const text = arg.trim();
     let areaId = null;
     if (text) {
-      const found = resolveLink(this.tree, this.currentId, text);
+      const found = resolveLink(this.tree, this.screenNoteId(), text);
       if (!found.note) throw new Error(explainMissing(text, found));
       areaId = found.note.id;
     }
-    await this.setAreaOf(this.currentId, areaId);
+    await this.setAreaOf(this.screenNoteId(), areaId);
   }
 
   /** Puts a project in an area (null: in none). */
   async setAreaOf(id, areaId) {
     const note = await this.api.setArea(id, areaId);
-    if (note.id === this.currentId) this.session.updateMeta(note);
-    await this.refreshTree();
+    this.updateMetaIfOpen(note);
+    await this.noteChanged();
     const where = areaId === null ? "in no area now" : `now in ${this.tree.get(areaId).title}`;
     this.say(`"${note.title}" is ${where}`);
   }
 
   async archiveCommand() {
-    const id = this.currentId;
+    const id = this.screenNoteId();
     if (id === null) throw new Error("E: no note is open");
     const top = topNoteOf(this.tree, id);
     if (top.id !== id) throw new Error(`E: only a whole hub is archived: this note is in "${top.title}" (open it, then :archive)`);
     if (top.archived_at) throw new Error(`E: "${top.title}" is already archived (:restore brings it back)`);
     const { note, inside } = await this.api.archive(id, true);
-    this.session.updateMeta(note);
-    await this.refreshTree();
+    this.updateMetaIfOpen(note);
+    await this.noteChanged();
     const notes = inside === 0 ? "" : ` with ${inside} note${inside === 1 ? "" : "s"}`;
     this.say(`"${note.title}" archived${notes} (Restore is on its menu)`);
   }
 
   async restoreCommand() {
-    const id = this.currentId;
+    const id = this.screenNoteId();
     if (id === null) throw new Error("E: no note is open");
     const top = topNoteOf(this.tree, id);
     if (!top.archived_at) throw new Error(`E: "${top.title}" is not archived`);
     const { note } = await this.api.archive(top.id, false);
-    if (note.id === id) this.session.updateMeta(note);
-    await this.refreshTree();
+    this.updateMetaIfOpen(note);
+    await this.noteChanged();
     this.say(`"${note.title}" restored to ${groupLabel(this.tree, note.id)}`);
   }
 
@@ -1087,16 +1109,21 @@ export class NotesApp {
   }
 
   async exportCommand() {
-    const id = this.currentId;
+    const id = this.screenNoteId();
     if (id === null) throw new Error("E: no note is open");
     this.say("Exporting…");
-    const { file, count } = await exportNote({ tree: this.tree, rootId: id, rootBody: this.editor.value, notesApi: this.api });
+    // The editor holds the open note's text; the Live page holds the note window's as typed
+    // there, which may be ahead of its last save.
+    const rootBody = id === this.currentId ? this.editor.value
+      : liveBodyOf(this, id) ?? (await this.api.get(id)).body;
+    const { file, count } = await exportNote({ tree: this.tree, rootId: id, rootBody, notesApi: this.api });
     const others = count === 0 ? "" : ` with ${count} linked note${count === 1 ? "" : "s"}`;
-    this.say(`"${this.session.note.title}" exported${others} as ${file}`);
+    this.say(`"${this.tree.get(id)?.title ?? ""}" exported${others} as ${file}`);
   }
 
   async trashCommand(recursive) {
-    const id = this.currentId;
+    // The note on screen: on Live, the note window's note, not the hub under the page.
+    const id = this.screenNoteId();
     // With no hub left the main window shows no note: say so, rather than send id null.
     if (id === null) throw new Error("E: no note is open");
     // The main window goes to a dashboard: a plain note would open in the note window and
@@ -1104,12 +1131,14 @@ export class NotesApp {
     const next = this.role === "main" ? this.dashboardAfter(this.tree.parentId(id), id) : this.nextAfterDeleting(id);
     await this.api.remove(id, recursive);
     this.events.dispatchEvent(new CustomEvent("trashed", { detail: { id, next } }));
-    const title = this.session.note.title;
-    this.session.close();
+    const title = this.tree.get(id)?.title ?? this.session.note?.title ?? "";
+    if (id === this.currentId) this.session.close();
     await this.refreshTree();
     // The other window may show a page about this note (a task page): it redraws on this.
     this.changes.send({ type: "changed", what: ["notes", "tasks"] });
-    if (next !== null) await this.open(next, { history: "replace", discard: true });
+    // Only the trashed note's edits are thrown away: on Live, the hub under the page is
+    // another note, whose unsaved edits are saved as usual.
+    if (next !== null) await this.open(next, { history: "replace", discard: id === this.currentId });
     // No dashboard left: Home, rather than the gone note's page with nothing behind it.
     else if (this.role === "main") this.showView("home", "push");
     else this.showNoNote();
