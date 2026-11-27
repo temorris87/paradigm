@@ -15,6 +15,7 @@ export const HUB_KEYS = [
   { keys: ["Enter"], action: "open", help: "open the row's note (a task: its own page; a file: open it); on a heading, fold or unfold it; Show all" },
   { keys: ["z"], action: "fold", help: "fold or unfold the section; on a task, open or close it in place (its notes and subtasks)" },
   { keys: ["a"], action: "add", help: "the section's add button: new note, add person, new meeting..." },
+  { keys: ["m"], action: "menu", help: "the section's \"···\" menu (Files: Search linked files…, Link a folder…, Unlink a folder…)" },
   { keys: ["x", "Delete"], action: "remove", help: "take the row off (a person, a project from an area, a file); delete a task" },
   { keys: ["r"], action: "second", help: "the row's other button: Role… on a person, Answer… on a question" },
   { keys: [" "], action: "toggle", help: "tick a task (or a milestone) done, or reopen it" },

@@ -7,20 +7,22 @@
 //     { group: "File as" },                           // a label over the next items
 //     "separator",
 //     { label: "Move to trash…", danger: true, disabled: false, hint: "…", run() },
-//   ], { label: "Note actions", onClose(), fallbackFocus() });
+//   ], { label: "Note actions", onClose(), fallbackFocus(), back() });
 //
 // Only one menu is open at a time. It closes on Escape (the focus goes back to the button, or
 // to fallbackFocus() when the page was redrawn under the menu and the button is gone),
 // a click outside, the focus leaving it, or a choice (then the chosen action decides where the
-// focus goes). Its keys are in ui-keys.js.
+// focus goes). back(), when given, is where the focus belongs instead of the button: Escape
+// calls it, and so does a choice before its action runs (a dialog it opens then comes back
+// there, not to the gone menu item). Its keys are in ui-keys.js.
 import { element, uniqueId } from "./dom.js";
 import { uiAction } from "./ui-keys.js";
 
 let current = null;
 
-export function openMenu(anchor, entries, { label = "Actions", onClose = () => {}, fallbackFocus = () => {} } = {}) {
+export function openMenu(anchor, entries, { label = "Actions", onClose = () => {}, fallbackFocus = () => {}, back = null } = {}) {
   closeMenu();
-  current = new Menu(anchor, entries, { label, onClose, fallbackFocus });
+  current = new Menu(anchor, entries, { label, onClose, fallbackFocus, back });
   return current;
 }
 
@@ -34,10 +36,11 @@ export function openedMenu() {
 }
 
 class Menu {
-  constructor(anchor, entries, { label, onClose, fallbackFocus }) {
+  constructor(anchor, entries, { label, onClose, fallbackFocus, back }) {
     this.anchor = anchor;
     this.onClose = onClose;
     this.fallbackFocus = fallbackFocus;
+    this.back = back;
     this.node = element("div", "menu");
     this.node.id = uniqueId("menu");
     this.node.setAttribute("role", "menu");
@@ -124,6 +127,7 @@ class Menu {
     const item = this.items[index];
     if (!item || item.disabled) return;
     this.close({ refocus: false });
+    this.back?.();
     item.run?.();
   }
 
@@ -133,7 +137,8 @@ class Menu {
     document.removeEventListener("pointerdown", this.onPointer, true);
     this.anchor.setAttribute("aria-expanded", "false");
     this.node.remove();
-    if (refocus && this.anchor.isConnected) this.anchor.focus();
+    if (refocus && this.back) this.back();
+    else if (refocus && this.anchor.isConnected) this.anchor.focus();
     else if (refocus) this.fallbackFocus();
     this.onClose();
   }

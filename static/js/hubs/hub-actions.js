@@ -4,7 +4,8 @@
 //
 //   const controls = hubLineControls(app)    for HubPage({ controls })
 //   const tabActions = hubTabActions(app)    for HubPage({ tabActions }): the sections' add
-//                                            buttons (hub-sections.js add) and row buttons
+//                                            buttons (hub-sections.js add), "···" menus
+//                                            (hub-sections.js menu) and row buttons
 //                                            (role, remove, answer)
 //   newMeetingDialog(app, owner?) / newRecordDialog(app, kind, owner)   also from the pages
 //   answerDialog(app, question)              the answer, written into the question's note
@@ -29,7 +30,9 @@ import { addTopicDialog, raiseTopic, removeTopic } from "../people/topic-command
 import { addTask, delegateDialog, editTaskDialog, newTaskDialog, removeTaskDialog, setTaskDone, takeBack } from "../tasks/task-commands.js";
 import { editDatesDialog, historyDialog, newMilestoneDialog, newPhaseDialog, newPlanTemplateDialog,
   setMilestoneDone } from "../plan/plan-commands.js";
-import { addFileDialog, detachFile, openFile, unlinkFolderDialog } from "../files/file-commands.js";
+import { addFileDialog, detachFile, linkFolderDialog, openFile, pickFolderToUnlink, searchFilesDialog,
+  unlinkFolderDialog } from "../files/file-commands.js";
+import { foldersOf } from "../files/files-model.js";
 import { confirmDialog } from "../ui/dialog.js";
 
 // The person dialog's fields, in order (paradigm/notes/people.py PERSON_FIELDS).
@@ -292,8 +295,13 @@ export function hubTabActions(app) {
     run: (values) => linkPerson(app, hub, person, values.role.trim()),
     ...back,
   });
+  const menus = {
+    files: (owner, anchor, toList) => openMenu(anchor, filesMenu(app, owner), { label: "Files", ...back, back: toList }),
+  };
   return {
     add: (tabKey, owner) => app.guard(add[tabKey]?.(owner)),
+    // A section heading's "···" button (anchor): its menu; toList() puts the focus back on the list.
+    menu: (tabKey, owner, anchor, toList) => menus[tabKey]?.(owner, anchor, toList),
     // Keys about the page's owner: L, gp.
     command: (action, owner) => {
       if (action === "logStatus") return app.guard(logStatusDialog(app, statusHubOf(app, owner?.id)));
@@ -313,7 +321,7 @@ export function hubTabActions(app) {
       if (key === "statusHistory") return app.guard(statusHistoryDialog(app, owner));
       if (key === "addSubtask") return app.guard(newTaskDialog(app, owner, app.tasks.get(row.addSubtask)));
       if (key === "openFile") return app.guard(openFile(app, row.file));
-      if (key === "openFolder") return app.guard(addFileDialog(app, owner, { folderId: row.folder }));
+      if (key === "openFolder") return app.guard(searchFilesDialog(app, owner, { folderId: row.folder }));
       if (key === "openTemplate") return app.showTemplate(row.template);
       if (key === "openTask") return app.guard(app.showTask(row.task));
       if (key !== "role") return undefined;
@@ -321,6 +329,19 @@ export function hubTabActions(app) {
       return app.guard(roleOn(hub, person, row.role ?? ""));
     },
   };
+}
+
+/** The Files section's "···" menu: the text-search picker and the folder dialogs. */
+function filesMenu(app, owner) {
+  const hub = hubOf(app.tree, owner.id);
+  const noHub = `"${owner.title}" is in no hub: file it in a project or an area first`;
+  const hasFolders = Boolean(hub && foldersOf(app.files, hub.id).length);
+  return [
+    { label: "Search linked files…", run: () => app.guard(searchFilesDialog(app, owner)) },
+    { label: "Link a folder…", disabled: !hub, hint: hub ? "" : noHub, run: () => app.guard(linkFolderDialog(app, hub)) },
+    { label: "Unlink a folder…", disabled: !hasFolders, hint: hasFolders ? "" : hub ? `"${hub.title}" has no folder linked` : noHub,
+      run: () => app.guard(pickFolderToUnlink(app, hub)) },
+  ];
 }
 
 function removeTemplateDialog(app, templateId) {

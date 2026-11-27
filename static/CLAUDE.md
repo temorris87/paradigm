@@ -218,7 +218,12 @@ static/
                          page in the main window, &folder=ID)
   js/files/              api.js, files-model.js (a page's files; folders of a hub and its
                          area; a folder's summary and the unlink confirm's text; pure),
-                         file-commands.js (link and unlink a folder, add, open, remove)
+                         file-commands.js (Add file…: the server's native file dialog, then
+                         attach, offering to link a folder not linked yet; Search linked
+                         files…, link and unlink a folder, open, remove), folder-browser.js
+                         (the in-app folder browser when the native dialog can't open),
+                         folder-browser-model.js (its rows, paths, filter; pure),
+                         folder-browser-keys.js (THE folder browser key table)
   js/tasks/              api.js, tasks-model.js (a page's tasks with subtask counts at every
                          level, never rolled up past their project; subtasks nest up to
                          MAX_TASK_DEPTH; taskTree, J/K's moveTarget; waiting on; the calendar's

@@ -10,7 +10,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Dict, Iterator, List, Optional
 
-__all__ = ["BadFolder", "onedrive_roots", "clean_folder", "list_files", "list_folders", "inside", "open_file"]
+__all__ = ["BadFolder", "onedrive_roots", "clean_folder", "clean_file", "list_files", "list_folders", "list_entries",
+           "parent_of", "inside", "open_file"]
 
 # More than any project folder holds; past this a folder is read only this far.
 MAX_FILES = 5000
@@ -50,6 +51,64 @@ def clean_folder(raw: object) -> Path:
     if not path.is_dir():
         raise BadFolder('"{}" is not a folder on this computer'.format(text))
     return path.resolve()
+
+
+def clean_file(raw: object) -> Path:
+    """An existing file on this computer, as an absolute path. A path with ".." in it is
+    refused outright, so it cannot climb out of a folder and back into another."""
+    if not isinstance(raw, str) or not raw.strip() or len(raw) > MAX_PATH_LENGTH:
+        raise BadFolder("Give the file's full path")
+    text = raw.strip().strip('"')
+    if ".." in text.replace("\\", "/").split("/"):
+        raise BadFolder('A file\'s path may not hold ".."')
+    path = Path(text)
+    if not path.is_absolute():
+        raise BadFolder("Give the file's full path (it starts with a drive, like C:\\, or with /)")
+    if not path.is_file():
+        raise BadFolder('"{}" is not a file on this computer'.format(text))
+    return path.resolve()
+
+
+def list_entries(folder: Path) -> Dict[str, List]:
+    """One level of a folder, for the folder browser: {folders: [absolute paths], files:
+    [{name, size, modified}]}, each sorted by name, up to MAX_FOLDERS and MAX_FILES."""
+    folders: List[str] = []
+    files: List[Dict] = []
+    try:
+        entries = sorted(os.scandir(folder), key=lambda entry: entry.name.lower())
+    except OSError:
+        entries = []
+    for entry in entries:
+        if not _wanted(entry.name):
+            continue
+        try:
+            if entry.is_dir(follow_symlinks=False):
+                if len(folders) < MAX_FOLDERS:
+                    folders.append(str(Path(entry.path)))
+            elif entry.is_file(follow_symlinks=False) and len(files) < MAX_FILES:
+                files.append(_file_entry(Path(entry.path), entry.stat()))
+        except OSError:
+            continue
+    return {"folders": folders, "files": files}
+
+
+def parent_of(folder: Path, roots: List[Path]) -> Optional[Path]:
+    """The folder above, or None at one of the roots (or at the top of a drive)."""
+    if any(folder == _resolved(root) for root in roots) or folder.parent == folder:
+        return None
+    return folder.parent
+
+
+def _resolved(path: Path) -> Path:
+    try:
+        return path.resolve()
+    except OSError:
+        return path
+
+
+def _file_entry(path: Path, stat: os.stat_result) -> Dict:
+    return {"name": path.name, "size": stat.st_size,
+            "modified": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(timespec="seconds")}
 
 
 def _wanted(name: str) -> bool:

@@ -71,6 +71,24 @@ test("menu: Escape after the page redrew its button gives the focus to fallbackF
   }
 }));
 
+test("menu: back() takes the focus on Escape and before a choice runs (a dialog then returns there)", () => withAnchor((anchor) => {
+  const home = document.createElement("div");
+  home.tabIndex = 0;
+  document.body.append(home);
+  try {
+    const back = () => home.focus();
+    openMenu(anchor, [{ label: "One", run: () => {} }], { back });
+    key(document.querySelector(".menu"), "Escape");
+    assertEqual(document.activeElement, home, "Escape: back(), not the button");
+    let focusedWhenRun = null;
+    openMenu(anchor, [{ label: "One", run: () => { focusedWhenRun = document.activeElement; } }], { back });
+    key(document.activeElement, "Enter");
+    assertEqual(focusedWhenRun, home, "the chosen action starts from back()'s focus");
+  } finally {
+    home.remove();
+  }
+}));
+
 test("menu: opening another closes the first; a click outside closes it", () => withAnchor((anchor) => {
   openMenu(anchor, [{ label: "One", run: () => {} }]);
   openMenu(anchor, [{ label: "Two", run: () => {} }]);

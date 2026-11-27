@@ -35,7 +35,7 @@ paradigm/                Python package
                          /api/plan/dates; /api/plan_template/...: create, items, tasks,
                          apply, save); templates.py (/api/template/create: note templates);
                          files.py (/api/files, /api/folders/browse, /api/folder/link|unlink|
-                         scan, /api/file/attach|detach|open: OneDrive files);
+                         scan, /api/file/attach|detach|open|pick|attach_path: OneDrive files);
                          topics.py (/api/person_topics, /api/person_topic/create|raise|
                          remove); status.py (/api/status_logs, /api/status_log/create|update|
                          remove; stale_days from Config);
@@ -119,7 +119,10 @@ paradigm/                Python package
                          the rest; clear)
   files/                 folders.py (a synced OneDrive folder: OneDrive roots from the
                          environment, listing files and folders, paths kept inside the
-                         folder, opening a file with this computer's program)
+                         folder, opening a file with this computer's program; one level
+                         of a folder for the folder browser), native_pick.py (the OS file
+                         dialog through tkinter in a child process; exit 3 or any failure:
+                         Paradigm's folder browser; the runner injected for tests)
   calendar/              ics.py (reads Outlook's .ics: unfolding, its own VTIMEZONE rules,
                          then this computer's local time; pure), import_rules.py (skipped,
                          cancelled, moved, title, agenda, join link, attendees; pure),
