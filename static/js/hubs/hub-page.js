@@ -194,6 +194,11 @@ export class HubPage {
     this.redraw();
   }
 
+  /** The cursor on a note's row in the sections, where they list it; false when none does. */
+  selectNote(id) {
+    return this.panel.selectNote(id);
+  }
+
   focus() {
     if (!this.hasPanel) return;
     this.sheet?.open();

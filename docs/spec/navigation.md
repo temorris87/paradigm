@@ -102,6 +102,19 @@ How the app behaves. Kept up to date by each feature that changes it.
   empty sections share one "Nothing yet:" line at the foot of their lane (in the note window
   too). ←/→ cross between the lanes. Under 1400 px the lanes stack. A hub's linked folders
   are read again when its dashboard opens.
+- A plain note's URL in the main window (Tyson, 2026-11-27; `mainFromUrl` in
+  `static/js/notes/app.js`): `/?note=<id>` of a note that is neither a hub nor a person (a
+  bookmark, a typed URL, Back or Forward) shows that note's hub dashboard, or Home when it has
+  no hub; never the first dashboard found. The address is rewritten (`replaceState`, after Back
+  and Forward too) to what is shown, so it never names a note that isn't on screen, and the
+  status line says `"<title>" is a note: Enter on it opens the note window`; the cursor goes to
+  the note's row where the hub's Notes section lists it. The main window doesn't open the note
+  window itself: the browser blocks a popup no key asked for. The note on screen, the
+  session's note and the address agree, so `:trash` acts on the hub shown, or says "E: no note
+  on this page" on Home. An unknown or trashed id shows Home; a page flag in the URL (a task's
+  `&task`) keeps its page. A hub's or a person's own URL opens it quietly, as before. Back and
+  Forward clear the main window's status line before the page they show sets its own, so a
+  message about the page left behind (an error on it) doesn't stay.
 - Live page (Tyson, 2026-11-26; `&live`, `static/js/live/`): the main window shows the note
   open in the note window, rendered as on a dashboard (math, Mermaid, images, links) under its
   breadcrumb title, updated as it is typed (every keystroke, not on save, at most every 50 ms),
@@ -121,7 +134,10 @@ How the app behaves. Kept up to date by each feature that changes it.
   Open note window button; the note window closed: the last view stays, with "The note window
   is closed"; trashed: "Moved to trash"; empty: "Empty note". Unchanged blocks are not drawn
   again, so math and diagrams don't redraw on each keystroke.
-- Trash: trashing a note (its menu, or `:trash`) takes the notes under it too; they stay in the
+- Trash: trashing a note (its menu, or `:trash!`) takes the notes under it too; `:trash` on a
+  note with notes under it says "E: The note has notes under it: :trash! deletes them too"
+  without asking the server (which refuses it as well, but the browser's console would list
+  that as a failed load; the server still decides the rest). Trashed notes stay in the
   Trash for a week, then are deleted for good (with their person, meeting, record rows and
   links) when Paradigm starts or stops. The Trash page (`&trash`; the Trash button at the foot
   of the notes panel, or `:trashed`) lists them; Enter or a click restores one with the notes

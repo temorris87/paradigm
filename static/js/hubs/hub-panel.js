@@ -284,6 +284,16 @@ export class HubPanel {
     this.markActive();
   }
 
+  /** Puts the cursor on a note's row in the Notes section, if it is listed there (open). */
+  selectNote(id) {
+    const index = this.options.findIndex((option) => option.type === "row" && option.section.key === "notes" && option.row.id === id);
+    if (index < 0) return false;
+    // Touched: the next draw keeps this row rather than going back to the first task.
+    this.touched = true;
+    this.moveTo(index);
+    return true;
+  }
+
   markActive() {
     const nodes = this.list.querySelectorAll("[role=option]");
     nodes.forEach((node, index) => node.setAttribute("aria-selected", String(index === this.active)));
