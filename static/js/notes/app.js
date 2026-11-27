@@ -31,7 +31,7 @@ import { hubLineControls, hubTabActions, newMeetingDialog, personDetailsDialog }
 import { HubPage } from "../hubs/hub-page.js";
 import { showBreadcrumb } from "./breadcrumb.js";
 import { registerNoteCommands, runNoteCommand } from "./commands.js";
-import { liveBodyOf, screenNoteId } from "./screen-note.js";
+import { NO_NOTE, liveBodyOf, screenNoteId } from "./screen-note.js";
 import { headingLine } from "./headings.js";
 import { groupOf, hubOf, isArchived, isHub, isMeeting, isPerson, topNoteOf } from "./hub-groups.js";
 import { captureLines, captureText, parseTaskText, toPayload, topicLines } from "./capture.js";
@@ -765,8 +765,11 @@ export class NotesApp {
 
   async createCommand(title, where) {
     if (!title.trim()) throw new Error("E471: Argument required: the new note's title");
-    const note = this.session.note;
-    const parentId = where === "under" ? note.id : this.tree.parentId(note.id);
+    // The note on screen, not the hub a main-window page hides; none open at all (an empty
+    // database) is the same refusal as a page with no note.
+    const id = this.screenNoteId();
+    if (id === null) throw new Error(NO_NOTE);
+    const parentId = where === "under" ? id : this.tree.parentId(id);
     await this.createAndOpen(parentId, title);
   }
 
