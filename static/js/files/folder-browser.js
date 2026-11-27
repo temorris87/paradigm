@@ -45,6 +45,15 @@ export function browseForFile({ api, start = null, title = "Add a file", fallbac
     // at: the folder shown, or null while the roots are listed.
     let state = { at: null, parent: null, roots: [], all: [], rows: [], active: 0 };
     let done = false;
+    // Counts the folders asked for, so only the latest listing is drawn.
+    let shown = 0;
+    // A filter being typed while the folder loads stays, and applies to the new listing;
+    // hiding it while it has the focus would leave the focus on the page body.
+    const clearFilter = () => {
+      if (document.activeElement === filter) return;
+      filter.value = "";
+      filter.hidden = true;
+    };
 
     const draw = () => {
       const keep = state.rows[state.active]?.path;
@@ -87,17 +96,18 @@ export function browseForFile({ api, start = null, title = "Add a file", fallbac
 
     /** Shows a folder; on an error the folder shown stays, with the server's message. */
     const load = async (path, { select = null } = {}) => {
+      const mine = ++shown;
       let listing;
       try {
         listing = await api.browse(path);
       } catch (failure) {
-        say(failure.message);
+        if (mine === shown) say(failure.message);
         return false;
       }
-      if (done) return true;
+      // A slower answer for a folder left since (fast keys on a slow OneDrive) is dropped.
+      if (done || mine !== shown) return true;
       say(null);
-      filter.value = "";
-      filter.hidden = true;
+      clearFilter();
       const all = entriesOf(listing);
       const at = all.findIndex((entry) => entry.path === select);
       state = { at: listing.path ?? path, parent: listing.parent ?? null, roots: listing.roots ?? state.roots, all, rows: [],
@@ -106,8 +116,8 @@ export function browseForFile({ api, start = null, title = "Add a file", fallbac
       return true;
     };
     const showRoots = (select = null) => {
-      filter.value = "";
-      filter.hidden = true;
+      shown += 1;
+      clearFilter();
       const all = rootEntries(state.roots);
       state = { ...state, at: null, parent: null, all, rows: [], active: Math.max(0, all.findIndex((entry) => entry.path === select)) };
       draw();

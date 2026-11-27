@@ -1,6 +1,7 @@
 // The key-hint bar (static/js/ui/key-hints.js), each view's table (layout/view-keys.js) and
 // the ? list (ui/keys-dialog.js).
 import { CALENDAR_KEYS } from "../../static/js/calendar/calendar-keys.js";
+import { FOLDER_BROWSER_KEYS } from "../../static/js/files/folder-browser-keys.js";
 import { GANTT_KEYS } from "../../static/js/gantt/gantt-keys.js";
 import { HUB_KEYS } from "../../static/js/hubs/hub-keys.js";
 import { MAIN_KEYS, mainAction } from "../../static/js/layout/main-keys.js";
@@ -18,7 +19,7 @@ import { openKeysDialog } from "../../static/js/ui/keys-dialog.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
 const TABLES = { MAIN_KEYS, TODAY_KEYS, HUB_KEYS, CALENDAR_KEYS, TIME_KEYS, ONCALL_KEYS, PAGE_KEYS, TASK_PAGE_KEYS, GANTT_KEYS,
-  FOLDER_KEYS, UI_KEYS, TRIAGE_KEYS };
+  FOLDER_KEYS, UI_KEYS, TRIAGE_KEYS, FOLDER_BROWSER_KEYS };
 const VIEWS = [null, "home", "people", "meetings", "trash", "template", "folder", "task", "plan", "live"];
 const WEEK_TABS = ["plan", "timesheet", "settings", "oncall"];
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));

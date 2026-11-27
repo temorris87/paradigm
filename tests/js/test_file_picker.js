@@ -247,6 +247,58 @@ test("folder browser: h at a root lists the roots; Esc cancels and the focus goe
   assertEqual(said, []);
 }));
 
+// A slow folder (OneDrive on the work PC): its answer is held until release() is called.
+function slowBrowse(app, slowPath) {
+  const fast = app.filesApi.browse;
+  let release = null;
+  app.filesApi.browse = (path = null) => path === slowPath
+    ? new Promise((resolve) => { release = () => resolve(fast(path)); })
+    : fast(path);
+  return () => release();
+}
+
+test("folder browser: a filter typed while a folder loads keeps the focus and applies to it", () => withSectionFocus(async () => {
+  const { app } = fakeApp({ pick: { path: null, fallback: "browser", start: "/od/Pilot" }, listings: LISTINGS });
+  const release = slowBrowse(app, "/od/Pilot/Design");
+  const done = addFileDialog(app, app.tree.get(2));
+  await ticks();
+  const dialog = document.querySelector("dialog.folder-browser");
+  const list = dialog.querySelector("[role=listbox]");
+  list.dispatchEvent(key("Enter"));
+  list.dispatchEvent(key("/"));
+  const filter = dialog.querySelector(".folder-browser__filter");
+  filter.value = "sket";
+  filter.dispatchEvent(new Event("input"));
+  release();
+  await ticks();
+  assertEqual(dialog.querySelector(".folder-browser__path").textContent, "/od/Pilot/Design");
+  assertEqual(document.activeElement, filter, "the filter keeps the focus");
+  assertTrue(!filter.hidden, "and stays shown");
+  assertEqual(rowTitles(dialog), ["sketch.png"], "its text filters the folder that arrived");
+  filter.dispatchEvent(key("Escape"));
+  list.dispatchEvent(key("Escape"));
+  assertEqual(await done, null);
+}));
+
+test("folder browser: a slower listing for a folder left since is dropped", () => withSectionFocus(async () => {
+  const { app } = fakeApp({ pick: { path: null, fallback: "browser", start: "/od/Pilot" }, listings: LISTINGS });
+  const release = slowBrowse(app, "/od/Pilot/Design");
+  const done = addFileDialog(app, app.tree.get(2));
+  await ticks();
+  const dialog = document.querySelector("dialog.folder-browser");
+  const list = dialog.querySelector("[role=listbox]");
+  list.dispatchEvent(key("Enter"));
+  list.dispatchEvent(key("h"));
+  await ticks();
+  assertEqual(dialog.querySelector(".folder-browser__path").textContent, "/od");
+  release();
+  await ticks();
+  assertEqual(dialog.querySelector(".folder-browser__path").textContent, "/od", "Design's late answer is not drawn");
+  assertEqual(rowTitles(dialog), ["📁 Pilot"]);
+  list.dispatchEvent(key("Escape"));
+  assertEqual(await done, null);
+}));
+
 test("folder browser: a start folder it can't read opens on the roots", () => withSectionFocus(async () => {
   const { app } = fakeApp({ pick: { path: null, fallback: "browser", start: "/gone" }, listings: LISTINGS });
   const done = addFileDialog(app, app.tree.get(2));

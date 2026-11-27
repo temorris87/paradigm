@@ -183,8 +183,8 @@ Features in build order. "build feature" takes the first unchecked item.
 - [x] Nord Light, the default theme: `themes/nord-light.css` from the Figma "Paradigm UI"
   variables (Foundations page), text colors at 4.5:1 or better; dark stays as a file, out of the
   table. (done 2026-11-27)
-- [ ] Shared look from the redesign: status chips (state and kind tones), the key-hint bar at
-  the foot of each view, one focus ring, menus and dialogs on the overlay surface.
+- [x] Shared look from the redesign: status chips (state and kind tones), the key-hint bar at
+  the foot of each view, one focus ring, menus and dialogs on the overlay surface. (done 2026-11-27)
 - [ ] People and the person page as in Figma (People, Person · Ada Park): Waiting on / I owe
   aligned on the 3-column grid; "Next 1:1" counts only meetings still to come.
 - [ ] Week as in Figma (Week · imported / not imported): calendar import is file-only. With no
@@ -201,18 +201,18 @@ Features in build order. "build feature" takes the first unchecked item.
   `\d` on a line open a capture sheet docked at the foot of the editor (who, I owe / they owe,
   follow-up day; Enter / Tab / Esc) and replace the `T:` `Q:` `D:` syntax; the meeting page shows
   "Agreed in this meeting". Old `T:` lines stay plain text.
-- [ ] Files: "Add file…" opens the Windows file picker (tkinter's dialog in its own process,
+- [x] Files: "Add file…" opens the Windows file picker (tkinter's dialog in its own process,
   starting in the hub's linked OneDrive folder) in place of the text-search picker; a file from
   a folder not linked yet offers to link it. If tkinter is missing, a folder browser inside
-  Paradigm.
-- [ ] Emails on tasks: drag a .msg from Outlook onto a task (or `:attach`); our own stdlib .msg
+  Paradigm. (done 2026-11-27)
+- [x] Emails on tasks: drag a .msg from Outlook onto a task (or `:attach`); our own stdlib .msg
   reader (compound file) takes subject, sender and date; "Reply needed" / "Replied" on each;
-  Open / Reply opens the saved .msg in Outlook.
-- [ ] `:new` and `:child` in the main window place the new note beside or under the note on
+  Open / Reply opens the saved .msg in Outlook. (done 2026-11-27)
+- [x] `:new` and `:child` in the main window place the new note beside or under the note on
   screen (016's `screenNoteId()`), not the hub hidden behind a page: on Today, Week or People
-  they say "E: no note on this page"; on Live they use the Live note.
-- [ ] A plain note's URL opened straight in the main window (`/?note=16`) leaves the note before
+  they say "E: no note on this page"; on Live they use the Live note. (done 2026-11-27)
+- [x] A plain note's URL opened straight in the main window (`/?note=16`) leaves the note before
   it as the note on screen, so `:trash` there trashed that one (Ada Park, in a browser check on
-  sample data). The note on screen must follow what the main window shows.
+  sample data). The note on screen must follow what the main window shows. (done 2026-11-27)
 - [ ] Week, Timesheet tab at 1400 px wide: the right-hand panel ("Check before you submit", "This
   week off", "Not counted") is drawn over the hours grid's Thu, Fri and Total columns.

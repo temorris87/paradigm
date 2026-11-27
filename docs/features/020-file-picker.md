@@ -146,6 +146,12 @@ or `browser` mode.
 - The browser's pure part is its own module, `static/js/files/folder-browser-model.js`.
 - Enter on a folder row opens Search linked files over that folder (it opened the old Add file
   picker).
+- Fixed after the batch merge (browser re-check, 2026-11-27): with fast keys on a slow folder,
+  the browser once lost the focus and once drew the wrong folder.
+  - Only the latest folder asked for is drawn; a slower answer for a folder already left is
+    dropped.
+  - A filter being typed while a folder loads keeps the focus and filters the new listing.
+  - Tests: the two "folder browser: … loads" cases in `tests/js/test_file_picker.js`.
 
 ## Not in this feature
 - Files on tasks: the Task page item.
