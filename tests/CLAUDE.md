@@ -21,9 +21,7 @@ tests/js/                index.html runner, harness.js, fakes.js, editor-helpers
    timeout, and read the `TESTS PASS n` / `FAIL ...` lines the harness logs.
 3. Check the behaviour in a real browser on sample data, including the keys:
    `python tools/browser_drive.py start`, then `api`, `keys`, `click`, `text`, `focus`,
-   `console`, `shot`, `windows`, `window N`, `stop` (its docstring has them all). For a full,
-   lived-in set of made-up data (Acme, Northwind), run `python tools/demo_data.py` after
-   `start`. It refuses any instance browser_drive didn't start. It drives
+   `console`, `shot`, `windows`, `window N`, `stop` (its docstring has them all). It drives
    Google Chrome by default, through Chrome's own DevTools port (`tools/cdp.py`), so there is no
    chromedriver to install or keep in step with Chrome's updates. Without Chrome it falls back
    to Firefox, which needs geckodriver (`brew install geckodriver` on a Mac,
