@@ -40,7 +40,7 @@
   gap: var(--sp-2);
   margin: 0 0 var(--sp-1);
   padding-bottom: var(--sp-1);
-  border-bottom: 1px solid var(--nord2);
+  border-bottom: 1px solid var(--border-divider);
   color: var(--text-strong);
   font-size: var(--fs-sm);
   font-weight: 600;
@@ -71,16 +71,16 @@
 }
 
 .today__grid [role="option"]:hover {
-  background: var(--nord1);
+  background: var(--surface-row-hover);
 }
 
 .today__grid [aria-selected="true"] {
-  background: var(--nord2);
-  color: var(--nord6);
+  background: var(--surface-selected);
+  color: var(--text-strong);
 }
 
 .today__grid:focus [aria-selected="true"] {
-  box-shadow: inset 0 0 0 1px var(--nord9);
+  box-shadow: inset 0 0 0 1px var(--focus-ring);
 }
 
 /* ---- Now ---- */
@@ -89,9 +89,9 @@
   flex-direction: column;
   gap: var(--sp-2);
   padding: var(--sp-4) var(--sp-4);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 6px;
-  background: var(--nord1);
+  background: var(--surface-raised);
 }
 
 .today-now--empty {
@@ -107,7 +107,7 @@
 }
 
 .today-now__label {
-  color: var(--nord14);
+  color: var(--state-success-fg);
   font-weight: 600;
   letter-spacing: 0.05em;
 }
@@ -129,14 +129,14 @@
 .today-now__bar {
   height: 3px;
   border-radius: 2px;
-  background: var(--nord2);
+  background: var(--chart-track);
 }
 
 .today-now__fill {
   width: calc(var(--done) * 100%);
   height: 100%;
   border-radius: 2px;
-  background: var(--nord14);
+  background: var(--chart-progress);
 }
 
 .today-now__title {
@@ -159,14 +159,14 @@
 }
 
 .today-now__late {
-  color: var(--nord11);
+  color: var(--state-danger-fg);
 }
 
 .today-now__link {
   padding: 0;
   border: none;
   background: none;
-  color: var(--nord9);
+  color: var(--link-secondary);
   font: inherit;
   cursor: pointer;
 }
@@ -178,7 +178,7 @@
 
 .today-now__button {
   padding: var(--sp-0) var(--sp-3);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
   background: none;
   color: var(--text-strong);
@@ -188,12 +188,12 @@
 }
 
 .today-now__button--done {
-  border-color: var(--nord14);
+  border-color: var(--state-success-solid);
 }
 
 .today-now__button:hover,
 .today-now__button:focus-visible {
-  border-color: var(--nord8);
+  border-color: var(--border-focus);
   outline: none;
 }
 
@@ -223,7 +223,7 @@
 }
 
 .today-day__row--meeting .today-day__title {
-  color: var(--nord8);
+  color: var(--link);
 }
 
 .today-day__row--meeting .today-day__detail {
@@ -238,17 +238,17 @@
 }
 
 .today-day__row--current {
-  background: var(--nord2);
-  color: var(--nord6);
+  background: var(--surface-selected);
+  color: var(--text-strong);
 }
 
 .today-day__row--free {
-  border: 1px dashed var(--nord3);
+  border: 1px dashed var(--border-default);
 }
 
 .today-day__row--free .today-day__title,
 .today-day__row--free .today-day__time {
-  color: var(--nord9);
+  color: var(--link-secondary);
 }
 
 .today-day__row--suggest .today-day__detail {
@@ -269,7 +269,7 @@
   gap: var(--sp-2);
   margin: 0 0 var(--sp-1);
   padding-bottom: var(--sp-1);
-  border-bottom: 1px solid var(--nord2);
+  border-bottom: 1px solid var(--border-divider);
   color: var(--text-strong);
   font-size: var(--fs-lg);
   font-weight: 600;
@@ -292,10 +292,10 @@
   font-weight: 600;
 }
 
-.today-next__row--overdue .today-next__reason { color: var(--nord11); }
-.today-next__row--followup .today-next__reason { color: var(--nord12); }
-.today-next__row--due .today-next__reason { color: var(--nord13); }
-.today-next__row--asked .today-next__reason { color: var(--nord15); }
+.today-next__row--overdue .today-next__reason { color: var(--state-danger-fg); }
+.today-next__row--followup .today-next__reason { color: var(--state-warning-fg); }
+.today-next__row--due .today-next__reason { color: var(--state-caution-fg); }
+.today-next__row--asked .today-next__reason { color: var(--kind-question-fg); }
 
 .today-next__glyph {
   color: var(--text-dim);
@@ -313,18 +313,18 @@
 }
 
 .today-next__place {
-  color: var(--nord9);
+  color: var(--link-secondary);
   font-size: var(--fs-sm);
 }
 
 .today-next__place--placed {
-  color: var(--nord14);
+  color: var(--state-success-fg);
 }
 
 .today-next__keys {
   margin: var(--sp-4) 0 0;
   padding-top: var(--sp-2);
-  border-top: 1px solid var(--nord2);
+  border-top: 1px solid var(--border-divider);
   color: var(--text-faint);
   font-size: var(--fs-sm);
   line-height: 2;
@@ -378,11 +378,11 @@
 }
 
 .today-projects__dot {
-  color: var(--nord11);
+  color: var(--state-danger-fg);
 }
 
 .today-projects__log {
-  color: var(--nord9);
+  color: var(--link-secondary);
 }
 
 .today__file-all {
@@ -390,7 +390,7 @@
   padding: 0;
   border: none;
   background: none;
-  color: var(--nord9);
+  color: var(--link-secondary);
   font: inherit;
   font-size: var(--fs-sm);
   font-weight: 400;
@@ -404,7 +404,7 @@
 .today-import {
   margin: 0;
   padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--nord2);
+  border: 1px solid var(--border-divider);
   border-radius: 4px;
   color: var(--text-dim);
   font-size: var(--fs-sm);
@@ -415,11 +415,11 @@
 }
 
 .today-import__dot {
-  color: var(--nord13);
+  color: var(--state-caution-fg);
 }
 
 .today-import__dot--done {
-  color: var(--nord14);
+  color: var(--state-success-fg);
 }
 
 /* One column: Now, Up next, the day, Projects, Inbox. */

@@ -20,7 +20,7 @@
   border: none;
   border-radius: 4px;
   background: none;
-  color: var(--nord4);
+  color: var(--text);
   font: inherit;
   font-size: var(--fs-lg);
   line-height: 1;
@@ -29,12 +29,12 @@
 
 .topbar__nav:hover,
 .topbar__nav[aria-expanded="true"] {
-  background: var(--nord2);
-  color: var(--nord6);
+  background: var(--surface-selected);
+  color: var(--text-strong);
 }
 
 .topbar__nav:focus-visible {
-  outline: 1px solid var(--nord9);
+  outline: 1px solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -45,19 +45,19 @@
   border: none;
   border-radius: 4px;
   background: none;
-  color: var(--nord4);
+  color: var(--text);
   font: inherit;
   font-size: var(--fs-md);
   cursor: pointer;
 }
 
 .topbar__page:hover {
-  background: var(--nord2);
-  color: var(--nord6);
+  background: var(--surface-hover);
+  color: var(--text-strong);
 }
 
 .topbar__page:focus-visible {
-  outline: 1px solid var(--nord9);
+  outline: 1px solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -68,7 +68,7 @@
   gap: var(--sp-3);
   margin: calc(-1 * var(--sp-4)) calc(-1 * var(--sp-5)) 0;
   padding: var(--sp-3) var(--sp-5);
-  border-bottom: 1px solid var(--nord2);
+  border-bottom: 1px solid var(--border-divider);
 }
 
 .topbar--main .crumbs {
@@ -78,7 +78,7 @@
 /* The page shown lights its half (data-view is the page; "week" the Week). */
 .app__note[data-view="home"] .topbar__today,
 .app__note[data-view="week"] .topbar__week {
-  background: var(--nord2);
+  background: var(--surface-selected);
   color: var(--text-strong);
   font-weight: 600;
 }
@@ -91,7 +91,7 @@
   gap: var(--sp-2);
   max-width: 420px;
   padding: var(--sp-1) var(--sp-2);
-  border: 1px solid var(--nord2);
+  border: 1px solid var(--border-divider);
   border-radius: 4px;
   background: none;
   color: var(--text-faint);
@@ -107,7 +107,7 @@
 
 .topbar__palette:hover,
 .topbar__palette:focus-visible {
-  border-color: var(--nord3);
+  border-color: var(--border-default);
   outline: none;
 }
 
@@ -130,7 +130,7 @@
 
 .topbar__key {
   padding: 0 var(--sp-1);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 3px;
   color: var(--text-faint);
   font-family: var(--font-mono);

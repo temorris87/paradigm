@@ -8,10 +8,14 @@ import { downloadFile, exportFileName } from "./download.js";
 import { buildPage } from "./page.js";
 import { renderNotes } from "./render-notes.js";
 import { collectNotes } from "./scope.js";
+import { currentTheme, themeOf } from "../theme/themes.js";
 
-// Read when exporting, so the file always looks like the app does now.
-const STYLESHEETS = ["../../css/nord.css", "../../css/markdown.css", "../../css/export.css"]
-  .map((path) => new URL(path, import.meta.url).href);
+// Read when exporting, so the file always looks like the app does now: the design tokens, the
+// page's theme, then the note's own styles.
+function stylesheets(theme) {
+  return ["css/tokens.css", theme.file, "css/markdown.css", "css/export.css"]
+    .map((path) => new URL(`../../${path}`, import.meta.url).href);
+}
 
 export async function exportNote({
   tree,
@@ -26,10 +30,11 @@ export async function exportNote({
   const notes = await collectNotes(tree, rootId, async (id) =>
     (id === rootId ? rootBody : (await notesApi.get(id)).body));
   const content = await inlineAssets(renderNotes(tree, notes), { svgFor, fetchImage });
-  const css = (await Promise.all(STYLESHEETS.map(fetchText))).join("\n");
+  const theme = themeOf(currentTheme());
+  const css = (await Promise.all(stylesheets(theme).map(fetchText))).join("\n");
   const title = notes[0].title;
   const file = exportFileName(title);
-  save(file, buildPage({ title, css, content }));
+  save(file, buildPage({ title, css, content, theme: theme.id }));
   return { file, count: notes.length - 1 };
 }
 

@@ -44,7 +44,7 @@
 
 .dash-head__stale::before {
   content: "● ";
-  color: var(--nord11);
+  color: var(--state-danger-fg);
 }
 
 .dash-head__stale--never::before {
@@ -67,7 +67,7 @@
 
 .dash-head__button {
   padding: var(--sp-1) var(--sp-3);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
   background: none;
   color: var(--text-strong);
@@ -77,13 +77,13 @@
 }
 
 .dash-head__button--primary {
-  border-color: var(--nord8);
-  background: var(--nord1);
+  border-color: var(--border-primary);
+  background: var(--surface-raised);
 }
 
 .dash-head__button:hover:not(:disabled),
 .dash-head__button:focus-visible {
-  border-color: var(--nord8);
+  border-color: var(--border-focus);
   outline: none;
 }
 
@@ -114,7 +114,7 @@
   align-items: center;
   gap: var(--sp-3);
   padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--nord2);
+  border: 1px solid var(--border-divider);
   border-radius: 6px;
 }
 
@@ -148,25 +148,25 @@
 }
 
 .plan-strip__phase--done {
-  background: var(--nord3);
+  background: var(--chart-gantt-done);
 }
 
 .plan-strip__phase--current {
-  background: var(--nord10);
+  background: var(--chart-gantt-bar);
 }
 
 .plan-strip__phase--future {
-  border-color: var(--nord10);
-  background: var(--nord1);
+  border-color: var(--chart-gantt-bar);
+  background: var(--surface-raised);
 }
 
 .plan-strip__phase--late {
-  box-shadow: inset 0 -3px 0 var(--nord11);
+  box-shadow: inset 0 -3px 0 var(--state-danger-solid);
 }
 
 .plan-strip__phase:hover,
 .plan-strip__phase:focus-visible {
-  outline: 1px solid var(--nord8);
+  outline: 1px solid var(--border-focus);
 }
 
 .plan-strip__today {
@@ -175,7 +175,7 @@
   bottom: -4px;
   left: calc(var(--at) * 100%);
   width: 2px;
-  background: var(--nord12);
+  background: var(--chart-today-line);
   pointer-events: none;
 }
 
@@ -184,7 +184,7 @@
   padding: 0;
   border: none;
   background: none;
-  color: var(--nord9);
+  color: var(--link-secondary);
   font: inherit;
   font-size: var(--fs-sm);
   cursor: pointer;
@@ -206,7 +206,7 @@
   padding: 0;
   border: none;
   background: none;
-  color: var(--nord9);
+  color: var(--link-secondary);
   font: inherit;
   font-size: var(--fs-sm);
   cursor: pointer;
@@ -216,7 +216,7 @@
 .plan-strip__add:focus-visible,
 .plan-strip__gantt:hover,
 .plan-strip__gantt:focus-visible {
-  color: var(--nord8);
+  color: var(--link);
 }
 
 /* The full plan's page. */
@@ -245,10 +245,10 @@
 
 .plan-page__back {
   padding: var(--sp-0) var(--sp-3);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
   background: none;
-  color: var(--nord9);
+  color: var(--link-secondary);
   font: inherit;
   font-size: var(--fs-sm);
   cursor: pointer;
@@ -262,7 +262,7 @@
 
 /* A person's head: the next 1:1 over Start 1:1 notes. */
 .dash-head__email {
-  color: var(--nord8);
+  color: var(--link);
 }
 
 .dash-head__next {
@@ -338,18 +338,18 @@
   border-radius: 2px;
 }
 
-.plan-page__key--bar .plan-page__swatch { background: var(--nord10); }
+.plan-page__key--bar .plan-page__swatch { background: var(--chart-gantt-bar); }
 .plan-page__key--baseline .plan-page__swatch { border-bottom: 1px dashed var(--text-dim); height: 0; }
-.plan-page__key--today .plan-page__swatch { width: 2px; height: 10px; background: var(--nord12); }
-.plan-page__key--due .plan-page__swatch { width: 0; height: 10px; border-left: 1px dashed var(--nord11); }
+.plan-page__key--today .plan-page__swatch { width: 2px; height: 10px; background: var(--chart-today-line); }
+.plan-page__key--due .plan-page__swatch { width: 0; height: 10px; border-left: 1px dashed var(--state-danger-solid); }
 
 .plan-page__history {
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
   padding: var(--sp-3);
-  border-left: 1px solid var(--nord2);
-  background: var(--nord1);
+  border-left: 1px solid var(--border-divider);
+  background: var(--surface-raised);
   border-radius: 0 6px 6px 0;
 }
 

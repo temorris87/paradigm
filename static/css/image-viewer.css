@@ -8,7 +8,7 @@
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--nord4);
+  color: var(--text);
   outline: none;
 }
 
@@ -18,7 +18,7 @@
 }
 
 .pd-viewer::backdrop {
-  background: color-mix(in srgb, var(--nord0) 92%, transparent);
+  background: color-mix(in srgb, var(--backdrop-tint) 92%, transparent);
 }
 
 .pd-viewer__stage {
@@ -37,7 +37,7 @@
   transform-origin: 0 0;
   cursor: grab;
   user-select: none;
-  box-shadow: 0 0 0 1px var(--nord3);
+  box-shadow: 0 0 0 1px var(--border-default);
 }
 
 .pd-viewer__stage--dragging,
@@ -50,7 +50,7 @@
   justify-content: space-between;
   gap: var(--sp-4);
   padding: var(--sp-2) var(--sp-4);
-  background: var(--nord1);
+  background: var(--surface-raised);
   font-size: var(--fs-md);
 }
 
@@ -61,7 +61,7 @@
 }
 
 .pd-viewer__info {
-  color: var(--nord9);
+  color: var(--link-secondary);
   font-variant-numeric: tabular-nums;
   white-space: pre;
 }

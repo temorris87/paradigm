@@ -10,28 +10,29 @@
 // is loaded there the first time a diagram is seen, and the frame is emptied after each one.
 import { diagramFrame } from "./frame-client.js";
 import { insertSvg } from "./insert-svg.js";
+import { currentTheme, themeOf } from "../theme/themes.js";
 
 const CACHE_LIMIT = 50;
 const MESSAGE_LIMIT = 500;
 const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 
-/** Mermaid's settings. Theme colours come from the Nord variables in the page. */
-export function mermaidConfig(colour = nordColour) {
+/** Mermaid's settings. Colours come from the theme's role tokens in the page. */
+export function mermaidConfig(colour = tokenColour, dark = themeOf(currentTheme()).colorScheme === "dark") {
   const themeVariables = {
-    darkMode: true,
-    background: colour("--nord0"),
+    darkMode: dark,
+    background: colour("--surface-page"),
     fontFamily: FONT,
-    primaryColor: colour("--nord1"),
-    primaryTextColor: colour("--nord4"),
-    primaryBorderColor: colour("--nord9"),
-    secondaryColor: colour("--nord2"),
-    tertiaryColor: colour("--nord3"),
-    lineColor: colour("--nord4"),
-    edgeLabelBackground: colour("--nord0"),
-    textColor: colour("--nord4"),
-    noteBkgColor: colour("--nord2"),
-    noteTextColor: colour("--nord5"),
-    noteBorderColor: colour("--nord13"),
+    primaryColor: colour("--surface-raised"),
+    primaryTextColor: colour("--text"),
+    primaryBorderColor: colour("--border-accent"),
+    secondaryColor: colour("--surface-elevated"),
+    tertiaryColor: colour("--border-default"),
+    lineColor: colour("--text"),
+    edgeLabelBackground: colour("--surface-page"),
+    textColor: colour("--text"),
+    noteBkgColor: colour("--surface-elevated"),
+    noteTextColor: colour("--text-control"),
+    noteBorderColor: colour("--state-caution-solid"),
   };
   for (const [key, value] of Object.entries(themeVariables)) if (value === "") delete themeVariables[key];
   return {
@@ -47,7 +48,7 @@ export function mermaidConfig(colour = nordColour) {
   };
 }
 
-function nordColour(name) {
+function tokenColour(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 

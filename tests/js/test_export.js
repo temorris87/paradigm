@@ -178,6 +178,8 @@ test("export: the whole file from the open note's text, with linked notes from t
   assertEqual(result.count, 1);
   assertEqual(saved.name, "Sprint 4.html");
   assertTrue(saved.text.includes("unsaved") && saved.text.includes("body of 6"), "both notes");
-  assertTrue(saved.text.includes("/* nord.css */") && saved.text.includes("/* export.css */"), "styles");
+  const styles = ["tokens.css", "nord-dark.css", "markdown.css", "export.css"].map((name) => saved.text.indexOf(`/* ${name} */`));
+  assertTrue(styles.every((at, i) => at >= 0 && (i === 0 || at > styles[i - 1])), "tokens, theme, then the note's styles");
+  assertTrue(saved.text.includes('<html lang="en" data-theme="nord-dark">'), "drawn with the page's theme");
   assertTrue(saved.text.includes("<math"), "maths");
 });

@@ -3,6 +3,9 @@
 ## Layout
 ```
 tests/python/            unittest; helpers.py runs a real server on a free port
+                         (test_theme_tokens.py: no --nordN or raw colour outside
+                         static/css/themes/, every theme has every _template.css token,
+                         every var() defined, every themes.js file exists)
 tests/js/                index.html runner, harness.js, fakes.js, editor-helpers.js, test_*.js
                          (test_editor_vim_cases.js: key sequences checked against real Vim)
                          markdown-sample.html: dev-only page rendering every Markdown construct

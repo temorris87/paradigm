@@ -9,10 +9,10 @@
   max-height: calc(100vh - 1rem);
   overflow: auto;
   padding: var(--sp-1) 0;
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
-  background: var(--nord1);
-  box-shadow: 0 4px 14px rgb(0 0 0 / 0.35);
+  background: var(--surface-overlay);
+  box-shadow: 0 4px 14px var(--shadow);
 }
 
 .menu__item {
@@ -22,7 +22,7 @@
   padding: var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-2);
   border: none;
   background: none;
-  color: var(--nord4);
+  color: var(--text);
   font: inherit;
   font-size: var(--fs-md);
   text-align: left;
@@ -32,8 +32,8 @@
 .menu__item:focus,
 .menu__item:hover {
   outline: none;
-  background: var(--nord2);
-  color: var(--nord6);
+  background: var(--surface-hover);
+  color: var(--text-strong);
 }
 
 .menu__item[aria-disabled="true"] {
@@ -42,18 +42,18 @@
 }
 
 .menu__item--danger {
-  color: var(--nord11);
+  color: var(--state-danger-fg);
 }
 
 .menu__item--danger:focus,
 .menu__item--danger:hover {
-  color: var(--nord11);
+  color: var(--state-danger-fg);
 }
 
 .menu__mark {
   flex: none;
   width: 1rem;
-  color: var(--nord9);
+  color: var(--link-secondary);
   text-align: center;
 }
 
@@ -74,21 +74,21 @@
 
 .menu__separator {
   margin: var(--sp-1) 0;
-  border-top: 1px solid var(--nord2);
+  border-top: 1px solid var(--border-divider);
 }
 
 .dialog {
   width: min(28rem, calc(100vw - 2rem));
   padding: var(--sp-4) var(--sp-5);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 6px;
-  background: var(--nord1);
-  color: var(--nord4);
-  box-shadow: 0 8px 28px rgb(0 0 0 / 0.45);
+  background: var(--surface-overlay);
+  color: var(--text);
+  box-shadow: 0 8px 28px var(--shadow-strong);
 }
 
 .dialog::backdrop {
-  background: rgb(46 52 64 / 0.6);
+  background: var(--backdrop);
 }
 
 .dialog__form {
@@ -100,7 +100,7 @@
 
 .dialog__title {
   margin: 0 0 var(--sp-1);
-  color: var(--nord6);
+  color: var(--text-strong);
   font-size: var(--fs-lg);
   font-weight: 600;
 }
@@ -119,13 +119,13 @@
 .dialog__input {
   width: 100%;
   padding: var(--sp-1) var(--sp-2);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 3px;
-  background: var(--nord0);
-  color: var(--nord6);
+  background: var(--surface-input);
+  color: var(--text-strong);
   font: inherit;
   font-size: var(--fs-md);
-  color-scheme: dark;
+  color-scheme: inherit;
 }
 
 .dialog__input--area {
@@ -135,13 +135,13 @@
 }
 
 .dialog__input:focus-visible {
-  outline: 1px solid var(--nord9);
+  outline: 1px solid var(--focus-ring);
   outline-offset: 0;
 }
 
 .dialog__error {
   margin: 0;
-  color: var(--nord11);
+  color: var(--state-danger-fg);
 }
 
 .dialog__error[hidden] {
@@ -157,10 +157,10 @@
 
 .dialog__button {
   padding: var(--sp-1) var(--sp-4);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
-  background: var(--nord2);
-  color: var(--nord6);
+  background: var(--surface-elevated);
+  color: var(--text-strong);
   font: inherit;
   font-size: var(--fs-md);
   cursor: pointer;
@@ -168,24 +168,24 @@
 
 .dialog__button:hover,
 .dialog__button:focus-visible {
-  border-color: var(--nord9);
+  border-color: var(--focus-ring);
   outline: none;
 }
 
 .dialog__button--ok {
-  background: var(--nord10);
+  background: var(--accent);
 }
 
 /* A submit that can't go yet ("2 people match: type more"): dim, not clickable. */
 .dialog__button:disabled {
-  background: var(--nord2);
+  background: var(--surface-elevated);
   color: var(--text-dim);
   cursor: default;
 }
 
 .dialog__button--danger {
-  background: var(--nord11);
-  color: var(--nord0);
+  background: var(--state-danger-solid);
+  color: var(--text-on-solid);
 }
 
 /* A choice: equal buttons, one on (Log status' health). Each in its own colour when on. */
@@ -198,9 +198,9 @@
 
 .dialog__choice {
   padding: var(--sp-1) var(--sp-2);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
-  background: var(--nord0);
+  background: var(--surface-input);
   color: var(--text);
   font: inherit;
   font-size: var(--fs-sm);
@@ -208,19 +208,19 @@
 }
 
 .dialog__choice:focus-visible {
-  outline: 1px solid var(--nord9);
+  outline: 1px solid var(--focus-ring);
 }
 
 .dialog__choice[aria-checked="true"] {
-  --choice: var(--nord8);
+  --choice: var(--border-selected);
   border-color: var(--choice);
   color: var(--choice);
   font-weight: 600;
 }
 
-.dialog__choice--on_track[aria-checked="true"] { --choice: var(--nord14); }
-.dialog__choice--at_risk[aria-checked="true"] { --choice: var(--nord12); }
-.dialog__choice--blocked[aria-checked="true"] { --choice: var(--nord11); }
+.dialog__choice--on_track[aria-checked="true"] { --choice: var(--state-success-solid); }
+.dialog__choice--at_risk[aria-checked="true"] { --choice: var(--state-warning-solid); }
+.dialog__choice--blocked[aria-checked="true"] { --choice: var(--state-danger-solid); }
 
 .dialog__choice-key {
   color: var(--text-faint);
@@ -245,7 +245,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: var(--nord9);
+  color: var(--link-secondary);
   font: inherit;
   font-size: var(--fs-sm);
   text-align: left;
@@ -264,7 +264,7 @@
 .dialog__button-key {
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
-  color: var(--nord4);
+  color: var(--text);
 }
 
 .picker {
@@ -289,17 +289,17 @@
 }
 
 .picker__row:hover {
-  background: var(--nord2);
+  background: var(--surface-hover);
 }
 
 .picker__row[aria-selected="true"] {
-  background: var(--nord2);
-  color: var(--nord6);
-  box-shadow: inset 0 0 0 1px var(--nord9);
+  background: var(--surface-selected);
+  color: var(--text-strong);
+  box-shadow: inset 0 0 0 1px var(--focus-ring);
 }
 
 .picker__row--create .picker__title {
-  color: var(--nord8);
+  color: var(--link);
 }
 
 .picker__row--muted .picker__title {
@@ -337,7 +337,7 @@
   border: none;
   border-radius: 3px;
   background: none;
-  color: var(--nord4);
+  color: var(--text);
   font: inherit;
   font-size: var(--fs-sm);
   line-height: 1.4;
@@ -348,8 +348,8 @@
 .mini-button:hover,
 .mini-button:focus-visible {
   outline: none;
-  background: var(--nord2);
-  color: var(--nord6);
+  background: var(--surface-hover);
+  color: var(--text-strong);
   opacity: 1;
 }
 
@@ -373,7 +373,7 @@
   gap: var(--sp-0);
   padding: var(--sp-0);
   border-radius: 5px;
-  background: var(--nord1);
+  background: var(--surface-raised);
 }
 
 .segmented__item {
@@ -389,7 +389,7 @@
 
 .segmented__item[aria-selected="true"],
 .segmented__item[aria-current="page"] {
-  background: var(--nord2);
+  background: var(--surface-selected);
   color: var(--text-strong);
   font-weight: 600;
 }
@@ -401,7 +401,7 @@
 }
 
 .segmented__item:focus-visible {
-  box-shadow: inset 0 0 0 1px var(--nord9);
+  box-shadow: inset 0 0 0 1px var(--focus-ring);
 }
 
 /* The palette (static/js/palette/palette.js): a wide picker with groups and keys. */
@@ -415,7 +415,7 @@
   align-items: center;
   gap: var(--sp-2);
   padding: var(--sp-3) var(--sp-4);
-  border-bottom: 1px solid var(--nord2);
+  border-bottom: 1px solid var(--border-divider);
 }
 
 .palette__prompt {
@@ -470,13 +470,13 @@
 }
 
 .palette__row--command .palette__hint {
-  color: var(--nord7);
+  color: var(--text-code);
 }
 
 .palette__keys {
   margin: 0;
   padding: var(--sp-2) var(--sp-4);
-  border-top: 1px solid var(--nord2);
+  border-top: 1px solid var(--border-divider);
   color: var(--text-faint);
   font-size: var(--fs-xs);
   white-space: pre-wrap;
@@ -490,7 +490,7 @@
 /* A dialog's live line (Edit dates: what the move does to the rest). */
 .dialog__live {
   margin: 0;
-  color: var(--nord11);
+  color: var(--state-danger-fg);
   font-size: var(--fs-sm);
 }
 
@@ -539,17 +539,17 @@
   width: 28px;
   height: 4px;
   border-radius: 2px;
-  background: var(--nord3);
+  background: var(--chart-step);
 }
 
 .triage__tick--done {
-  background: var(--nord8);
+  background: var(--chart-step-done);
 }
 
 .triage__preview {
   padding: var(--sp-2) var(--sp-3);
   border-radius: 6px;
-  background: var(--nord0);
+  background: var(--surface-page);
 }
 
 .triage__preview p {
@@ -588,7 +588,7 @@
 }
 
 .triage__option--danger .picker__title {
-  color: var(--nord11);
+  color: var(--state-danger-fg);
 }
 
 .triage__key {
@@ -601,7 +601,7 @@
 .triage__keys {
   margin: 0;
   padding-top: var(--sp-2);
-  border-top: 1px solid var(--nord2);
+  border-top: 1px solid var(--border-divider);
   color: var(--text-faint);
   font-size: var(--fs-xs);
   white-space: pre-wrap;

@@ -35,7 +35,7 @@
 .oncall__grid th,
 .oncall__grid td {
   padding: var(--sp-1) var(--sp-3);
-  border-bottom: 1px solid var(--nord2);
+  border-bottom: 1px solid var(--border-divider);
   text-align: left;
   white-space: nowrap;
 }
@@ -52,24 +52,24 @@
 }
 
 .oncall__now {
-  color: var(--nord13);
+  color: var(--state-caution-fg);
   font-weight: 400;
 }
 
 .oncall__week--shown,
 .oncall__cell--shown {
-  background: var(--nord1);
+  background: var(--surface-raised);
 }
 
 .oncall__week--shown {
-  box-shadow: inset 0 2px 0 var(--nord8);
+  box-shadow: inset 0 2px 0 var(--border-selected);
 }
 
 .oncall__person {
   padding: 0;
   border: none;
   background: none;
-  color: var(--nord8);
+  color: var(--link);
   font: inherit;
   cursor: pointer;
 }
@@ -179,7 +179,7 @@
 }
 
 .dash-head__oncall--now {
-  color: var(--nord13);
+  color: var(--state-caution-fg);
   font-weight: 600;
 }
 

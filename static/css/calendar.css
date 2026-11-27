@@ -7,7 +7,7 @@
   flex-direction: column;
   height: calc(100vh - 4.5rem);
   min-height: 30rem;
-  border: 1px solid var(--nord2);
+  border: 1px solid var(--border-divider);
   border-radius: 6px;
   overflow: hidden;
   line-height: 1.4;
@@ -29,10 +29,10 @@ body.is-dragging * {
 
 .cal-button {
   padding: var(--sp-1) var(--sp-3);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
-  background: var(--nord1);
-  color: var(--nord5);
+  background: var(--surface-raised);
+  color: var(--text-control);
   font: inherit;
   font-size: var(--fs-md);
   cursor: pointer;
@@ -40,7 +40,7 @@ body.is-dragging * {
 
 .cal-button:hover,
 .cal-button:focus-visible {
-  border-color: var(--nord8);
+  border-color: var(--border-focus);
 }
 
 .cal-button:disabled {
@@ -55,26 +55,26 @@ body.is-dragging * {
   align-items: center;
   gap: var(--sp-2);
   padding: var(--sp-3) var(--sp-4);
-  border-bottom: 1px solid var(--nord2);
-  background: var(--nord1);
+  border-bottom: 1px solid var(--border-divider);
+  background: var(--surface-raised);
 }
 
 .cal-bar__week {
   margin: 0 var(--sp-3);
   font-size: var(--fs-lg);
   font-weight: 600;
-  color: var(--nord13);
+  color: var(--text-heading);
 }
 
 .cal-bar__status {
   flex: 1 1 20rem;
   min-width: 0;
   font-size: var(--fs-sm);
-  color: var(--nord4);
+  color: var(--text);
 }
 
 .cal-bar__status--due {
-  color: var(--nord13);
+  color: var(--state-caution-fg);
 }
 
 /* ---- the layout: sidebar | week ---- */
@@ -92,8 +92,8 @@ body.is-dragging * {
   gap: var(--sp-2);
   min-height: 0;
   padding: var(--sp-3);
-  border-right: 1px solid var(--nord2);
-  background: var(--nord1);
+  border-right: 1px solid var(--border-divider);
+  background: var(--surface-raised);
 }
 
 .cal-side__tabs {
@@ -104,17 +104,17 @@ body.is-dragging * {
 .cal-side__tab {
   flex: 1;
   padding: var(--sp-1) var(--sp-2);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
-  background: var(--nord0);
-  color: var(--nord4);
+  background: var(--surface-input);
+  color: var(--text);
   font: inherit;
   cursor: pointer;
 }
 
 .cal-side__tab[aria-selected="true"] {
-  border-color: var(--nord8);
-  color: var(--nord6);
+  border-color: var(--border-selected);
+  color: var(--text-strong);
   font-weight: 600;
 }
 
@@ -129,16 +129,16 @@ body.is-dragging * {
 .cal-file__hub {
   width: 100%;
   padding: var(--sp-1) var(--sp-2);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
-  background: var(--nord0);
-  color: var(--nord5);
+  background: var(--surface-input);
+  color: var(--text-control);
   font: inherit;
   font-size: var(--fs-md);
 }
 
 .cal-file__hub.is-missing {
-  border-color: var(--nord11);
+  border-color: var(--state-danger-solid);
 }
 
 .cal-side__hint {
@@ -159,7 +159,7 @@ body.is-dragging * {
 .cal-side__empty {
   padding: var(--sp-2);
   font-style: italic;
-  color: var(--nord4);
+  color: var(--text);
 }
 
 .cal-task {
@@ -171,7 +171,7 @@ body.is-dragging * {
 }
 
 .cal-task:hover {
-  background: var(--nord2);
+  background: var(--surface-hover);
 }
 
 .cal-task--depth-1 { padding-left: 1.4rem; }
@@ -181,7 +181,7 @@ body.is-dragging * {
 
 .cal-task__box {
   margin-top: var(--sp-1);
-  accent-color: var(--nord14);
+  accent-color: var(--kind-task-solid);
 }
 
 .cal-task__grip {
@@ -193,7 +193,7 @@ body.is-dragging * {
 }
 
 .cal-task__title {
-  color: var(--nord6);
+  color: var(--text-strong);
 }
 
 .cal-task--done .cal-task__title {
@@ -216,11 +216,11 @@ body.is-dragging * {
   flex-direction: column;
   gap: var(--sp-1);
   padding: var(--sp-2) var(--sp-2);
-  border-bottom: 1px solid var(--nord2);
+  border-bottom: 1px solid var(--border-divider);
 }
 
 .cal-file__title {
-  color: var(--nord6);
+  color: var(--text-strong);
 }
 
 .cal-file__actions {
@@ -246,7 +246,7 @@ body.is-dragging * {
 }
 
 .cal-head {
-  border-bottom: 1px solid var(--nord2);
+  border-bottom: 1px solid var(--border-divider);
 }
 
 /* Only .cal-scroll scrolls, so a classic scroll bar (Windows) narrows the body's columns and
@@ -268,25 +268,25 @@ body.is-dragging * {
   justify-content: center;
   gap: var(--sp-2);
   padding: var(--sp-2) 0;
-  border-left: 1px solid var(--nord2);
+  border-left: 1px solid var(--border-divider);
 }
 
 .cal-dayhead__name {
-  color: var(--nord4);
+  color: var(--text);
 }
 
 .cal-dayhead__date {
   font-size: var(--fs-lg);
   font-weight: 600;
-  color: var(--nord6);
+  color: var(--text-strong);
 }
 
 .cal-dayhead--today .cal-dayhead__date {
-  color: var(--nord13);
+  color: var(--state-caution-fg);
 }
 
 .cal-allday {
-  border-bottom: 1px solid var(--nord2);
+  border-bottom: 1px solid var(--border-divider);
   min-height: 1.9rem;
 }
 
@@ -295,7 +295,7 @@ body.is-dragging * {
   padding-right: var(--sp-2);
   text-align: right;
   font-size: var(--fs-xs);
-  color: var(--nord4);
+  color: var(--text);
 }
 
 .cal-allday__cell {
@@ -303,7 +303,7 @@ body.is-dragging * {
   flex-direction: column;
   gap: 2px;
   padding: 2px;
-  border-left: 1px solid var(--nord2);
+  border-left: 1px solid var(--border-divider);
 }
 
 .cal-scroll {
@@ -327,23 +327,23 @@ body.is-dragging * {
   right: 0.4rem;
   transform: translateY(-50%);
   font-size: var(--fs-xs);
-  color: var(--nord4);
+  color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 
 .cal-col {
   position: relative;
-  border-left: 1px solid var(--nord2);
+  border-left: 1px solid var(--border-divider);
   /* an hour line every hour, a fainter one at the half hour */
   background-image:
-    linear-gradient(to bottom, var(--nord2) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in srgb, var(--nord2) 45%, transparent) 1px, transparent 1px);
+    linear-gradient(to bottom, var(--border-divider) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--border-divider) 45%, transparent) 1px, transparent 1px);
   background-size: 100% var(--cal-hour), 100% calc(var(--cal-hour) / 2);
   cursor: cell;
 }
 
 .cal-col--today {
-  background-color: color-mix(in srgb, var(--nord1) 60%, transparent);
+  background-color: color-mix(in srgb, var(--surface-raised) 60%, transparent);
 }
 
 /* A whole day off (a holiday, time off, sick): a muted wash over its head, all-day row and
@@ -351,7 +351,7 @@ body.is-dragging * {
 .cal-dayhead--off,
 .cal-allday__cell--off,
 .cal-col--off {
-  background-color: color-mix(in srgb, var(--nord3) 35%, transparent);
+  background-color: color-mix(in srgb, var(--surface-muted) 35%, transparent);
 }
 
 .cal-dayhead--off:not(.cal-dayhead--today) .cal-dayhead__date {
@@ -369,7 +369,7 @@ body.is-dragging * {
   left: 0;
   right: 0;
   height: 2px;
-  background: var(--nord11);
+  background: var(--chart-now-line);
   pointer-events: none;
   z-index: 3;
 }
@@ -381,10 +381,10 @@ body.is-dragging * {
   flex-direction: column;
   overflow: hidden;
   padding: 2px 6px;
-  border-left: 3px solid var(--nord10);
+  border-left: 3px solid var(--kind-meeting-solid);
   border-radius: 4px;
-  background: color-mix(in srgb, var(--nord10) 45%, var(--nord0));
-  color: var(--nord6);
+  background: color-mix(in srgb, var(--kind-meeting-solid) 45%, var(--surface-page));
+  color: var(--text-strong);
   font-size: var(--fs-sm);
   line-height: 1.25;
   cursor: grab;
@@ -397,14 +397,14 @@ body.is-dragging * {
 }
 
 .cal-block--task {
-  border-left-color: var(--nord14);
-  background: color-mix(in srgb, var(--nord14) 30%, var(--nord0));
+  border-left-color: var(--kind-task-solid);
+  background: color-mix(in srgb, var(--kind-task-solid) 30%, var(--surface-page));
 }
 
 .cal-block--pending {
-  border: 1px dashed var(--nord4);
+  border: 1px dashed var(--border-strong);
   border-left-width: 3px;
-  background: color-mix(in srgb, var(--nord3) 50%, var(--nord0));
+  background: color-mix(in srgb, var(--surface-muted) 50%, var(--surface-page));
   cursor: pointer;
 }
 
@@ -427,14 +427,14 @@ body.is-dragging * {
 }
 
 .cal-block--selected {
-  outline: 2px solid var(--nord13);
+  outline: 2px solid var(--chart-selected);
   z-index: 2;
 }
 
 .cal-block--ghost {
-  border: 2px dashed var(--nord13);
-  background: color-mix(in srgb, var(--nord13) 20%, transparent);
-  color: var(--nord6);
+  border: 2px dashed var(--chart-selected);
+  background: color-mix(in srgb, var(--chart-selected) 20%, transparent);
+  color: var(--text-strong);
   left: 2px;
   right: 2px;
   pointer-events: none;
@@ -477,5 +477,5 @@ body.is-dragging * {
 }
 
 .cal-block__edge:hover {
-  background: color-mix(in srgb, var(--nord6) 25%, transparent);
+  background: color-mix(in srgb, var(--text-strong) 25%, transparent);
 }

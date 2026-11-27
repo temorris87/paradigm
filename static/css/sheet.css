@@ -17,9 +17,9 @@
   width: 100%;
   min-width: 0;
   padding: var(--sp-1) var(--sp-3);
-  border: 1px solid var(--nord2);
+  border: 1px solid var(--border-divider);
   border-radius: 6px;
-  background: var(--nord1);
+  background: var(--surface-raised);
   color: var(--text-dim);
   font: inherit;
   font-size: var(--fs-sm);
@@ -31,7 +31,7 @@
 
 .sheet__bar:hover,
 .sheet__bar:focus-visible {
-  border-color: var(--nord3);
+  border-color: var(--border-default);
   color: var(--text);
   outline: none;
 }
@@ -43,7 +43,7 @@
 
 .sheet__caret {
   flex: none;
-  color: var(--nord8);
+  color: var(--link);
 }
 
 .sheet__label {
@@ -63,7 +63,7 @@
 
 /* Only the signal is red: the count of late tasks or missing files. */
 .sheet__flag {
-  color: var(--nord11);
+  color: var(--state-danger-fg);
 }
 
 .sheet__separator {
@@ -95,11 +95,11 @@
   max-height: 50vh;
   overflow-y: auto;
   padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-bottom: none;
   border-radius: 6px 6px 0 0;
-  background: var(--nord1);
-  box-shadow: 0 -6px 16px color-mix(in srgb, var(--nord0) 70%, transparent);
+  background: var(--surface-raised);
+  box-shadow: 0 -6px 16px color-mix(in srgb, var(--shadow-tint) 70%, transparent);
   animation: sheet-up 120ms ease-out;
 }
 

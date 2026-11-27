@@ -20,13 +20,13 @@
   gap: var(--sp-1);
   padding: var(--sp-0) var(--sp-2);
   border-radius: 3px;
-  color: var(--nord4);
+  color: var(--text);
   cursor: pointer;
   user-select: none;
 }
 
 .tree__row:hover {
-  background: var(--nord2);
+  background: var(--surface-hover);
 }
 
 /* The fold arrow: a 20 px target, visible against the sidebar. */
@@ -50,15 +50,15 @@
 }
 
 .tree__item[aria-selected="true"] > .tree__row {
-  background: var(--nord2);
-  color: var(--nord6);
+  background: var(--surface-selected);
+  color: var(--text-strong);
   font-weight: 600;
 }
 
 /* The keyboard cursor in the tree: only shown while the tree has the focus. */
 .tree__item:focus-visible > .tree__row,
 .tree__item:focus > .tree__row {
-  box-shadow: inset 0 0 0 1px var(--nord9);
+  box-shadow: inset 0 0 0 1px var(--focus-ring);
 }
 
 /* Hub group headings: Inbox, Projects, Areas, Resources. */
@@ -67,7 +67,7 @@
 }
 
 .tree__heading {
-  color: var(--nord4);
+  color: var(--text);
   font-size: var(--fs-sm);
   font-weight: 600;
   letter-spacing: 0.05em;
@@ -76,7 +76,7 @@
 
 .tree__count {
   margin-left: auto;
-  color: var(--nord4);
+  color: var(--text);
   font-size: var(--fs-sm);
 }
 
@@ -90,7 +90,7 @@
 }
 
 .tree__item--empty > .tree__row .tree__heading {
-  color: var(--nord3);
+  color: var(--text-muted);
 }
 
 /* The + on a group heading: a new note in that group (shown on hover, or while focused). */
@@ -119,8 +119,8 @@
 .tree__count--pill {
   padding: 0 var(--sp-1);
   border-radius: 8px;
-  background: var(--nord13);
-  color: var(--nord0);
+  background: var(--state-caution-solid);
+  color: var(--text-on-solid);
   font-size: var(--fs-xs);
   font-weight: 600;
 }
@@ -137,7 +137,7 @@
 }
 
 .tree__health.health--none {
-  background: var(--nord3);
+  background: var(--state-neutral-solid);
 }
 
 .tree__health.health--on_hold {
@@ -146,7 +146,7 @@
 }
 
 .tree__stale {
-  color: var(--nord11);
+  color: var(--state-danger-fg);
 }
 
 .tree__folder-count {
@@ -159,7 +159,7 @@
   padding: 0;
   border: none;
   background: none;
-  color: var(--nord9);
+  color: var(--link-secondary);
   font: inherit;
   font-size: var(--fs-sm);
   cursor: pointer;

@@ -38,7 +38,7 @@
 }
 
 .plan-template__button--primary {
-  border-color: var(--nord8);
+  border-color: var(--border-primary);
 }
 
 .plan-template__note {
@@ -56,7 +56,7 @@
 
 .plan-template__item {
   padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--nord2);
+  border: 1px solid var(--border-divider);
   border-radius: 6px;
 }
 
@@ -70,7 +70,7 @@
 .plan-template__kind {
   font-size: var(--fs-sm);
   font-weight: 600;
-  color: var(--nord7);
+  color: var(--text-code);
 }
 
 .plan-template__item-title {
@@ -110,13 +110,13 @@
 
 /* Each item card: "Phase" in teal, its name, its days; tasks indented; + Task in blue. */
 .plan-template__kind {
-  color: var(--nord7);
+  color: var(--text-code);
   font-size: var(--fs-sm);
   font-weight: 600;
 }
 
 .plan-template__item--milestone .plan-template__kind {
-  color: var(--nord13);
+  color: var(--chart-milestone);
 }
 
 .plan-template__item-title {

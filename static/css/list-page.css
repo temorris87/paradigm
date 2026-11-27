@@ -36,11 +36,11 @@
   flex: 1 0 auto;
   font-size: var(--fs-lg);
   font-weight: 600;
-  color: var(--nord13);
+  color: var(--text-heading);
 }
 
 .list-page__count {
-  color: var(--nord4);
+  color: var(--text);
   font-weight: normal;
 }
 
@@ -55,7 +55,7 @@
   flex-direction: column;
   gap: var(--sp-0);
   font-size: var(--fs-sm);
-  color: var(--nord4);
+  color: var(--text);
 }
 
 .list-page__filter,
@@ -63,17 +63,17 @@
   min-width: 8rem;
   max-width: 14rem;
   padding: var(--sp-0) var(--sp-2);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 3px;
-  background: var(--nord1);
-  color: var(--nord6);
+  background: var(--surface-raised);
+  color: var(--text-strong);
   font: inherit;
   font-size: var(--fs-md);
 }
 
 .list-page__filter:focus-visible,
 .list-page__search:focus-visible {
-  outline: 1px solid var(--nord9);
+  outline: 1px solid var(--focus-ring);
   outline-offset: 0;
 }
 
@@ -85,7 +85,7 @@
   list-style: none;
   overflow: auto;
   outline: none;
-  border-top: 1px solid var(--nord2);
+  border-top: 1px solid var(--border-divider);
   padding-top: var(--sp-1);
 }
 
@@ -99,16 +99,16 @@
 }
 
 .list-page__row:hover {
-  background: var(--nord1);
+  background: var(--surface-row-hover);
 }
 
 .list-page__row[aria-selected="true"] {
-  background: var(--nord2);
-  color: var(--nord6);
+  background: var(--surface-selected);
+  color: var(--text-strong);
 }
 
 .list-page__list:focus .list-page__row[aria-selected="true"] {
-  box-shadow: inset 0 0 0 1px var(--nord9);
+  box-shadow: inset 0 0 0 1px var(--focus-ring);
 }
 
 .list-page__cell {
@@ -120,17 +120,17 @@
 
 .list-page__empty {
   padding: var(--sp-2);
-  color: var(--nord3);
+  color: var(--text-muted);
 }
 
 /* The page's New button (New person, New meeting). */
 .list-page__add {
   align-self: flex-end;
   padding: var(--sp-0) var(--sp-3);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
   background: none;
-  color: var(--nord9);
+  color: var(--link-secondary);
   font: inherit;
   font-size: var(--fs-md);
   cursor: pointer;
@@ -139,14 +139,14 @@
 .list-page__add:hover,
 .list-page__add:focus-visible {
   outline: none;
-  border-color: var(--nord9);
-  color: var(--nord6);
+  border-color: var(--focus-ring);
+  color: var(--text-strong);
 }
 
 /* What a page says (page.say): the editor's status line is hidden under a page. */
 .list-page__message {
   margin: 0;
-  color: var(--nord13);
+  color: var(--state-caution-fg);
   font-size: var(--fs-md);
 }
 
@@ -157,7 +157,7 @@
 /* The column headings over a list page's rows. */
 .list-page__head {
   padding-bottom: var(--sp-1);
-  border-bottom: 1px solid var(--nord2);
+  border-bottom: 1px solid var(--border-divider);
   color: var(--text-dim);
   font-size: var(--fs-sm);
   font-weight: 600;
@@ -179,7 +179,7 @@
 
 .list-page__pill {
   padding: var(--sp-0) var(--sp-3);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 12px;
   background: none;
   color: var(--text);
@@ -189,12 +189,12 @@
 }
 
 .list-page__pill[aria-pressed="true"] {
-  border-color: var(--nord8);
+  border-color: var(--border-selected);
   color: var(--text-strong);
 }
 
 .list-page__pill:focus-visible {
-  outline: 1px solid var(--nord9);
+  outline: 1px solid var(--focus-ring);
 }
 
 /* A day's heading over its rows (Meetings): today's in yellow. */
@@ -212,5 +212,5 @@
 }
 
 .list-page__group--today {
-  color: var(--nord13);
+  color: var(--state-caution-fg);
 }

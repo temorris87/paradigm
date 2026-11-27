@@ -5,7 +5,7 @@
   flex-direction: column;
   height: calc(100vh - 4.5rem);
   min-height: 30rem;
-  border: 1px solid var(--nord2);
+  border: 1px solid var(--border-divider);
   border-radius: 6px;
   overflow: hidden;
   line-height: 1.45;
@@ -25,15 +25,15 @@
   align-items: center;
   gap: var(--sp-2);
   padding: var(--sp-3) var(--sp-4);
-  border-bottom: 1px solid var(--nord2);
-  background: var(--nord1);
+  border-bottom: 1px solid var(--border-divider);
+  background: var(--surface-raised);
 }
 
 .time-bar__week {
   margin: 0 var(--sp-3);
   font-size: var(--fs-lg);
   font-weight: 600;
-  color: var(--nord13);
+  color: var(--text-heading);
 }
 
 .time-bar__status {
@@ -42,15 +42,15 @@
 }
 
 .time-bar__status--error {
-  color: var(--nord11);
+  color: var(--state-danger-fg);
 }
 
 .time-button {
   padding: var(--sp-1) var(--sp-3);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
-  background: var(--nord1);
-  color: var(--nord5);
+  background: var(--surface-raised);
+  color: var(--text-control);
   font: inherit;
   font-size: var(--fs-md);
   cursor: pointer;
@@ -58,7 +58,7 @@
 
 .time-button:hover,
 .time-button:focus-visible {
-  border-color: var(--nord8);
+  border-color: var(--border-focus);
 }
 
 .time-button:disabled {
@@ -72,8 +72,8 @@
 }
 
 .time-tab[aria-pressed="true"] {
-  border-color: var(--nord8);
-  color: var(--nord6);
+  border-color: var(--border-selected);
+  color: var(--text-strong);
   font-weight: 600;
 }
 
@@ -92,13 +92,13 @@
 .time-grid th,
 .time-grid td {
   padding: var(--sp-2) var(--sp-4);
-  border: 1px solid var(--nord2);
+  border: 1px solid var(--border-divider);
   text-align: left;
 }
 
 .time-grid thead th {
-  color: var(--nord6);
-  background: var(--nord1);
+  color: var(--text-strong);
+  background: var(--surface-sunken);
 }
 
 .time-grid__num {
@@ -113,25 +113,25 @@
 }
 
 .time-grid__default .time-grid__code {
-  color: var(--nord4);
+  color: var(--text);
 }
 
 .time-grid__total {
   font-weight: 600;
-  color: var(--nord6);
+  color: var(--text-strong);
 }
 
 .time-grid__totals th,
 .time-grid__totals td {
   font-weight: 600;
-  color: var(--nord6);
-  background: var(--nord1);
+  color: var(--text-strong);
+  background: var(--surface-sunken);
 }
 
 .time-heading {
   margin: var(--sp-5) 0 var(--sp-2);
   font-size: var(--fs-lg);
-  color: var(--nord13);
+  color: var(--text-heading);
 }
 
 .time-note {
@@ -140,7 +140,7 @@
 }
 
 .time-warnings .time-list__main {
-  color: var(--nord12);
+  color: var(--state-warning-fg);
 }
 
 .time-list {
@@ -158,7 +158,7 @@
 }
 
 .time-list__main {
-  color: var(--nord5);
+  color: var(--text-label);
 }
 
 .time-list__meta {
@@ -167,7 +167,7 @@
 }
 
 .time-list--bad .time-list__meta {
-  color: var(--nord11);
+  color: var(--state-danger-fg);
 }
 
 .time-code {
@@ -176,7 +176,7 @@
 
 .time-code summary {
   cursor: pointer;
-  color: var(--nord6);
+  color: var(--text-strong);
 }
 
 .time-form,
@@ -201,10 +201,10 @@
 
 .time-input {
   padding: var(--sp-1) var(--sp-2);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
-  background: var(--nord1);
-  color: var(--nord5);
+  background: var(--surface-raised);
+  color: var(--text-control);
   font: inherit;
 }
 
@@ -230,7 +230,7 @@
 
 .time-button--remove:hover,
 .time-button--remove:focus-visible {
-  color: var(--nord11);
+  color: var(--state-danger-fg);
 }
 
 :where(li, .time-list__row):not(:hover, :focus-within) > .time-button--remove {

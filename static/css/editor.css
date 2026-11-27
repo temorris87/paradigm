@@ -1,4 +1,4 @@
-/* <pd-editor>. Loaded inside its shadow root; the Nord variables come from the page. */
+/* <pd-editor>. Loaded inside its shadow root; the theme tokens come from the page. */
 :host {
   display: block;
   position: relative;
@@ -11,9 +11,9 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--nord0);
-  color: var(--nord4);
-  border: 1px solid var(--nord1);
+  background: var(--surface-page);
+  color: var(--text);
+  border: 1px solid var(--border-faint);
   border-radius: 4px;
   font-family: var(--font-mono);
   font-size: var(--fs-md);
@@ -22,7 +22,7 @@
 }
 
 .pd-editor--focused {
-  border-color: var(--nord3);
+  border-color: var(--border-default);
 }
 
 .pd-text {
@@ -44,71 +44,71 @@
 }
 
 .pd-line--end {
-  color: var(--nord3);
+  color: var(--text-muted);
 }
 
 /* Raw Markdown: headings are all one colour (as rendered) and bold; rows have one fixed height, so instead
-   of size, H1 and H2 get an underline (thick, thin). Links are nord8 and nothing else is.
+   of size, H1 and H2 get an underline (thick, thin). Links are --link and nothing else is.
    Scoped to raw rows. */
-.pd-row :is(.md-h1, .md-h2, .md-h3, .md-h4, .md-h5, .md-h6) { color: var(--nord13); font-weight: bold; }
+.pd-row :is(.md-h1, .md-h2, .md-h3, .md-h4, .md-h5, .md-h6) { color: var(--text-heading); font-weight: bold; }
 .pd-row :is(.md-h1, .md-h2) {
   text-decoration: underline;
-  text-decoration-color: var(--nord3);
+  text-decoration-color: var(--border-default);
   text-underline-offset: 0.2em;
 }
 .pd-row .md-h1 { text-decoration-thickness: 2px; }
 .pd-row .md-h2 { text-decoration-thickness: 1px; }
-.pd-row .md-link { color: var(--nord8); text-decoration: underline; text-decoration-color: var(--nord3); }
-.pd-row .md-code, .pd-row .md-code-block { color: var(--nord7); background: var(--nord1); }
-.pd-row .md-fence { color: var(--nord3); background: var(--nord1); }
-.pd-row .md-math { color: var(--nord10); }
-.pd-row .md-bold { color: var(--nord6); font-weight: bold; }
+.pd-row .md-link { color: var(--link); text-decoration: underline; text-decoration-color: var(--link-underline); }
+.pd-row .md-code, .pd-row .md-code-block { color: var(--text-code); background: var(--surface-sunken); }
+.pd-row .md-fence { color: var(--text-muted); background: var(--surface-sunken); }
+.pd-row .md-math { color: var(--text-math); }
+.pd-row .md-bold { color: var(--text-strong); font-weight: bold; }
 .pd-row .md-italic { font-style: italic; }
-.pd-row .md-strike { text-decoration: line-through; color: var(--nord3); }
-.pd-row .md-list { color: var(--nord9); }
-.pd-row .md-task { color: var(--nord13); }
-.pd-row .md-task-done { color: var(--nord14); }
-.pd-row .md-quote { color: var(--nord4); font-style: italic; }
-.pd-row .md-quote-mark { color: var(--nord3); font-style: normal; }
-.pd-row .md-hr { color: var(--nord3); }
+.pd-row .md-strike { text-decoration: line-through; color: var(--text-muted); }
+.pd-row .md-list { color: var(--list-marker); }
+.pd-row .md-task { color: var(--state-caution-fg); }
+.pd-row .md-task-done { color: var(--state-success-fg); }
+.pd-row .md-quote { color: var(--text); font-style: italic; }
+.pd-row .md-quote-mark { color: var(--text-muted); font-style: normal; }
+.pd-row .md-hr { color: var(--text-muted); }
 
 /* Cursor, selection and search matches come after the Markdown colours, so they win.
    Cursor: a block in normal and visual mode, a bar in insert mode, an underline in replace. */
 .pd-cursor {
-  outline: 1px solid var(--nord4);
+  outline: 1px solid var(--cursor);
   outline-offset: -1px;
 }
 
 .pd-editor--focused .pd-row .pd-cursor {
-  background: var(--nord4);
-  color: var(--nord0);
+  background: var(--cursor);
+  color: var(--text-on-solid);
   outline: none;
 }
 
 .pd-cursor-bar {
-  box-shadow: inset 2px 0 0 var(--nord4);
+  box-shadow: inset 2px 0 0 var(--cursor);
 }
 
 .pd-cursor-under {
-  box-shadow: inset 0 -2px 0 var(--nord4);
+  box-shadow: inset 0 -2px 0 var(--cursor);
 }
 
 .pd-row .pd-selection {
-  background: var(--nord2);
+  background: var(--selection);
 }
 
 .pd-row .pd-match {
-  background: var(--nord3);
-  color: var(--nord6);
+  background: var(--search-match);
+  color: var(--text-strong);
 }
 
 .pd-row .pd-match-current {
-  background: var(--nord13);
-  color: var(--nord0);
+  background: var(--search-current);
+  color: var(--text-on-solid);
 }
 
 .pd-row .pd-tab {
-  color: var(--nord3);
+  color: var(--text-muted);
 }
 
 .pd-status {
@@ -117,8 +117,8 @@
   gap: var(--sp-4);
   min-height: 1.6em;
   padding: var(--sp-0) var(--sp-3);
-  background: var(--nord1);
-  color: var(--nord4);
+  background: var(--surface-raised);
+  color: var(--text);
   white-space: pre;
   overflow: hidden;
 }
@@ -129,30 +129,30 @@
 }
 
 .pd-status__mode {
-  color: var(--nord14);
+  color: var(--state-success-fg);
   font-weight: bold;
 }
 
 .pd-status__error {
-  color: var(--nord11);
+  color: var(--state-danger-fg);
 }
 
 .pd-status__right {
   display: flex;
   gap: var(--sp-4);
-  color: var(--nord4);
+  color: var(--text);
 }
 
 .pd-status__pending {
-  color: var(--nord13);
+  color: var(--state-caution-fg);
 }
 
 .pd-status__modified {
-  color: var(--nord12);
+  color: var(--state-warning-fg);
 }
 
 .pd-cmdline-cursor {
-  background: var(--nord4);
+  background: var(--cursor);
 }
 
 /* Holds the focus and takes the keys; invisible, but kept at the cursor for IME windows. */
@@ -179,7 +179,7 @@
 }
 
 @keyframes pd-bell {
-  from { border-color: var(--nord11); }
+  from { border-color: var(--state-danger-solid); }
 }
 
 /* <pd-editor compact> (a meeting's agenda): the status line only while it has the focus. */
@@ -196,10 +196,10 @@
   margin: 0;
   padding: var(--sp-1) 0;
   list-style: none;
-  background: var(--nord1);
-  border: 1px solid var(--nord3);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.35);
+  box-shadow: 0 4px 12px var(--shadow);
   font-family: var(--font-ui);
   font-size: var(--fs-md);
   white-space: nowrap;
@@ -217,8 +217,8 @@
 }
 
 .pd-complete__item[aria-selected="true"] {
-  background: var(--nord2);
-  color: var(--nord6);
+  background: var(--surface-selected);
+  color: var(--text-strong);
 }
 
 .pd-complete__detail {
@@ -240,9 +240,9 @@
   z-index: 4;
   max-width: 36rem;
   padding: var(--sp-1) var(--sp-2);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
-  background: var(--nord2);
+  background: var(--surface-elevated);
   color: var(--text-dim);
   font-family: var(--font-ui);
   font-size: var(--fs-sm);

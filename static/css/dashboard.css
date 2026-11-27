@@ -17,7 +17,7 @@
 .dash-text {
   padding: var(--sp-3) var(--sp-4);
   border-radius: 6px;
-  background: var(--nord1);
+  background: var(--surface-raised);
 }
 
 .dash-text__head {
@@ -36,10 +36,10 @@
 .dash-text__edit {
   margin-left: auto;
   padding: var(--sp-0) var(--sp-2);
-  border: 1px solid var(--nord3);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
-  background: var(--nord1);
-  color: var(--nord5);
+  background: var(--surface-raised);
+  color: var(--text-control);
   font: inherit;
   font-size: var(--fs-sm);
   cursor: pointer;
@@ -47,7 +47,7 @@
 
 .dash-text__edit:hover,
 .dash-text__edit:focus-visible {
-  border-color: var(--nord8);
+  border-color: var(--border-focus);
 }
 
 /* Shown in full; past 24rem it folds (dashboard.js) under Show more, with a fade. */
@@ -62,7 +62,7 @@
   padding: 0;
   border: none;
   background: none;
-  color: var(--nord8);
+  color: var(--link);
   font: inherit;
   font-size: var(--fs-sm);
   cursor: pointer;
@@ -73,7 +73,7 @@
 }
 
 .dash-text__empty {
-  color: var(--nord3);
+  color: var(--text-muted);
 }
 
 /* The sections in two lanes (hub-sections.js DASHBOARD_LAYOUT): to act on (3 parts), to look
