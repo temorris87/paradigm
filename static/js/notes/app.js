@@ -291,7 +291,11 @@ export class NotesApp {
         if ([...(event.dataTransfer?.types ?? [])].includes("Files")) event.preventDefault();
       });
     }
-    window.addEventListener("popstate", () => this.guard(this.openFromUrl("none")));
+    window.addEventListener("popstate", () => {
+      // A message about the page left behind (an error on it) would read as about this one.
+      this.clearStatus();
+      this.guard(this.openFromUrl("none"));
+    });
     window.addEventListener("pagehide", () => {
       this.session.saveBeforeLeaving();
       this.agenda.saveBeforeLeaving();
@@ -430,12 +434,14 @@ export class NotesApp {
   }
 
   /** The main window shows a dashboard (a hub's, a person's) or a page; any other note asked
-   * for shows its hub. With nothing asked, Home. */
+   * for shows its hub, or Home when it has none. With nothing asked, Home. */
   async mainFromUrl(params, wanted, history) {
     const asked = this.tree.has(wanted) ? wanted : null;
-    const id = asked !== null && this.isDashboard(asked) ? asked
-      : asked !== null && hubOf(this.tree, asked) ? hubOf(this.tree, asked).id
-        : this.tree.children(null).find((note) => this.isDashboard(note.id))?.id ?? this.tree.children(null)[0]?.id;
+    // A plain note (bookmarked, typed, or reached by Back): the window never shows it itself.
+    const plain = asked !== null && !this.isDashboard(asked) ? asked : null;
+    const hub = plain !== null ? hubOf(this.tree, plain)?.id ?? null : null;
+    const id = asked !== null && plain === null ? asked
+      : hub ?? this.tree.children(null).find((note) => this.isDashboard(note.id))?.id ?? this.tree.children(null)[0]?.id;
     if (id === undefined) return;
     if (params.has("template")) this.templateId = Number(params.get("template"));
     if (params.has("folder")) this.folderId = Number(params.get("folder"));
@@ -444,9 +450,19 @@ export class NotesApp {
       this.taskNoteId = Number.isInteger(wanted) && wanted > 0 ? wanted : null;
     }
     this.weekView = params.has("time") ? "timesheet" : ["timesheet", "settings", "oncall"].includes(params.get("week")) ? params.get("week") : "plan";
-    const view = this.views.fromUrl(params) ?? (asked !== null && this.isDashboard(id) ? null : "home");
-    await this.open(id, { history: view ? "none" : history });
-    if (view) this.showView(view, history === "replace" ? "replace" : "none");
+    const flagged = this.views.fromUrl(params);
+    // Only the asked note's own dashboard, or its hub's, may show it; anything else is Home,
+    // never the first dashboard found, which a note command would then act on unseen.
+    const view = flagged ?? (asked !== null && (plain === null || hub !== null) ? null : "home");
+    // The address must name what is shown, even after Back or Forward ("none"): a note that
+    // isn't on screen left in it would be the one a reload brings back.
+    const rewrite = flagged === null && params.has("note") && asked !== id;
+    const opened = await this.open(id, { history: view || rewrite ? "none" : history });
+    if (view) this.showView(view, history === "replace" || rewrite ? "replace" : "none");
+    else if (rewrite && opened) this.history.replaceState({}, "", noteUrl(this.currentId));
+    if (plain === null || flagged !== null) return;
+    if (!view) this.hubPage.selectNote?.(plain);
+    this.say(`"${this.tree.get(plain).title}" is a note: Enter on it opens the note window`);
   }
 
   /** Whether the main window shows a note itself (a dashboard): a hub or a person. */
@@ -1131,6 +1147,11 @@ export class NotesApp {
     if (id === null) throw new Error("E: no note is open");
     // The main window goes to a dashboard: a plain note would open in the note window and
     // pull this window to the Live page.
+    // The server refuses this too (409), but asking it shows up as a failed load in the
+    // browser's console; the tree already knows. The server stays the authority on the rest.
+    if (!recursive && this.tree.children(id).length > 0) {
+      throw new Error("E: The note has notes under it: :trash! deletes them too");
+    }
     const next = this.role === "main" ? this.dashboardAfter(this.tree.parentId(id), id) : this.nextAfterDeleting(id);
     await this.api.remove(id, recursive);
     this.events.dispatchEvent(new CustomEvent("trashed", { detail: { id, next } }));
@@ -1202,6 +1223,14 @@ export class NotesApp {
   fail(error) {
     const text = error?.message ?? String(error);
     this.say(/^E\d*:/.test(text) ? text : `E: ${text}`, { error: true });
+  }
+
+  /** Empties the main window's status line; the note window's is the editor's own. */
+  clearStatus() {
+    if (this.role !== "main" || !this.status) return;
+    clearTimeout(this.statusTimer);
+    this.status.textContent = "";
+    this.status.classList.remove("status-line--error");
   }
 
   /** A message for the user: the editor's status line, or the main window's. */
