@@ -11,7 +11,8 @@ from paradigm.web.static import serve_static
 
 log = logging.getLogger(__name__)
 
-# Far beyond any note, and beyond any image downscaled to 1600 px wide.
+# Far beyond any note, and beyond any image downscaled to 1600 px wide. A route may set its own
+# cap (Router.add max_body: the .msg upload), checked here before the body is read.
 MAX_BODY_BYTES = 8_000_000
 _DISCONNECTS = (BrokenPipeError, ConnectionResetError, ConnectionAbortedError)
 
@@ -40,7 +41,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                 send_error_json(self, 403, "forbidden")
                 return
             length = self._content_length()
-            if length is None or length > MAX_BODY_BYTES:
+            limit = self.server.router.max_body(method, parts.path) or MAX_BODY_BYTES
+            if length is None or length > limit:
                 # Never a cut-off body: a truncated note saved as if whole would lose text.
                 send_error_json(self, 413 if length else 400, "body too large or bad Content-Length")
                 self.close_connection = True

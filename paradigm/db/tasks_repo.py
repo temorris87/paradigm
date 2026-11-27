@@ -6,9 +6,11 @@ levels in all. A task can be delegated to a person, with a day to follow it up. 
 closes its whole subtree; deleting one deletes its subtree. A deleted task keeps its row
 (removed_at), so its id is never handed to another task and its blocks of time stay time worked."""
 import sqlite3
+from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
 from paradigm.db.connection import Database
+from paradigm.db.emails_repo import drop_emails, remove_saved
 from paradigm.db.notes_repo import NoteError, NotFound, live_note_row, utc_now
 from paradigm.db.people_repo import NotAPerson, person_row
 from paradigm.notes.days import local_today
@@ -40,10 +42,13 @@ class NoTasksHere(NoteError):
 
 
 class TaskRepository:
-    def __init__(self, db: Database, clock: Clock = utc_now, today: Callable[[], str] = local_today):
+    def __init__(self, db: Database, clock: Clock = utc_now, today: Callable[[], str] = local_today,
+                 emails_dir: Optional[Path] = None):
         self._db = db
         self._clock = clock
         self._today = today
+        # Where the tasks' emails are saved (EmailRepository's folder); None: no files to remove.
+        self._emails_dir = emails_dir
 
     def list(self) -> List[Dict]:
         """Every live task, by note, then in their order."""
@@ -137,7 +142,7 @@ class TaskRepository:
         the next task, so a deleted newest task's id would come back, and an old ?task= link
         or Back entry would open the new task instead of "This task is gone". A row with blocks
         of time needs keeping anyway (the blocks are time worked). Trash purge deletes them
-        with their note."""
+        with their note. Its emails, unlike the row, go now, with their saved files."""
         with self._db.transaction() as conn:
             _task_row(conn, task_id)
             ids = [each[0] for each in conn.execute(_SUBTREE + "SELECT id FROM down ORDER BY depth, id", (task_id,))]
@@ -147,6 +152,9 @@ class TaskRepository:
                 # As a real delete's cascade did: a captured line deleted as a task may be captured again.
                 if not conn.execute("SELECT 1 FROM task_sessions WHERE task_id = ? LIMIT 1", (each,)).fetchone():
                     conn.execute("DELETE FROM task_sources WHERE task_id = ?", (each,))
+            # Its emails go for good, as a real delete's cascade would take them.
+            with_emails = drop_emails(conn, ids)
+        remove_saved(self._emails_dir, with_emails)
         return ids
 
     # ---- blocks of time ----

@@ -25,6 +25,7 @@ import { calendarApi } from "./calendar/api.js";
 import { meetingsApi } from "./meetings/api.js";
 import { notesApi } from "./notes/api.js";
 import { tasksApi } from "./tasks/api.js";
+import { emailsApi } from "./tasks/emails-api.js";
 
 // The note window finds this one by name (its Dashboard button).
 window.name = MAIN_WINDOW;
@@ -64,7 +65,7 @@ const app = boot({
     week.hold(calendar, time, onCall);
     const template = new TemplatePage($(".plan-template-view"), { app, onLeave: () => app().leaveView() });
     const folder = new FolderPage($(".folder-view"), { app, onLeave: () => app().leaveView() });
-    const task = new TaskPage($(".task-view"), { app, onLeave: () => app().leaveView() });
+    const task = new TaskPage($(".task-view"), { app, onLeave: () => app().leaveView(), emailsApi });
     const plan = new PlanPage($(".plan-view"), { app, onLeave: () => app().leaveView() });
     // A note newly opened in the note window, any way, brings the Live page up here.
     const live = new LivePage($(".live-view"), { changes, app, viewer: $("pd-image-viewer"),
@@ -98,7 +99,8 @@ const app = boot({
         week: { section: weekRoot, show: (ctx) => week.redraw(ctx), enter: () => week.show(app().weekView), focus: () => week.focus() },
         template: { section: $(".plan-template-view"), show: (ctx) => template.show(ctx), focus: () => template.focus() },
         folder: { section: $(".folder-view"), show: (ctx) => folder.show(ctx), focus: () => folder.focus() },
-        task: { section: $(".task-view"), show: (ctx) => task.show(ctx), focus: () => task.focus() },
+        // attach: :attach's file picker (tasks/task-emails.js).
+        task: { section: $(".task-view"), show: (ctx) => task.show(ctx), focus: () => task.focus(), attach: () => task.attach() },
         plan: { section: $(".plan-view"), show: (ctx) => plan.show(ctx), focus: () => plan.focus() },
         // state: what the Live page shows, which note commands read (notes/screen-note.js).
         live: { section: $(".live-view"), show: () => live.show(), focus: () => live.focus(), get state() { return live.state; } },

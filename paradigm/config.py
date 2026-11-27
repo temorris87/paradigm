@@ -42,6 +42,11 @@ class Config:
         return self.data_dir / "import"
 
     @property
+    def emails_dir(self) -> Path:
+        """Where the .msg files attached to tasks are saved, a folder per task."""
+        return self.data_dir / "emails"
+
+    @property
     def url(self) -> str:
         return "http://{}:{}/".format(self.host, self.port)
 

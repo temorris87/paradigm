@@ -6,6 +6,7 @@ import webbrowser
 from typing import Callable, List, Optional
 
 from paradigm.api.calendar import CalendarApi
+from paradigm.api.emails import EmailsApi
 from paradigm.api.files import FilesApi
 from paradigm.api.images import ImagesApi
 from paradigm.api.links import LinksApi
@@ -25,6 +26,7 @@ from paradigm.api.oncall import OnCallApi
 from paradigm.api.trash import TrashApi
 from paradigm.config import Config, parse_args
 from paradigm.db.connection import Database
+from paradigm.db.emails_repo import EmailRepository
 from paradigm.db.files_repo import FileRepository
 from paradigm.db.images_repo import ImageRepository
 from paradigm.db.import_repo import ImportRepository
@@ -148,7 +150,7 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
         server.on_close.append(db.close)
         notes = NoteRepository(db, capture=store_captures)
         images = ImageRepository(db)
-        trash = TrashRepository(db, keep_days=config.trash_days)
+        trash = TrashRepository(db, keep_days=config.trash_days, emails_dir=config.emails_dir)
         imports = ImportRepository(db, config.import_dir)
         seed_if_empty(notes)
         empty_trash(trash)
@@ -181,8 +183,9 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
     ImagesApi(images).register(server.router)
     LinksApi(LinkRepository(db)).register(server.router)
     TrashApi(trash, notes).register(server.router)
-    tasks = TaskRepository(db)
+    tasks = TaskRepository(db, emails_dir=config.emails_dir)
     TasksApi(tasks).register(server.router)
+    EmailsApi(EmailRepository(db, config.emails_dir)).register(server.router)
     PlansApi(PlanRepository(db), PlanTemplateRepository(db, tasks), notes).register(server.router)
     TemplatesApi(TemplateRepository(db), notes).register(server.router)
     FilesApi(FileRepository(db)).register(server.router)

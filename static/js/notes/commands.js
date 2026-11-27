@@ -11,6 +11,7 @@ import { answeredCommand, dropWithCommand, newRecordCommand, recordDateCommand, 
   withCommand } from "../records/records-commands.js";
 import { addPersonCommand, dropPersonCommand, fieldCommand, newPersonCommand } from "../people/people-commands.js";
 import { quickTaskCommand, taskCommand } from "../tasks/task-commands.js";
+import { attachCommand } from "../tasks/task-emails.js";
 import { statusCommand } from "../status/status-commands.js";
 import { insertTemplateDialog } from "../templates/template-commands.js";
 import { insertTableDialog } from "./selection-menu.js";
@@ -101,6 +102,8 @@ export const NOTE_COMMANDS = [
   { name: "t", onNote: true, label: "Quick task…", min: 1, usage: ":t {text} [@Name] [!day]",
     help: "a task on this note's hub without leaving the note (a name first: theirs to do; later: you owe them; !fri: due)",
     run: (app, { arg }) => quickTaskCommand(app, arg) },
+  { name: "attach", label: "Attach an email (.msg)…", min: 3, usage: ":att[ach]", help: "on a task's page: attach Outlook emails (.msg files), as a drop onto the page does",
+    run: (app) => attachCommand(app) },
   { name: "template", label: "Insert template…", noteOnly: true, min: 8, usage: ":template [{name}]", help: "put a template's text in below the cursor (its - [ ] lines become tasks)",
     run: (app, { arg }) => insertTemplateDialog(app, arg.trim()) },
   // The editor runs these itself when typed (table-edit.js); the palette runs them here.

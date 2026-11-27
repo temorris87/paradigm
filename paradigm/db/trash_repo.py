@@ -7,9 +7,11 @@ on their own, stay entries of their own.
 """
 import sqlite3
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Dict, List, Optional
 
 from paradigm.db.connection import Database
+from paradigm.db.emails_repo import drop_emails, remove_saved
 from paradigm.db.folders_repo import purge_folders, restore_folder_chain
 from paradigm.db.notes_repo import (Clock, NoteError, NotFound, StaysInAHub, TitleTaken,
                                     check_title_free, utc_now)
@@ -44,10 +46,12 @@ _OWN_ROWS = [("meeting_sources", "meeting_id"), ("hub_people", "hub_id"), ("hub_
 
 
 class TrashRepository:
-    def __init__(self, db: Database, clock: Clock = utc_now, keep_days: int = 7):
+    def __init__(self, db: Database, clock: Clock = utc_now, keep_days: int = 7, emails_dir: Optional[Path] = None):
         self._db = db
         self._clock = clock
         self.keep_days = keep_days
+        # Where the tasks' emails are saved (EmailRepository's folder); None: no files to remove.
+        self._emails_dir = emails_dir
 
     def entries(self) -> List[Dict]:
         """What the Trash shows, newest first: one entry per note trashed (with the notes
@@ -102,7 +106,10 @@ class TrashRepository:
             if not ids:
                 purge_folders(conn, self._cutoff())
                 return 0
-            # A note's tasks go with it, and their sessions (its logged time with them).
+            # A note's tasks go with it, and their sessions (its logged time with them), and their emails.
+            task_ids = [row[0] for (note_id,) in ids
+                        for row in conn.execute("SELECT id FROM tasks WHERE note_id = ?", (note_id,))]
+            with_emails = drop_emails(conn, task_ids)
             conn.executemany("DELETE FROM task_sessions WHERE task_id IN (SELECT id FROM tasks WHERE note_id = ?)", ids)
             conn.executemany("UPDATE tasks SET parent_id = NULL WHERE note_id = ?", ids)
             conn.executemany("DELETE FROM tasks WHERE note_id = ?", ids)
@@ -124,6 +131,7 @@ class TrashRepository:
             conn.executemany("UPDATE notes SET parent_id = NULL WHERE parent_id = ?", ids)
             conn.executemany("DELETE FROM notes WHERE id = ?", ids)
             purge_folders(conn, self._cutoff())
+        remove_saved(self._emails_dir, with_emails)
         return len(ids)
 
     def _cutoff(self) -> str:

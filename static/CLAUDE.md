@@ -76,7 +76,7 @@ static/
                          :resource :inbox :inarea :archive :restore :people :newperson
                          :addperson :dropperson :org :job :email :phone :meetings :meeting :date
                          :attendee :dropattendee :decision :question :answered :reopen :with
-                         :dropwith :task :template :dashboard :plan :timecode :calendar :time :oncall :hub
+                         :dropwith :task :attach :template :dashboard :plan :timecode :calendar :time :oncall :hub
                          :home :live :export :trash :trashed :find),
                          screen-note.js (the note on screen, which every "this note" command
                          acts on: a main-window page hides the dashboard; Live is the note
@@ -229,8 +229,11 @@ static/
                          MAX_TASK_DEPTH; taskTree, J/K's moveTarget; waiting on; the calendar's
                          open list of mine and its filter; today's blocks; pure),
                          task-commands.js, task-page.js (a task's page in the main window,
-                         &task=ID: breadcrumb, head, Subtask | Notes table), task-page-keys.js
-                         (THE task page key table)
+                         &task=ID: breadcrumb, head, Subtask | Notes table, Emails),
+                         task-page-keys.js (THE task page key table), emails-api.js,
+                         emails-model.js (an email row's chip, sender line, link; the reply
+                         cycle; pure), task-emails.js (the Emails section, .msg drops on the
+                         task page, :attach)
   js/calendar/           (the Week page's Plan) api.js (the import), week-model.js (days shown, the weekend rule,
                          blocks, side-by-side layout, 15-minute snap; pure), grid-view.js
                          (the week grid), drag.js (pointer drags: drop, move, resize),

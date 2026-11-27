@@ -47,6 +47,29 @@ How the app behaves. Kept up to date by each feature that changes it.
   Trash), each with Back; a task on an archived note is read-only. Waiting on and I owe rows
   open it too; the calendar, the Week tray and Today keep opening the note (the block menu has
   Open task); the palette lists no tasks.
+- Emails on tasks (2026-11-27; `static/js/tasks/task-emails.js`, `paradigm/files/msg_reader.py`):
+  a task's page has an Emails section under Subtasks. Drag one or more Outlook .msg files onto
+  the page (from classic Outlook, Explorer or Finder), or `:att[ach]` there for the file
+  picker. Only the task page in the main window takes them: `:attach` anywhere else (Today, the
+  note window) says `E: open the task's page to attach`, and a task row on a dashboard or Today
+  takes no drop (Tyson, 2026-11-27). A file that is not a .msg says `E: not an Outlook message
+  (.msg): <name>`, one over 30 MB `E: over 30 MB: <name>`, the same email (subject, sender,
+  sent time) again `E: already on this task`; the others in the drop still go in. Each row:
+  ✉ subject, a chip ("Reply needed", caution; "Replied Fri", or "Replied 20 Nov" past six
+  days, success; none for No reply), Reply ↗ while a reply is needed, else Open ↗, and under it
+  the sender and the sent date and time, dim. Newest sent first; with none, the hint `Drag an
+  email (.msg) from Outlook onto the task, or :attach` ("No emails" when read-only). A new
+  email starts as Reply needed: the .msg can't say (Tyson, 2026-11-27). Keys on an email row:
+  `j`/`k` go through subtasks and emails as one list; `r` Reply needed → Replied (today) → No
+  reply; Enter, `o`, or the ↗ link opens the saved .msg in Outlook (this computer's program for
+  .msg; we can't start a reply); `x`/Delete asks `Remove "<subject>" from this task? The saved
+  copy is deleted.` (it opens on Cancel). An archived note's task still opens its emails; `r`,
+  `x`, drops and `:attach` are refused as read-only. The .msg is read by our own stdlib
+  compound-file reader (no third-party tool at work): subject, sender name and email, sent time
+  (submit time, else delivery time), as local time; a broken, truncated or looping file is
+  refused. The bytes are saved as `<data>/emails/<task>/<id>.msg` with the row; a task deleted
+  (`x`) or purged with its note from the trash takes its emails' rows and that folder; a
+  trashed note's tasks keep theirs. A saved file gone by hand: `E: the saved email is missing`.
 - No next action (Tyson, 2026-11-26; it replaced the NEXT flag): a Tasks section keeps its
   tasks in their own order, with no NEXT badge, no Make next and no `n`. A page opened shows
   its first task selected, even when the tasks load after the first draw, until you move, press
