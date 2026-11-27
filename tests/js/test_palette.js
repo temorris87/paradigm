@@ -3,7 +3,9 @@
 import { NOTE_COMMANDS } from "../../static/js/notes/commands.js";
 import { HUB_KEYS } from "../../static/js/hubs/hub-keys.js";
 import { MAIN_KEYS, mainAction } from "../../static/js/layout/main-keys.js";
-import { PAGES, commandKeys, findCommand, paletteGroups, parseCommand } from "../../static/js/palette/palette-model.js";
+import { PAGES, commandContext, commandKeys, findCommand, paletteGroups, parseCommand } from "../../static/js/palette/palette-model.js";
+import { screenNoteId } from "../../static/js/notes/screen-note.js";
+import { NoteTree } from "../../static/js/notes/tree-model.js";
 import { MAX_RECENT, recentIds, rememberOpened } from "../../static/js/palette/recent.js";
 import { keyReader, resetSequences } from "../../static/js/ui/key-sequence.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
@@ -93,4 +95,18 @@ test("navigator: a project's health dot and stale age; folders count their notes
   } finally {
     ul.remove();
   }
+});
+
+test("palette: the \"on\" label names the note on screen, none on a page with no note", () => {
+  const tree = new NoteTree([{ id: 2, parent_id: null, title: "Acme", kind: "project" }, { id: 7, parent_id: 2, title: "Kickoff" }]);
+  const label = (shown, query = ":tr") => {
+    const app = { role: "main", currentId: 2, tree, views: { shown, pages: { live: { state: { id: 7 } } } } };
+    const id = screenNoteId(app);
+    return commandContext(query, id === null ? null : tree.get(id));
+  };
+  assertEqual(label(null), "on Acme", "a bare dashboard: its hub");
+  assertEqual(label("home"), "", "Today: no hidden hub named");
+  assertEqual(label("task"), "");
+  assertEqual(label("live"), "on Kickoff", "Live: the Live note");
+  assertEqual(label(null, "acme"), "", "no command typed: no label");
 });

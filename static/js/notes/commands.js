@@ -2,7 +2,8 @@
 // them by label with their keys). The editor knows only their names (addExCommand); running
 // one sends an "ex" event, and the page runs it here. Names that Vim already uses for
 // something else (:delete, :move, :sub...) are avoided. noteOnly: needs the editor (the note
-// window); the main window's palette leaves it out.
+// window); the main window's palette leaves it out. onNote: acts on "this note", the one on
+// screen (screen-note.js): refused on a main-window page that shows none.
 import { HUB_GROUPS, isDecisionOrQuestion } from "./hub-groups.js";
 import { openPalette } from "../palette/palette.js";
 import { attendeeCommand, dateCommand, dropAttendeeCommand, newMeetingCommand } from "../meetings/meetings-commands.js";
@@ -13,10 +14,12 @@ import { quickTaskCommand, taskCommand } from "../tasks/task-commands.js";
 import { statusCommand } from "../status/status-commands.js";
 import { insertTemplateDialog } from "../templates/template-commands.js";
 import { insertTableDialog } from "./selection-menu.js";
+import { refusalOf, screenNoteId } from "./screen-note.js";
 
 // :project :area :resource :inbox, typed in full (:res is Vim's :resize, :ar is :args).
 const FILING_COMMANDS = HUB_GROUPS.map((group) => ({
   name: group.command,
+  onNote: true,
   label: group.kind ? `File as ${group.asWhat}` : "Back to the Inbox",
   min: group.command.length,
   usage: `:${group.command}`,
@@ -32,20 +35,20 @@ export const NOTE_COMMANDS = [
     run: (app, { arg }) => app.createCommand(arg, "beside") },
   { name: "child", label: "New note under…", min: 5, usage: ":child {title}", help: "make a note under this one and open it",
     run: (app, { arg }) => app.createCommand(arg, "under") },
-  { name: "rename", label: "Rename…", min: 6, usage: ":rename {title}", help: "rename this note",
+  { name: "rename", onNote: true, label: "Rename…", min: 6, usage: ":rename {title}", help: "rename this note",
     run: (app, { arg }) => app.renameCommand(arg) },
-  { name: "parent", label: "Move under another note…", min: 6, usage: ":parent {note} | /", help: "put this note under another note (/ for the top level)",
+  { name: "parent", onNote: true, label: "Move under another note…", min: 6, usage: ":parent {note} | /", help: "put this note under another note (/ for the top level)",
     run: (app, { arg }) => app.parentCommand(arg) },
   { name: "find", label: "Go to a note…", min: 3, usage: ":fin[d] [{text}]", help: "the palette: a note to open from every note, narrowed by the text",
     run: (app, { arg }) => openPalette(app, arg.trim()) },
   { name: "nav", label: "Notes tree", min: 3, usage: ":nav", help: "go to the notes tree (on a narrow window it slides in)",
     run: (app) => app.navCommand() },
   ...FILING_COMMANDS,
-  { name: "inarea", label: "Put in an area…", min: 6, usage: ":inarea [{area}]", help: "put this project in an area (with no area: take it out)",
+  { name: "inarea", onNote: true, label: "Put in an area…", min: 6, usage: ":inarea [{area}]", help: "put this project in an area (with no area: take it out)",
     run: (app, { arg }) => app.inAreaCommand(arg) },
-  { name: "archive", label: "Archive", min: 4, usage: ":arch[ive]", help: "archive this hub with every note in it (it moves to the Archive group)",
+  { name: "archive", onNote: true, label: "Archive", min: 4, usage: ":arch[ive]", help: "archive this hub with every note in it (it moves to the Archive group)",
     run: (app) => app.archiveCommand() },
-  { name: "restore", label: "Restore from the Archive", min: 5, usage: ":resto[re]", help: "bring this archived hub back to its group",
+  { name: "restore", onNote: true, label: "Restore from the Archive", min: 5, usage: ":resto[re]", help: "bring this archived hub back to its group",
     run: (app) => app.restoreCommand() },
   { name: "home", label: "Today", min: 4, usage: ":home", help: "open Today (Escape comes back to the note)",
     run: (app) => app.showView("home", "push") },
@@ -59,43 +62,43 @@ export const NOTE_COMMANDS = [
     run: (app) => app.showView("people", "push") },
   { name: "newperson", label: "New person…", min: 9, usage: ":newperson {name}", help: "add a person to People and open their note",
     run: (app, { arg }) => newPersonCommand(app, arg) },
-  { name: "addperson", label: "Add a person to this hub…", min: 9, usage: ":addperson[!] {name}[, {role}]", help: "put a person on this hub with a role, or change the role (! adds someone new to People)",
+  { name: "addperson", onNote: true, label: "Add a person to this hub…", min: 9, usage: ":addperson[!] {name}[, {role}]", help: "put a person on this hub with a role, or change the role (! adds someone new to People)",
     run: (app, { arg, bang }) => addPersonCommand(app, arg, bang) },
-  { name: "dropperson", label: "Take a person off this hub…", min: 10, usage: ":dropperson {name}", help: "take a person off this hub (they stay in People)",
+  { name: "dropperson", onNote: true, label: "Take a person off this hub…", min: 10, usage: ":dropperson {name}", help: "take a person off this hub (they stay in People)",
     run: (app, { arg }) => dropPersonCommand(app, arg) },
-  { name: "org", label: "Set organisation…", min: 3, usage: ":org [{organisation}]", help: "set this person's organisation (with nothing: clear it)",
+  { name: "org", onNote: true, label: "Set organisation…", min: 3, usage: ":org [{organisation}]", help: "set this person's organisation (with nothing: clear it)",
     run: (app, { arg }) => fieldCommand(app, "org", arg) },
-  { name: "job", label: "Set job title…", min: 3, usage: ":job [{job title}]", help: "set this person's job title (with nothing: clear it)",
+  { name: "job", onNote: true, label: "Set job title…", min: 3, usage: ":job [{job title}]", help: "set this person's job title (with nothing: clear it)",
     run: (app, { arg }) => fieldCommand(app, "job", arg) },
-  { name: "email", label: "Set email…", min: 5, usage: ":email [{address}]", help: "set this person's email (with nothing: clear it)",
+  { name: "email", onNote: true, label: "Set email…", min: 5, usage: ":email [{address}]", help: "set this person's email (with nothing: clear it)",
     run: (app, { arg }) => fieldCommand(app, "email", arg) },
-  { name: "phone", label: "Set phone…", min: 5, usage: ":phone [{number}]", help: "set this person's phone number (with nothing: clear it)",
+  { name: "phone", onNote: true, label: "Set phone…", min: 5, usage: ":phone [{number}]", help: "set this person's phone number (with nothing: clear it)",
     run: (app, { arg }) => fieldCommand(app, "phone", arg) },
   { name: "meetings", label: "Meetings", min: 8, usage: ":meetings", help: "open the Meetings page (Escape comes back to the note)",
     run: (app) => app.showView("meetings", "push") },
-  { name: "meeting", label: "New meeting…", min: 7, usage: ":meeting [{date}] [{time}] {title}", help: "make a meeting in this hub, titled \"{date} {title}\" (date: 2026-11-24, today, tomorrow, yesterday; today if left out)",
+  { name: "meeting", onNote: true, label: "New meeting…", min: 7, usage: ":meeting [{date}] [{time}] {title}", help: "make a meeting in this hub, titled \"{date} {title}\" (date: 2026-11-24, today, tomorrow, yesterday; today if left out)",
     run: (app, { arg }) => newMeetingCommand(app, arg) },
-  { name: "date", label: "Change the date…", min: 4, usage: ":date {date} [{time}]", help: "set this meeting's date and time (no time: none; a title starting with the old date gets the new one), or a decision's or question's date",
-    run: (app, { arg }) => (isDecisionOrQuestion(app.tree, app.currentId) ? recordDateCommand(app, arg) : dateCommand(app, arg)) },
-  { name: "attendee", label: "Add attendees…", min: 8, usage: ":attendee[!] {name}[, {name}...]", help: "these people attended this meeting (! adds someone new to People)",
+  { name: "date", onNote: true, label: "Change the date…", min: 4, usage: ":date {date} [{time}]", help: "set this meeting's date and time (no time: none; a title starting with the old date gets the new one), or a decision's or question's date",
+    run: (app, { arg }) => (isDecisionOrQuestion(app.tree, screenNoteId(app)) ? recordDateCommand(app, arg) : dateCommand(app, arg)) },
+  { name: "attendee", onNote: true, label: "Add attendees…", min: 8, usage: ":attendee[!] {name}[, {name}...]", help: "these people attended this meeting (! adds someone new to People)",
     run: (app, { arg, bang }) => attendeeCommand(app, arg, bang) },
-  { name: "dropattendee", label: "Remove an attendee…", min: 12, usage: ":dropattendee {name}", help: "this person did not attend this meeting after all",
+  { name: "dropattendee", onNote: true, label: "Remove an attendee…", min: 12, usage: ":dropattendee {name}", help: "this person did not attend this meeting after all",
     run: (app, { arg }) => dropAttendeeCommand(app, arg) },
-  { name: "decision", label: "New decision…", min: 8, usage: ":decision [{date}] {title}", help: "record a decision in this hub, or from this meeting (dated today, or the meeting's day)",
+  { name: "decision", onNote: true, label: "New decision…", min: 8, usage: ":decision [{date}] {title}", help: "record a decision in this hub, or from this meeting (dated today, or the meeting's day)",
     run: (app, { arg }) => newRecordCommand(app, "decision", arg) },
-  { name: "question", label: "New question…", min: 8, usage: ":question [{date}] {title}", help: "record an open question in this hub, or from this meeting",
+  { name: "question", onNote: true, label: "New question…", min: 8, usage: ":question [{date}] {title}", help: "record an open question in this hub, or from this meeting",
     run: (app, { arg }) => newRecordCommand(app, "question", arg) },
-  { name: "answered", label: "Mark answered", min: 8, usage: ":answered [{date}]", help: "this question is answered (today if no date); write the answer in its note",
+  { name: "answered", onNote: true, label: "Mark answered", min: 8, usage: ":answered [{date}]", help: "this question is answered (today if no date); write the answer in its note",
     run: (app, { arg }) => answeredCommand(app, arg) },
-  { name: "reopen", label: "Reopen the question", min: 6, usage: ":reopen", help: "this answered question is open again",
+  { name: "reopen", onNote: true, label: "Reopen the question", min: 6, usage: ":reopen", help: "this answered question is open again",
     run: (app) => reopenCommand(app) },
-  { name: "with", label: "Add people to this record…", min: 4, usage: ":with[!] {name}[, {name}...]", help: "these people are on this decision or question (! adds someone new to People)",
+  { name: "with", onNote: true, label: "Add people to this record…", min: 4, usage: ":with[!] {name}[, {name}...]", help: "these people are on this decision or question (! adds someone new to People)",
     run: (app, { arg, bang }) => withCommand(app, arg, bang) },
-  { name: "dropwith", label: "Take a person off this record…", min: 8, usage: ":dropwith {name}", help: "take a person off this decision or question",
+  { name: "dropwith", onNote: true, label: "Take a person off this record…", min: 8, usage: ":dropwith {name}", help: "take a person off this decision or question",
     run: (app, { arg }) => dropWithCommand(app, arg) },
-  { name: "task", label: "New task…", min: 4, usage: ":task [!]{text}", help: "add a task to this note's Tasks (! in front: due today)",
+  { name: "task", onNote: true, label: "New task…", min: 4, usage: ":task [!]{text}", help: "add a task to this note's Tasks (! in front: due today)",
     run: (app, { arg }) => taskCommand(app, arg) },
-  { name: "t", label: "Quick task…", min: 1, usage: ":t {text} [@Name] [!day]",
+  { name: "t", onNote: true, label: "Quick task…", min: 1, usage: ":t {text} [@Name] [!day]",
     help: "a task on this note's hub without leaving the note (a name first: theirs to do; later: you owe them; !fri: due)",
     run: (app, { arg }) => quickTaskCommand(app, arg) },
   { name: "template", label: "Insert template…", noteOnly: true, min: 8, usage: ":template [{name}]", help: "put a template's text in below the cursor (its - [ ] lines become tasks)",
@@ -109,14 +112,14 @@ export const NOTE_COMMANDS = [
     run: (app, { arg }) => app.editor.tableCommand("talign", arg.trim()) },
   { name: "tcopy", label: "Copy table", noteOnly: true, min: 5, usage: ":tcopy", help: "copy the table under the cursor for Word, Outlook or Teams (formatted) and Excel (cells)",
     run: (app) => app.editor.tableCommand("tcopy") },
-  { name: "dashboard", label: "Show on the dashboard", min: 4, usage: ":dash[board]", help: "show this note's hub on the dashboard (the main window)",
+  { name: "dashboard", onNote: true, label: "Show on the dashboard", min: 4, usage: ":dash[board]", help: "show this note's hub on the dashboard (the main window)",
     run: (app) => app.dashboardCommand() },
-  { name: "log", label: "Log status…", min: 3, usage: ":log[!]", help: "Log status… of this note's project or area: health and where it is (:log! its history)",
+  { name: "log", onNote: true, label: "Log status…", min: 3, usage: ":log[!]", help: "Log status… of this note's project or area: health and where it is (:log! its history)",
     run: (app, { bang }) => statusCommand(app, { bang }) },
   { name: "plan", label: "Plan (Gantt chart)", min: 4, usage: ":plan", help: "show the full plan of this note's project or area (its Gantt chart) in the main window",
     run: (app) => app.showPlan() },
-  { name: "timecode", label: "Set time code…", min: 8, usage: ":timecode [{code}]", help: "set this project's or area's timesheet code (with nothing: clear it)",
-    run: (app, { arg }) => app.setTimeCode(app.currentId, arg.trim()) },
+  { name: "timecode", onNote: true, label: "Set time code…", min: 8, usage: ":timecode [{code}]", help: "set this project's or area's timesheet code (with nothing: clear it)",
+    run: (app, { arg }) => app.setTimeCode(screenNoteId(app), arg.trim()) },
   { name: "calendar", label: "Week", min: 3, usage: ":cal[endar]", help: "show the Week's plan in the main window",
     run: (app) => app.calendarCommand() },
   { name: "time", label: "Timesheet", min: 4, usage: ":time", help: "show the Week's timesheet in the main window",
@@ -125,9 +128,9 @@ export const NOTE_COMMANDS = [
     run: (app) => app.onCallCommand() },
   { name: "hub", label: "Go to the sections", min: 3, usage: ":hub", help: "go to the sections (in the note window: open their sheet)",
     run: (app) => app.hubCommand() },
-  { name: "export", label: "Export as a web page", min: 3, usage: ":exp[ort]", help: "download this note, and the linked notes beside or under it, as one .html file",
+  { name: "export", onNote: true, label: "Export as a web page", min: 3, usage: ":exp[ort]", help: "download this note, and the linked notes beside or under it, as one .html file",
     run: (app) => app.exportCommand() },
-  { name: "trash", label: "Move to trash", min: 5, usage: ":trash[!]", help: "move this note to the Trash (:trash! with the notes under it)",
+  { name: "trash", onNote: true, label: "Move to trash", min: 5, usage: ":trash[!]", help: "move this note to the Trash (:trash! with the notes under it)",
     run: (app, { bang }) => app.trashCommand(bang) },
   { name: "trashed", label: "Trash", min: 7, usage: ":trashed", help: "open the Trash page: notes trashed in the last week, to restore (Escape comes back to the note)",
     run: (app) => app.showView("trash", "push") },
@@ -139,5 +142,8 @@ export function registerNoteCommands(editor) {
 
 export function runNoteCommand(app, { name, arg, bang }) {
   const command = NOTE_COMMANDS.find((each) => each.name === name);
+  // A rejection, not a throw: callers hand the result to app.guard, which shows it.
+  const refusal = command?.onNote ? refusalOf(app) : "";
+  if (refusal) return Promise.reject(new Error(refusal));
   return command ? command.run(app, { arg: arg ?? "", bang: Boolean(bang) }) : undefined;
 }

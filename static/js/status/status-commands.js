@@ -8,6 +8,7 @@
 //   copyDigest(app, area)          the area's weekly digest, as rich text and Markdown
 import { localDay } from "../meetings/meeting-days.js";
 import { topNoteOf } from "../notes/hub-groups.js";
+import { screenNoteId } from "../notes/screen-note.js";
 import { copyRich } from "../ui/clipboard.js";
 import { dayText } from "../ui/dates.js";
 import { formDialog } from "../ui/dialog.js";
@@ -74,7 +75,7 @@ export function statusHistoryDialog(app, hub) {
 }
 
 export function statusCommand(app, { bang }) {
-  const hub = statusHubOf(app);
+  const hub = statusHubOf(app, screenNoteId(app));
   return bang ? statusHistoryDialog(app, hub) : logStatusDialog(app, hub);
 }
 

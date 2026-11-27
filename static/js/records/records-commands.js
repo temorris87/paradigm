@@ -5,6 +5,7 @@ import { localDay, parseDay } from "../meetings/meeting-days.js";
 import { splitNames } from "../meetings/meetings-commands.js";
 import { shortTitle } from "../meetings/meetings-model.js";
 import { hubOf, isDecisionOrQuestion, isHub, isMeeting, meetingOf } from "../notes/hub-groups.js";
+import { screenNoteId } from "../notes/screen-note.js";
 import { titleKey } from "../notes/titles.js";
 import { peopleNamed } from "../people/people-commands.js";
 import { findPerson } from "../people/people-model.js";
@@ -15,7 +16,7 @@ const WHAT = { decision: "decision", question: "question" };
 /** :decision / :question [{date}] {title}: under the open meeting (or the meeting the note is
  * in), dated the meeting's day; else under the open note's hub, dated today. */
 export async function newRecordCommand(app, kind, arg) {
-  const id = app.currentId;
+  const id = screenNoteId(app);
   const hub = hubOf(app.tree, id);
   if (!hub) throw new Error(`E: a ${WHAT[kind]} goes in a hub: open a project or an area (or a note in one)`);
   const meeting = isMeeting(app.tree, id) ? app.tree.get(id) : meetingOf(app.tree, id);
@@ -74,7 +75,7 @@ export async function recordDateCommand(app, arg) {
 /** Sets a decision's or question's day ("YYYY-MM-DD"). */
 export async function setRecordDay(app, id, day) {
   await app.recordsApi.date(id, day);
-  await app.refreshTree();
+  await recordChanged(app);
   app.say(`"${app.tree.get(id).title}" is dated ${day}`);
 }
 
@@ -93,7 +94,7 @@ export async function answerQuestion(app, id, day, text = "") {
   // note is read again after.
   if (open && !(await app.saveBeforeSwitching())) throw new Error("This note's changes could not be saved first");
   const record = await app.recordsApi.answer(id, day, text);
-  await app.refreshTree();
+  await recordChanged(app);
   if (open) await app.open(id, { discard: true, history: "none" });
   app.say(`"${app.tree.get(id).title}" answered ${record.answered}`);
 }
@@ -105,7 +106,7 @@ export async function reopenCommand(app) {
 
 export async function reopenQuestion(app, id) {
   await app.recordsApi.reopen(id);
-  await app.refreshTree();
+  await recordChanged(app);
   app.say(`"${app.tree.get(id).title}" is open again`);
 }
 
@@ -155,8 +156,15 @@ export function splitDay(arg, today) {
   return { day, rest: words.join(" ") };
 }
 
+// A record changed: this window's tree, then the other window's (on Live the record is the
+// note window's note, and an answer's text is written into its body).
+async function recordChanged(app) {
+  await app.refreshTree();
+  app.changes?.send({ type: "changed", what: ["notes", "records"] });
+}
+
 function currentRecord(app) {
-  const id = app.currentId;
+  const id = screenNoteId(app);
   if (!isDecisionOrQuestion(app.tree, id)) {
     throw new Error("E: this note is not a decision or a question (:decision or :question {title} on a hub makes one)");
   }

@@ -2,6 +2,7 @@
 // (static/js/notes/app.js) and what was typed after the command; errors are thrown for
 // the app to show.
 import { isHub, isMeeting, isPerson } from "../notes/hub-groups.js";
+import { screenNoteId } from "../notes/screen-note.js";
 import { titleKey } from "../notes/titles.js";
 import { findPerson, matchPerson } from "./people-model.js";
 
@@ -77,11 +78,13 @@ export async function unlinkPerson(app, hub, person) {
 
 /** :org / :job / :email / :phone {text}: on a person's note; with no text, clears it. */
 export async function fieldCommand(app, field, arg) {
-  const id = app.currentId;
+  const id = screenNoteId(app);
   if (!isPerson(app.tree, id)) throw new Error(`E: this note is not a person (:newperson {name} adds one)`);
   const value = arg.trim();
   await app.peopleApi.update(id, field, value);
   await app.refreshTree();
+  // On Live the person is the note window's note: it redraws its fields on this.
+  app.changes?.send({ type: "changed", what: ["notes"] });
   app.say(value ? `${FIELD_NAMES[field]}: ${value}` : `${FIELD_NAMES[field]} cleared`);
 }
 
@@ -115,7 +118,7 @@ export function splitNameRole(arg) {
 }
 
 function currentHub(app) {
-  const id = app.currentId;
+  const id = screenNoteId(app);
   if (isMeeting(app.tree, id)) throw new Error("E: on a meeting, :attendee {name} says who attended");
   if (!isHub(app.tree, id)) throw new Error("E: people go on a hub: open a project or an area");
   return app.tree.get(id);

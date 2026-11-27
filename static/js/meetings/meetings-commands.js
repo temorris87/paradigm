@@ -2,6 +2,7 @@
 // (static/js/notes/app.js) and what was typed after the command; errors are thrown for the
 // app to show. app.today() is the local day's Date.
 import { hubOf, isMeeting } from "../notes/hub-groups.js";
+import { screenNoteId } from "../notes/screen-note.js";
 import { titleKey } from "../notes/titles.js";
 import { peopleNamed } from "../people/people-commands.js";
 import { findPerson } from "../people/people-model.js";
@@ -11,7 +12,7 @@ import { attendeesOf } from "./meetings-model.js";
 /** :meeting [{date}] [{time}] {title}: a meeting in the open note's hub, dated today unless
  * a date is given. */
 export async function newMeetingCommand(app, arg) {
-  const hub = hubOf(app.tree, app.currentId);
+  const hub = hubOf(app.tree, screenNoteId(app));
   if (!hub) throw new Error("E: meetings go in a hub: open a project or an area (or a note in one)");
   const { day, time, rest } = splitWhen(arg, app.today());
   if (!rest) throw new Error("E471: Argument required: :meeting [{date}] [{time}] {title}");
@@ -104,7 +105,7 @@ export function splitNames(arg) {
 }
 
 function currentMeeting(app) {
-  const id = app.currentId;
+  const id = screenNoteId(app);
   if (!isMeeting(app.tree, id)) throw new Error("E: this note is not a meeting (:meeting {title} on a hub makes one)");
   return id;
 }

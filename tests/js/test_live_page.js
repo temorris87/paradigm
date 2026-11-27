@@ -3,6 +3,7 @@
 import { CARET } from "../../static/js/live/caret.js";
 import { LivePage, swapCaret } from "../../static/js/live/live-page.js";
 import { LiveSender } from "../../static/js/live/live-sender.js";
+import { runNoteCommand } from "../../static/js/notes/commands.js";
 import { NotesApp } from "../../static/js/notes/app.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
@@ -362,7 +363,8 @@ test("live sender: a note trashed elsewhere (already gone from the tree) still h
   assertEqual(channel.sent.length, at, "the next note is held");
 });
 
-function trashApp({ role, notes, currentId, parent = null }) {
+// shown: the page over the dashboard (views.shown); live: the Live page's note id.
+function trashApp({ role, notes, currentId, parent = null, shown: view = null, live: liveId = null }) {
   const opened = [];
   const switched = [];
   const events = [];
@@ -371,12 +373,12 @@ function trashApp({ role, notes, currentId, parent = null }) {
     role, currentId, tree: new NoteTree(notes),
     trash: { days: 7 },
     events: new EventTarget(),
-    views: { shown: null },
-    session: { note: { id: currentId, title: "Gone", parent_id: parent }, close() {} },
-    api: { remove: async () => {} },
+    views: { shown: view, pages: { live: { state: liveId === null ? null : { id: liveId } } } },
+    session: { note: { id: currentId, title: "Gone", parent_id: parent }, close() { app.sessionClosed = true; } },
+    api: { remove: async (id, recursive) => { app.removed = [id, recursive]; } },
     changes: { send() {} },
     refreshTree: async () => {},
-    open: async (id) => opened.push(id),
+    open: async (id, options = {}) => { opened.push(id); app.discarded = options.discard; },
     switchTo: async (id) => switched.push(id),
     showView: (view) => shown.push(view),
     say() {},
@@ -384,7 +386,7 @@ function trashApp({ role, notes, currentId, parent = null }) {
     agenda: { open: (note) => { app.agendaOpened = note; } },
     redraw() {},
   };
-  for (const name of ["isDashboard", "dashboardAfter", "nextAfterDeleting", "trashCommand", "leaveTrashed", "showNoNote"]) {
+  for (const name of ["screenNoteId", "isDashboard", "dashboardAfter", "nextAfterDeleting", "trashCommand", "leaveTrashed", "showNoNote"]) {
     app[name] = NotesApp.prototype[name];
   }
   app.events.addEventListener("trashed", (event) => events.push(event.detail));
@@ -421,6 +423,80 @@ test("trash in the main window: a nested dashboard goes to its parent's hub", as
   const { app, opened } = trashApp({ role: "main", notes, currentId: 6 });
   await app.trashCommand(true);
   assertEqual(opened.join(), "2");
+});
+
+test("trash on Live (main window): the Live note goes, not the hub under the page", async () => {
+  const notes = [{ id: 2, parent_id: null, title: "Acme", kind: "project" }, { id: 7, parent_id: 2, title: "Kickoff" },
+    { id: 8, parent_id: 2, title: "Notes" }, { id: 3, parent_id: null, title: "Northwind", kind: "area" }];
+  const { app, opened, events } = trashApp({ role: "main", notes, currentId: 3, shown: "live", live: 7 });
+  await runNoteCommand(app, { name: "trash", bang: false });
+  assertEqual(JSON.stringify(app.removed), "[7,false]", "the note on screen, never the hidden hub (3)");
+  assertEqual(opened.join(), "2", "then the dashboard of the note's parent");
+  assertEqual(JSON.stringify(events), JSON.stringify([{ id: 7, next: 2 }]));
+  assertTrue(!app.sessionClosed, "the hub under the page stays open in its session");
+  assertEqual(app.discarded, false, "the hub's unsaved edits are saved, not thrown away");
+  const shown = trashApp({ role: "main", notes, currentId: 7 });
+  await runNoteCommand(shown.app, { name: "trash", bang: false });
+  assertEqual(shown.app.discarded, true, "the trashed note's own edits are thrown away");
+});
+
+test("open of the hub already under Live, history replace: the URL loses the live flag", async () => {
+  const replaced = [];
+  const pushed = [];
+  let hidden = false;
+  const app = {
+    role: "main", currentId: 2, tree: new NoteTree([{ id: 2, parent_id: null, title: "Acme", kind: "project" }]),
+    isDashboard: () => true,
+    views: { get shown() { return hidden ? null : "live"; }, hide() { hidden = true; } },
+    history: { replaceState: (_s, _t, url) => replaced.push(url), pushState: (_s, _t, url) => pushed.push(url) },
+    switchTo: async () => true,
+    redraw() {}, focusNote() {},
+  };
+  const saved = localStorage.getItem("paradigm.recent");
+  try {
+    assertTrue(await NotesApp.prototype.open.call(app, 2, { history: "replace" }));
+  } finally {
+    if (saved === null) localStorage.removeItem("paradigm.recent");
+    else localStorage.setItem("paradigm.recent", saved);
+  }
+  assertTrue(hidden, "the Live page is hidden");
+  assertEqual(replaced.length, 1, "the address is rewritten even though switchTo skips the same note");
+  assertTrue(/\?note=2$/.test(replaced[0]), `no live flag left: ${replaced[0]}`);
+  assertEqual(pushed.length, 0, "replace, not a new history entry");
+});
+
+test("trash on Live with no note there: refused, nothing sent", async () => {
+  const notes = [{ id: 2, parent_id: null, title: "Acme", kind: "project" }];
+  const { app, opened } = trashApp({ role: "main", notes, currentId: 2, shown: "live" });
+  assertEqual(await rejection(runNoteCommand(app, { name: "trash", bang: true })), "E: no note on this page");
+  const gone = trashApp({ role: "main", notes, currentId: 2, shown: "live", live: 9 });
+  assertEqual(await rejection(runNoteCommand(gone.app, { name: "trash" })), "E: no note on this page", "a Live note already gone");
+  assertEqual(app.removed ?? gone.app.removed, undefined);
+  assertEqual(opened.length, 0);
+});
+
+test("trash on the task page, Today and the Week: refused, the hub under the page stays", async () => {
+  const notes = [{ id: 2, parent_id: null, title: "Acme", kind: "project" }, { id: 3, parent_id: null, title: "Northwind", kind: "area" }];
+  for (const [view, message] of [["task", "E: this page shows a task: x deletes it"], ["home", "E: no note on this page"],
+    ["week", "E: no note on this page"], ["people", "E: no note on this page"]]) {
+    for (const bang of [false, true]) {
+      const { app, opened, shown } = trashApp({ role: "main", notes, currentId: 2, shown: view });
+      assertEqual(await rejection(runNoteCommand(app, { name: "trash", bang })), message, `${view}${bang ? " !" : ""}`);
+      assertEqual(app.removed, undefined, `${view}: nothing trashed`);
+      assertEqual(opened.length + shown.length, 0, `${view}: the window stays`);
+    }
+  }
+});
+
+test("trash on Plan and in the note window: the open note, as before", async () => {
+  const notes = [{ id: 2, parent_id: null, title: "Acme", kind: "project" }, { id: 3, parent_id: null, title: "Northwind", kind: "area" }];
+  const plan = trashApp({ role: "main", notes, currentId: 2, shown: "plan" });
+  await runNoteCommand(plan.app, { name: "trash", bang: true });
+  assertEqual(JSON.stringify(plan.app.removed), "[2,true]", "Plan is the hub's own chart");
+  // The note window has no pages: whatever views says, its note is the one open.
+  const note = trashApp({ role: "note", notes, currentId: 3, shown: "home" });
+  await runNoteCommand(note.app, { name: "trash" });
+  assertEqual(JSON.stringify(note.app.removed), "[3,false]");
 });
 
 test("trash in the note window: still opens the parent, and tells the sender what opens next", async () => {
@@ -503,3 +579,12 @@ test("live page: a new note waits for the app's start, so the start's own page d
     section.remove();
   }
 });
+
+async function rejection(promise) {
+  try {
+    await promise;
+  } catch (error) {
+    return error.message;
+  }
+  return "no error";
+}
