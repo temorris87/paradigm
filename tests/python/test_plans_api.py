@@ -1,7 +1,9 @@
 """The plan, template and file endpoints over HTTP."""
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from helpers import RunningServer
 
@@ -63,8 +65,17 @@ class PlansApiTest(unittest.TestCase):
             self.assertEqual(files["links"][0]["note_id"], project)
             self.post("/api/file/detach", {"file_id": file_id, "note_id": project})
             self.post("/api/folder/unlink", {"id": linked["folder"]["id"]})
-        status, _ = self.running.get_json("/api/folders/browse")
-        self.assertEqual(status, 200)
+            # Browse walks this computer's OneDrive, else the whole home folder: on a CI runner
+            # with no OneDrive that walk outran the 5 s timeout. A temporary OneDrive keeps it
+            # to this folder.
+            (Path(folder) / "Contracts").mkdir()
+            only = {k: v for k, v in os.environ.items() if not k.startswith("OneDrive")}
+            with mock.patch.dict(os.environ, {**only, "OneDrive": folder}, clear=True):
+                status, browse = self.running.get_json("/api/folders/browse")
+            self.assertEqual(status, 200)
+            self.assertEqual(browse["roots"], [folder])
+            self.assertIn(str(Path(folder) / "Contracts"), browse["folders"])
+            self.assertTrue(all(path.startswith(folder) for path in browse["folders"]))
 
 
 if __name__ == "__main__":
