@@ -79,6 +79,8 @@ keybindings).
   into one `batch/<date>` branch that `main` is fast-forwarded to when he says commit. See
   `docs/pipeline.md` and `.claude/skills/features/SKILL.md`. While a batch runs, the main tree's
   code is left alone (the `edit-guard` hook).
+- On the Mac, both skills, their workflows and agents are linked into `~/.claude`, so they show up
+  in every project. The setup is in `docs/pipeline.md`.
 - Never reorder, reword or delete his items. Suggest new items in chat, and add them only when
   he agrees.
 
@@ -103,6 +105,8 @@ changes. How the app behaves, by area, is in `docs/spec/`: read the area's file 
   timesheet), `navigation.md` (navigator, tree, backlinks, Today, note menu, top bar and
   palette, main-window keys, two windows, trash, images).
 - `docs/windows.md`: what we learned on the Windows work PC.
+- `docs/ui-audit.md`: the usability audit (2026-11-26) behind the light-theme redesign: findings
+  by severity, and the role-named color tokens. The designs are in the Figma file "Paradigm UI".
 - `docs/features/`: one build spec per feature, written by the pipeline; `batch-<date>.md`, one
   merge report per batch.
 - `docs/pipeline.md`: how the pipeline's tools, hooks and ledgers fit together, batches included.

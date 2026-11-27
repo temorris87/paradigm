@@ -15,6 +15,20 @@ feature) and `.claude/skills/features/SKILL.md` (a batch).
 | `.claude/workflows/feature-batch.js` | Up to 10 `feature-build` runs side by side, then the merge, a re-review of what the merge touched, browser re-checks and the close. |
 | `.claude/agents/feature-merger.md` | Joins the feature branches in backlog order: resolves conflicts keeping both sides, renumbers migrations, leaves a feature out on a key clash. |
 
+## Using it outside this repo (Mac)
+`/feature`, `/features`, the two workflows and the pipeline agents are linked into the user-level
+Claude folder, so they show up in every project on the Mac. The links point back at this repo, so
+an edit here takes effect everywhere with nothing to copy. They still run this repo's tools
+(`tools/pipeline_state.py`, the gate, the hooks), so another project needs those tools before a
+run there can succeed. To set the links up again, from the repo root:
+```
+R="$PWD/.claude"; mkdir -p ~/.claude/agents ~/.claude/workflows
+for s in feature features; do ln -sfn "$R/skills/$s" ~/.claude/skills/$s; done
+for w in feature-build feature-batch; do ln -sfn "$R/workflows/$w.js" ~/.claude/workflows/$w.js; done
+for a in "$R"/agents/*.md; do ln -sfn "$a" ~/.claude/agents/"$(basename "$a")"; done
+```
+If the repo moves, run it again from the new place.
+
 ## A batch, start to end
 ```
 main (clean) ── worktree.py create ──> ../paradigm-wt/<slug>        on feature/<slug>   (×N, N ≤ 10)
