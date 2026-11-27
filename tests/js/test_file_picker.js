@@ -190,6 +190,8 @@ test("folder browser: j/k and Enter go into a folder, h comes back, / filters, E
   assertEqual(dialog.querySelector(".dialog__title").textContent, "Add a file to Pilot");
   assertEqual(dialog.querySelector(".folder-browser__path").textContent, "/od/Pilot");
   assertEqual(rowTitles(dialog), ["📁 Design", "agenda.docx", "budget.xlsx"]);
+  assertEqual([...dialog.querySelectorAll(".folder-browser__keys .key")].map((cap) => cap.textContent), ["Enter", "h", "/", "Esc"],
+    "its keys at the foot, in the shared caps");
   const list = dialog.querySelector("[role=listbox]");
   assertEqual(document.activeElement, list, "the list has the focus");
   list.dispatchEvent(key("j"));

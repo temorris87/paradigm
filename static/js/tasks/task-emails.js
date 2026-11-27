@@ -15,6 +15,7 @@
 //   attachCommand(app)             :attach: the task page's picker; anywhere else (Today, the
 //                                  note window...) refused
 import { confirmDialog } from "../ui/dialog.js";
+import { chip as statusChip } from "../ui/chip.js";
 import { EMAIL_HINT, MAX_EMAIL_BYTES, isMsgName, linkLabel, nextReply, notMsgText, removeEmailText, replyChip,
   senderLine, tooBigText, uploadError } from "./emails-model.js";
 
@@ -85,7 +86,7 @@ export class TaskEmails {
     const line = element("div", "task-emails__line");
     line.append(element("span", "task-emails__icon", "✉"), element("span", "task-emails__subject", email.subject || "(no subject)"));
     const chip = replyChip(email, today);
-    if (chip) line.append(element("span", `task-emails__chip task-emails__chip--${chip.tone}`, chip.text));
+    if (chip) line.append(statusChip(chip.text, chip.tone));
     const link = element("button", "task-emails__link", linkLabel(email));
     link.type = "button";
     link.tabIndex = -1;

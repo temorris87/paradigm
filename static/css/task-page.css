@@ -388,24 +388,9 @@ span.task-page__box {
   color: var(--text);
 }
 
-/* Feature 019 brings a shared .chip; the merger moves these tones onto it. */
-.task-emails__chip {
+/* The reply chip is the shared status chip (chip.css); in the line it never shrinks. */
+.task-emails__line .chip {
   flex: none;
-  padding: 0 var(--sp-2);
-  border-radius: var(--radius-sm);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.task-emails__chip--caution {
-  background: var(--state-caution-bg);
-  color: var(--state-caution-fg);
-}
-
-.task-emails__chip--success {
-  background: var(--state-success-bg);
-  color: var(--state-success-fg);
 }
 
 .task-emails__link {

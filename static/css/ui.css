@@ -373,6 +373,17 @@
   color: var(--text-strong);
 }
 
+/* Its keys at the foot: the shared caps (key-hints.css), as triage shows its own. */
+.folder-browser__keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-4);
+  margin: 0;
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--border-divider);
+  font-size: var(--fs-xs);
+}
+
 /* A small icon-like button beside a fact: ▾ ✎ + × (the hub line, the tree's groups). */
 .mini-button {
   padding: 0 var(--sp-1);

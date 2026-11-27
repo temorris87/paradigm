@@ -194,5 +194,5 @@ file), and Outlook opening the saved .msg.
   - An archived note's task still opens its emails (opening reads only); `r`, `x`, drops and
     `:attach` are refused as read-only, and the empty section says "No emails" there.
   - Opening uses `paradigm/files/folders.py`'s `open_file` (this computer's program for .msg).
-  - The reply chip is a local `.task-emails__chip` class with the caution and success tones;
-    the merger switches it to feature 019's `.chip`.
+  - The reply chip is feature 019's shared status chip (`ui/chip.js`, `.chip`) in the caution
+    and success tones.

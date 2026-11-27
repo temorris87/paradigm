@@ -88,7 +88,9 @@ How the app behaves. Kept up to date by each feature that changes it.
   the same folder: the path at the top, folders then files, each by name. `j` / `k`, `gg` /
   `G`, Enter or `l` opens a folder or picks a file, `h` / Backspace goes up (at a root, the
   roots), `/` filters by name (a second `/` selects the old text, so typing replaces it;
-  Enter or Esc back to the list), Esc cancels. Keys: `folder-browser-keys.js`.
+  Enter or Esc back to the list), Esc cancels. The dialog sits on the overlay surface, and its
+  foot shows Enter, `h`, `/` and Esc in the shared key caps (the table's `hint:` entries). Keys:
+  `folder-browser-keys.js`.
 - Files "···" menu: the Files heading has a "···" button, `m` on the heading or its rows
   (the hub key for a section's menu): Search linked files… (the text-search picker over the
   linked folders' files), Link a folder…, Unlink a folder…. In the main window and the note

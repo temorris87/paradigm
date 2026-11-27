@@ -6,10 +6,12 @@
 //   const path = await browseForFile({ api: filesApi, start: "C:\\…\\Pilot", title,
 //                                      fallbackFocus });   // -> the file's path, or null
 //
-// It shows the current path at the top, then the folder's subfolders and files (by name). Up
-// from a root lists the roots. Afterwards the focus goes back where it was (the Files section).
+// It shows the current path at the top, then the folder's subfolders and files (by name), and
+// its keys at the foot in the shared key caps. Up from a root lists the roots. Afterwards the
+// focus goes back where it was (the Files section).
 import { element, openModal, restoreFocus, uniqueId } from "../ui/dom.js";
-import { filterAction, listKeyReader } from "./folder-browser-keys.js";
+import { filterAction, folderBrowserHints, listKeyReader } from "./folder-browser-keys.js";
+import { drawKeyHints } from "../ui/key-hints.js";
 import { entriesOf, filterEntries, moveActive, rootEntries, sizeText } from "./folder-browser-model.js";
 import { dayText } from "../ui/dates.js";
 
@@ -34,7 +36,9 @@ export function browseForFile({ api, start = null, title = "Add a file", fallbac
     const error = element("p", "dialog__error");
     error.hidden = true;
     error.setAttribute("role", "alert");
-    dialog.append(heading, where, filter, list, error);
+    const foot = element("p", "folder-browser__keys");
+    drawKeyHints(foot, folderBrowserHints());
+    dialog.append(heading, where, filter, list, error, foot);
     document.body.append(dialog);
 
     const read = listKeyReader();

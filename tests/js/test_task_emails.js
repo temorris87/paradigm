@@ -135,11 +135,11 @@ test("emails: the section's rows, after the subtasks in one list", () => withEma
   assertEqual(api.calls[0], ["list", 10]);
   assertEqual(subjects(section), ["Quote 1", "Quote 2"]);
   const first = section.querySelector(".task-emails__row");
-  assertEqual(first.querySelector(".task-emails__chip").textContent, "Reply needed");
-  assertTrue(first.querySelector(".task-emails__chip--caution"), "caution tone");
+  assertEqual(first.querySelector(".chip").textContent, "Reply needed");
+  assertTrue(first.querySelector(".chip.chip--caution"), "caution tone");
   assertEqual(first.querySelector(".task-emails__link").textContent, "Reply ↗");
   assertEqual(first.querySelector(".task-emails__sender").textContent, "Dana Reyes · Wed 25 Nov 14:05");
-  assertEqual(section.querySelectorAll(".task-emails__row")[1].querySelector(".task-emails__chip").textContent, "Replied Thu");
+  assertEqual(section.querySelectorAll(".task-emails__row")[1].querySelector(".chip").textContent, "Replied Thu");
   press(section, "j");
   assertEqual(selectedSubject(section), null, "the subtask first");
   press(section, "j");
@@ -155,11 +155,11 @@ test("emails: r cycles the reply and the row keeps its place; o, Enter and the l
   await tick();
   assertEqual(api.calls.at(-1), ["reply", 1, "replied"]);
   assertEqual(selectedSubject(section), "Quote 1");
-  assertEqual(section.querySelector("[aria-selected=true] .task-emails__chip").textContent, "Replied Fri");
+  assertEqual(section.querySelector("[aria-selected=true] .chip").textContent, "Replied Fri");
   press(section, "r");
   await tick();
   assertEqual(api.calls.at(-1), ["reply", 1, "none"]);
-  assertEqual(section.querySelector("[aria-selected=true] .task-emails__chip"), null, "No reply: no chip");
+  assertEqual(section.querySelector("[aria-selected=true] .chip"), null, "No reply: no chip");
   press(section, "o");
   press(section, "Enter");
   section.querySelectorAll(".task-emails__link")[1].click();
