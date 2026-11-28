@@ -82,7 +82,7 @@ How the app behaves. Kept up to date by each feature that changes it.
     note); `o`, `r` and `x`/Delete on emails and files (below); `x`/Delete on a subtask deletes
     it; `J`/`K` move a subtask among its siblings; Escape back to the dashboard. The hint bar:
     `Space` done, `e` edit notes, `d` delegate, `s` schedule, `a` add subtask, `j k` move, `h l` columns, `Esc` back,
-    `?` all keys; the rest are in `?`.
+    `f` follow, `?` all keys; the rest are in `?`.
   - Notes are written in the note window, never on the page (the main window never edits
     text). The chip "Live · editing in the note window" was first dropped, as the note window
     couldn't open a task's notes (Tyson, 2026-11-27); 031 brought both back (Figma wins, Tyson,

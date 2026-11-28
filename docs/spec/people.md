@@ -67,7 +67,7 @@ How the app behaves. Kept up to date by each feature that changes it.
     (and ← →) move across the columns as they sit on screen: the cards, then Notes and Together
     under them (2026-11-28; feature 039, navigation.md's Columns); Space done; d delegate; a add a topic from any card; r mark the topic
     raised (on a hub row in Together, Role…); n Start 1:1 notes; o and Enter open the row's
-    task page or note; ? all keys. Bar: j k move, h l columns, Space done, d delegate,
+    task page or note; ? all keys. Bar: j k move, h l columns, Tab next column, Space done, d delegate,
     a add topic, r raised, n 1:1 notes, o open, f follow, ? all keys. Elsewhere a and r keep their
     old meanings (the section's add button, the row's other button), and n on a project is
     its new task (feature 026).

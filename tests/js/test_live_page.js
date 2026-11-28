@@ -6,6 +6,7 @@ import { LiveSender } from "../../static/js/live/live-sender.js";
 import { runNoteCommand } from "../../static/js/notes/commands.js";
 import { NotesApp } from "../../static/js/notes/app.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
+import { followNoteLinks } from "../../static/js/ui/rendered-text.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
 function fakeChannel() {
@@ -647,3 +648,26 @@ async function rejection(promise) {
   }
   return "no error";
 }
+
+test("rendered text: a footnote's \"#\" link stays on the page, even when the page's URL names a note", () => {
+  const before = window.location.href;
+  history.replaceState(history.state, "", `${window.location.pathname}?note=2&live`);
+  const root = document.createElement("div");
+  const footnote = Object.assign(document.createElement("a"), { href: "#live-body-fn-1", textContent: "1" });
+  const note = Object.assign(document.createElement("a"), { href: "?note=7", textContent: "Acme" });
+  root.append(footnote, note);
+  document.body.append(root);
+  const opened = [];
+  followNoteLinks(root, (id) => opened.push(id));
+  try {
+    const footClick = new MouseEvent("click", { bubbles: true, cancelable: true });
+    root.addEventListener("click", (event) => { if (event.target === footnote) event.preventDefault(); }, { once: false });
+    footnote.dispatchEvent(footClick);
+    assertEqual(opened.join(), "", "the footnote opens no note (the browser moves to it on the page)");
+    note.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    assertEqual(opened.join(), "7", "a link to a note still opens it");
+  } finally {
+    root.remove();
+    history.replaceState(history.state, "", before);
+  }
+});

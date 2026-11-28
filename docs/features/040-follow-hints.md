@@ -87,6 +87,11 @@ None: no route is added or changed.
   transparent box, but not a button that is itself transparent in a box that isn't: the rows'
   hover-only buttons (Timesheet's remove, On call's change) can be followed, and focusing them
   shows them.
+- **From the batch re-check (2026-11-28)**: text boxes, selects and text areas are targets too
+  (following one focuses it). The labels are laid out apart once drawn (`keepApart`): one that
+  would sit on a label drawn before it moves right until clear, so a dashboard row's label is
+  no longer hidden under its checkbox's. The layer and labels also set their positioning
+  through CSSOM, so this holds without the stylesheet (the JS test page has none).
 - **More targets** than listed: `[role=button]`, `[role=tab]` and `summary` too. A target also
   needs a point a click would reach (`elementFromPoint` at its middle or its top-left), so
   things under a dialog or another layer get no label. At most 361 targets, in reading order.

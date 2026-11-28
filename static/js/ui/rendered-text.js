@@ -3,7 +3,8 @@
 //
 //   drawRendered(root)              maths and diagrams drawn, links out of the Tab order
 //   followNoteLinks(root, open)     a click on a link to one of the app's notes calls
-//                                   open(id) in place of the browser following it
+//                                   open(id) in place of the browser following it (a "#"
+//                                   link on the page is left to the browser)
 import { drawDiagrams } from "../diagrams/mermaid.js";
 import { ensureMathFonts, typesetMath } from "../math/typeset.js";
 
@@ -18,7 +19,9 @@ export function drawRendered(root) {
 export function followNoteLinks(root, open) {
   root.addEventListener("click", (event) => {
     const link = event.target.closest?.("a[href]");
-    if (!link) return;
+    // A "#" link (a footnote and its way back) moves on the page: the browser's to follow, even
+    // though the page's own URL names a note.
+    if (!link || link.getAttribute("href").startsWith("#")) return;
     const url = new URL(link.href, window.location.href);
     if (url.origin !== window.location.origin || !url.searchParams.has("note")) return;
     event.preventDefault();

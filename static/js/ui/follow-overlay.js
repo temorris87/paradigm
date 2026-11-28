@@ -23,9 +23,10 @@ import { MAX_HINTS, followStep, hintLabels, labelsFor, nextTyped, readingOrder }
 import { uiAction } from "./ui-keys.js";
 
 // What gets a label: list rows, row buttons and spans, buttons and links, navigator pins and tree
-// rows, the Week grid's blocks and the tray's items (their grip takes the press).
+// rows, the Week grid's blocks and the tray's items (their grip takes the press), and the fields
+// (following one puts the focus in it, to type or choose).
 const TARGETS = ["[role=option]", "[data-action]", "button", "a[href]", "[role=button]", "[role=tab]", "summary",
-  ".tree__row", ".cal-task__grip"].join(", ");
+  ".tree__row", ".cal-task__grip", "input:not([type=hidden])", "select", "textarea"].join(", ");
 
 // Targets a press drives (pointer down and up: Week blocks, tray items), not a click alone.
 const PRESSED = ".cal-block, .cal-task__grip";
@@ -73,8 +74,12 @@ export function installFollowMode(target, { root = document, redraws = null } = 
       entry.cap = drawCap(entry, labels[index]);
       layer.append(entry.cap);
     });
+    for (const [name, value] of [["position", "fixed"], ["inset", "0"], ["pointer-events", "none"]]) {
+      layer.style.setProperty(name, value);
+    }
     session?.layer.remove();
     document.body.append(layer);
+    keepApart(entries.map((entry) => entry.cap));
     session = { entries, typed, layer };
     if (typed) show();
     return true;
@@ -211,10 +216,29 @@ function reaches(node, hit) {
   return Boolean(hit) && (hit === node || node.contains(hit));
 }
 
+/** A label that would sit on one drawn before it (a row's and the button at its corner) moves
+ *  right until it is clear, so every label can be read. */
+function keepApart(caps) {
+  const placed = [];
+  for (const cap of caps) {
+    let box = cap.getBoundingClientRect();
+    for (let tries = 0; tries < caps.length; tries += 1) {
+      const hit = placed.find((other) => box.left < other.right && other.left < box.right && box.top < other.bottom && other.top < box.bottom);
+      if (!hit) break;
+      cap.style.setProperty("left", `${Math.round(hit.right + 2)}px`);
+      box = cap.getBoundingClientRect();
+    }
+    placed.push(box);
+  }
+}
+
 function drawCap(entry, label) {
   const cap = document.createElement("span");
   cap.className = "key follow-hints__label";
   // CSSOM, not a style attribute: the CSP forbids inline styles.
+  // Placed here as well as in follow-hints.css: the labels are laid out against each other
+  // (apart) as soon as they are drawn.
+  cap.style.setProperty("position", "absolute");
   cap.style.setProperty("left", `${Math.round(entry.left)}px`);
   cap.style.setProperty("top", `${Math.round(entry.top)}px`);
   markTyped(cap, label, "");

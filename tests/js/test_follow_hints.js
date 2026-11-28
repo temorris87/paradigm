@@ -532,3 +532,48 @@ test("follow overlay: a function key (F5, F12) ends follow mode and is still the
     root.remove();
   }
 });
+
+test("follow overlay: a row's label and the label of the button at its corner never sit on each other", () => {
+  const box = fixedBox({ width: "400px" });
+  const row = document.createElement("div");
+  row.setAttribute("role", "option");
+  row.style.setProperty("height", "30px");
+  row.style.setProperty("width", "300px");
+  const check = Object.assign(document.createElement("button"), { type: "button", textContent: "✓" });
+  row.append(check);
+  box.append(row);
+  const follow = installFollowMode(box, { root: box });
+  try {
+    follow.start();
+    const caps = [...document.querySelectorAll(".follow-hints__label")].map((cap) => cap.getBoundingClientRect());
+    assertEqual(caps.length, 2, "the row and its button each have a label");
+    const [a, b] = caps;
+    const overlap = a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    assertTrue(!overlap, `the two labels are apart (${a.left}-${a.right} and ${b.left}-${b.right})`);
+  } finally {
+    follow.stop();
+    box.remove();
+  }
+});
+
+test("follow overlay: a text box and a select get labels; following one puts the focus in it", () => {
+  const box = fixedBox({ width: "400px" });
+  const field = Object.assign(document.createElement("input"), { type: "text" });
+  const choice = document.createElement("select");
+  choice.append(new Option("One"), new Option("Two"));
+  const hiddenField = Object.assign(document.createElement("input"), { type: "hidden" });
+  box.append(field, choice, hiddenField);
+  const follow = installFollowMode(box, { root: box });
+  try {
+    follow.start();
+    assertEqual(shownLabels().join(), "a,s", "the text box and the select, not the hidden input");
+    press(box, "a");
+    assertEqual(document.activeElement, field, "following the text box puts the focus in it, to type");
+    follow.start();
+    press(field, "s");
+    assertEqual(document.activeElement, choice, "and the select gets the focus too");
+  } finally {
+    follow.stop();
+    box.remove();
+  }
+});
