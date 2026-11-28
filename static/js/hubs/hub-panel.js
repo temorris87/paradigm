@@ -33,12 +33,13 @@
 // aria-activedescendant. The buttons are for the mouse (tabIndex -1); the keys do the same
 // (hub-keys.js).
 import { chip } from "../ui/chip.js";
+import { columnTarget, laneColumns } from "../ui/column-target.js";
 import { hubAction } from "./hub-keys.js";
 
 const MAX_DEPTH = 6;
 // A section with nothing to draw: no rows, and no footer to keep it in its column.
 const isEmpty = (section) => !section.rows.length && !section.footer;
-const KEYS_OF = { remove: "x", role: "r", answer: "r", done: "Space", edit: "e", delegate: "d", takeBack: "d", history: "h" };
+const KEYS_OF = { remove: "x", role: "r", answer: "r", done: "Space", edit: "e", delegate: "d", takeBack: "d", history: "t" };
 
 export class HubPanel {
   constructor(section, handlers) {
@@ -383,21 +384,16 @@ export class HubPanel {
     return row >= 0 ? row : this.options.findIndex((option) => option.lane === lane);
   }
 
-  /** The option in the next (1) or previous (-1) lane nearest the active one's height. */
+  /** h l, ← →: the option in the lane beside on screen, right (1) or left (-1), with any,
+   * nearest the active one's height. */
   laneTarget(direction) {
     const from = this.options[this.active];
     if (!from) return this.active;
-    const lane = from.lane + direction;
     const nodes = [...this.list.querySelectorAll("[role=option]")];
-    const top = nodes[this.active]?.getBoundingClientRect().top ?? 0;
-    let best = -1;
-    let distance = Infinity;
-    this.options.forEach((option, index) => {
-      if (option.lane !== lane) return;
-      const away = Math.abs((nodes[index]?.getBoundingClientRect().top ?? 0) - top);
-      if (away < distance) [best, distance] = [index, away];
-    });
-    return best >= 0 ? best : this.active;
+    const lanes = [...this.list.querySelectorAll(":scope > .hub__lane")].map((lane) => lane.getBoundingClientRect());
+    const columns = laneColumns(lanes, from.lane);
+    const rows = this.options.map((option, index) => ({ column: columns[option.lane] ?? NaN, top: nodes[index]?.getBoundingClientRect().top ?? 0 }));
+    return columnTarget(rows, this.active, direction);
   }
 
   moveTo(index) {

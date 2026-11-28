@@ -111,7 +111,7 @@ test("prep: open questions with the attendees, what they owe, last time", () => 
 
 test("today: keys from the table; the page starts on Up next and runs its actions", () => {
   assertTrue(TODAY_KEYS.every((entry) => entry.help));
-  assertEqual(hintsOf(TODAY_KEYS).map(({ cap }) => cap).join(), "j k,Space,s,d,z,o");
+  assertEqual(hintsOf(TODAY_KEYS).map(({ cap }) => cap).join(), "j k,h l,Space,s,d,z,o");
   const section = document.createElement("section");
   document.body.append(section);
   try {
@@ -142,6 +142,37 @@ test("today: keys from the table; the page starts on Up next and runs its action
     assertEqual(section.querySelector(".today-now__left").textContent, "1 h left");
     key("Escape");
     assertEqual(calls.pop(), "leave");
+  } finally {
+    section.remove();
+  }
+});
+
+test("today: h and l cross the columns (Now, Next, the side), ← → too; no wrap", () => {
+  const section = document.createElement("section");
+  document.body.append(section);
+  try {
+    const page = new TodayPage(section, { onOpen: () => {}, onLeave: () => {}, today: () => NOW, actions: {} });
+    page.show(ctx());
+    const key = (k) => page.list.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true }));
+    const column = () => {
+      const node = document.getElementById(page.list.getAttribute("aria-activedescendant"));
+      return ["now", "next", "side"].find((name) => node.closest(`.today__col--${name}`));
+    };
+    assertEqual(column(), "next", "it starts on Up next");
+    key("h");
+    assertEqual(column(), "now");
+    key("h");
+    assertEqual(column(), "now", "no wrap past the first column");
+    key("l");
+    assertEqual(column(), "next");
+    key("l");
+    assertEqual(column(), "side");
+    key("l");
+    assertEqual(column(), "side", "no wrap past the last column");
+    key("ArrowLeft");
+    assertEqual(column(), "next", "← as h");
+    key("ArrowRight");
+    assertEqual(column(), "side", "→ as l");
   } finally {
     section.remove();
   }

@@ -14,7 +14,8 @@
 // the rest of today, in the flag the Week's Plan without it sets (calendar/import-upload.js).
 // It draws what today-model.js works out and reports what was asked (actions); the app runs
 // it. The whole page is one focus stop: a listbox over Up next, the day, On call, Projects and
-// the Inbox, in that order (} and { jump between them), starting on Up next.
+// the Inbox, in that order (} and { jump between them), starting on Up next; h l (and ← →)
+// cross to the column beside, to its row nearest in height (ui/column-target.js).
 //
 //   const page = new TodayPage(section, { onOpen(id), onLeave(), today(), actions, storage?,
 //                                         onCursor() });
@@ -40,8 +41,11 @@ import { shortTitle } from "../meetings/meetings-model.js";
 import { cellPeople } from "../oncall/oncall-model.js";
 import { chip } from "../ui/chip.js";
 import { toneOf } from "../ui/chip-tones.js";
+import { columnTarget } from "../ui/column-target.js";
 
 const MINUTE_MS = 60 * 1000;
+// Which column each part's rows sit in, left to right: h l move across them.
+const PART_COLUMNS = { day: 0, next: 1, oncall: 2, projects: 2, inbox: 2 };
 
 export class TodayPage {
   constructor(section, { onOpen, onLeave, today = () => new Date(), actions = {}, storage = window.localStorage,
@@ -382,6 +386,8 @@ export class TodayPage {
       case "last": return this.moveTo(last);
       case "nextSection": return this.moveTo(this.partStart(1));
       case "previousSection": return this.moveTo(this.partStart(-1));
+      case "nextColumn": return this.moveTo(this.columnStep(1));
+      case "previousColumn": return this.moveTo(this.columnStep(-1));
       case "leave": return this.onLeave();
       case "pending": return undefined;
       case "fileAll": return this.actions.fileAll?.();
@@ -424,6 +430,14 @@ export class TodayPage {
     if (here === undefined) return this.active;
     if (direction > 0) return starts.find((index) => index > this.active) ?? this.active;
     return starts.filter((index) => index < this.active).pop() ?? this.active;
+  }
+
+  /** h l: the row beside in the next (1) or previous (-1) column, nearest in height. */
+  columnStep(direction) {
+    const nodes = new Map([...this.list.querySelectorAll("[role=option]")].map((node) => [Number(node.dataset.index), node]));
+    const rows = this.options.map((option, index) => ({ column: PART_COLUMNS[option.part] ?? 0,
+      top: nodes.get(index)?.getBoundingClientRect().top ?? 0 }));
+    return columnTarget(rows, this.active, direction);
   }
 
   moveTo(index) {

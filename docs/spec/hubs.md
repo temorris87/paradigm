@@ -89,7 +89,8 @@ How the app behaves. Kept up to date by each feature that changes it.
     Answered questions"; each adds one, and Answered questions (always there) opens History on
     its tab.
   - Keys (HUB_KEYS): `n` a new task (project only), `L` Log status, `e` on Outcome edits it,
-    `g h` History (project only), `g p` Gantt. Hint bar: `j k` move, `Space` done, `n` new
+    `g h` History (project only), `g p` Gantt, `t` a phase or milestone's date history
+    ("timeline"; it was `h`, 2026-11-28; feature 039). Hint bar: `j k` move, `h l` columns, `Space` done, `n` new
     task, `d` delegate, `L` log status, `e` edit outcome, `g p` Gantt, `?` all keys.
 - History page (Tyson, 2026-11-27; Figma "Project history"; one per project): `&history=ID`,
   opened by `g h` on a project's page, the head's History button or a section's History ↗ (on

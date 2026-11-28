@@ -63,6 +63,7 @@ test("task page: its key table", () => {
   const key = (k) => taskPageAction(new KeyboardEvent("keydown", { key: k }));
   assertEqual(["j", "ArrowDown", "k", "ArrowUp", "G", "Enter", "a", " ", "e", "E", "d", "s", "x", "Delete", "J", "K", "Escape"].map(key),
     ["next", "next", "previous", "previous", "last", "open", "add", "toggle", "editNotes", "edit", "delegate", "schedule", "remove", "remove", "moveDown", "moveUp", "leave"]);
+  assertEqual(["h", "ArrowLeft", "l", "ArrowRight"].map(key), ["previousColumn", "previousColumn", "nextColumn", "nextColumn"]);
   assertEqual([key("g"), key("g")], ["pending", "first"]);
   assertEqual(taskPageAction(new KeyboardEvent("keydown", { key: "j", ctrlKey: true })), null);
   assertTrue(TASK_PAGE_KEYS.every((entry) => entry.help), "every key has its help");
@@ -171,6 +172,23 @@ test("task page: j/k/G/gg move, Enter opens a subtask's page, J moves it, Escape
   assertEqual(selected(section), "Book van");
   press(section, "Escape");
   assertEqual(left(), 1);
+}));
+
+test("task page: l from the task (over its Notes) to the side column, h back; no wrap", () => withPage(({ section }) => {
+  assertEqual(selected(section), "Book van");
+  press(section, "h");
+  assertEqual(selected(section), "Book van", "h in the left column does nothing");
+  press(section, "l");
+  assertEqual(selected(section), "Get quotes", "the side column's row nearest in height");
+  press(section, "l");
+  assertEqual(selected(section), "Get quotes", "l in the last column does nothing");
+  press(section, "G");
+  press(section, "h");
+  assertEqual(selected(section), "Book van", "back to the task");
+  press(section, "ArrowRight");
+  assertEqual(selected(section), "Get quotes", "→ as l");
+  press(section, "ArrowLeft");
+  assertEqual(selected(section), "Book van", "← as h");
 }));
 
 test("task page: another task's page starts on its head", () => withPage(({ page, section, ctx }) => {

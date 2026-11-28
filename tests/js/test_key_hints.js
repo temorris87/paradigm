@@ -53,7 +53,7 @@ test("key hints: a project's bar (projectHint:) names keys HUB_KEYS binds; 1-5 r
     for (const key of capKeys(entry)) assertTrue(bound.has(key), `${entry.action}: ${key}`);
   }
   assertEqual(capKeys({ keys: ["1"], label: "1-5" }).join(), "1,2,3,4,5");
-  assertEqual(hintsOf(HUB_KEYS, { field: "projectHint" }).length, 7);
+  assertEqual(hintsOf(HUB_KEYS, { field: "projectHint" }).length, 8);
 });
 
 test("view keys: n and g h are a project's only: another dashboard's bar and ? list leave them out", () => {
@@ -80,7 +80,7 @@ test("view keys: a project's ? list names each key once; g h is HUB_KEYS' and st
 
 test("key hints: a bar from a table: a cap and its words per hint, in table order", () => {
   assertEqual(hintsOf(TODAY_KEYS).map(({ cap, words }) => `${cap}=${words}`).join(),
-    "j k=move,Space=done,s=schedule into next free slot,d=delegate,z=snooze to tomorrow,o=open");
+    "j k=move,h l=columns,Space=done,s=schedule into next free slot,d=delegate,z=snooze to tomorrow,o=open");
   assertEqual(hintsOf(PAGE_KEYS, { scope: "list" }).map(({ cap }) => cap).join(), "j k,Enter,/,o,n,a");
   assertEqual(hintsOf(TIME_KEYS, { without: ["copy"] }).map(({ cap }) => cap).join(), "[ ],t");
   const bar = document.createElement("footer");
@@ -100,15 +100,15 @@ test("view keys: every main-window view's bar ends with ? all keys; Live shows t
   for (const tab of WEEK_TABS) assertTrue(caps("week", tab).endsWith("?"), tab);
   assertEqual(viewHints("live").map(({ cap, words }) => `${cap} ${words}`).join(), "g t Today,g w Week,: command,? all keys");
   const projectCaps = viewHints(null, "plan", { logStatus: true }).map(({ cap }) => cap).join();
-  assertEqual(projectCaps, "j k,Enter,z,a,Space,L,e,?", "an area's dashboard: the sections' keys");
+  assertEqual(projectCaps, "j k,h l,Enter,z,a,Space,L,e,?", "an area's dashboard: the sections' keys");
   assertEqual(viewHints(null, "plan", { logStatus: true, project: true }).map(({ cap, words }) => `${cap} ${words}`).join(),
-    "j k move,Space done,n new task,d delegate,L log status,e edit outcome,g p Gantt,? all keys", "a project's page: Figma's bar");
+    "j k move,h l columns,Space done,n new task,d delegate,L log status,e edit outcome,g p Gantt,? all keys", "a project's page: Figma's bar");
   assertEqual(caps("history"), "j k,Enter,1-5,/,Esc,?", "History's bar");
-  assertEqual(caps(null), "j k,Enter,z,a,Space,e,?", "a person's dashboard: no status to log");
+  assertEqual(caps(null), "j k,h l,Enter,z,a,Space,e,?", "a person's dashboard: no status to log");
   assertEqual(viewHints("settings").map(({ cap, words }) => `${cap} ${words}`).join(), "Esc back,? all keys", "Settings: Esc back, ? all keys");
   assertEqual(caps("trash"), "j k,Enter,/,?", "the Trash has no New");
   assertEqual(viewHints("task").map(({ cap, words }) => `${cap} ${words}`).join(),
-    "Space done,e edit notes,d delegate,s schedule,a add subtask,j k move,Esc back,? all keys", "a task's page, as in Figma");
+    "Space done,e edit notes,d delegate,s schedule,a add subtask,j k move,h l columns,Esc back,? all keys", "a task's page, as in Figma");
   assertEqual(viewHints("trash").find(({ cap }) => cap === "Enter").words, "restore", "Enter restores in the Trash");
   assertEqual(viewHints("people").find(({ cap }) => cap === "Enter").words, "open");
   assertTrue(!noteHints({ sheet: true }).some(({ cap }) => cap === "?"), "the note window: ? is the editor's");
