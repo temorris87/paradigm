@@ -122,8 +122,9 @@ _WITH_PERSON = ("SELECT notes.*, people.note_id IS NOT NULL AS is_person, "
 
 class NoteRepository:
     def __init__(self, db: Database, clock: Clock = utc_now, capture: Optional[Callable] = None):
-        """capture: what a save does with a meeting's T:/D:/Q: lines, inside its transaction
-        (capture_repo.store_captures; injected, since that code knows records and tasks)."""
+        """capture: what a save does with its "@Name ?" topic lines, inside its transaction
+        (capture_repo.store_captures; injected, since that code knows topics and people). It
+        refuses T:/Q:/D: captures, which rolls the whole save back."""
         self._db = db
         self._clock = clock
         self._capture = capture
@@ -179,9 +180,8 @@ class NoteRepository:
              links: Optional[List[str]] = None, mentions: Optional[List[Mention]] = None,
              captures: Optional[List[Dict]] = None) -> Dict:
         """links, mentions: as for create, stored with the version the note ends on. On
-        a meeting they are its whole text's: the agenda's too. captures: a meeting's T:/D:/Q:
-        lines, made into tasks and records once each; the answer says how many were new
-        ("captured")."""
+        a meeting they are its whole text's: the agenda's too. captures: its "@Name ?"
+        lines, made into topics once each; the answer says how many were new ("captured")."""
         captured = 0
         with self._db.transaction() as conn:
             row = _live_row(conn, note_id)

@@ -5,8 +5,9 @@ How the app behaves. Kept up to date by each feature that changes it.
 - Note window strip and `:t` (2026-11-22): under the note window's breadcrumb, NOW (the task
   block on now: its time, what is left, a bar moving each minute) and Next: the meeting starting
   within 2 h (a link to it and its Prep); hidden when neither is near. `:t {text} [@Name]
-  [!day]` puts a task on the open note's hub without leaving the note, read as a T: line (a
-  name first: theirs to do; later: I owe them); while it is typed a hint over the command line
+  [!day]` puts a task on the open note's hub without leaving the note, its words read as the
+  old T: lines were (a name first: theirs to do; later: I owe them; `:t` keeps this reading
+  since T: lines went, 2026-11-27); while it is typed a hint over the command line
   says what it will make (`editor.hints`, pd-editor.js).
 - Tasks (Tyson, 2026-11-22: records, not text; this replaced the `- [ ]` tasks): a task
   belongs to one note (a project, an area, a phase, a milestone, a meeting, any note) and is

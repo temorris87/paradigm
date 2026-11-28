@@ -37,7 +37,10 @@ paradigm/                Python package
                          files.py (/api/files, /api/folders/browse, /api/folder/link|unlink|
                          scan, /api/file/attach|detach|open|pick|attach_path: OneDrive files);
                          topics.py (/api/person_topics, /api/person_topic/create|raise|
-                         remove); status.py (/api/status_logs, /api/status_log/create|update|
+                         remove); capture.py (/api/capture, /api/captures?source=N,
+                         /api/capture/remove: a line made a task, question or
+                         decision by key);
+                         status.py (/api/status_logs, /api/status_log/create|update|
                          remove; stale_days from Config);
                          calendar.py (the Outlook import: /api/calendar/status|upload|
                          pending|file|ignore); timesheet.py (/api/time/week, /api/time/
@@ -118,8 +121,11 @@ paradigm/                Python package
                          status_repo.py (status logs on projects and areas),
                          topics_repo.py (what to raise with a person; "@Name ?" lines
                          add them through capture_repo),
-                         capture_repo.py (a meeting's T:/D:/Q: lines into tasks and records,
-                         once each, inside the note's save; injected into NoteRepository),
+                         capture_repo.py (capture by key: one line into a task, question or
+                         decision on the note's nearest hub (its project or area, or the person
+                         it is under), once per kind; a note's captures; remove = task remove or
+                         record trash. On save only "@Name ?" topics, injected into
+                         NoteRepository; T:/D:/Q: captures are refused),
                          import_repo.py (applies an Outlook .ics: new, moved,
                          cancelled, removed; series go to their hub, the rest wait in To
                          file; attendees matched or made as people; files come only by

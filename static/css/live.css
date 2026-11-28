@@ -60,10 +60,123 @@
   border-color: var(--border-focus);
 }
 
-.live__body {
+.live__body,
+.live__fields {
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
+}
+
+/* A meeting: its Agenda and Notes, and "Agreed in this meeting" in the right column (about
+   2fr / 1fr), stacked below 1400 px (agreed-card.js). */
+.live__body--meeting {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--sp-5);
+}
+
+@media (max-width: 1399.98px) {
+  .live__body--meeting {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.live-agreed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+
+.live-agreed[hidden] {
+  display: none;
+}
+
+.live-agreed__head {
+  margin: 0;
+  color: var(--text-heading);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.live-agreed__count {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.live-agreed__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.live-agreed__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-0);
+  width: 100%;
+  padding: var(--sp-1) var(--sp-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.live-agreed__row:hover {
+  background: var(--surface-hover);
+}
+
+.live-agreed__row:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+.live-agreed__line {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.live-agreed__line .chip {
+  flex: none;
+}
+
+.live-agreed__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-agreed__row--muted .live-agreed__title {
+  color: var(--text-dim);
+}
+
+.live-agreed__detail,
+.live-agreed__empty,
+.live-agreed__foot {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.live-agreed__detail {
+  padding-left: var(--sp-1);
+}
+
+.live-agreed__foot {
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--border-divider);
 }
 
 /* Each field (a meeting's Agenda, then its Notes) under its label, like the dashboard's text. */
@@ -122,27 +235,14 @@
   cursor: pointer;
 }
 
-/* Its badge is a status chip (chip.css): after the text, or, on a captured line, before it in
-   place of the "T:" (TASK, DECISION, QUESTION), with its meta after. */
+/* Its badge is a status chip (chip.css) after the text; a line captured by key has its
+   capture's chip there ("Task → Ben · Mon"), the line itself not underlined. */
 .chip[data-badge] {
-  cursor: pointer;
-}
-
-.chip[data-badge="after"] {
   margin-left: var(--sp-2);
-}
-
-.chip[data-badge="capture"] {
-  margin-right: var(--sp-1);
-  text-transform: uppercase;
+  cursor: pointer;
 }
 
 .pd-highlight--capture {
   text-decoration: none;
-}
-
-.pd-highlight__meta {
-  margin-left: var(--sp-2);
-  color: var(--text-dim);
-  font-size: var(--fs-sm);
+  cursor: default;
 }

@@ -21,6 +21,7 @@ static/
                          cards, stacked under 1000 px), oncall.css (the
                          On call tab, the Week bar's line, Today's rows, a person's head line),
                          sheet.css (the note window's sections sheet and its bar),
+                         capture-sheet.css (the capture sheet and the strip under the editor),
                          live.css (the Live page: its head, the caret, the cursor's band),
                          chip.css (THE status chip: .chip and its tones), key-hints.css
                          (THE key cap .key, the key-hint bar at the foot, the ? list),
@@ -51,7 +52,10 @@ static/
                          "live-ask", "live-closed" on pagehide), live-page.js (the main
                          window: blocks drawn per line range, the caret and the band, empty /
                          closed / trashed lines, link, highlight and image clicks),
-                         highlights.js (a record's source text underlined with its badge)
+                         highlights.js (a record's source text underlined with its badge, a
+                         captured line's chip after it), agreed-card.js (a meeting's "Agreed in
+                         this meeting" beside its Agenda and Notes, from the live message's
+                         captures)
   js/palette/            palette-model.js (groups for what is typed: Recent, Pages, Notes,
                          Commands with their keys; pure), palette.js (the dialog), recent.js
                          (the notes opened last, per browser)
@@ -68,8 +72,15 @@ static/
                          now; pure), mentions.js (@mentions: found by the renderer, with their
                          line and the lines indented under it; which person a name reaches;
                          who mentions a person; rewriting a renamed person's; pure),
-                         capture.js (a meeting's T:/D:/Q: lines: kind, title, a name
-                         first delegates, a name later is who I owe, !day; pure),
+                         capture.js (:t's words: a name first delegates, a name later is who I
+                         owe, !day; "@Name ?" topic lines; T:/D:/Q: lines are no longer read;
+                         pure), capture-model.js (capture by key, \t \q \d: the title from a
+                         line, who it names, the nearest hub, the default role and day, the
+                         line marks, the chips, the Agreed rows; pure), capture-sheet.js (the
+                         sheet docked at the foot of the note window's editor),
+                         capture-sheet-keys.js (THE capture sheet key table),
+                         capture-actions.js (the note window's \t \q \d \u, marks and the
+                         "From this meeting" strip; the open note's captures),
                          mention-actions.js (@ completion, opening a mention, the rename
                          rewrite), selection-menu.js (THE right-click menu in the text: Add
                          question… / Add decision… from the selection), link-index.js (the
@@ -122,7 +133,8 @@ static/
                          hub-sections.js (THE section
                          table and each kind's order: Plan, Projects, Tasks, Questions,
                          Decisions, Meetings, Files, Plan templates, Notes, People, Linked
-                         from; a phase's Milestones; a plain note's Tasks and Files; a
+                         from; a meeting's Agreed in this meeting (its captures, in place of
+                         its Questions and Decisions); a phase's Milestones; a plain note's Tasks and Files; a
                          person's Waiting on, Active, Archived, Backlinks; pure), dashboard.js (the main window: a hub's text
                          rendered with Edit ↗, a project's or an area's Gantt chart),
                          project-facts.js (status, due, next meeting texts; a project's

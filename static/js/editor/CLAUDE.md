@@ -5,10 +5,13 @@ Paths from the repo root. Update this layout when the structure here changes.
 ```
   js/editor/             the <pd-editor> component:
     pd-editor.js         the custom element (hidden textarea takes keys; events out: change,
-                         save, quit, ex, mode, cursor {line, col, mode}, menu, files)
+                         save, quit, ex, mode, cursor {line, col, mode}, menu, files, capture
+                         {kind, line, text}, uncapture {line, text}); setLineMarks; the "dock"
+                         slot for a host's panel between the text and the status line
     completion.js        a list under the cursor in insert mode ("@" offers people; the
                          host gives the items)
-    render.js            draws visible lines, cursor, selection, matches, status line
+    render.js            draws visible lines, cursor, selection, matches, status line, the
+                         host's line marks (a gutter glyph, a chip at the line's right)
     view.js              viewport math in steps: top line + skip rows, scrolloff, H/M/L
     text-layout.js       how many rows a raw line takes (wraps at the view's width)
     vim.js               the engine: state + feed(key); no DOM
@@ -37,6 +40,20 @@ Paths from the repo root. Update this layout when the structure here changes.
 - **Tab / Shift-Tab: in insert mode they indent (spaces to the next shiftwidth stop) and
   unindent. In every other mode they leave the editor and move focus like on any web page**,
   so they are never bound there (Tyson's choice, 2026-11-21).
+- The leader `\` (Tyson, 2026-11-27; 028): in normal mode `\t` `\q` `\d` send "capture"
+  {kind: task | question | decision, line, text} for the cursor's line, and `\u` sends
+  "uncapture" {line, text}; in visual mode `\t` `\q` `\d` send the selection's text joined to one
+  line (detail.selection), and visual mode ends. The editor only reports them: the host (the
+  note window, `static/js/notes/capture-actions.js`) opens its sheet. After `\`, any other key,
+  or none within `LEADER_TIMEOUT_MS` (1 s, the element's timer), cancels quietly (no bell).
+  Insert mode types `\` as always.
+- Line marks: `editor.setLineMarks([{line, glyph, label, tone}])` draws the glyph in a gutter left
+  of the text (its room is padding, taken only while some line has a mark) and the label as the
+  shared chip (`ui/chip.js`, `chip.css` loaded in the shadow root) at the line's right. The marks
+  are data: the host sets them again after each change; they never move with an edit.
+- The dock: a host's child with `slot="dock"` shows between the text and the status line; it
+  pushes the text up (the view measures again) and never covers it. A right-click there is the
+  host's own.
 - Tables (Tyson, 2026-11-23; worknotes' behaviour): a table row is a line starting and ending
   with `|`, outside a code fence. In insert mode on one, Tab / Shift-Tab go to the next /
   previous cell and Enter / Shift-Enter the same cell a row down / up (past the last row: a new

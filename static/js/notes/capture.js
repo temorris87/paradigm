@@ -1,30 +1,22 @@
-// Meeting capture (Tyson, 2026-11-22): in a meeting's notes, a line starting "T:", "D:" or
-// "Q:" becomes a task, a decision or a question on the meeting's hub when it is saved
-// (paradigm/db/capture_repo.py makes them, once each). Never inside code. Pure.
+// What a note's words say, for the capture paths that read text. Pure.
+// T:/D:/Q: lines are no longer read (028, Tyson 2026-11-27): a task, question or decision is
+// captured by key (\t \q \d, capture-model.js and capture-sheet.js); an old "T:" line is
+// plain text. What stays:
 //
-//   T: @Tom book the room !fri       a name first: delegated to Tom, due the coming Friday
-//   T: send @Tom the numbers         a name later: mine, for Tom ("I owe Tom")
-//   D: Stay at-least-once, @Priya    a decision; its people: the names in it
-//   Q: Ordering across partitions?   a question
-//
-//   captureLines(text, tree, today)  [{ kind, line, quote, title, people, delegate, forPerson,
-//                                    due }] (people / delegate / forPerson: person notes)
-//   parseTaskText(text, tree, today) { title, delegate, forPerson, due, people } of a task's
-//                                    words (shared with :t)
+//   parseTaskText(text, tree, today) { title, delegate, forPerson, due, people } of :t's words:
+//                                    a name first delegates, a name later is who I owe, !day
 //   parseDue(word, today)            "fri", "tomorrow", "today", "2026-12-01" -> a day, or ""
-//   captureText(capture, today)      "Task for Tom Okafor · due Fri 27 Nov" (the hint, the meta)
+//   captureText(task, today)         "Task for Tom Okafor · due Fri 27 Nov" (:t's hint)
 //   topicLines(text, tree)           [{ kind: "topic", line, quote, title, people: [person] }]:
 //                                    "@Priya ? owning the registry" in any note: a topic to
-//                                    raise at the next 1:1 with Priya
-//   toPayload(capture)               what the save sends (ids, not notes)
+//                                    raise at the next 1:1 with Priya, captured on save
+//   toPayload(topic)                 what the save sends for it (ids, not notes)
 import { MENTION, trimName } from "../markdown/mentions.js";
 import { addDays, localDay } from "../meetings/meeting-days.js";
 import { dayText } from "../ui/dates.js";
 import { personForMention } from "./mentions.js";
 
-const LINE = /^ {0,3}(T|D|Q):\s+(.+?)\s*$/;
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
-const KINDS = { T: "task", D: "decision", Q: "question" };
 const LABELS = { task: "Task", decision: "Decision", question: "Question" };
 const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 const DUE = /(^|\s)!(\S+)/;
@@ -87,38 +79,6 @@ export function parseTaskText(text, tree, today) {
   const words = plainText(text, mentions, delegate ? first : null);
   return { title: words ? words[0].toUpperCase() + words.slice(1) : "", delegate, forPerson, due,
     people: mentions.map((mention) => mention.person).filter(Boolean) };
-}
-
-export function captureLines(text, tree, today) {
-  const out = [];
-  let fence = null;
-  String(text ?? "").split("\n").forEach((line, index) => {
-    const opener = FENCE.exec(line);
-    if (fence) {
-      if (opener && opener[1][0] === fence[0] && opener[1].length >= fence.length) fence = null;
-      return;
-    }
-    if (opener) {
-      fence = opener[1];
-      return;
-    }
-    const match = LINE.exec(line);
-    if (!match) return;
-    const kind = KINDS[match[1]];
-    const quote = match[2];
-    if (kind === "task") {
-      const task = parseTaskText(quote, tree, today);
-      if (task.title) out.push({ kind, line: index, quote, ...task });
-      return;
-    }
-    const mentions = mentionsIn(quote, tree);
-    const title = plainText(quote, mentions);
-    if (title) {
-      out.push({ kind, line: index, quote, title, people: mentions.map((mention) => mention.person).filter(Boolean),
-        delegate: null, forPerson: null, due: "" });
-    }
-  });
-  return out;
 }
 
 // "@Name ?": a known name, then a lone question mark.

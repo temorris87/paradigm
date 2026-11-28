@@ -82,7 +82,7 @@ test("section sheet: the bar counts each section; no sections, no bar", () => wi
   assertTrue(bar.getAttribute("aria-label").endsWith("Tasks 3 (1 late) · Files 0"), bar.getAttribute("aria-label"));
   assertEqual(bar.querySelector(".sheet__caret").textContent, "▴");
   hub.show(ctx(), 3);
-  assertTrue(bar.getAttribute("aria-label").endsWith("Tasks 0 · Questions 0 · Decisions 0 · Files 0"), "a meeting's");
+  assertTrue(bar.getAttribute("aria-label").endsWith("Agreed in this meeting 0 · Tasks 0 · Files 0"), "a meeting's");
   hub.show(ctx(), 4);
   assertTrue(sheet.hidden, "a template has no sections and no bar");
 }));

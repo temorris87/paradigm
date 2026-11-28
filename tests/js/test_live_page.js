@@ -158,7 +158,7 @@ test("live page: a meeting's Agenda, then Notes, the caret in the one being type
 
 test("live page: a capture badge opens its record; a new note switches the page, the ask's answer doesn't", () => withPage(({ page, section, app, switched }) => {
   const highlights = [{ text: "Ship it", label: "Decision", title: "Decision: Ship it", data: 9, capture: "decision", meta: "" }];
-  page.receive(live("D: Ship it", { fields: [{ name: "body", label: "Notes", text: "D: Ship it", highlights }], col: 0, mode: "normal", reply: true }));
+  page.receive(live("Ship it", { fields: [{ name: "body", label: "Notes", text: "Ship it", highlights }], col: 0, mode: "normal", reply: true }));
   assertEqual(switched.length, 0, "the answer to live-ask");
   const badge = section.querySelector("[data-badge]");
   assertEqual(badge.textContent, "Decision");
@@ -170,23 +170,80 @@ test("live page: a capture badge opens its record; a new note switches the page,
   assertEqual(switched.join(), "2", "typing never switches");
 }));
 
-test("live page: the block caret covers its character on a captured line, past the badge", () => withPage(({ page, section }) => {
-  const text = "Discussed the rollout.\nD: Use the Acme vendor";
-  const highlights = [{ text: "Use the Acme vendor", label: "Decision", title: "", data: 9, capture: "decision", meta: "" }];
+test("live page: a captured line keeps its text, its chip after it; the block caret covers its characters", () => withPage(({ page, section }) => {
+  const text = "Discussed the rollout.\nUse the Acme vendor";
+  const highlights = [{ text: "Use the Acme vendor", label: "Decision", title: "", data: 9, capture: "decision" }];
   const at = (col) => live(text, { fields: [{ name: "body", label: "Notes", text, highlights }], line: 1, col, mode: "normal" });
   page.receive(at(text.split("\n")[1].length - 1));
   let caret = section.querySelector(".live-caret--block");
   assertEqual(caret.textContent, "r", "on the last r");
   assertTrue(!caret.classList.contains("live-caret--empty"));
-  assertTrue(section.textContent.includes("Use the Acme vendor"), "no character lost");
-  page.receive(at(3));
+  const badge = section.querySelector("[data-badge]");
+  assertEqual(badge.textContent, "Decision");
+  assertTrue(badge.compareDocumentPosition(caret) & Node.DOCUMENT_POSITION_PRECEDING, "the chip is after the line");
+  page.receive(at(0));
   caret = section.querySelector(".live-caret--block");
   assertEqual(caret.textContent, "U", "on the U");
-  assertTrue(!caret.classList.contains("live-caret--empty"));
-  const badge = section.querySelector("[data-badge]");
-  assertTrue(badge.compareDocumentPosition(caret) & Node.DOCUMENT_POSITION_FOLLOWING, "after the badge");
-  assertTrue(caret.closest(".pd-highlight") !== null, "inside the highlight, so the U stays underlined");
-  assertTrue(section.textContent.includes("Use the Acme vendor"));
+  assertTrue(caret.closest(".pd-highlight") !== null);
+  assertTrue(section.textContent.replace(/\s+/g, " ").includes("Use the Acme vendorDecision"), "no character lost, the chip after");
+}));
+
+test("live page: a capture's chip goes after the line it equals, never inside a longer line", () => withPage(({ page, section }) => {
+  const text = "Ben to check the load-test numbers\ncheck the\nAfter";
+  const highlights = [
+    { text: "check the", label: "Task", title: "", data: 1, capture: "task" },
+    { text: "Ben to check the load-test numbers", label: "Task → Ben · Mon", title: "", data: 2, capture: "task" },
+    { text: "the load", label: "Task", title: "", data: 3, capture: "task" },
+  ];
+  page.receive(live(text, { fields: [{ name: "body", label: "Notes", text, highlights }], line: 2, col: 0, mode: "normal" }));
+  const badges = [...section.querySelectorAll("[data-badge]")];
+  assertEqual(badges.map((badge) => badge.textContent).join("|"), "Task → Ben · Mon|Task", "in line order, no chip for part of a line");
+  const marks = [...section.querySelectorAll(".pd-highlight")].map((mark) => mark.textContent.replace(/\s+/g, " "));
+  assertEqual(marks.join("|"), "Ben to check the load-test numbers|check the");
+}));
+
+test("live page: captures on one line share its mark, a chip each after it in their order", () => withPage(({ page, section }) => {
+  const text = "Intro\nBen to check the numbers and ship Monday";
+  const line = "Ben to check the numbers and ship Monday";
+  const highlights = [
+    { text: line, label: "Decision", title: "", data: 9, capture: "decision" },
+    { text: line, label: "Task → Ben · Mon", title: "", data: null, capture: "task" },
+  ];
+  page.receive(live(text, { fields: [{ name: "body", label: "Notes", text, highlights }], line: 0, col: 0, mode: "normal" }));
+  assertEqual(section.querySelectorAll(".pd-highlight").length, 1, "one mark");
+  const badges = [...section.querySelectorAll("[data-badge]")];
+  assertEqual(badges.map((badge) => `${badge.textContent}:${badge.dataset.highlight}`).join("|"), "Decision:0|Task → Ben · Mon:1");
+  assertTrue(section.textContent.replace(/\s+/g, " ").includes(`${line}DecisionTask → Ben · Mon`), "both after the line");
+}));
+
+test("live page: an old T: line is plain text; a meeting shows Agreed in this meeting beside its notes", () => withPage(({ page, section, app }) => {
+  const shown = [];
+  app.showTask = (id) => {
+    shown.push(id);
+    return Promise.resolve();
+  };
+  app.today = () => new Date(2026, 10, 27);
+  page.receive(live("T: old style", { kind: "" }));
+  assertTrue(section.textContent.includes("T: old style"));
+  assertTrue(section.querySelector(".live-agreed").hidden, "no card on a note that isn't a meeting");
+  const captures = [
+    { kind: "task", id: 41, title: "Check the numbers", quote: "Ben to check", hub_id: 1, hub_title: "Team", person_id: 5,
+      person_name: "Ben Ortiz", role: "delegate", follow_up: "2026-11-30", due: null, open: true },
+    { kind: "question", id: 9, title: "Who owns it?", quote: "Who owns it?", hub_id: 1, hub_title: "Customer portal v2",
+      person_id: null, person_name: null, role: null, follow_up: null, due: null, open: true },
+  ];
+  page.receive(live("Ben to check", { kind: "meeting", captures }));
+  const card = section.querySelector(".live-agreed");
+  assertTrue(!card.hidden && section.querySelector(".live__body--meeting") !== null);
+  assertEqual(card.querySelector(".live-agreed__head").textContent, "Agreed in this meeting 2");
+  assertEqual([...card.querySelectorAll(".live-agreed__row")].map((row) => row.textContent).join(" / "),
+    "TaskCheck the numbersBen Ortiz · follow up Mon 30 Nov / QuestionWho owns it?open · in Customer portal v2");
+  assertEqual(card.querySelector(".live-agreed__foot").textContent, "Everyone sees what was agreed as you capture it.");
+  card.querySelectorAll(".live-agreed__row")[0].click();
+  card.querySelectorAll(".live-agreed__row")[1].click();
+  assertEqual(`${shown.join()}|${app.opened.join()}`, "41|9", "a task's page; a question's note");
+  page.receive(live("Ben to check", { kind: "meeting", captures: captures.slice(0, 1) }));
+  assertEqual(card.querySelectorAll(".live-agreed__row").length, 1, "it follows the captures as they come");
 }));
 
 test("live sender: one message per 50 ms at most; answers live-ask; holds after a trash", () => {
@@ -198,12 +255,14 @@ test("live sender: one message per 50 ms at most; answers live-ask; holds after 
   editor.value = "hello";
   const app = { tree: new NoteTree([{ id: 1, parent_id: null, title: "Acme", kind: "project" },
     { id: 2, parent_id: 1, title: "Kickoff" }, { id: 3, parent_id: 1, title: "Next" }]),
-  currentId: 2, editor, agendaEditor: null, agenda: { id: null }, highlightsOf: () => [], events: new EventTarget() };
+  currentId: 2, editor, agendaEditor: null, agenda: { id: null }, highlightsOf: () => [], events: new EventTarget(),
+  captures: { of: (id) => (id === 2 ? [{ kind: "decision", id: 7 }] : []) } };
   const sender = new LiveSender(app, channel, { clock: () => now, timers });
   sender.listen(new EventTarget());
   app.events.dispatchEvent(new Event("redraw"));
   assertEqual(channel.sent.length, 1);
   const message = channel.sent[0];
+  assertEqual(JSON.stringify(message.captures), JSON.stringify([{ kind: "decision", id: 7 }]), "the note's captures go along");
   assertEqual(JSON.stringify([message.id, message.title, message.crumbs, message.active, message.fields[0].text, message.fields[0].label]),
     JSON.stringify([2, "Kickoff", ["Projects", "Acme"], "body", "hello", "Notes"]));
   editor.dispatchEvent(new CustomEvent("cursor", { detail: { line: 0, col: 5, mode: "insert" } }));

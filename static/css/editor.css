@@ -228,13 +228,13 @@
   color: var(--text-dim);
 }
 
-/* The host's words in the status line ("3 captured · 1 pending"). */
+/* The host's words in the status line. */
 .pd-status__note {
   color: var(--text-dim);
 }
 
-/* The host's hint: under the cursor's line (what a capture line will make), or over the
-   command line (what :t will do). */
+/* The host's hint: under the cursor's line in insert mode, or over the command line (what :t
+   will do). */
 .pd-hint {
   position: absolute;
   z-index: 4;
@@ -259,4 +259,44 @@
 .pd-hint--cmdline {
   left: var(--sp-3);
   bottom: 2em;
+}
+
+/* The host's line marks (setLineMarks): a glyph in the gutter, left of the text, and a chip
+   (the shared .chip, chip.css) at the line's right. The gutter's room is there only while a
+   line has a mark. */
+.pd-text--marked {
+  padding-left: var(--sp-5);
+}
+
+.pd-line {
+  position: relative;
+}
+
+.pd-gutter {
+  position: absolute;
+  top: 0;
+  left: calc(-1 * var(--sp-5));
+  width: var(--sp-5);
+  height: 1.45em;
+  color: var(--text-dim);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  line-height: 1.45em;
+  text-align: center;
+}
+
+.pd-mark {
+  position: absolute;
+  top: 1px;
+  right: 0;
+  max-width: 45%;
+  height: calc(1.45em - 2px);
+  font-size: var(--fs-xs);
+  line-height: calc(1.45em - 2px);
+  pointer-events: none;
+}
+
+/* The host's docked panel (a capture sheet) sits between the text and the status line. */
+slot[name="dock"]::slotted(*) {
+  flex: none;
 }

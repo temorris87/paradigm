@@ -26,7 +26,7 @@ How the app behaves. Kept up to date by each feature that changes it.
   email, how many projects; Next 1:1, the next meeting they attend; Start 1:1 notes: that
   meeting's agenda gets the topics still to raise, then it opens in the note window, or New
   meeting "1:1 First" with them), then three columns: Waiting on them, I owe them (my tasks
-  for them: `tasks.for_person_id`, set by a T: line with a name later, `:t`, or Edit…'s For),
+  for them: `tasks.for_person_id`, set by capture by key's "I owe {First}", `:t`, or Edit…'s For),
   To raise next 1:1 (topics: + Add, or an "@Name ?" line in any note; Raised (Space), x;
   then the open questions they are on); then Backlinks | Active, Archived. The People page:
   Open items (the default) / Everyone pills, columns Name, Role · organisation, On, Waiting on

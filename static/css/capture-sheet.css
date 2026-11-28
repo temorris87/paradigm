@@ -1,0 +1,242 @@
+/* The capture sheet (static/js/notes/capture-sheet.js), docked in <pd-editor>'s "dock" slot:
+   at the foot of the text, over the status line, pushing the text up. And the strip under the
+   editor (static/js/notes/capture-actions.js): "From this meeting: Tasks 2 Questions 1 ...". */
+.capture-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--border-default);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  cursor: default;
+}
+
+.capture-sheet[hidden] {
+  display: none;
+}
+
+.capture-sheet:focus {
+  outline: none;
+}
+
+.capture-sheet__tabs {
+  display: flex;
+  gap: var(--sp-1);
+}
+
+.capture-sheet__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-0) var(--sp-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  cursor: pointer;
+}
+
+.capture-sheet__tab:hover {
+  background: var(--surface-hover);
+}
+
+.capture-sheet__tab--on {
+  border-color: var(--border-default);
+  background: var(--surface-page);
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.capture-sheet[data-kind="task"] .capture-sheet__tab--on { color: var(--kind-task-fg); }
+.capture-sheet[data-kind="question"] .capture-sheet__tab--on { color: var(--kind-question-fg); }
+.capture-sheet[data-kind="decision"] .capture-sheet__tab--on { color: var(--kind-decision-fg); }
+
+.capture-sheet__fields {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--sp-1) var(--sp-3);
+  align-items: center;
+}
+
+.capture-sheet__row {
+  display: contents;
+}
+
+.capture-sheet__row[hidden] {
+  display: none;
+}
+
+.capture-sheet__label {
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.capture-sheet__value {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.capture-sheet__input {
+  min-width: 0;
+  padding: var(--sp-0) var(--sp-2);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--surface-input);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-md);
+}
+
+.capture-sheet__title {
+  flex: 1;
+}
+
+.capture-sheet__who {
+  width: 14rem;
+}
+
+.capture-sheet__day {
+  width: 10rem;
+}
+
+.capture-sheet__input:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+.capture-sheet__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--kind-task-bg);
+  color: var(--kind-task-fg);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.capture-sheet__avatar[hidden] {
+  display: none;
+}
+
+.capture-sheet__note {
+  overflow: hidden;
+  color: var(--text-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 100;
+}
+
+.capture-sheet__note--bad {
+  color: var(--state-danger-fg);
+}
+
+.capture-sheet__roles {
+  display: flex;
+  gap: var(--sp-1);
+}
+
+.capture-sheet__role,
+.capture-sheet__hub {
+  padding: var(--sp-0) var(--sp-2);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--surface-page);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.capture-sheet__role:hover,
+.capture-sheet__hub:hover {
+  background: var(--surface-hover);
+}
+
+.capture-sheet__role--on {
+  border-color: var(--accent);
+  background: var(--surface-selected);
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.capture-sheet__role:focus-visible,
+.capture-sheet__hub:focus-visible,
+.capture-sheet__tab:focus-visible,
+.capture-sheet__save:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+.capture-sheet__error {
+  margin: 0;
+  color: var(--state-danger-fg);
+}
+
+.capture-sheet__error:empty {
+  display: none;
+}
+
+.capture-sheet__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.capture-sheet__keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  flex: 1;
+  min-width: 0;
+  color: var(--text-dim);
+}
+
+.capture-sheet__save {
+  padding: var(--sp-1) var(--sp-4);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* The strip under the editor: what this note's captures made, and where they live. */
+.capture-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: none;
+  min-width: 0;
+  padding: var(--sp-1) var(--sp-3);
+  overflow: hidden;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+
+.capture-strip[hidden] {
+  display: none;
+}
+
+.capture-strip__from {
+  font-weight: 600;
+}
+
+.capture-strip__end {
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 100;
+}

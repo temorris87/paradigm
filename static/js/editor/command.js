@@ -4,6 +4,7 @@ import { ACTIONS } from "./actions.js";
 import { EditorError } from "./errors.js";
 import { MOTIONS, searchMotion } from "./motions.js";
 import { OPERATORS, regionFromMotion, regionFromObject } from "./operators.js";
+import { LEADER } from "./keys.js";
 import { parse } from "./parser.js";
 import { lastCol, pos } from "./position.js";
 import { realignAt } from "./table-edit.js";
@@ -20,9 +21,11 @@ export function commandKey(vim, key) {
   vim.pending.push(key);
   const result = parse(vim.pending, vim.mode === "visual" ? "visual" : "normal");
   if (result.status === "incomplete") return;
+  const keys = vim.pending;
   vim.pending = [];
   if (result.status === "invalid") {
-    vim.bell();
+    // After the leader, a key that means nothing cancels quietly.
+    if (!afterLeader(keys)) vim.bell();
     return;
   }
   const version = vim.buf.version;
@@ -33,6 +36,10 @@ export function commandKey(vim, key) {
 }
 
 const KEEP_AS_IS = new Set(["undo", "redo"]);
+
+function afterLeader(keys) {
+  return keys.find((key) => !/^[0-9]$/.test(key)) === LEADER;
+}
 
 function context(vim, cmd) {
   return { register: cmd.register, count: cmd.count ?? 1, hasCount: cmd.count !== null, arg: cmd.arg };

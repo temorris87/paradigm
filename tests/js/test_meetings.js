@@ -103,7 +103,7 @@ test("meetings: the page's filters combine", () => {
 
 test("meeting sections: Meetings on hubs (upcoming first), what a person attended", () => {
   const c = { ...ctx(), records: { all: () => [], get: () => ({ people: [] }) } };
-  assertEqual(sectionsFor(c.tree.get(20)).map((t) => t.key).join(), "tasks,questions,decisions,files");
+  assertEqual(sectionsFor(c.tree.get(20)).map((t) => t.key).join(), "agreed,tasks,files");
   const rows = (key, id) => tab(key).rows(c, c.tree.get(id)).map((r) => `${r.title}|${[r.date, r.detail].filter(Boolean).join(" · ")}${r.muted ? "~" : ""}`).join(",");
   assertEqual(rows("meetings", 1), "Review|Sat 21 Nov 09:30 · no attendees,"
     + "Kickoff|Tue 24 Nov 14:00 · on Rollout · 2 attendees,Planning|Tue 17 Nov · on Rollout · 1 attendee");
@@ -131,8 +131,19 @@ test("meeting page: the card and its sections", () => {
     assertEqual(rows.join("|"), "Meeting·Tue 24 Nov 14:00·in Rollout|Attendees:Bob Lee×, Jane Doe×+ Add attendee");
     line.querySelector(".hub-line__link").click();
     assertEqual(opened.join(), "2");
-    assertEqual([...section.querySelectorAll(".hub__label, .hub__empty-label")].map((t) => t.textContent).join(), "Tasks,Questions,Decisions,Files");
+    assertEqual([...section.querySelectorAll(".hub__label, .hub__empty-label")].map((t) => t.textContent).join(), "Agreed in this meeting,Tasks,Files");
     assertEqual(page.dataset.page, "meeting");
+    // What was captured from it, each row with its kind chip; a task's opens its page.
+    const captures = [{ kind: "task", id: 41, title: "Check the numbers", quote: "q", hub_id: 2, hub_title: "Rollout", person_id: null,
+      person_name: null, role: "mine", follow_up: null, due: null, open: true },
+    { kind: "decision", id: 50, title: "Ship Monday", quote: "d", hub_id: 2, hub_title: "Rollout", person_id: null, person_name: null,
+      role: null, follow_up: null, due: null, open: true }];
+    hub.show({ ...ctx(), captures: { source: 20, list: captures } }, 20);
+    const agreed = [...section.querySelectorAll(".hub__row")].slice(0, 2);
+    assertEqual(agreed.map((row) => `${row.querySelector(".chip").textContent}|${row.querySelector(".hub__title").textContent}|${row.querySelector(".hub__detail").textContent}`).join(" / "),
+      "Task|Check the numbers|mine / Decision|Ship Monday|in Rollout");
+    hub.show({ ...ctx(), captures: { source: 99, list: captures } }, 20);
+    assertTrue(!section.querySelector(".hub__row .chip"), "another note's captures are not this meeting's");
   } finally {
     page.remove();
     localStorage.removeItem("paradigm.hub.folds");

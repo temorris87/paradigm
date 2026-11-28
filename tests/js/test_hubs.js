@@ -48,7 +48,7 @@ test("hub sections: each kind's sections, top to bottom", () => {
   assertEqual(keys("project"), "plan,tasks,questions,decisions,meetings,files,notes,people");
   assertEqual(keys("area"), "projects,tasks,questions,decisions,meetings,files,templates,notes,people");
   assertEqual(keys("resource"), "tasks,files", "a resource: as a plain note");
-  assertEqual(keys("meeting"), "tasks,questions,decisions,files");
+  assertEqual(keys("meeting"), "agreed,tasks,files");
   assertEqual(keys("person"), "waiting,owe,raise,active,archived,backlinks");
   assertEqual(keys(null), "tasks,files", "a plain note: its tasks and files");
   assertEqual(sectionsFor({ kind: "decision" }).length, 0);

@@ -7,12 +7,13 @@ import { commandKey, repeatLastChange } from "./command.js";
 import { EditorError } from "./errors.js";
 import { runEx } from "./ex.js";
 import { insertKey } from "./insert.js";
+import { LEADER } from "./keys.js";
 import { Marks } from "./marks.js";
 import { defaultOptions } from "./options.js";
 import { clamp, endAfter, lastCol, pos } from "./position.js";
 import { Registers } from "./registers.js";
 import { UndoHistory } from "./undo.js";
-import { ensureCursorVisible, scrollLines } from "./view.js";
+import { ensureCursorVisible, fillScreen, scrollLines } from "./view.js";
 import { enterVisual, exitVisual, visualRegion } from "./visual.js";
 
 export class Vim {
@@ -203,8 +204,10 @@ export class Vim {
 
   /** The editor area changed size (in character rows and columns). */
   resize(height, width) {
+    const grew = Math.max(1, height) > this.view.height;
     this.view.height = Math.max(1, height);
     this.view.width = Math.max(1, width);
+    if (grew) fillScreen(this);
     ensureCursorVisible(this);
   }
 
@@ -265,6 +268,16 @@ export class Vim {
 
   isInsertLike() {
     return this.mode === "insert" || this.mode === "replace";
+  }
+
+  /** The leader (\) typed, its key not yet: the element cancels it after a while. */
+  leaderPending() {
+    return this.mode !== "cmdline" && !this.isInsertLike() && this.pending.length > 0 && this.pending[this.pending.length - 1] === LEADER;
+  }
+
+  /** The leader's time ran out: it goes quietly, with any count typed before it. */
+  cancelLeader() {
+    if (this.leaderPending()) this.pending = [];
   }
 
   /** Waiting for a register name? The element then reads the clipboard first for "+ and "*. */

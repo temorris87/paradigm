@@ -7,8 +7,10 @@ POST /api/note/save        {id, body, version, force?, links?, mentions?, captur
                            version} if stale. links: the [[wiki link]] texts in body, mentions
                            its @mentions [{field, line, name, context}], as the page reads them
                            (paradigm/api/links.py); links left out, the note's index goes stale.
-                           captures: a meeting's T:/D:/Q: lines (paradigm/db/capture_repo.py)
-                           -> the note + captured: how many became tasks or records now
+                           captures: the "@Name ?" topic lines (paradigm/db/capture_repo.py);
+                           any other kind is refused with 400 (T:/Q:/D: lines are no longer
+                           captured on save: POST /api/capture makes one by key)
+                           -> the note + captured: how many topics were made now
 POST /api/note/rename      {id, title}
 POST /api/note/move        {id, parent_id|null}           a hub moved under a note stops being one;
                                                           a person stays at the top level;

@@ -144,6 +144,19 @@ const SCROLL_KEYS = [
   action("z-", "scrollBottomStart", "cursor line to the bottom, first non-blank"),
 ];
 
+// The leader: \ then one key, for the host. \t \q \d ask it to capture the line (in visual
+// mode, the selection) as a task, a question or a decision; \u to take a line's capture back.
+// The editor only reports them ("capture" / "uncapture" events); after \, any other key, or
+// none within LEADER_TIMEOUT_MS, cancels quietly.
+export const LEADER = "\\";
+export const LEADER_TIMEOUT_MS = 1000;
+
+const CAPTURE_KEYS = [
+  action("\\t", "captureTask", "capture the line (the selection) as a task: the host's sheet"),
+  action("\\q", "captureQuestion", "capture the line (the selection) as a question: the host's sheet"),
+  action("\\d", "captureDecision", "capture the line (the selection) as a decision: the host's sheet"),
+];
+
 export const NORMAL_KEYS = [
   alias("x", "dl", "delete the character under the cursor"),
   alias("<Del>", "dl", "delete the character under the cursor"),
@@ -184,6 +197,8 @@ export const NORMAL_KEYS = [
   action("m", "setMark", "set mark {a-z}", { arg: true }),
   action("ZZ", "writeQuit", "save and quit (same as :x)"),
   action("ZQ", "quitForce", "quit without saving (same as :q!)"),
+  ...CAPTURE_KEYS,
+  action("\\u", "uncapture", "remove what the line's capture made (the host's)"),
   ...SCROLL_KEYS,
 ];
 
@@ -223,6 +238,7 @@ export const VISUAL_KEYS = [
   action("I", "blockInsert", "block: insert on every line", { change: true }),
   action("A", "blockAppend", "block: append on every line", { change: true }),
   action(":", "cmdlineRange", "command line on the selected lines"),
+  ...CAPTURE_KEYS,
   ...SCROLL_KEYS,
 ];
 

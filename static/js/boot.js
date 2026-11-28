@@ -12,7 +12,7 @@ import { Navigator } from "./layout/navigator.js";
 import { calendarApi } from "./calendar/api.js";
 import { filesApi } from "./files/api.js";
 import { meetingsApi } from "./meetings/api.js";
-import { imagesApi, linksApi, notesApi } from "./notes/api.js";
+import { capturesApi, imagesApi, linksApi, notesApi } from "./notes/api.js";
 import { NotesApp } from "./notes/app.js";
 import { peopleApi } from "./people/api.js";
 import { planApi, planTemplatesApi } from "./plan/api.js";
@@ -26,7 +26,7 @@ import { trashApi } from "./trash/api.js";
 import { onCallApi } from "./oncall/api.js";
 
 export const APIS = { api: notesApi, imagesApi, peopleApi, meetingsApi, recordsApi, trashApi, linksApi, tasksApi, calendarApi,
-  planApi, planTemplatesApi, filesApi, templatesApi, foldersApi, statusApi, timeApi, onCallApi };
+  planApi, planTemplatesApi, filesApi, templatesApi, foldersApi, statusApi, timeApi, onCallApi, capturesApi };
 
 export function boot({ role, kind, options }) {
   const connection = new Connection({ tabId: tabId(sessionStorage, kind) });
@@ -69,6 +69,8 @@ export function boot({ role, kind, options }) {
     pins: document.querySelector(".navigator__pins"),
     prep: document.querySelector(".prep"),
     contextStrip: document.querySelector(".context-strip"),
+    // The note window's capture sheet (docked in the editor) and the strip under the editor.
+    capture: { sheet: document.querySelector(".capture-sheet"), strip: document.querySelector(".capture-strip") },
     saveState: document.querySelector(".navigator__save"),
     connection,
     ...APIS,

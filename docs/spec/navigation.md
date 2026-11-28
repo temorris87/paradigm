@@ -111,9 +111,10 @@ How the app behaves. Kept up to date by each feature that changes it.
   shows `g t` Today, `g w` Week, `:` command, `? all keys`. `?` (outside text boxes, the editor
   and dialogs) opens a read-only list of every key of the view, grouped as its table groups
   them, then "Anywhere in this window"; Esc or Close shuts it and the focus goes back where it
-  was. The note window's bar has no `?` (there it is the editor's search backwards): `i`
-  insert, `Esc` normal, `:w` save, `/` search, and `Tab` sheet when the note has its sections
-  sheet. The status line sits just above the bar. `static/js/ui/key-hints.js`,
+  was. The note window's bar has no `?` (there it is the editor's search backwards): `\ t`
+  line → task, `\ q` → question, `\ d` → decision, `v … \ t` from a selection, `\ u`
+  uncapture, `@` person, `:w` save, and `Tab` sheet when the note has its sections sheet
+  (capture by key, 2026-11-27; it had `i`, `Esc` and `/` before). The status line sits just above the bar. `static/js/ui/key-hints.js`,
   `static/js/layout/view-keys.js`.
 - Two windows (Tyson, 2026-11-22): the main window (`/`, left 2/3 of the ultrawide) shows
   dashboards and pages and never edits text; the note window (`/note.html`) is where notes
