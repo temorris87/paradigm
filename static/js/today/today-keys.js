@@ -23,7 +23,8 @@ export const TODAY_KEYS = [
   { keys: ["s"], action: "schedule", help: "put the task in the next free slot before it is due", hint: "schedule into next free slot" },
   { keys: ["d"], action: "delegate", help: "Delegate… the task, or change who has it", hint: "delegate" },
   { keys: ["z"], action: "snooze", help: "snooze the task to tomorrow: off Up next until then", hint: "snooze to tomorrow" },
-  { keys: ["f"], action: "fileAll", help: "File all…: go through the Inbox one note at a time" },
+  // F, not f: f is the window's follow mode (layout/main-keys.js).
+  { keys: ["F"], action: "fileAll", help: "File all…: go through the Inbox one note at a time" },
   // No hint: the Import panel shows its own key.
   { keys: ["i"], action: "import", help: "import today's calendar (.ics)" },
   { keys: ["o", "Enter"], action: "open", help: "open its note (a task's, a meeting, a project)", hint: "open", followHint: "open" },

@@ -1,0 +1,29 @@
+/* Follow mode's labels (f in the main window, static/js/ui/follow-overlay.js): a layer fixed
+   over the whole page that takes no clicks, with one key cap (.key, key-hints.css) at the
+   top-left of each target. Their left and top are set from the script (CSSOM). */
+.follow-hints {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+}
+
+.follow-hints__label {
+  position: absolute;
+  min-width: 0;
+  padding: 0 var(--sp-1);
+  border-color: var(--border-focus);
+  background: var(--surface-overlay);
+  color: var(--text-strong);
+  font-weight: 600;
+  box-shadow: 0 1px 4px var(--shadow);
+}
+
+.follow-hints__label[hidden] {
+  display: none;
+}
+
+/* The letters typed so far: faint, so the ones still to type stand out. */
+.follow-hints__typed {
+  color: var(--text-faint);
+}

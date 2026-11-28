@@ -178,6 +178,28 @@ test("today: h and l cross the columns (Now, Next, the side), ← → too; no wr
   }
 });
 
+test("today: File all… is F (f is the window's follow mode); the Inbox's button says F", () => {
+  assertEqual(TODAY_KEYS.find((entry) => entry.action === "fileAll").keys.join(), "F");
+  assertTrue(!TODAY_KEYS.some((entry) => entry.keys.includes("f")), "no f on Today");
+  const section = document.createElement("section");
+  document.body.append(section);
+  try {
+    const calls = [];
+    const page = new TodayPage(section, { onOpen: () => {}, onLeave: () => {}, today: () => NOW,
+      actions: { fileAll: () => calls.push("file all") } });
+    const loose = { id: 50, parent_id: null, title: "Loose note", kind: null, updated_at: T };
+    page.show(ctx({ tree: new NoteTree([...NOTES, loose]) }));
+    assertEqual(section.querySelector(".today__file-all .key").textContent, "F");
+    const key = (k, shiftKey = false) => page.list.dispatchEvent(new KeyboardEvent("keydown", { key: k, shiftKey, bubbles: true, cancelable: true }));
+    key("f");
+    assertEqual(calls.join(), "", "f does nothing on Today itself");
+    key("F", true);
+    assertEqual(calls.join(), "file all");
+  } finally {
+    section.remove();
+  }
+});
+
 test("week: estimates parse and read back; the tray groups and the due strip", async () => {
   const { parseEstimate, estimateText } = await import("../../static/js/tasks/tasks-model.js");
   const { trayGroups, dueChips, weekSummary } = await import("../../static/js/week/tray-model.js");

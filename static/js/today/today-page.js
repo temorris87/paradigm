@@ -320,8 +320,8 @@ export class TodayPage {
       const file = element("button", "today__file-all", "File all… ");
       file.type = "button";
       file.tabIndex = -1;
-      file.title = "Go through the Inbox one note at a time (f)";
-      file.append(element("kbd", "key", "f"));
+      file.title = "Go through the Inbox one note at a time (F)";
+      file.append(element("kbd", "key", "F"));
       file.addEventListener("click", (event) => {
         event.stopPropagation();
         this.actions.fileAll();

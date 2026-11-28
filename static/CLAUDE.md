@@ -29,6 +29,7 @@ static/
                          settings.css (the Settings page: its index and cards),
                          chip.css (THE status chip: .chip and its tones), key-hints.css
                          (THE key cap .key, the key-hint bar at the foot, the ? list),
+                         follow-hints.css (f's labels: a fixed layer, a key cap per target),
                          tokens.css (THE design tokens: --font-ui, --font-mono, --fs-xs..2xl,
                          --sp-0..6, --radius-sm/md/lg; no colours), themes/ (one file per
                          theme, setting every role token under :root[data-theme="<id>"]:
@@ -44,7 +45,7 @@ static/
   js/boot.js             what both windows start with (connection, navigator, NotesApp)
   js/main.js             the main window: its pages, the dashboard, the Settings gear
   js/note-main.js        the note window
-  js/layout/main-keys.js THE main window's own key table (: gt gw gp gh gn g, ?)
+  js/layout/main-keys.js THE main window's own key table (: gt gw gp gh gn g, f ?)
   js/layout/view-keys.js which key table each main-window view reads (its hint bar, its ?
                          list) and the note window's short fixed hints; pure
   js/layout/navigator-parts.js  the navigator's pinned Today / Week and its save state
@@ -238,6 +239,10 @@ static/
                          (a person's initials in a circle),
                          key-hints.js (the key-hint bar from a table's hint:/label:; key
                          caps; pure apart from drawing), keys-dialog.js (the ? list),
+                         follow-hints.js (f's follow mode: labels for n targets, reading
+                         order, what typed letters reach; pure), follow-overlay.js (the
+                         targets in view, their labels, its keys, a target clicked or
+                         pressed; installed before the window's keys),
                          key-sequence.js
                          (two-key entries in a key table: gg, gp; pure), column-target.js
                          (h l on a page of columns: the nearest column that way with rows,

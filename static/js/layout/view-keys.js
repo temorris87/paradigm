@@ -15,7 +15,8 @@
 //                              barWithout: left out of the bar only (still in the ? list);
 //                              bar: { action: words }: the bar shows just these, in this order
 //   viewHints(view, weekTab, options)  [{ cap, words }] for the bar: the table's hints, then
-//                              "? all keys" (Live has no table: the main window's own hints)
+//                              "f follow" and "? all keys" (Live has no table: the main
+//                              window's own hints)
 //   viewKeyGroups(view, weekTab, options)  [{ name, rows }] for the ? list: the view's table as
 //                              it groups its keys (less the ones it is without), then the window's
 //                              (less the keys the view's table already lists: each key once)
@@ -84,6 +85,9 @@ const barScope = (table) => (table.some((entry) => entry.scope) ? "list" : undef
 
 const SCOPE_NAMES = { list: "The list", search: "The search box" };
 
+// The window's keys every view's bar ends with.
+const EVERY_BAR = ["follow", "keys"];
+
 export function viewTable(view, weekTab = "plan", { logStatus = false, project = false, person = false, followUp = false } = {}) {
   if (view === "week") return WEEK_TABLES[weekTab] ?? WEEK_TABLES.plan;
   if (view === "home" && followUp) return TODAY_FOLLOW_UP;
@@ -97,7 +101,7 @@ export function viewHints(view, weekTab, options) {
   const { table, without = [], barWithout = [], words, field, bar } = viewTable(view, weekTab, options);
   const own = bar ? Object.entries(bar).map(([action, text]) => ({ cap: capOf(table.find((entry) => entry.action === action)), words: text }))
     : hintsOf(table, { scope: barScope(table), without: [...without, ...barWithout], words, field });
-  const main = table.length ? MAIN_KEYS.filter((entry) => entry.action === "keys") : MAIN_KEYS;
+  const main = table.length ? MAIN_KEYS.filter((entry) => EVERY_BAR.includes(entry.action)) : MAIN_KEYS;
   return [...own, ...hintsOf(main)];
 }
 

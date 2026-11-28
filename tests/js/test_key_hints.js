@@ -94,21 +94,21 @@ test("key hints: a bar from a table: a cap and its words per hint, in table orde
   assertEqual(bar.children.length, 0);
 });
 
-test("view keys: every main-window view's bar ends with ? all keys; Live shows the window's keys", () => {
+test("view keys: every main-window view's bar ends with f follow and ? all keys; Live shows the window's keys", () => {
   const caps = (view, tab) => viewHints(view, tab).map(({ cap }) => cap).join();
-  for (const view of VIEWS) assertTrue(caps(view).endsWith("?"), String(view));
-  for (const tab of WEEK_TABS) assertTrue(caps("week", tab).endsWith("?"), tab);
-  assertEqual(viewHints("live").map(({ cap, words }) => `${cap} ${words}`).join(), "g t Today,g w Week,: command,? all keys");
+  for (const view of VIEWS) assertTrue(caps(view).endsWith("f,?"), String(view));
+  for (const tab of WEEK_TABS) assertTrue(caps("week", tab).endsWith("f,?"), tab);
+  assertEqual(viewHints("live").map(({ cap, words }) => `${cap} ${words}`).join(), "g t Today,g w Week,: command,f follow,? all keys");
   const projectCaps = viewHints(null, "plan", { logStatus: true }).map(({ cap }) => cap).join();
-  assertEqual(projectCaps, "j k,h l,Enter,z,a,Space,L,e,?", "an area's dashboard: the sections' keys");
+  assertEqual(projectCaps, "j k,h l,Enter,z,a,Space,L,e,f,?", "an area's dashboard: the sections' keys");
   assertEqual(viewHints(null, "plan", { logStatus: true, project: true }).map(({ cap, words }) => `${cap} ${words}`).join(),
-    "j k move,h l columns,Space done,n new task,d delegate,L log status,e edit outcome,g p Gantt,? all keys", "a project's page: Figma's bar");
-  assertEqual(caps("history"), "j k,Enter,1-5,/,Esc,?", "History's bar");
-  assertEqual(caps(null), "j k,h l,Enter,z,a,Space,e,?", "a person's dashboard: no status to log");
-  assertEqual(viewHints("settings").map(({ cap, words }) => `${cap} ${words}`).join(), "Esc back,? all keys", "Settings: Esc back, ? all keys");
-  assertEqual(caps("trash"), "j k,Enter,/,?", "the Trash has no New");
+    "j k move,h l columns,Space done,n new task,d delegate,L log status,e edit outcome,g p Gantt,f follow,? all keys", "a project's page: Figma's bar");
+  assertEqual(caps("history"), "j k,Enter,1-5,/,Esc,f,?", "History's bar");
+  assertEqual(caps(null), "j k,h l,Enter,z,a,Space,e,f,?", "a person's dashboard: no status to log");
+  assertEqual(viewHints("settings").map(({ cap, words }) => `${cap} ${words}`).join(), "Esc back,f follow,? all keys", "Settings: Esc back, f follow, ? all keys");
+  assertEqual(caps("trash"), "j k,Enter,/,f,?", "the Trash has no New");
   assertEqual(viewHints("task").map(({ cap, words }) => `${cap} ${words}`).join(),
-    "Space done,e edit notes,d delegate,s schedule,a add subtask,j k move,h l columns,Esc back,? all keys", "a task's page, as in Figma");
+    "Space done,e edit notes,d delegate,s schedule,a add subtask,j k move,h l columns,Esc back,f follow,? all keys", "a task's page, as in Figma");
   assertEqual(viewHints("trash").find(({ cap }) => cap === "Enter").words, "restore", "Enter restores in the Trash");
   assertEqual(viewHints("people").find(({ cap }) => cap === "Enter").words, "open");
   assertTrue(!noteHints({ sheet: true }).some(({ cap }) => cap === "?"), "the note window: ? is the editor's");
@@ -128,7 +128,7 @@ test("view keys: a bar shows only keys its view's table binds", () => {
 
 test("view keys: the Week Plan's bar as in Figma, g t the tray there and Today elsewhere", () => {
   assertEqual(viewHints("week", "plan").map(({ cap, words }) => `${cap} ${words}`).join(),
-    "[ ] week,g t tray,g c calendar,j k move,s schedule,Enter block menu,? all keys");
+    "[ ] week,g t tray,g c calendar,j k move,s schedule,Enter block menu,f follow,? all keys");
   assertEqual(shadowedMainActions("week", "plan").join(), "today", "the Plan tab's gt shadows the window's");
   for (const tab of ["timesheet", "oncall"]) assertEqual(shadowedMainActions("week", tab).join(), "", tab);
   for (const view of VIEWS) assertEqual(shadowedMainActions(view).join(), "", String(view));
@@ -173,6 +173,25 @@ test("view keys: the ? list leaves out what the bar leaves out", () => {
   assertTrue(helps("week", "timesheet").includes("c"));
   assertTrue(!helps(null).includes("L"), "a person's dashboard: no Log status");
   assertTrue(helps(null, "plan", { logStatus: true }).includes("L"));
+});
+
+test("main keys: f is follow anywhere in the window, never in a text box; it is under Anywhere in the ? list", () => {
+  assertEqual(mainAction({ key: "f", target: document.body }), "follow");
+  assertEqual(mainAction({ key: "F", shiftKey: true, target: document.body }), null, "F is a view's (Today's File all…)");
+  const input = document.createElement("input");
+  document.body.append(input);
+  try {
+    assertEqual(mainAction({ key: "f", target: input }), null, "a text box types its f");
+  } finally {
+    input.remove();
+  }
+  for (const [name, table] of Object.entries(TABLES)) {
+    if (name !== "MAIN_KEYS") assertTrue(!table.some((entry) => entry.keys.includes("f")), `${name} binds no f`);
+  }
+  for (const view of [...VIEWS, "week"]) {
+    const anywhere = viewKeyGroups(view).find((group) => group.name === "Anywhere in this window");
+    assertTrue(anywhere.rows.some((row) => row.keys.join() === "f"), `${view}: f in the ? list`);
+  }
 });
 
 test("view keys: ? is the main window's, never in a text box", () => {
@@ -225,9 +244,9 @@ test("note keys: the note window's bar, as Figma has it: the capture leader, the
 test("view keys: a person's page has its own bar; People shows n, not a", () => {
   const bar = (view, options) => viewHints(view, "plan", options).map(({ cap, words }) => `${cap} ${words}`).join(",");
   assertEqual(bar(null, { person: true }),
-    "j k move,Tab next column,Space done,d delegate,a add topic,r raised,n 1:1 notes,o open,? all keys");
-  assertEqual(bar("people"), "j k move,Enter open,/ filter by name,o open items / everyone,n new person,? all keys");
-  assertEqual(bar("meetings"), "j k move,Enter open,/ search,a new,? all keys", "Meetings has no o or n");
+    "j k move,Tab next column,Space done,d delegate,a add topic,r raised,n 1:1 notes,o open,f follow,? all keys");
+  assertEqual(bar("people"), "j k move,Enter open,/ filter by name,o open items / everyone,n new person,f follow,? all keys");
+  assertEqual(bar("meetings"), "j k move,Enter open,/ search,a new,f follow,? all keys", "Meetings has no o or n");
   const helps = (...args) => viewKeyGroups(...args).flatMap((group) => group.rows.map((row) => row.keys.join()));
   assertTrue(helps("people").includes("a"), "a still makes a new person: in the ? list");
   assertTrue(helps("people").includes("n") && helps("people").includes("o"));

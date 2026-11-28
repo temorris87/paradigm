@@ -137,8 +137,8 @@ How the app behaves. Kept up to date by each feature that changes it.
 - Main-window keys (`static/js/layout/main-keys.js`, read in the capture phase): `:` the palette,
   `gt` Today (on the Week page's Plan tab, the tray: week.md), `gw` the Week, `gn` the Live page, `gp` the plan of the project or area on the dashboard (anywhere on
   it; on another page it says to open one; `:plan` in the palette), `gh` the History of the
-  project on the dashboard (2026-11-27; else `E: History is a project's`), `?` every key of the view
-  shown (2026-11-27). `g` waits for a second key everywhere (as in Vim): `gg` is the
+  project on the dashboard (2026-11-27; else `E: History is a project's`), `f` follow mode
+  (below), `?` every key of the view shown (2026-11-27). `g` waits for a second key everywhere (as in Vim): `gg` is the
   first row in every list (`static/js/ui/key-sequence.js` reads two-key entries; a page-wide
   key clears a list's waiting `g`).
 - Columns: `h` and `l` (Tyson, 2026-11-28; feature 039; `static/js/ui/column-target.js`). On
@@ -155,6 +155,21 @@ How the app behaves. Kept up to date by each feature that changes it.
   keep `h` `l` as the week and the tree as fold and unfold; one-column pages (People, Meetings,
   Trash, History) don't bind them (Tyson, 2026-11-28). A phase or milestone's date history,
   on a dashboard and the Plan, moved from `h` to `t` (Tyson, 2026-11-28).
+- Follow mode (Tyson, 2026-11-28; feature 040): `f` in the main window (outside text boxes, the
+  editor and dialogs; sidebar included) puts a key-cap label on everything clickable in view:
+  list rows, row buttons, top-bar, crumb and dashboard-head buttons, links, tabs, navigator pins
+  and tree rows, Week blocks and tray items; hidden, inert, disabled or covered ones get none,
+  and a button inside a row gets its own. With 9 or fewer each label is one home-row letter
+  (`asdfghjkl`); with more, two letters from `asdfghjkl` then `qwertyuiop` (at most 361), in
+  reading order, top to bottom, left to right. Each letter typed hides the labels that don't
+  start with it and marks the typed letters; a full label clicks its target (a list row moves
+  its list's cursor there and opens it as Enter would; a Week block or tray item is pressed).
+  Shift is ignored. Esc, a key that matches no label, Backspace with nothing typed (else it takes
+  back a letter), a mouse press, a scroll, a resize or a Ctrl/Alt/Cmd shortcut ends it. While it
+  is on it takes every key, so no page key fires. Every bar shows `f follow` before
+  `? all keys`, and the `?` list has it under "Anywhere in this window". No view binds `f`
+  (Today's File all… is `F`). The note window has none: `f` is Vim's find-character there.
+  `static/js/ui/follow-hints.js` (pure), `follow-overlay.js`, `static/css/follow-hints.css`.
 - Look (Tyson, 2026-11-26): both windows open in Nord Light, the default and only theme
   (Snow Storm backgrounds, Frost accents, dark text; native scrollbars and checkboxes light),
   and Mermaid diagrams and `:export` follow it. Every text colour reaches 4.5:1 on the
@@ -184,7 +199,7 @@ How the app behaves. Kept up to date by each feature that changes it.
   the view on screen, each as a key cap and a word or two, and changes with the view (Today,
   each Week tab, People, Meetings, a dashboard, a task page, Plan, a template, a folder, Live,
   Trash). It shows only keys the view's key table binds (the entries with `hint:`), and in the
-  main window ends with `? all keys`. A dashboard that isn't a project's or an area's leaves out
+  main window ends with `f follow` and `? all keys` (2026-11-28). A dashboard that isn't a project's or an area's leaves out
   `L`; the Trash leaves out New and calls Enter "restore". Live has no keys of its own, so it
   shows `g t` Today, `g w` Week, `:` command, `? all keys`. `?` (outside text boxes, the editor
   and dialogs) opens a read-only list of every key of the view, grouped as its table groups

@@ -13,6 +13,8 @@ tests/python/            unittest; helpers.py runs a real server on a free port
 tests/js/                index.html runner, harness.js, fakes.js, editor-helpers.js, test_*.js
                          (test_editor_vim_cases.js: key sequences checked against real Vim;
                          test_key_hints.js: every hint: key bound in its table;
+                         test_follow_hints.js: f's labels and matching, and on a small
+                         fixture: labels drawn, a label typed clicks, Esc clears;
                          test_import_panel.js: the Import panel's show rule and texts;
                          test_calendar_import_wiring.js: a real CalendarPage on a fake API
                          and storage: the panel, Plan without it, uploads, gt/gc/j/k;
