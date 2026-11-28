@@ -60,6 +60,10 @@ How the app behaves. Kept up to date by each feature that changes it.
     and "Delegated to {name} · follow up {day}", which is undated and listed first (it is how
     the task stands now: the delegation's day is not stored). Derived from what is stored, with
     no event log (Tyson, 2026-11-27; `paradigm/db/task_history.py`, `GET /api/task/history`).
+    The one stored log is the follow-ups logged on Today (feature 033, `follow_up_logs`): each
+    is a row on its day, "Followed up: {note}" (or "Followed up") then "· next Tue 1 Dec" or
+    "· closed", newest first. The logs stay with a task through trash and restore, and go
+    when the task is removed.
   - Width: at 1280 px (the main window's share with the note window on the right third) Notes
     and the side column sit side by side and nothing scrolls sideways; under 1000 px the side
     column goes under Notes.

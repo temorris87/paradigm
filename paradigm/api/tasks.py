@@ -2,8 +2,10 @@
 
 GET  /api/tasks                -> {tasks: [{id, note_id, parent_id, title, notes, due, delegate_id,
                                   follow_up, done, done_day, position,
-                                  snoozed_until, estimate_min, for_person_id, source_id, quote}]}
+                                  snoozed_until, estimate_min, for_person_id, source_id, quote,
+                                  follow_up_count}]}
                                   source_id, quote: the meeting and line it was captured from   live tasks only
+                                  follow_up_count: its logged follow-ups (every task answer has it)
 POST /api/task/create          {note_id, title, parent_id?, due?, notes?}  -> task
                                (parent_id: any task on that note above the 5th level;
                                deeper: 400 "Subtasks go 4 levels deep")
@@ -16,9 +18,15 @@ POST /api/task/done            {id, done}                                  -> ta
                                (done: every open task under it is done too; reopen: it alone)
 POST /api/task/move            {id, before_id|null}                        -> task
 POST /api/task/remove          {id}                                        -> {removed: [ids]}
-                               (the task and all its descendants)
+                               (the task and all its descendants; its follow-up logs go too)
+POST /api/task/followed_up     {id, note?, outcome: again|closed, next?, today} -> task
+                               (logs a follow-up of a delegated task with a follow-up day, else
+                               409; today: the browser's day; again: follow_up = next, after
+                               today; closed: done as /api/task/done, follow_up kept)
 GET  /api/task/history?task=N  -> {events: [{day, time, kind, text, note_id}]}  newest first;
-                               kind: created, captured, placed, delegated, done; time and
+                               kind: created, captured, placed, delegated, followed_up, done;
+                               followed_up also has key "followup:N", next (YYYY-MM-DD or null)
+                               and closed (bool); time and
                                note_id may be null (derived from what is stored, task_history.py);
                                delegated has no day (null, listed first) and a follow_up
                                (YYYY-MM-DD or null)
@@ -32,19 +40,22 @@ from typing import Dict, Optional
 
 from paradigm.api.answers import answering
 from paradigm.api.task_files import task_param
+from paradigm.db.follow_ups_repo import BadFollowUp, FollowUpRepository, NotAFollowUp
 from paradigm.db.task_history import TaskHistory
 from paradigm.db.tasks_repo import BadTask, BadWhen, NoTasksHere, NotAPerson, NotFound, TaskRepository
 from paradigm.notes.meetings import clean_day
 from paradigm.web.requests import BadRequest, int_field, optional_int_field, read_json
 from paradigm.web.router import Router
 
-_answer = answering({NotFound: 404, BadWhen: 400, BadTask: 400, NoTasksHere: 400, NotAPerson: 400, BadRequest: 400})
+_answer = answering({NotFound: 404, BadWhen: 400, BadTask: 400, NoTasksHere: 400, NotAPerson: 400, BadRequest: 400,
+                     BadFollowUp: 400, NotAFollowUp: 409})
 
 
 class TasksApi:
-    def __init__(self, tasks: TaskRepository, history: TaskHistory):
+    def __init__(self, tasks: TaskRepository, history: TaskHistory, follow_ups: FollowUpRepository):
         self._tasks = tasks
         self._history = history
+        self._follow_ups = follow_ups
 
     def register(self, router: Router) -> None:
         router.add("GET", "/api/tasks", _answer(self.list))
@@ -55,6 +66,7 @@ class TasksApi:
         router.add("POST", "/api/task/done", _answer(self.done))
         router.add("POST", "/api/task/move", _answer(self.move))
         router.add("POST", "/api/task/remove", _answer(self.remove))
+        router.add("POST", "/api/task/followed_up", _answer(self.followed_up))
         router.add("GET", "/api/task/history", _answer(self.history))
         router.add("GET", "/api/sessions", _answer(self.sessions))
         router.add("POST", "/api/session/add", _answer(self.add_session))
@@ -96,6 +108,11 @@ class TasksApi:
 
     def remove(self, req: BaseHTTPRequestHandler) -> Dict:
         return {"removed": self._tasks.remove(int_field(read_json(req), "id"))}
+
+    def followed_up(self, req: BaseHTTPRequestHandler) -> Dict:
+        payload = read_json(req)
+        return self._follow_ups.log(int_field(payload, "id"), payload.get("outcome"), payload.get("note", ""),
+                                    payload.get("next", ""), payload.get("today"))
 
     def history(self, req: BaseHTTPRequestHandler) -> Dict:
         return {"events": self._history.events(task_param(req))}

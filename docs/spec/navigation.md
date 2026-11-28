@@ -24,7 +24,7 @@ How the app behaves. Kept up to date by each feature that changes it.
   day (meetings with their prep, blocks, free gaps of 30 min or more in the working hours,
   "Log status" when projects are stale; imported events still in the Week's To file show
   muted, "to file on the Week (g w)", and open the Week); Up next, one list ranked across every project
-  (overdue, follow-ups past due, due today, due within 5 working days, questions waiting over
+  (overdue, due today, due within 5 working days, questions waiting over
   7 days; never done, on-hold, archived or snoozed; next actions left it with the flag,
   2026-11-26, and an empty list reads "Nothing urgent: nothing overdue, due soon or waiting on
   you."); Projects with their latest status and the Inbox. One focus stop, starting on Up next; `j k gg G`, `}` `{`, Space done (a
@@ -48,6 +48,32 @@ How the app behaves. Kept up to date by each feature that changes it.
   time from now on, outside meetings, placed blocks and events still to file), "No free time
   left today", "Working day over" after its end, "Day off". Gap rows keep "1.5 h free"; the Now
   card says "The rest of today is free" when nothing else is on.
+- Today's follow-ups (Tyson, 2026-11-27; feature 033: "There should never be any follow ups at
+  the end of a day"): a follow-up (a delegated, open task with a follow-up day) shows on Today
+  only once its day is today or past. Up next starts with **Follow up today · n**, oldest
+  first, then **Then · ranked** and the ranked list (the heading's count is the ranked rows);
+  with none due, neither label shows. Follow-ups due later stay on the Week's tray and the
+  person page only. One not dealt with carries to the next day: its chip is **Today** (info),
+  or **from Wed** (warning; "from 20 Nov" past a week), never "N d late", and follow-ups never
+  count in the navigator's "N overdue" (default, approved by Tyson, 2026-11-27). On a
+  follow-up row the key-hint bar follows the cursor: `Space` followed up…, `c` close it, `r`
+  follow up again on…, `j k` move, `o` open.
+  - Space (or a click on the row's →) opens **Followed up with {person}**: "{title} · {hub} ·
+    {n}th follow-up" (the logs so far plus this one), What happened (one line, optional, at
+    most 500 characters: it goes in the task's History), then **Follow up again** (chosen) with
+    a date box, or **Close it** ("done: they did it, or it no longer matters"). The date box
+    starts two working days after today (default, approved by Tyson, 2026-11-27), reads
+    YYYY-MM-DD, tomorrow, a weekday (the next one after today) or +3, shows the day it reads
+    beside it, and must be after today; quick picks +1 tomorrow · +3 · Mon. `j k` and the
+    arrows switch the choices while they have the focus; Enter logs, Esc cancels. A bad day or
+    a server refusal shows inside the dialog, which stays open. Follow up again moves the
+    task's follow-up day (the row leaves the group); Close it ticks the task done today, as
+    Space on a task does. The status line says "Logged: follow up again Tue 1 Dec" or "Logged
+    and closed: {title}".
+  - `c` closes it with no dialog (logged with no note); `r` opens **Follow up again with
+    {person}** with only the date box (logged with no note). Off a follow-up row, Space still
+    ticks the task done and `c` `r` do nothing. Logging is only on Today, not on the task or
+    person page (`POST /api/task/followed_up`, `static/js/tasks/follow-up-dialog.js`).
 - Note menu: clicking the open note's name (the last crumb, with ▾) opens its menu: rename,
   move (a picker), new note beside / under, file as, archive or restore, export, move to
   trash (with a confirm); a project's or area's starts with Log status…; a person's has Edit
@@ -114,7 +140,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   hub-line question and decision badges, Live's highlights, the Gantt's late badge, the list
   pages' filter pills: the one on is info). Missed due dates, late and blocked are danger;
   at risk warning; due today or soon caution; on track success; follow-ups and waiting on info,
-  however late (the text says how late: Tyson, 2026-11-27); on hold neutral; tasks, decisions,
+  however late (the text says how late: Tyson, 2026-11-27), but for Today's carried follow-up
+  ("from Wed": warning, feature 033); on hold neutral; tasks, decisions,
   questions and meetings their kind's colour (`static/js/ui/chip-tones.js`). Calendar chips and
   the tree's count pills are not status and keep their look. One key cap (mono, boxed) is used
   by the bar, the palette, triage, the top bar and Today. Menus, dialogs, the palette, the

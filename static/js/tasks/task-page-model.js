@@ -20,7 +20,8 @@
 //   toAnswerText(emails)              "2 to answer" ("" when none)
 //   fileDetail(file, hubId)           "OneDrive · Specs", "… · from Ben Ortiz" (another hub's)
 //   sourceOf(ctx, task)               { noteId, title, day, when, chip, tone, quote } or null
-//   historyRows(events, today)        [{ key, day, text, noteId }] as the server sent them
+//   historyRows(events, today)        [{ key, day, text, noteId }] as the server sent them; a
+//                                     logged follow-up ends "· next Tue 1 Dec" or "· closed"
 //   SIDE_CARDS                        the side column's cards, top to bottom
 import { localDay } from "../meetings/meeting-days.js";
 import { DEFAULT_LENGTH, clock, minutes } from "../calendar/week-model.js";
@@ -187,9 +188,14 @@ export function historyRows(events, today) {
     key: `event-${at}`,
     day: event.day ? dayText(event.day, { today: dayString(today) }) : "",
     // The server sends the follow-up as a bare day, so it is worded here like every date on screen.
-    text: event.follow_up ? `${event.text} · follow up ${shortDay(event.follow_up, today)}` : event.text,
+    text: event.kind === "followed_up" ? followedUpText(event, today)
+      : event.follow_up ? `${event.text} · follow up ${shortDay(event.follow_up, today)}` : event.text,
     noteId: event.note_id ?? null,
   }));
 }
 
-
+/** "Followed up: Pinged on Teams · next Tue 1 Dec", "Followed up · closed". */
+function followedUpText(event, today) {
+  const then = event.closed ? "closed" : event.next ? `next ${dayText(event.next, { today: dayString(today) })}` : "";
+  return [event.text, then].filter(Boolean).join(" · ");
+}

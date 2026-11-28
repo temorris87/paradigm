@@ -53,7 +53,9 @@ const hintOptions = (app) => {
   const note = app?.tree?.get(app.currentId);
   return { logStatus: Boolean(app?.tree && statusHubOf(app)),
     project: note?.kind === "project" && app.tree.parentId(note.id) === null,
-    person: note?.kind === "person" };
+    person: note?.kind === "person",
+    // Today's bar follows its cursor: a follow-up row has keys of its own.
+    followUp: app?.views?.shown === "home" && app.views.pages.home?.activeItem?.()?.kind === "followup" };
 };
 const drawHints = () => drawKeyHints(hintBar, viewHints(appNow()?.views?.shown ?? null, weekTab(), hintOptions(appNow())));
 
@@ -155,6 +157,7 @@ const app = boot({
 // The key-hint bar follows the view shown: every redraw (a page shown, left, the note opened),
 // and the Week's tabs.
 app.events.addEventListener("redraw", drawHints);
+app.events.addEventListener("cursor", drawHints);
 drawHints();
 
 /** Whether a key's target is on the Week page, or on the page body (the focus nowhere). The

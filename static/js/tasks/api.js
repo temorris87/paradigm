@@ -3,7 +3,8 @@
 import { call } from "../notes/api.js";
 
 export const tasksApi = {
-  // -> [{ id, note_id, parent_id, title, notes, due, delegate_id, follow_up, done, done_day, position }]
+  // -> [{ id, note_id, parent_id, title, notes, due, delegate_id, follow_up, done, done_day, position,
+  //    follow_up_count }]
   list: async () => (await call("/api/tasks")).tasks,
   create: (noteId, title, { parentId = null, due = "", notes = "" } = {}) =>
     call("/api/task/create", { payload: { note_id: noteId, title, parent_id: parentId, due, notes } }),
@@ -12,6 +13,10 @@ export const tasksApi = {
   update: (id, values, { keepalive = false } = {}) => call("/api/task/update", { payload: { id, ...values }, keepalive }),
   delegate: (id, personId, followUp = "") => call("/api/task/delegate", { payload: { id, person_id: personId, follow_up: followUp } }),
   setDone: (id, done) => call("/api/task/done", { payload: { id, done } }),
+  // A follow-up logged: outcome "again" (next: the new follow-up day, after today) or "closed"
+  // (the task done today). today: the browser's day. -> the task, plus follow_up_count
+  followedUp: (id, { note = "", outcome, next = "", today }) => call("/api/task/followed_up",
+    { payload: { id, note, outcome, today, ...(outcome === "again" ? { next } : {}) } }),
   setFor: (id, personId) => call("/api/task/for", { payload: { id, person_id: personId } }),
   move: (id, beforeId) => call("/api/task/move", { payload: { id, before_id: beforeId } }),
   remove: (id) => call("/api/task/remove", { payload: { id } }),
@@ -29,6 +34,6 @@ export const tasksApi = {
   // Unlinks it from the task; the file itself is left alone.
   detachFile: (taskId, fileId) => call("/api/task/file/detach", { payload: { task_id: taskId, file_id: fileId } }),
   // The task's life, derived: [{ day, time, kind, text, note_id }], newest first; kind: created,
-  // captured, placed, delegated, done
+  // captured, placed, delegated, done, followed_up (with next: a day or null, and closed)
   history: async (taskId) => (await call(`/api/task/history?task=${encodeURIComponent(taskId)}`)).events,
 };

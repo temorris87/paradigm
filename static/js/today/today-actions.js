@@ -3,11 +3,13 @@
 // show in the status line.
 //
 //   const actions = todayActions(app);    { done, schedule, delegate, snooze, answer, extend, fileAll, log, onCall,
-//                                           importCalendar, toFile }
+//                                           importCalendar, toFile, followedUp, closeFollowUp,
+//                                           followUpAgain }
 import { hasError, uploadText } from "../calendar/import-state.js";
 import { ONLY_CALENDAR_FILES, uploadCalendarFiles } from "../calendar/import-upload.js";
 import { answerDialog } from "../hubs/hub-actions.js";
 import { logStatusDialog } from "../status/status-commands.js";
+import { closeFollowUp, followUpDialog } from "../tasks/follow-up-dialog.js";
 import { delegateDialog, extendBlock, scheduleTask, setTaskDone, snoozeTask } from "../tasks/task-commands.js";
 import { projectRows } from "./today-model.js";
 import { triageInbox } from "../triage/triage.js";
@@ -26,6 +28,10 @@ export function todayActions(app) {
     // An event still to file: the Week, whose To file tab files it.
     toFile: () => app.calendarCommand(),
     importCalendar: (files) => run(() => importCalendar(app, files)),
+    // A follow-up row: Space logs it (the dialog), c closes it, r asks only the next day.
+    followedUp: (taskId) => run(() => followUpDialog(app, taskId)),
+    closeFollowUp: (taskId) => run(() => closeFollowUp(app, taskId)),
+    followUpAgain: (taskId) => run(() => followUpDialog(app, taskId, { dateOnly: true })),
     // The day's "Log status" line: the stalest project first.
     log: () => run(() => {
       const stale = projectRows({ tree: app.tree, statusLogs: app.statusLogs }, app.today())

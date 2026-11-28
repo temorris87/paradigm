@@ -21,7 +21,7 @@ from paradigm.notes.tasks import BadTask, clean_estimate, clean_optional_day, cl
 
 Clock = Callable[[], str]
 
-__all__ = ["TaskRepository", "insert_task", "MAX_TASK_DEPTH", "NotFound", "BadWhen", "BadTask", "NotAPerson",
+__all__ = ["TaskRepository", "insert_task", "close_task", "live_task", "MAX_TASK_DEPTH", "NotFound", "BadWhen", "BadTask", "NotAPerson",
            "NoTasksHere"]
 
 # A task plus 4 levels of subtasks: deeper, the indent stops being readable in the 1/3 window.
@@ -33,6 +33,11 @@ _LIVE_TASK = "tasks.removed_at IS NULL AND notes.deleted_at IS NULL"
 _SUBTREE = ("WITH RECURSIVE down(id, depth) AS (SELECT id, 0 FROM tasks WHERE id = ? "
             "UNION ALL SELECT tasks.id, down.depth + 1 FROM tasks JOIN down ON tasks.parent_id = down.id "
             "WHERE tasks.removed_at IS NULL) ")
+# What every task read selects: the row, where it was captured, how often it was followed up.
+_TASK_COLUMNS = ("SELECT tasks.*, task_sources.source_id, task_sources.quote, "
+                 "(SELECT count(*) FROM follow_up_logs WHERE follow_up_logs.task_id = tasks.id) AS follow_up_count "
+                 "FROM tasks JOIN notes ON notes.id = tasks.note_id "
+                 "LEFT JOIN task_sources ON task_sources.task_id = tasks.id WHERE ")
 # The fields update() may change, and how each is cleaned.
 _FIELDS = {"title": clean_task_title, "notes": clean_task_notes, "due": clean_optional_day,
            "follow_up": clean_optional_day, "snoozed_until": clean_optional_day, "estimate_min": clean_estimate}
@@ -55,10 +60,7 @@ class TaskRepository:
         """Every live task, by note, then in their order."""
         with self._db.reading() as conn:
             rows = conn.execute(
-                "SELECT tasks.*, task_sources.source_id, task_sources.quote FROM tasks "
-                "JOIN notes ON notes.id = tasks.note_id LEFT JOIN task_sources ON task_sources.task_id = tasks.id WHERE "
-                + _LIVE_TASK + " ORDER BY tasks.note_id, tasks.position, tasks.id"
-            ).fetchall()
+                _TASK_COLUMNS + _LIVE_TASK + " ORDER BY tasks.note_id, tasks.position, tasks.id").fetchall()
         return [_task(row) for row in rows]
 
     def get(self, task_id: int) -> Dict:
@@ -113,14 +115,11 @@ class TaskRepository:
         ones done already keep their day), or reopens that task alone: its subtasks may have
         been done on their own."""
         with self._db.transaction() as conn:
-            row = _task_row(conn, task_id)
-            today = self._today()
-            done_day = (row["done_day"] or today) if done else ""
-            conn.execute("UPDATE tasks SET done = ?, done_day = ? WHERE id = ?",
-                         (int(done), done_day, task_id))
+            _task_row(conn, task_id)
             if done:
-                conn.execute(_SUBTREE + "UPDATE tasks SET done = 1, done_day = ? "
-                             "WHERE id IN (SELECT id FROM down WHERE depth > 0) AND done = 0", (task_id, today))
+                close_task(conn, task_id, self._today())
+            else:
+                conn.execute("UPDATE tasks SET done = 0, done_day = '' WHERE id = ?", (task_id,))
             return _task(_task_row(conn, task_id))
 
     def move(self, task_id: int, before_id: Optional[int]) -> Dict:
@@ -158,6 +157,8 @@ class TaskRepository:
             # links (the files stay in OneDrive).
             with_emails = drop_emails(conn, ids)
             drop_task_files(conn, ids)
+            # Its follow-up logs go too, as the cascade of a real delete would take them.
+            conn.executemany("DELETE FROM follow_up_logs WHERE task_id = ?", [(each,) for each in ids])
         remove_saved(self._emails_dir, with_emails)
         return ids
 
@@ -216,6 +217,20 @@ def insert_task(conn: sqlite3.Connection, note_id: int, title: str, parent_id: O
     ).lastrowid
 
 
+def close_task(conn: sqlite3.Connection, task_id: int, today: str) -> None:
+    """Inside a caller's transaction: a live task done, and every open task under it at any
+    depth, each on today (the ones done already keep their day)."""
+    conn.execute("UPDATE tasks SET done = 1, done_day = CASE WHEN done_day = '' THEN ? ELSE done_day END "
+                 "WHERE id = ?", (today, task_id))
+    conn.execute(_SUBTREE + "UPDATE tasks SET done = 1, done_day = ? "
+                 "WHERE id IN (SELECT id FROM down WHERE depth > 0) AND done = 0", (task_id, today))
+
+
+def live_task(conn: sqlite3.Connection, task_id: int) -> Dict:
+    """Inside a caller's transaction: a live task as the API returns it, or NotFound."""
+    return _task(_task_row(conn, task_id))
+
+
 def _depth(conn: sqlite3.Connection, task_id: int) -> int:
     """How many levels down a task sits: 1 for a top-level task."""
     return conn.execute(
@@ -230,7 +245,8 @@ def _task(row: sqlite3.Row) -> Dict:
             "follow_up": row["follow_up"], "done": bool(row["done"]), "done_day": row["done_day"],
             "position": row["position"],
             "snoozed_until": row["snoozed_until"], "estimate_min": row["estimate_min"],
-            "for_person_id": row["for_person_id"], "source_id": row["source_id"], "quote": row["quote"] or ""}
+            "for_person_id": row["for_person_id"], "source_id": row["source_id"], "quote": row["quote"] or "",
+            "follow_up_count": row["follow_up_count"]}
 
 
 def _session(row: sqlite3.Row) -> Dict:
@@ -247,11 +263,7 @@ def _check_owner(conn: sqlite3.Connection, note_id: int) -> None:
 
 
 def _task_row(conn: sqlite3.Connection, task_id: int) -> sqlite3.Row:
-    row = conn.execute(
-        "SELECT tasks.*, task_sources.source_id, task_sources.quote FROM tasks JOIN notes ON notes.id = tasks.note_id "
-        "LEFT JOIN task_sources ON task_sources.task_id = tasks.id WHERE tasks.id = ? AND " + _LIVE_TASK,
-        (task_id,),
-    ).fetchone()
+    row = conn.execute(_TASK_COLUMNS + "tasks.id = ? AND " + _LIVE_TASK, (task_id,)).fetchone()
     if row is None:
         raise NotFound("No such task: {}".format(task_id))
     return row
