@@ -5,9 +5,12 @@
 //   - rendering is slow and blocks the page, so diagrams render one at a time, only when a
 //     placeholder is actually drawn (a block shown rendered, never while it is edited), and
 //     results are cached by source;
-//   - a failed render shows the source and the message.
+//   - a failed render shows the source and the message;
+//   - ‹blanks› not yet typed over are drawn as their sample value (unwrapBlanks): the note
+//     keeps the marks, the picture (the page, :export) never shows them.
 // Mermaid itself runs in a hidden frame page with its own CSP (frame-client.js says why); it
 // is loaded there the first time a diagram is seen, and the frame is emptied after each one.
+import { unwrapBlanks } from "../editor/blanks.js";
 import { diagramFrame } from "./frame-client.js";
 import { insertSvg } from "./insert-svg.js";
 import { currentTheme, themeOf } from "../theme/themes.js";
@@ -93,7 +96,7 @@ export function createDiagramRenderer({ load = async () => diagramFrame() } = {}
     let result;
     try {
       const api = await mermaid();
-      const { svg } = await api.render(id, source);
+      const { svg } = await api.render(id, unwrapBlanks(source));
       result = { svg, id };
     } catch (error) {
       result = { error: messageOf(error) };

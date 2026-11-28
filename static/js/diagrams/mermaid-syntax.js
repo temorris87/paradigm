@@ -7,6 +7,8 @@
 //              "header"     after the keyword on its line (flowchart TD...)
 //              "start"      one word typed at a line's start
 //              "after-name" a line starting with a name the block uses (NW, NW->>...)
+//              "after-node" after a node written with its shape and a space (A[Again] ):
+//                           the token is from that space on, so a row never replaces the node
 //              "inline"     a type's own place in a line (a gantt task after ":")
 //              "other"      anywhere else (nothing is offered)
 //     token: what was typed that a row replaces; names: the block's participants, nodes...
@@ -14,10 +16,11 @@
 //     items [{ label, detail, insert }]; replace: how many characters before the cursor go
 //   mermaidStatus(lines, row) -> "mermaid · sequenceDiagram · 2 participants", or ""
 //   mermaidBlankScope(lines, row) -> { first, last }: the block's lines, for Tab's ‹blanks›
-//   mermaidBlockAt(lines, row) -> { open, close } of the ```mermaid block holding the line
+//   mermaidBlockAt(lines, row, { fences }) -> { open, close } of the ```mermaid block holding
+//       the line (with fences, its opening and closing fence lines count as in it)
 //
-// Rows are written with blanks, ‹like this›: the editor takes the first one when a row goes in
-// and Tab takes the next (static/js/editor/blanks.js). The rows themselves, one table per type,
+// Rows are written with blanks, ‹like this›: the editor goes to the first one when a row goes
+// in and Tab to the next, each left in the text until typed over (static/js/editor/blanks.js). The rows themselves, one table per type,
 // are in mermaid-syntax-tables.js.
 import { DIAGRAM_TYPES, detectDiagramType } from "./mermaid-types.js";
 import { syntaxFor } from "./mermaid-syntax-tables.js";
@@ -30,25 +33,28 @@ const row = (insert, detail = "") => ({ insert, detail });
 // ---- the block -----------------------------------------------------------------------------
 
 /** The fenced block holding the line, if it is a mermaid one: { open, close } (close is the
- * closing fence's line, or lines.length when the block runs to the end). Pure. */
-export function mermaidBlockAt(lines, row) {
+ * closing fence's line, or lines.length when the block runs to the end). With fences, the
+ * block's own fence lines are in it too. Pure. */
+export function mermaidBlockAt(lines, row, { fences = false } = {}) {
+  const from = fences ? 0 : 1; // how far past the opening fence a line must be
   let fence = null;
   for (let index = 0; index < lines.length; index += 1) {
     const text = lines[index];
     if (!fence) {
       const found = OPENER.exec(text);
       if (found) fence = { open: index, mark: found[1], mermaid: found[2].toLowerCase() === "mermaid" };
-      if (index === row) return null; // a fence line, or text outside any block
+      if (index === row && !(found && fences)) return null; // text outside any block, or a fence line
       continue;
     }
     const closes = new RegExp(`^ {0,3}${fence.mark[0] === "`" ? "`" : "~"}{${fence.mark.length},}\\s*$`).test(text);
     if (closes) {
-      if (row > fence.open && row < index) return fence.mermaid ? { open: fence.open, close: index } : null;
+      const inside = row >= fence.open + from && (row < index || (fences && row === index));
+      if (inside) return fence.mermaid ? { open: fence.open, close: index } : null;
       if (index === row) return null;
       fence = null;
     }
   }
-  return fence && row > fence.open && fence.mermaid ? { open: fence.open, close: lines.length } : null;
+  return fence && row >= fence.open + from && fence.mermaid ? { open: fence.open, close: lines.length } : null;
 }
 
 /** The line Mermaid reads the type from: the first after front matter, %% lines and blanks. */
@@ -105,8 +111,11 @@ export function mermaidContext(lines, row, col) {
   return { ...base, type, keyword, names, syntax, ...placeIn(before, names, syntax) };
 }
 
-// Where in the line: one word at its start, a line starting with a known name, or a type's own.
+// Where in the line: one word at its start, a node with its shape, a line starting with a
+// known name, or a type's own.
 function placeIn(before, names, syntax) {
+  const node = syntax.afterNode?.(before);
+  if (node) return { position: "after-node", name: node.name, token: node.token };
   const word = /^\s*(\S*)$/.exec(before);
   const name = [...names].sort((a, b) => b.length - a.length).find((each) => startsWithName(before.trimStart(), each));
   if (word && !(name && word[1] === name) && !names.includes(word[1])) {
@@ -132,7 +141,7 @@ function startsWithName(text, name) {
 export function mermaidCompletion({ lines, row, col, forced = false }) {
   const context = mermaidContext(lines, row, col);
   if (!context || context.position === "other") return null;
-  if (!forced && context.position !== "header" && !context.token) return null;
+  if (!forced && context.position !== "header" && !context.token.trim()) return null;
   const rows = rowsFor(context);
   // A keyword typed in full ("flowchart") is done: Enter starts a new line, not flowchart-elk.
   if (!forced && context.position === "type" && rows.some((each) => each.insert === context.token)) return null;
@@ -141,7 +150,7 @@ export function mermaidCompletion({ lines, row, col, forced = false }) {
     // Just after a name, all that can follow it; past it, what goes on the same way.
     .filter((each) => (context.position === "after-name" && context.token === context.name) || fits(each.insert, context.token))
     .filter((each) => each.insert !== context.token)
-    .map((each) => ({ label: each.insert.split("\n")[0] + (each.insert.includes("\n") ? " …" : ""), detail: each.detail, insert: each.insert }));
+    .map((each) => ({ label: each.insert.split("\n")[0].trimStart() + (each.insert.includes("\n") ? " …" : ""), detail: each.detail, insert: each.insert }));
   if (!items.length) return null;
   return { replace: context.token.length, items: wordsFirst(items, context), head: headOf(context), foot: FOOT };
 }
@@ -161,6 +170,7 @@ function rowsFor(context) {
   const { syntax, names, token } = context;
   if (context.position === "header") return syntax.header ?? [];
   if (context.position === "after-name") return syntax.after(context.name, names);
+  if (context.position === "after-node") return syntax.afterNodeRows(context.name, names);
   if (context.position === "inline") return syntax.inlineRows?.(names) ?? [];
   const starts = typeof syntax.starts === "function" ? syntax.starts(token, names) : syntax.starts ?? [];
   // A word that begins a known name also offers what can follow it.
@@ -187,6 +197,7 @@ function headOf(context) {
     header: "after the keyword",
     start: "line start",
     "after-name": `after a ${context.syntax.nameWord ?? "name"}`,
+    "after-node": `after a ${context.syntax.nameWord ?? "name"}`,
     inline: context.label ?? "in the line",
   }[context.position];
   return `${title} · ${where}`;

@@ -132,9 +132,15 @@ How the app behaves. Kept up to date by each feature that changes it.
   or Up/Down move while the box is empty (a `j`/`k` followed by a letter that starts a match
   types instead: "kan" finds Kanban, "jou" User journey); typing filters by name or keyword;
   Enter inserts (with no match it stays open); Esc closes. The ```` ```mermaid ```` block goes
-  in below the cursor line as one undo step, the editor in insert mode at its first `‹blank›`
-  (Sankey and Event modeling have none, since their parsers refuse `‹ ›`: at the end of the
-  template's last line). Blanks are plain text and saved as typed if left.
+  in below the cursor line as one undo step (with the cursor on any line of a mermaid block,
+  its fences included, after that block's closing fence and one empty line instead; 042), the
+  editor in insert mode at its first `‹blank›` (Sankey and Event modeling have none, since their
+  parsers refuse `‹ ›`: at the end of the template's last line). Every blank holds a sample
+  value that is valid there (`‹Start›`, `‹Alice›`). A blank reached (on insert, by Tab, or in a
+  taken row) stays in the text, the cursor at its start: the first character typed replaces it
+  whole, Backspace deletes it; a move, Tab or Esc leaves it as it is. Blanks not typed over are
+  saved with their marks, and the page and `:export` draw `‹Start›` as `Start`,
+  so a template left as inserted still draws (Tyson, 2026-11-28; not deleted on Esc).
 - Mermaid as you type (Tyson, 2026-11-27; 038), the note window's editor, insert mode, inside a
   ```` ```mermaid ```` block (its type is the first keyword line after `---` front matter and
   `%%` lines): a list under the cursor, headed with the type and place ("SEQUENCE DIAGRAM ·
@@ -144,8 +150,13 @@ How the app behaves. Kept up to date by each feature that changes it.
   a line's start or after a known name, filtered by it; Ctrl-Space shows everything for the type
   and place. Up/Down move, Tab or Enter take the row, Esc closes it and stays in insert mode. On
   the block's first line, a keyword typed in full ("flowchart") opens nothing unless Ctrl-Space,
-  so Enter starts a new line. Tab in a mermaid block jumps to the next `‹blank›` (wrapping) and
-  deletes it so typing replaces it; with none left Tab does what it did. The status line shows
+  so Enter starts a new line. At a blank nothing has been typed over yet, the list does not
+  open by itself (Ctrl-Space still opens it), so Tab, Enter and Esc there are the editor's: one
+  Esc leaves insert mode (042). In a flowchart, a node written with its shape and a space
+  (`A[Again] `) offers its edges on Ctrl-Space (`-->`, `-->|‹label›| ‹node›`...), each going in
+  after the node without replacing it; an edge's target with a shape (`B -->|yes| C[Do this]`)
+  counts as one of the block's nodes (042). Tab in a mermaid block jumps to the next `‹blank›`
+  (wrapping), left for typing to replace; with none left Tab does what it did. The status line shows
   the type while the cursor is in a block ("mermaid · sequenceDiagram · 2 participants").
   Outside a block nothing opens; `@` still works everywhere.
 - Files (OneDrive): a folder synced on this computer is linked to a hub ("Link a OneDrive

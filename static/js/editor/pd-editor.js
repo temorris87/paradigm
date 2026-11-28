@@ -11,9 +11,12 @@
 //   editor.insertText("text");        // at the cursor, as if pasted (see "files" below)
 //   editor.insertText("a\nb", { asLines: true, line: 4 })  // whole lines below line 4
 //   editor.insertLines("a\nb", { cursorAt: 1 })   // below the cursor's line; the cursor on "b"
+//   editor.insertLines("a", { line: 7 })   // below line 7 instead (0-based)
 //   editor.insertLines("a\n‹b›", { insert: true })   // and insert mode in them, at their first
-//                                     // ‹blank› (taken out), else their start: one undo step;
-//                                     // with cursorAt and no blank, at the end of that line
+//                                     // ‹blank› (left in the text until typed over), else their
+//                                     // start: one undo step; with cursorAt and no blank, at the
+//                                     // end of that line
+//   editor.cursor                     // { line, col } (0-based), a copy
 //   editor.replaceLine(4, "- [x] Done")  // one line's text from the host: one undo step, the
 //                                     // cursor stays; resolves false in insert mode (not done)
 //   editor.selectedText                // the visual selection's text, or null
@@ -32,8 +35,9 @@
 //                                     // source deciding from the cursor's place; Ctrl-Space
 //                                     // asks it with forced (completion.js)
 //   editor.blankScope = (lines, line) => null | { first, last }   // blanks on: in insert mode
-//                                     // Tab takes the next ‹blank› in those lines (wrapping);
-//                                     // a taken completion's first ‹blank› goes at once
+//                                     // Tab goes to the next ‹blank› in those lines (wrapping),
+//                                     // as does a taken completion row's first; the first
+//                                     // character typed replaces it whole, Backspace deletes it
 //   <pd-editor compact>               // the status line shows only while it has the focus
 //   editor.hints = { status(text, cursor), line(lineText), cmdline(text) }   // the host's words: status
 //                                     // at the status line's right (cursor: { line, col }); line under the cursor's
@@ -196,6 +200,10 @@ export class PdEditor extends HTMLElement {
   }
 
   /** Puts the cursor at the start of a line (0-based), scrolling it into view. */
+  get cursor() {
+    return { ...this.vim.cursor };
+  }
+
   goToLine(line) {
     this.vim.click({ line: Math.max(0, Math.min(line, this.vim.buf.lastLine)), col: 0 });
     this.render();
@@ -341,16 +349,17 @@ export class PdEditor extends HTMLElement {
 
   /** Whole lines from the host below the cursor's line (one undo step); cursorAt (a line of
    * text, 0-based) puts the cursor there afterwards, else it stays on the first new line.
-   * With insert, insert mode starts at their first ‹blank›, else at the end of line cursorAt. */
-  insertLines(text, { cursorAt = null, insert = false } = {}) {
+   * With insert, insert mode starts at their first ‹blank›, else at the end of line cursorAt.
+   * line (0-based) puts them below that line instead of the cursor's. */
+  insertLines(text, { cursorAt = null, insert = false, line = null } = {}) {
     const clean = String(text).replace(/\r\n?/g, "\n");
     if (insert) {
       this.input.focus();
-      this.enqueue(() => this.vim.insertLinesFromOutside(clean, null, { cursorAt }));
+      this.enqueue(() => this.vim.insertLinesFromOutside(clean, line, { cursorAt }));
       return;
     }
     this.enqueue(() => {
-      const at = this.vim.cursor.line;
+      const at = Math.min(line ?? this.vim.cursor.line, this.vim.buf.lastLine);
       this.vim.putFromOutside(clean, { asLines: true, line: at });
       if (cursorAt !== null) this.vim.click({ line: Math.min(at + 1 + cursorAt, this.vim.buf.lastLine), col: 0 });
     });
@@ -414,13 +423,15 @@ export class PdEditor extends HTMLElement {
     if (menu.defaultPrevented) event.preventDefault();
   }
 
-  /** Completion: length characters before the cursor give way to text (insert mode only).
-   * With blanks on, the text's first ‹blank› is taken out, the cursor there. */
+  /** Completion: length characters before the cursor, and the current ‹blank› if the cursor
+   * is at one, give way to text (insert mode only). With blanks on, the cursor then goes to
+   * the text's first ‹blank›, the current one. */
   replaceBeforeCursor(length, text) {
     if (!this.vim.isInsertLike()) return;
     this.input.focus();
     let from = null;
     this.enqueue(() => {
+      this.vim.dropCurrentBlank();
       from = { line: this.vim.cursor.line, col: Math.max(0, this.vim.cursor.col - length) };
     });
     for (let index = 0; index < length; index += 1) this.enqueue("<BS>");

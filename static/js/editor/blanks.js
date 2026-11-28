@@ -1,11 +1,14 @@
 // Blanks: words in a text to be replaced, written ‹like this›. A host turns them on
-// (editor.blankScope): then Tab in insert mode takes the next one, deleting it so what is typed
-// replaces it. Pure: lines in, a blank's place out.
+// (editor.blankScope): then Tab in insert mode goes to the next one, which stays in the text
+// until the first character typed replaces it whole (insert.js's current blank). Each holds a
+// sample value, so a text left with its blanks still means something: unwrapBlanks drops the
+// marks for whoever reads it (Mermaid draws ‹Start› as Start). Pure: lines in, a blank's place out.
 //
 //   findBlank(lines, from, to) -> { line, start, end } | null   the first blank wholly between
 //                                 two positions ({ line, col }; to exclusive)
 //   nextBlank(lines, at, first, last) -> the first blank from `at` to the end of line `last`,
 //                                 else, wrapping, the first from line `first` up to `at`
+//   unwrapBlanks(text) -> text     every ‹x› as x
 
 const BLANK = /‹[^‹›\n]*›/g;
 
@@ -27,4 +30,8 @@ export function findBlank(lines, from, to) {
 export function nextBlank(lines, at, first, last) {
   const end = { line: last, col: lines[last]?.length ?? 0 };
   return findBlank(lines, at, end) ?? findBlank(lines, { line: first, col: 0 }, at);
+}
+
+export function unwrapBlanks(text) {
+  return String(text).replace(BLANK, (blank) => blank.slice(1, -1));
 }

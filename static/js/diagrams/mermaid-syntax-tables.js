@@ -3,6 +3,7 @@
 // mermaid-syntax.js reads the cursor's place and picks the rows from here.
 //
 //   syntaxFor(type, body) -> { nameWord, names(body), header, starts, after(name, names),
+//       afterNode(before) -> { name, token } | null, afterNodeRows(name, names),
 //       inline(before), inlineRows(names) } (each optional), for the block's other lines body
 //
 // Rows are written with blanks, ‹like this› (static/js/editor/blanks.js).
@@ -33,8 +34,9 @@ const flowNames = (body) => {
   const ids = [];
   for (const line of body) {
     if (FLOW_KEYWORDS.test(line)) continue;
-    // Labels out first ([...], (...), {...}, |...|, "..."), then split at the edges.
-    const bare = line.replace(/"[^"]*"/g, "").replace(/\|[^|]*\|/g, " ").replace(/(\[[^\]]*\]|\([^)]*\)|\{[^}]*\}|>[^\]]*\])/g, " ")
+    // Labels out first ([...], (...), {...}, |...|, "..."), then split at the edges. A flag's
+    // ">" follows its id straight on: the ">" ending an edge (-->, ==>, -.->) is not one.
+    const bare = line.replace(/"[^"]*"/g, "").replace(/\|[^|]*\|/g, " ").replace(/(\[[^\]]*\]|\([^)]*\)|\{[^}]*\}|(?<=\w)>[^\]]*\])/g, " ")
       .replace(/:::\S+/g, " ");
     for (const part of bare.split(/<?(?:-{2,}|={2,}|-\.+-?)[>ox]?|~~~|&|;|\s+/)) {
       const id = part.trim();
@@ -81,6 +83,11 @@ const flowShapes = (id) => [
   row(`${id}[[‹text›]]`, "subroutine"), row(`${id}{{‹text›}}`, "hexagon"), row(`${id}>‹text›]`, "flag"),
 ];
 
+// A line that is one node written with its shape, then a space ("A[Again] "), and what was
+// typed after that space. A shape's text holds none of its own closing brackets.
+const SHAPED_NODE = new RegExp(String.raw`^\s*([A-Za-z_][\w-]*)(?:\(\([^)]*\)\)|\[\([^)]*\)\]|\(\[[^\]]*\]\)|\[\[[^\]]*\]\]|`
+  + String.raw`\{\{[^}]*\}\}|\[[^\]]*\]|\([^)]*\)|\{[^}]*\}|>[^\]]*\])(\s+\S*)$`);
+
 const FLOWCHART = {
   nameWord: "node",
   names: flowNames,
@@ -103,6 +110,15 @@ const FLOWCHART = {
     row(`${name} -->|‹label›| ‹node›`, "arrow with a label"),
     ...flowShapes(name), row(`${name}:::‹class›`, "takes a class"),
   ],
+  afterNode: (before) => {
+    const found = SHAPED_NODE.exec(before);
+    return found ? { name: found[1], token: found[2] } : null;
+  },
+  // After a node with its shape: its edges, without the node (it is written already); the
+  // shapes and the class need the bare id, so they are not offered there.
+  afterNodeRows: (name, names) => FLOWCHART.after(name, names)
+    .filter((each) => each.insert.startsWith(`${name} `))
+    .map((each) => row(each.insert.slice(name.length), each.detail)),
 };
 
 const SEQUENCE = {
