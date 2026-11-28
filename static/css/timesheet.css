@@ -103,13 +103,32 @@
 
 .time-grid__num {
   text-align: right !important;
-  min-width: 6rem;
+  min-width: 4.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.time-grid th.time-grid__num,
+.time-grid td.time-grid__num {
+  padding-inline: var(--sp-2);
 }
 
 /* Codes are labels, not links: mono, in the text colour. */
 .time-grid__code {
   font-family: var(--font-mono);
   color: var(--text-strong);
+}
+
+/* At 1600 px the grid sits beside the panel in about 800 px: day columns as wide as their
+   heading, and a code column that gives way (the hub wraps, a long code is cut).
+   A code is one token ("NW-220"): never broken at its hyphen. A very long one is cut with an
+   ellipsis; its span carries the full code as its title. */
+.time-grid__code .time-grid__code-name {
+  display: inline-block;
+  max-width: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
 }
 
 .time-grid__default .time-grid__code {

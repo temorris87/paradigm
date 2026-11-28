@@ -67,6 +67,9 @@ export function paletteGroups({ query = "", recent = [], notes = [], commands = 
     const exact = findCommand(usable, name);
     const matches = usable.filter((command) => command === exact || (name && (command.name.startsWith(name)
       || command.label.toLowerCase().includes(name))) || !name);
+    // The command the name means comes first, so Enter runs it: :time is the Timesheet, not
+    // :timecode (earlier in the table), which would run with no code and clear the hub's.
+    if (exact) matches.sort((a, b) => (b === exact) - (a === exact));
     groups.push({ label: "Commands", items: matches.map((command) => ({
       kind: "command", key: `command:${command.name}`, title: command.label, detail: command.help,
       hint: [command.usage, keys.get(command.name)].filter(Boolean).join(" "), command: command.name,

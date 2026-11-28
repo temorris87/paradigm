@@ -256,13 +256,13 @@
 /* ---- the timesheet (2c): grid and what made a code | checks, time off, how it counts ---- */
 .time-week {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(16rem, 440px);
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
   align-items: start;
   gap: var(--sp-6);
 }
 
-/* The hours grid can be wider than its column (two columns from 1400px): it scrolls inside
-   the column rather than running under the side panel. */
+/* The hours grid fits its column at 1280 px and wider (the panel goes under it below 1600 px);
+   on a narrower window it scrolls inside the column rather than running under anything. */
 .time-week__main {
   min-width: 0;
   overflow-x: auto;
@@ -357,9 +357,31 @@
   font-size: var(--fs-sm);
 }
 
-@media (max-width: 1399.98px) {
+/* Below 1600 px the grid can't fit beside the panel: the panel goes under it at full width,
+   its blocks in a row that wraps. */
+@media (max-width: 1599.98px) {
   .time-week {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .time-week__side {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0 var(--sp-6);
+  }
+
+  .time-week__side > * {
+    flex: 1 1 18rem;
+    min-width: 0;
+  }
+
+  .time-week__side > .time-part {
+    margin-top: 0;
+  }
+
+  .time-week__side .time-heading {
+    margin-top: 0;
   }
 }
 

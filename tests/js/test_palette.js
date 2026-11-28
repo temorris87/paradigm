@@ -39,6 +39,14 @@ test("palette: a colon lists commands with their usage and key, then notes", () 
   assertEqual([plan.title, plan.hint].join(), "Plan (Gantt chart),:plan gp", "the Plan command shows its key");
 });
 
+test("palette: the command a name means is listed first, so Enter runs it", () => {
+  const time = groups(":time")[0].items;
+  assertEqual(time[0].command, "time", ":time opens the Timesheet, not :timecode with no code");
+  assertTrue(time.some((item) => item.command === "timecode"), ":timecode is still listed");
+  assertEqual(groups(":timecode AC-1")[0].items[0].command, "timecode");
+  assertEqual(groups(":timecode AC-1")[0].items[0].arg, "AC-1");
+});
+
 test("palette: commands parse and abbreviate as in Vim", () => {
   assertEqual(JSON.stringify(parseCommand(":task! Call Jo")), JSON.stringify({ name: "task", bang: true, arg: "Call Jo" }));
   assertEqual(findCommand(NOTE_COMMANDS, "cal").name, "calendar");
