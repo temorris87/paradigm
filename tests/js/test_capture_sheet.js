@@ -17,6 +17,13 @@ const tree = new NoteTree([
   { id: 5, parent_id: null, title: "Ben Ortiz", kind: "person", updated_at: T },
 ]);
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+// The editor's rows are measured from its stylesheets, which load after it is connected.
+const styled = (editor) => Promise.all([...editor.shadowRoot.querySelectorAll('link[rel="stylesheet"]')]
+  .filter((link) => !link.sheet)
+  .map((link) => new Promise((resolve) => {
+    link.addEventListener("load", resolve, { once: true });
+    link.addEventListener("error", resolve, { once: true });
+  })));
 
 function press(key, mods = {}) {
   const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...mods });
@@ -250,6 +257,7 @@ test("note captures: \\t opens the sheet; Enter saves, marks the line and says w
   editor.append(dock);
   const strip = document.createElement("div");
   document.body.append(editor, strip);
+  await styled(editor);
   const said = [];
   const sent = [];
   const made = [];
@@ -288,6 +296,9 @@ test("note captures: \\t opens the sheet; Enter saves, marks the line and says w
     assertEqual(said.at(-1), "fail E: already captured", "a known capture is refused before the POST");
     assertEqual(made.length, 1, "no second POST, so no 409 in the console");
     assertTrue(sent.includes("changed"));
+    // The open sheet shrank the text area; its ResizeObserver only re-measures in a later
+    // frame, so until then line 1 may be off screen. Measure now, as that frame would.
+    editor.measure();
     const mark = editor.shadowRoot.querySelector('.pd-line[data-line="1"] .pd-mark');
     assertEqual(mark?.textContent, "Task → Grace · follow up Mon");
     assertEqual(strip.textContent, "From this meeting:Tasks 1Questions 0Decisions 0they live in Team · Tab opens");

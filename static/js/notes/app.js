@@ -43,6 +43,7 @@ import { AgendaField } from "./agenda.js";
 import { mentionCompletions, rewriteMentionsOf } from "./mention-actions.js";
 import { personForMention } from "./mentions.js";
 import { openSelectionMenu } from "./selection-menu.js";
+import { mermaidEditorHelp, mermaidStatusHint } from "../diagrams/mermaid-help.js";
 import { renderMarkdown } from "../markdown/index.js";
 import { recordsFrom } from "../records/records-model.js";
 import { NoteImages } from "./images.js";
@@ -253,6 +254,8 @@ export class NotesApp {
     if (this.agendaEditor) registerNoteCommands(this.agendaEditor);
     editor.completions = mentionCompletions(this);
     if (this.agendaEditor) this.agendaEditor.completions = editor.completions;
+    // The note window's ```mermaid blocks: syntax as you type, Tab to the next ‹blank›.
+    if (role === "note") mermaidEditorHelp(editor);
     this.listen();
   }
 
@@ -625,7 +628,7 @@ export class NotesApp {
     // A page shown over the note names the tab, not the note under it.
     const title = this.views.shown ? viewLabel(this.views.shown) : this.tree.get(id)?.title ?? this.session.note?.title;
     document.title = title ? `${title} - Paradigm` : "Paradigm";
-    this.editor.hints = { cmdline: (text) => this.cmdlineHint(text) };
+    this.editor.hints = { cmdline: (text) => this.cmdlineHint(text), status: this.role === "note" ? mermaidStatusHint : undefined };
     this.prep?.show(ctx, this.tree.get(id) ?? null);
     this.drawContext();
     this.markEmptyFields();

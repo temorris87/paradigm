@@ -255,6 +255,7 @@ export const INSERT_KEYS = [
   key("<C-u>", "deleteToStart", "delete the text typed before the cursor"),
   key("<C-r>", "insertRegister", "insert the contents of register {r}", { arg: true }),
   key("<C-o>", "oneCommand", "run one normal-mode command"),
+  key("<C-Space>", "complete", "show the host's completion list for the cursor's place (in a mermaid block: all for its type)"),
   key("<Left>", "moveLeft", "cursor left"),
   key("<Right>", "moveRight", "cursor right"),
   key("<Up>", "moveUp", "cursor up"),
@@ -291,9 +292,10 @@ export function findKey(table, name) {
 
 /**
  * Tab and Shift-Tab are editor keys only in insert and replace mode; anywhere else they
- * move the focus on, like on any web page.
+ * move the focus on, like on any web page. Ctrl-Space, the completion list, is insert mode's
+ * only too.
  */
-export const INSERT_ONLY_KEYS = new Set(["<Tab>", "<S-Tab>"]);
+export const INSERT_ONLY_KEYS = new Set(["<Tab>", "<S-Tab>", "<C-Space>"]);
 
 /**
  * Every non-character key the editor binds anywhere. The editor element calls

@@ -1,6 +1,7 @@
 // Insert and replace mode. vim.insert is the session: where it started, its count, the keys
 // typed (to repeat for "3ix<Esc>"), the characters replace mode overwrote, and the block for
 // a visual-block insert.
+import { findBlank, nextBlank } from "./blanks.js";
 import { findKey, INSERT_KEYS } from "./keys.js";
 import { isTextKey } from "./key-names.js";
 import { openLine } from "./lines.js";
@@ -18,7 +19,7 @@ export function insertKey(vim, key) {
     return;
   }
   const entry = typeof key === "string" ? findKey(INSERT_KEYS, key) : null;
-  if (entry?.name !== "leave" && entry?.name !== "oneCommand") record(vim, key);
+  if (entry?.name !== "leave" && entry?.name !== "oneCommand" && entry?.name !== "complete") record(vim, key);
   if (entry) {
     HANDLERS[entry.name](vim, session);
   } else if (typeof key === "object" && key.paste !== undefined) {
@@ -129,14 +130,37 @@ function softTabStart(vim, line, col) {
   return from;
 }
 
-// <Tab>: spaces up to the next multiple of shiftwidth (a real tab without expandtab).
-function tab(vim) {
+// <Tab>: spaces up to the next multiple of shiftwidth (a real tab without expandtab). Where the
+// host has blanks on (vim.blankScope), the next ‹blank› first.
+function tab(vim, session) {
+  if (takeNextBlank(vim, session)) return;
   if (inTable(vim)) {
     moveCell(vim, "next");
     return;
   }
   const width = vim.options.shiftwidth;
   typeText(vim, vim.options.expandtab ? " ".repeat(width - (vim.cursor.col % width)) : "\t");
+}
+
+function takeNextBlank(vim, session) {
+  const scope = vim.mode === "insert" ? vim.blankScope?.(vim.buf.lines, vim.cursor.line) : null;
+  const blank = scope && nextBlank(vim.buf.lines, vim.cursor, scope.first, scope.last);
+  if (!blank) return false;
+  takeBlank(vim, session, blank);
+  return true;
+}
+
+/** The blank goes and the cursor sits where it was, so what is typed replaces it. Like a
+ * cursor move, "." and a count repeat only what comes after. */
+export function takeBlank(vim, session, blank) {
+  vim.edit(pos(blank.line, blank.start), pos(blank.line, blank.end), "");
+  moveTo(vim, session, pos(blank.line, blank.start));
+}
+
+/** The first blank between two positions (to: the cursor by default), if any, is taken. */
+export function takeBlankIn(vim, from, to = vim.cursor) {
+  const blank = vim.insert && findBlank(vim.buf.lines, from, to);
+  if (blank) takeBlank(vim, vim.insert, blank);
 }
 
 // <S-Tab>: the line's indent goes back one step; the cursor stays on the same text.
@@ -277,6 +301,8 @@ const HANDLERS = {
     session.awaitingRegister = true;
   },
   oneCommand,
+  // Ctrl-Space: the element shows the completion list (vim knows nothing of it).
+  complete: (vim) => vim.emit("complete"),
   moveLeft: (vim, session) => {
     if (vim.cursor.col > 0) moveTo(vim, session, pos(vim.cursor.line, vim.cursor.col - 1));
   },

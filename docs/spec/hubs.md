@@ -123,6 +123,31 @@ How the app behaves. Kept up to date by each feature that changes it.
   template…" (the note menu, `:template [name]`) puts one in below the cursor: `{{date}}`,
   `{{time}}`, `{{title}}` filled in, the cursor at `{{cursor}}`, and its `- [ ]` lines become
   tasks of the note (indented ones subtasks). New note… can start from a template.
+- Insert diagram… (Tyson, 2026-11-27; 038): `:diagram`, the note window's note menu and the
+  right-click menu in its note text (beside Insert table…; not in the main window or an agenda
+  editor) open a picker: a filter box ("Type to filter · 36 types"), the types on the left
+  (Most used: Flowchart, Sequence, Gantt, State, Entity relationship, Mindmap, Timeline; then
+  All, every other type the vendored Mermaid draws, beta ones under their `-beta` keywords),
+  each with its keyword; on the right the type's line and the exact block it inserts. `j`/`k`
+  or Up/Down move while the box is empty (a `j`/`k` followed by a letter that starts a match
+  types instead: "kan" finds Kanban, "jou" User journey); typing filters by name or keyword;
+  Enter inserts (with no match it stays open); Esc closes. The ```` ```mermaid ```` block goes
+  in below the cursor line as one undo step, the editor in insert mode at its first `‹blank›`
+  (Sankey and Event modeling have none, since their parsers refuse `‹ ›`: at the end of the
+  template's last line). Blanks are plain text and saved as typed if left.
+- Mermaid as you type (Tyson, 2026-11-27; 038), the note window's editor, insert mode, inside a
+  ```` ```mermaid ```` block (its type is the first keyword line after `---` front matter and
+  `%%` lines): a list under the cursor, headed with the type and place ("SEQUENCE DIAGRAM ·
+  after a participant"), offers what can be typed there for that type (line starts; after a
+  name the block uses, its edges, arrows and notes with the block's names, e.g. `NW->>DW:
+  ‹message›`; flowchart directions after the keyword). It opens by itself as a word is typed at
+  a line's start or after a known name, filtered by it; Ctrl-Space shows everything for the type
+  and place. Up/Down move, Tab or Enter take the row, Esc closes it and stays in insert mode. On
+  the block's first line, a keyword typed in full ("flowchart") opens nothing unless Ctrl-Space,
+  so Enter starts a new line. Tab in a mermaid block jumps to the next `‹blank›` (wrapping) and
+  deletes it so typing replaces it; with none left Tab does what it did. The status line shows
+  the type while the cursor is in a block ("mermaid · sequenceDiagram · 2 participants").
+  Outside a block nothing opens; `@` still works everywhere.
 - Files (OneDrive): a folder synced on this computer is linked to a hub ("Link a OneDrive
   folder…": a picker over the folders under the `OneDriveCommercial` / `OneDrive` roots, or a
   pasted path); its files are listed by reading it. "+ Add file" in any page's Files section

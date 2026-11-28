@@ -1,10 +1,12 @@
 // The menu on a right-click in the text (or Shift-F10, the Menu key): make a question or a
 // decision from the selected text. The record goes in the note's hub and remembers the note
 // and the text; the note stays open, and the text gets a badge (on the Live page).
-// Then the table at the cursor (sort, align, copy), or Insert table… when there is none.
+// Then the table at the cursor (sort, align, copy), or Insert table… when there is none; then
+// Insert diagram… (a Mermaid block from the picker), in the note window's note text only: the
+// picker's sheet and the Mermaid help as you type are there.
 //
 //   openSelectionMenu(app, { text, table, x, y }, editor)   from the editor's "menu" event
-//   tableMenuItems(table) -> menu entries, each with command: [name, arg] (pure)
+//   tableMenuItems(table, { readOnly, diagram }) -> menu entries, each with command: [name, arg] (pure)
 //   insertTableDialog(editor, fallbackFocus)   columns and rows, then the table goes in
 //   recordFromSelectionDialog(app, kind, sourceId, text)
 //   titleFromSelection(text)    the selection as a one-line note title (pure)
@@ -16,6 +18,7 @@ import { personForMention } from "./mentions.js";
 import { peopleNamed } from "../people/people-commands.js";
 import { allPeople } from "../people/people-model.js";
 import { recordFromText } from "../records/records-commands.js";
+import { insertDiagramDialog } from "../diagrams/insert-diagram.js";
 import { formDialog } from "../ui/dialog.js";
 import { openMenu } from "../ui/menu.js";
 
@@ -35,18 +38,22 @@ export function openSelectionMenu(app, { text, table = null, x, y }, editor) {
     hint: why,
     run: () => app.guard(recordFromSelectionDialog(app, kind, sourceId, text)),
   }));
-  const tables = tableMenuItems(table, { readOnly: editor.readOnly }).map((item) => {
+  const diagram = app.role === "note" && editor === app.editor;
+  const tables = tableMenuItems(table, { readOnly: editor.readOnly, diagram }).map((item) => {
     if (typeof item === "string" || !item.command) return item;
     const [name, arg] = item.command;
+    if (name === "diagram") return { ...item, run: () => app.guard(insertDiagramDialog(editor)) };
     return { ...item, run: () => (name === "table" ? app.guard(insertTableDialog(editor)) : editor.tableCommand(name, arg)) };
   });
   openMenu(pointAnchor(x, y, editor), [...records, "separator", ...tables], { label: "Text actions" });
 }
 
-/** The table part of the menu: the table at the cursor's, or Insert table… */
-export function tableMenuItems(table, { readOnly = false } = {}) {
+/** The table part of the menu: the table at the cursor's, or Insert table… (and Insert
+ * diagram… after it when diagram is set). */
+export function tableMenuItems(table, { readOnly = false, diagram = false } = {}) {
   const locked = readOnly ? { disabled: true, hint: "This text is read-only" } : {};
-  if (!table) return [{ label: "Insert table…", command: ["table", ""], ...locked }];
+  const diagrams = diagram ? [{ label: "Insert diagram…", command: ["diagram", ""], ...locked }] : [];
+  if (!table) return [{ label: "Insert table…", command: ["table", ""], ...locked }, ...diagrams];
   const column = table.title ? `"${table.title}"` : `column ${table.column + 1}`;
   return [
     { group: "Table" },

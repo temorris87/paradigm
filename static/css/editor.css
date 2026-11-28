@@ -187,15 +187,13 @@
   display: none;
 }
 
-/* Completion under the cursor in insert mode (completion.js): "@" offers people. */
+/* Completion under the cursor in insert mode (completion.js): "@" offers people; in a mermaid
+   block the syntax for its type, headed with the type and the place, a foot with the keys. */
 .pd-complete {
   position: absolute;
   z-index: 5;
   min-width: 14rem;
-  max-width: 28rem;
-  margin: 0;
-  padding: var(--sp-1) 0;
-  list-style: none;
+  max-width: 36rem;
   background: var(--surface-overlay);
   border: 1px solid var(--border-default);
   border-radius: 4px;
@@ -205,8 +203,39 @@
   white-space: nowrap;
 }
 
-.pd-complete[hidden] {
+.pd-complete[hidden],
+.pd-complete__head[hidden],
+.pd-complete__foot[hidden] {
   display: none;
+}
+
+.pd-complete__list {
+  max-height: 16rem;
+  margin: 0;
+  padding: var(--sp-1) 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.pd-complete__head {
+  padding: var(--sp-1) var(--sp-3);
+  border-bottom: 1px solid var(--border-divider);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.pd-complete__foot {
+  padding: var(--sp-1) var(--sp-3);
+  border-top: 1px solid var(--border-divider);
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+}
+
+.pd-complete--headed .pd-complete__label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
 }
 
 .pd-complete__item {

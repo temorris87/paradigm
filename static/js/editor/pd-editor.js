@@ -11,6 +11,9 @@
 //   editor.insertText("text");        // at the cursor, as if pasted (see "files" below)
 //   editor.insertText("a\nb", { asLines: true, line: 4 })  // whole lines below line 4
 //   editor.insertLines("a\nb", { cursorAt: 1 })   // below the cursor's line; the cursor on "b"
+//   editor.insertLines("a\n‹b›", { insert: true })   // and insert mode in them, at their first
+//                                     // ‹blank› (taken out), else their start: one undo step;
+//                                     // with cursorAt and no blank, at the end of that line
 //   editor.replaceLine(4, "- [x] Done")  // one line's text from the host: one undo step, the
 //                                     // cursor stays; resolves false in insert mode (not done)
 //   editor.selectedText                // the visual selection's text, or null
@@ -24,9 +27,16 @@
 //                                     // { label, detail?, insert } puts insert in place of
 //                                     // "@query"; { label, run(query) } calls run, which may
 //                                     // resolve to the text to put there
+//   editor.contextCompletion = ({ lines, row, col, forced }) => null | { replace, items,
+//                                     // head?, foot? }: a list with no trigger character, the
+//                                     // source deciding from the cursor's place; Ctrl-Space
+//                                     // asks it with forced (completion.js)
+//   editor.blankScope = (lines, line) => null | { first, last }   // blanks on: in insert mode
+//                                     // Tab takes the next ‹blank› in those lines (wrapping);
+//                                     // a taken completion's first ‹blank› goes at once
 //   <pd-editor compact>               // the status line shows only while it has the focus
-//   editor.hints = { status(text), line(lineText), cmdline(text) }   // the host's words: status
-//                                     // at the status line's right; line under the cursor's
+//   editor.hints = { status(text, cursor), line(lineText), cmdline(text) }   // the host's words: status
+//                                     // at the status line's right (cursor: { line, col }); line under the cursor's
 //                                     // line in insert mode; cmdline over the command line
 //                                     // while typing one. Each returns "" for none
 //   editor.setLineMarks([{ line, glyph, label, tone }])   // marks the host puts on lines: glyph
@@ -66,7 +76,7 @@
 //
 // A hidden textarea holds the focus and takes the keys, so IME input, dead keys and paste
 // work as usual. Tab and Shift-Tab indent in insert mode; in every other mode they are not
-// taken, so they move the focus on, like on any page.
+// taken, so they move the focus on, like on any page. Ctrl-Space too is only insert mode's.
 import { copyRich } from "../ui/clipboard.js";
 import { isTextKey, keyName } from "./key-names.js";
 import { BOUND_KEYS, INSERT_ONLY_KEYS, LEADER_TIMEOUT_MS } from "./keys.js";
@@ -214,6 +224,22 @@ export class PdEditor extends HTMLElement {
     this.completion.sources = sources ?? {};
   }
 
+  get contextCompletion() {
+    return this.completion.context;
+  }
+
+  set contextCompletion(source) {
+    this.completion.context = typeof source === "function" ? source : null;
+  }
+
+  get blankScope() {
+    return this.vim.blankScope;
+  }
+
+  set blankScope(scope) {
+    this.vim.blankScope = typeof scope === "function" ? scope : null;
+  }
+
   addExCommand(name, minLength = name.length) {
     this.vim.exCommands.set(name, minLength);
   }
@@ -314,9 +340,15 @@ export class PdEditor extends HTMLElement {
   }
 
   /** Whole lines from the host below the cursor's line (one undo step); cursorAt (a line of
-   * text, 0-based) puts the cursor there afterwards, else it stays on the first new line. */
-  insertLines(text, { cursorAt = null } = {}) {
+   * text, 0-based) puts the cursor there afterwards, else it stays on the first new line.
+   * With insert, insert mode starts at their first ‹blank›, else at the end of line cursorAt. */
+  insertLines(text, { cursorAt = null, insert = false } = {}) {
     const clean = String(text).replace(/\r\n?/g, "\n");
+    if (insert) {
+      this.input.focus();
+      this.enqueue(() => this.vim.insertLinesFromOutside(clean, null, { cursorAt }));
+      return;
+    }
     this.enqueue(() => {
       const at = this.vim.cursor.line;
       this.vim.putFromOutside(clean, { asLines: true, line: at });
@@ -382,12 +414,18 @@ export class PdEditor extends HTMLElement {
     if (menu.defaultPrevented) event.preventDefault();
   }
 
-  /** Completion: length characters before the cursor give way to text (insert mode only). */
+  /** Completion: length characters before the cursor give way to text (insert mode only).
+   * With blanks on, the text's first ‹blank› is taken out, the cursor there. */
   replaceBeforeCursor(length, text) {
     if (!this.vim.isInsertLike()) return;
     this.input.focus();
+    let from = null;
+    this.enqueue(() => {
+      from = { line: this.vim.cursor.line, col: Math.max(0, this.vim.cursor.col - length) };
+    });
     for (let index = 0; index < length; index += 1) this.enqueue("<BS>");
     this.enqueue({ paste: text });
+    if (this.vim.blankScope && text.includes("‹")) this.enqueue(() => this.vim.takeBlankBefore(from));
   }
 
   onWheel(event) {
@@ -431,8 +469,10 @@ export class PdEditor extends HTMLElement {
   afterFeed() {
     const vim = this.vim;
     const value = vim.text;
+    let forceCompletion = false;
     for (const { type, ...detail } of vim.takeEvents()) {
       if (type === "copytable") this.copyTable(detail);
+      else if (type === "complete") forceCompletion = true;
       else this.emitEvent(type, detail);
     }
     if (vim.buf.version !== this.seen.version) {
@@ -452,7 +492,8 @@ export class PdEditor extends HTMLElement {
     this.render();
     this.reportCursor();
     this.timeLeader();
-    this.completion.update(vim, () => this.view.cursorBox(), this.frame.getBoundingClientRect());
+    const show = forceCompletion ? "force" : "update";
+    this.completion[show](vim, () => this.view.cursorBox(), this.frame.getBoundingClientRect());
   }
 
   // The leader waits a second for its key, then goes quietly.
@@ -497,7 +538,7 @@ export class PdEditor extends HTMLElement {
 
   render() {
     this.frame.classList.toggle("pd-editor--focused", this.shadowRoot.activeElement === this.input);
-    const note = this.hints?.status?.(this.vim.text) ?? "";
+    const note = this.hints?.status?.(this.vim.text, { line: this.vim.cursor.line, col: this.vim.cursor.col }) ?? "";
     this.view.render(this.vim, { syntax: this.getAttribute("syntax") !== "plain", modified: this.modified, note, marks: this.lineMarks });
     this.placeInput();
     this.showHint();

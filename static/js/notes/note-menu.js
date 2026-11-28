@@ -7,7 +7,8 @@
 //           editDetails (a person: the person details dialog, names, email, org, role), move, moveToFolder (a resource), newBeside, newUnder, file (with filing: a
 //           HUB_GROUPS entry, checked),
 //           insertTemplate (the note window: a template's text at the cursor), insertTable (the
-//           note window: an empty Markdown table at the cursor), makePhase (a plain
+//           note window: an empty Markdown table at the cursor), insertDiagram (the note
+//           window: a Mermaid diagram's block from the picker), makePhase (a plain
 //           note directly in a project), unmakePhase (a phase back to a plain note), dashboard
 //           (the note window: its hub's dashboard in the main window),
 //           archive, restore (with top: the archived top-level note), export,
@@ -38,7 +39,7 @@ export function noteMenuItems(tree, id, { window = "note" } = {}) {
   if (isRecordKind(note.kind)) items.push({ key: "newBeside", label: "New note in the hub…" });
   else if (!template) items.push({ key: "newBeside", label: "New note beside…" }, { key: "newUnder", label: "New note under…" });
   if (window === "note" && !template) items.push({ key: "insertTemplate", label: "Insert template…" });
-  if (window === "note") items.push({ key: "insertTable", label: "Insert table…" });
+  if (window === "note") items.push({ key: "insertTable", label: "Insert table…" }, { key: "insertDiagram", label: "Insert diagram…", hint: ":diagram" });
   const parent = tree.get(tree.parentId(id));
   if (!note.kind && parent?.kind === "project" && tree.parentId(parent.id) === null) {
     items.push({ key: "makePhase", label: "Make it a phase…" });

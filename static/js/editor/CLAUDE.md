@@ -9,7 +9,11 @@ Paths from the repo root. Update this layout when the structure here changes.
                          {kind, line, text}, uncapture {line, text}); setLineMarks; the "dock"
                          slot for a host's panel between the text and the status line
     completion.js        a list under the cursor in insert mode ("@" offers people; the
-                         host gives the items)
+                         host gives the items); a host's context source opens with no
+                         trigger ({lines, row, col, forced}; Ctrl-Space forces it), with a
+                         head and a foot line
+    blanks.js            ‹blanks›: the next one from a place, wrapping (pure); with
+                         editor.blankScope on, Tab in insert mode takes it
     render.js            draws visible lines, cursor, selection, matches, status line, the
                          host's line marks (a gutter glyph, a chip at the line's right)
     view.js              viewport math in steps: top line + skip rows, scrolloff, H/M/L
@@ -65,3 +69,10 @@ Paths from the repo root. Update this layout when the structure here changes.
   Teams + Tab text for Excel); outside a table, Insert table… (also the note menu). The
   editor's own commands `:table [cols [rows]]`, `:tsort[!] [col]`, `:talign {how}`, `:tcopy`.
   No normal-mode keys for them.
+- Blanks and context completion (Tyson, 2026-11-27; 038): the host may hand the editor a
+  completion source that reads the cursor's place (`editor.contextCompletion`) and the lines
+  Tab looks for a `‹blank›` in (`editor.blankScope`); Ctrl-Space (insert mode only) asks the
+  source for everything there. `editor.insertLines(text, { insert: true, cursorAt })` starts
+  insert mode at the text's first `‹blank›`, else at the end of line `cursorAt`. The editor
+  knows nothing about what they are for: the note window's Mermaid help lives in
+  `static/js/diagrams/`.

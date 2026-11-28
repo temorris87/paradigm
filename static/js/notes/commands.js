@@ -15,6 +15,7 @@ import { attachCommand } from "../tasks/task-emails.js";
 import { statusCommand } from "../status/status-commands.js";
 import { insertTemplateDialog } from "../templates/template-commands.js";
 import { insertTableDialog } from "./selection-menu.js";
+import { insertDiagramDialog } from "../diagrams/insert-diagram.js";
 import { refusalOf, screenNoteId } from "./screen-note.js";
 
 // :project :area :resource :inbox, typed in full (:res is Vim's :resize, :ar is :args).
@@ -106,6 +107,8 @@ export const NOTE_COMMANDS = [
     run: (app) => attachCommand(app) },
   { name: "template", label: "Insert template…", noteOnly: true, min: 8, usage: ":template [{name}]", help: "put a template's text in below the cursor (its - [ ] lines become tasks)",
     run: (app, { arg }) => insertTemplateDialog(app, arg.trim()) },
+  { name: "diagram", label: "Insert diagram…", noteOnly: true, min: 4, usage: ":diag[ram]", help: "pick a Mermaid diagram type: its block goes in below the cursor, ‹blanks› to fill with Tab",
+    run: (app) => insertDiagramDialog(app.editor, () => app.focusNote()) },
   // The editor runs these itself when typed (table-edit.js); the palette runs them here.
   { name: "table", label: "Insert table…", noteOnly: true, min: 5, usage: ":table [{columns} [{rows}]]", help: "an empty table below the cursor (rows count the header); Tab, Enter move between cells",
     run: (app, { arg }) => (arg.trim() ? app.editor.tableCommand("table", arg.trim()) : insertTableDialog(app.editor, () => app.focusNote())) },
