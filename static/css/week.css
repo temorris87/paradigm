@@ -151,13 +151,24 @@
   flex-direction: column;
   align-items: stretch;
   gap: var(--sp-1);
+  min-width: 0;
+  overflow: hidden;
   padding: var(--sp-2) var(--sp-2) var(--sp-2);
 }
 
+/* In a narrow column (a main window under 1400 px with the tray open) the free hours wrap under
+   the date rather than run into the next day's head. */
 .cal-dayhead__line {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--sp-2);
+  column-gap: var(--sp-2);
+  min-width: 0;
+}
+
+.cal-dayhead__name,
+.cal-dayhead__date {
+  white-space: nowrap;
 }
 
 .cal-dayhead__free {

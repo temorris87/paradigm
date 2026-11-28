@@ -11,6 +11,7 @@ How the app behaves. Kept up to date by each feature that changes it.
   `›` can be clicked again and again without moving the mouse; the same on every tab, and when a
   narrow window wraps the bar the three stay together at its start (Tyson, 2026-11-27). Plan: Monday to Sunday (Saturday and Sunday
   only when something is on them, or with Show weekend); each day's head has its free hours
+  (under the date when the column is narrow, never into the next day's head: 2026-11-28)
   and a capacity bar (meetings, then focus blocks, as parts of the working day, lunch out);
   the "due" strip holds tasks due that day ("not placed" when no block comes before it),
   milestones and untimed meetings. Meetings (an end time, else 30 min; cancelled struck

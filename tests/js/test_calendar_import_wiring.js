@@ -319,3 +319,40 @@ test("import wiring: the To plan filters are hidden on the To file tab (their di
   assertTrue(/\.cal-side__filters\[hidden\]\s*\{\s*display:\s*none/.test(css),
     ".cal-side__filters sets display: flex, so without its own [hidden] rule the filters show on To file");
 });
+
+test("week: a narrow day's head wraps its free hours under the date; nothing runs into the next day", async () => {
+  const sheets = ["tokens.css", "calendar.css", "week.css"].map((name) => {
+    const link = Object.assign(document.createElement("link"), { rel: "stylesheet", href: new URL(`../../static/css/${name}`, import.meta.url).href });
+    document.head.append(link);
+    return new Promise((done) => { link.onload = done; link.onerror = done; }).then(() => link);
+  });
+  const links = await Promise.all(sheets);
+  const head = document.createElement("div");
+  head.className = "cal-head";
+  head.style.setProperty("--cal-days", "2");
+  head.style.setProperty("--cal-gutter", "0px");
+  head.style.setProperty("width", "130px");
+  const day = (name, date, free) => {
+    const node = Object.assign(document.createElement("div"), { className: "cal-dayhead" });
+    const line = Object.assign(document.createElement("div"), { className: "cal-dayhead__line" });
+    for (const [cls, text] of [["cal-dayhead__name", name], ["cal-dayhead__date", date], ["cal-dayhead__free", free]]) {
+      line.append(Object.assign(document.createElement("span"), { className: cls, textContent: text }));
+    }
+    node.append(line);
+    return node;
+  };
+  head.append(document.createElement("div"), day("Tue", "24", "8 h free"), day("Wed", "25", "8 h free"));
+  document.body.append(head);
+  try {
+    const [tue, wed] = [...head.querySelectorAll(".cal-dayhead")];
+    const edge = wed.getBoundingClientRect().left;
+    const spans = [...tue.querySelectorAll("span")].map((span) => span.getBoundingClientRect());
+    assertTrue(spans.every((box) => box.right <= edge + 0.5), `Tuesday's words stay in its column (${spans.map((b) => Math.round(b.right)).join(",")} <= ${Math.round(edge)})`);
+    const [name, date, free] = spans;
+    const apart = (a, b) => a.right <= b.left + 0.5 || b.right <= a.left + 0.5 || a.bottom <= b.top + 0.5 || b.bottom <= a.top + 0.5;
+    assertTrue(apart(name, date) && apart(date, free) && apart(name, free), "and none sits on another");
+  } finally {
+    head.remove();
+    links.forEach((link) => link.remove());
+  }
+});
