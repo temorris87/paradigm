@@ -28,7 +28,10 @@ tests/js/                index.html runner, harness.js, fakes.js, editor-helpers
                          test_settings.js: the Settings page, and the focus kept after
                          Save, Add holiday, a holiday's Remove and an Unlink;
                          test_page_history.js: H and L over a fake tab history, a step
-                         per page, the ends' messages, S for Log status)
+                         per page, the ends' messages, quick H H H, reloads, Escape's
+                         runs of pages, a footnote link's step (also on a page H
+                         went back to), Forward onto an older build's entry ahead,
+                         Escape and H / L waiting for a pending Back, S for Log status)
                          markdown-sample.html: dev-only page rendering every Markdown construct
 ```
 

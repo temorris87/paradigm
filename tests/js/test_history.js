@@ -480,7 +480,7 @@ test("page views: a note opened from History is a step over it, so Back returns 
   const pages = { history: page(), live: page(), home: page() };
   const steps = [];
   const history = { state: null, pushState(state, _, url) { this.state = state; steps.push(["push", url]); },
-    replaceState(state, _, url) { this.state = state; steps.push(["replace", url]); }, back() {} };
+    replaceState(state, _, url) { this.state = state; steps.push(["replace", url]); }, go: () => true };
   const views = new PageViews({ main, pages, history, noteUrl: () => "/?note=3" });
   views.show("history", "push", "history=3");
   views.show("live", "push");

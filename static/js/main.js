@@ -109,7 +109,7 @@ const app = boot({
       onNewNote: () => app().showView("live", "push"), onClosed: () => app().guard(app().leaveLive()), ready: () => app()?.started ?? null });
     // Escape goes back to the page Settings was opened from (its own history step).
     const settings = new SettingsPage($(".settings-view"), { app, changes, timeApi, aboutApi,
-      onLeave: () => (app().history.state?.view ? app().views.leave() : app().leaveView()) });
+      onLeave: () => app().history.whenSettled(() => (app().history.state?.view ? app().views.leave() : app().leaveView())) });
     return {
       home: { section: $(".home"), button: null },
       people: { section: $(".people"), button: null },
@@ -192,7 +192,8 @@ installMainKeys(window, {
   live: () => app.showView("live", "push"),
   settings: () => app.showView("settings", "push"),
   follow: () => follow.start(),
-  back: () => app.history.goBack() || app.say("E: no earlier page", { error: true }),
-  forward: () => app.history.goForward() || app.say("E: no later page", { error: true }),
+  // Each after the page the one before went to is drawn, so H H H walks back page by page.
+  back: () => app.history.whenSettled(() => app.history.goBack() || app.say("E: no earlier page", { error: true })),
+  forward: () => app.history.whenSettled(() => app.history.goForward() || app.say("E: no later page", { error: true })),
   keys: () => app.guard(showKeys()),
 }, { shadowed });

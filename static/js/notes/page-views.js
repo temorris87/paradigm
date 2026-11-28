@@ -12,7 +12,9 @@
 //                                  the same page with another value (a subtask's page) takes
 //                                  the URL's place, so Back still reaches the dashboard under
 //                                  the first one
-//   views.leave()                  back to the note; false when it is the app's to redraw
+//   views.leave()                  Escape: back to the note under the pages (or to the page a
+//                                  task, Settings or History step was opened from); false when
+//                                  it is the app's to redraw
 //   views.hide()                   no view, without touching the history (opening a note)
 //   views.draw(ctx, crumbs)        after every redraw of the notes page
 //
@@ -35,6 +37,14 @@ export const PAGE_VIEWS = [
   { key: "history", label: "History" },
   { key: "settings", label: "Settings" },
 ];
+
+// Every page is a step of its own, so H walks back page by page, but Escape keeps the way it
+// went before (spec 041): back over the run of pages to the note under them. Each page's step
+// carries how many steps Escape goes back (state.leave). These pages stop that run: Escape from
+// a task page or Settings returns to the page it was opened from...
+const STEPS_OVER_PAGES = new Set(["task", "settings"]);
+// ...and Escape from a page opened from History returns to History, not to the project.
+const STEPS_KEPT_UNDER = new Set(["history"]);
 
 /** A page's name ("Home"), for the tab's title. */
 export function viewLabel(key) {
@@ -61,9 +71,9 @@ export class PageViews {
   show(key, history, flag = key) {
     const base = this.noteUrl();
     const url = `${base}${base.includes("?") ? "&" : "?"}${flag}`;
-    // Every page is a step of its own, from a note or from another page: H, Escape and Back
-    // walk back through each (Tyson, 2026-11-28).
-    if (history === "push" && this.shown !== key) this.history.pushState({ view: key }, "", url);
+    // Every page is a step of its own, from a note or from another page: H and Back walk back
+    // through each (Tyson, 2026-11-28).
+    if (history === "push" && this.shown !== key) this.history.pushState({ view: key, leave: this.leaveSteps(key) }, "", url);
     else if (history === "push" && flag !== key) this.history.replaceState(this.history.state, "", url);
     // Only a push is marked: leaving a page that was loaded with the flag must not go Back
     // out of Paradigm.
@@ -78,14 +88,18 @@ export class PageViews {
   /** Returns true when it went Back (popstate redraws), false when the caller must redraw. */
   leave() {
     if (!this.shown) return true;
-    // Came here with a command in this tab: Back is the same step, so the history stays short.
-    if (this.history.state?.view) {
-      this.history.back();
-      return true;
-    }
+    // Came here with a command in this tab: back over the pages' steps to where they were opened from.
+    if (this.history.state?.view && this.history.go(-(this.history.state.leave ?? 1))) return true;
     this.history.pushState({}, "", this.noteUrl());
     this.setShown(null);
     return false;
+  }
+
+  /** How many steps Escape goes back from the page key, pushed over the entry shown now. */
+  leaveSteps(key) {
+    const under = this.history.state;
+    if (!under?.view || STEPS_OVER_PAGES.has(key) || STEPS_KEPT_UNDER.has(this.shown)) return 1;
+    return (under.leave ?? 1) + 1;
   }
 
   hide() {

@@ -144,6 +144,20 @@ test("live closes: a page under Live comes back with its mark", async () => {
   assertEqual(app.history.state.view, "people", "Escape there still goes Back");
 });
 
+test("live closes: the page under Live keeps Live's way back, so Escape still reaches the dashboard", async () => {
+  // People two page steps over the dashboard; Live one more over it (PageViews counts them).
+  const { app } = mainApp("?note=14&people", { view: "people", leave: 2 });
+  app.views.shown = "people";
+  app.views.show = function show(key, how) {
+    if (how === "push") app.history.pushState({ view: key, leave: app.history.state.leave + 1 }, "", `?note=14&${key}`);
+    this.shown = key;
+  };
+  app.showView("live", "push");
+  await app.leaveLive();
+  assertEqual(app.views.shown, "people");
+  assertEqual(JSON.stringify(app.history.state), '{"view":"people","leave":3}', "People in Live's step: three back");
+});
+
 test("live closes: off Live, or Live with nothing under it, nothing happens", async () => {
   const moved = mainApp("?note=14");
   moved.app.showView("live", "push");
