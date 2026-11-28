@@ -161,8 +161,11 @@ How the app behaves. Kept up to date by each feature that changes it.
   moves will land, so it never steps out of Paradigm; Escape pressed right after `H` or `L` also
   waits, and leaves from the page landed on (a Back that has not landed within a second counts
   as skipped, and the keys that waited on it are dropped). A same-page `#` link (a footnote on Live, a
-  `[x](#heading)` link) is a step of its own, one on from the page it was clicked on: `H` goes
-  back from it to that page and on through the ones before. Live keeps its
+  `[x](#heading)` link) is a step of its own, one on from the page it was clicked on (also a page
+  `H` or `L` went to): `H` goes back from it to that page and on through the ones before. In a tab open across the update that
+  brought H and L, the browser's own Back onto a page from before it counts that page as the
+  earliest: `H` there says `E: no earlier page`, and `L` comes forward again; Forward onto such
+  a page counts it as later, so `L` reaches it again. Live keeps its
   own history rules; `H` on Live goes back to the page before it, and a page that comes back
   when Live closes keeps Live's way back for Escape. The `?` list shows both under "Anywhere in
   this window"; the bar shows `H L back / forward` only on Live (the one bar with the window's

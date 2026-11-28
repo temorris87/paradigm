@@ -68,7 +68,8 @@ test("page history: a step in every entry; a push counts on, a replace keeps it"
   assertEqual(JSON.stringify(tab.state), '{"view":"plan","step":2}', "the state asked for, with the step");
   assertEqual(history.state, tab.state);
   assertEqual(stepOf(null), 0);
-  assertEqual(stepOf({ step: -2 }), 0);
+  assertEqual(stepOf({ step: -2 }), -2, "an entry from before the upgrade, behind the first counted");
+  assertEqual(stepOf({ step: 1.5 }), 0);
 });
 
 test("page history: the ends say no, in between it goes back and forward", () => {
@@ -326,6 +327,36 @@ test("page history: a footnote link on Live is a step of its own: H goes back fr
   assertEqual(views.shown, "live");
 });
 
+test("page history: Back onto an entry the old build made (no step) is behind, not a \"#\" link", () => {
+  // A tab open across the upgrade: two entries pushed before steps existed, reloaded on the second.
+  const tab = browserHistory({ state: {}, url: "/?note=1" });
+  tab.pushState({ view: "people" }, "", "/?note=1&people");
+  const storage = tabStorage();
+  const history = new PageHistory(tab, storage, { where: () => tab.url });
+  tab.onPop = () => history.popped();
+  assertEqual(history.step, 0, "the reloaded entry counts from 0");
+  tab.go(-1); // the browser's own Back button
+  assertEqual(history.step, -1, "one behind, not one on");
+  assertEqual(tab.state.step, -1, "and marked so");
+  assertEqual(history.goBack(), false, "nothing before it is known to be the app's: H says so");
+  assertTrue(history.goForward(), "L goes back to the reloaded page");
+  assertEqual(tab.url, "/?note=1&people");
+  assertEqual(history.step, 0);
+  assertEqual(history.goForward(), false, "and no later page");
+  const reloaded = new PageHistory(tab, storage, { where: () => tab.url });
+  assertTrue(reloaded.goBack(), "after a reload the earlier entry is still the app's");
+});
+
+test("page history: with the URL known, a \"#\" link is still a step on", () => {
+  const tab = browserHistory({ state: null, url: "/?note=1&live" });
+  const history = new PageHistory(tab, null, { where: () => tab.url });
+  tab.onPop = () => history.popped();
+  tab.fragment("#fn1");
+  assertEqual(history.step, 1);
+  assertTrue(history.goBack());
+  assertEqual(history.step, 0);
+});
+
 test("page views: Escape pressed right after H waits for Back to land, then leaves from there", () => {
   const tab = browserHistory({ state: null, url: "/?note=1" }, { later: true });
   const { history, views } = pagesOver(tab);
@@ -388,4 +419,39 @@ test("page history: a move whose popstate never comes is given up after a second
   tab.settle();
   assertEqual(tab.url, "/?note=1&home");
   assertEqual(timers.queue.size, 0, "a move that landed stops its timer");
+});
+
+test("page history: a footnote on a page H went back to is one on from that page", () => {
+  const tab = browserHistory({ state: null, url: "/?note=1" });
+  const history = new PageHistory(tab, null, { where: () => tab.url });
+  tab.onPop = () => { history.popped(); history.landed(); };
+  history.pushState({ view: "live" }, "", "/?note=1&live");
+  history.pushState({ view: "people" }, "", "/?note=1&people");
+  assertTrue(history.goBack(), "H back to Live");
+  tab.fragment("#fn1");
+  assertEqual(history.step, 2, "one on from Live, not taken for an old entry");
+  assertEqual(history.goForward(), false, "People is gone from ahead");
+  assertTrue(history.goBack());
+  assertEqual(tab.url, "/?note=1&live");
+  assertTrue(history.goBack(), "and the note before Live");
+  assertEqual(tab.url, "/?note=1");
+});
+
+test("page history: Forward onto an entry the old build left ahead counts it ahead", () => {
+  // A tab open across the upgrade, gone Back from old entry 3 to old entry 2, then reloaded.
+  const tab = browserHistory({ state: {}, url: "/?note=1" });
+  tab.pushState({ view: "home" }, "", "/?note=1&home");
+  tab.pushState({ view: "people" }, "", "/?note=1&people");
+  tab.index = 1;
+  const history = new PageHistory(tab, tabStorage(), { where: () => tab.url, index: () => tab.index });
+  tab.onPop = () => history.popped();
+  tab.go(1); // the browser's own Forward button
+  assertEqual(history.step, 1, "one ahead of the page reloaded");
+  assertTrue(history.goBack(), "H goes back to it");
+  assertEqual(tab.url, "/?note=1&home");
+  assertTrue(history.goForward(), "and L forward again");
+  assertEqual(tab.url, "/?note=1&people");
+  tab.go(-2); // Back twice at once, onto the old entry behind
+  assertEqual(history.step, -1);
+  assertEqual(history.goBack(), false, "nothing before it is known to be the app's");
 });

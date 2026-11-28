@@ -171,7 +171,8 @@ export class NotesApp {
     this.api = api;
     this.location = location;
     // Every entry the app makes carries its step, for H and L at the ends (layout/page-history.js).
-    this.history = new PageHistory(history, tabStorage());
+    this.history = new PageHistory(history, tabStorage(),
+      { index: () => globalThis.navigation?.currentEntry?.index });
     this.tree = new NoteTree();
     // Each save sends the note's [[wiki links]] along, for the Linked from tabs.
     this.linkIndex = new LinkIndex({ api: linksApi, onChange: () => this.redraw() });

@@ -81,8 +81,20 @@ None: no route is added or changed.
   cleared, the step is read again from the entry shown, and the keys that waited on it are
   dropped rather than run (a late `popstate` would move the tab after them). The
   entry loaded with no step is marked step 0, so a reload on it later keeps its step. An entry
-  reached by `popstate` with no step is a same-page `#` link's (a footnote on Live): it counts one
-  on from the entry before and is marked so, so `H` goes back from it. The furthest step reached is kept
+  reached by `popstate` with no step is a same-page `#` link's (a footnote on Live) when only the
+  URL's hash changed from the entry the tab was last on: it counts one on from that entry and is
+  marked so, so `H` goes back from it. Where the tab is (its URL without the hash, `base`, and
+  its entry index, `at`) is noted again on every move (`seen()`: on load, every push and replace,
+  a `popstate` onto a step, and a move given up on), so a footnote on a page `H` went back to is
+  one on from that page, not from the page left. Otherwise it is an entry the build before 041
+  pushed (a tab open across the upgrade): it counts as far as the tab moved (`movedBy()`: from
+  the browser's entry index when it gives one, else from the sign of the `H` or `L` on its way,
+  else one Back), and past the ends it widens the earliest (`first`) or furthest step known, both
+  kept in `sessionStorage` (so steps can go below 0). An old entry behind is the earliest, and
+  `H` there says `E: no earlier page`; one reached by Forward counts ahead, so `L` reaches it
+  again. The entry index comes from the `index` option (default `() => null`); `NotesApp` passes
+  the Navigation API's `navigation.currentEntry.index`. The page's URL comes from the `where`
+  option (default `location.href`). The furthest step reached is kept
   in the tab's `sessionStorage`, so after a reload `L` still goes forward to a later page, as the
   browser's Forward would; only a window that refuses storage falls back to the page loaded as
   the last step. `NotesApp.history` is now this wrapper, and `PageViews` gets it.
@@ -101,5 +113,6 @@ None: no route is added or changed.
   yet · S to log", the empty status-log line, the status-history dialog's text, the note menu's
   hint and the palette's `:log[!] S`.
 - Tests: `tests/js/test_page_history.js` (new: steps, the ends, quick `H H H`, reloads, Escape's
-  runs, a footnote link's step, Escape and `H` / `L` waiting for a pending Back); `test_history.js`, `test_live_return.js`, `test_meetings.js`, `test_key_hints.js`,
+  runs, a footnote link's step, a footnote on a page `H` went back to, Forward onto an older
+  build's entry ahead, Escape and `H` / `L` waiting for a pending Back); `test_history.js`, `test_live_return.js`, `test_meetings.js`, `test_key_hints.js`,
   `test_palette.js`, `test_status.js`, `test_task_page.js` updated.
