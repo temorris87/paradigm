@@ -54,7 +54,10 @@ static/
                          "live-ask", "live-closed" on pagehide; a task's notes' messages
                          carry task), live-page.js (the main
                          window: blocks drawn per line range, the caret and the band, empty /
-                         closed / trashed lines, link, highlight and image clicks),
+                         closed / trashed lines, link, highlight and image clicks; a closed
+                         note window that does not come back within 2 s asks to leave),
+                         live-return.js (the page Live took over from, shown again when the
+                         note window closes; pure),
                          highlights.js (a record's source text underlined with its badge, a
                          captured line's chip after it), agreed-card.js (a meeting's "Agreed in
                          this meeting" beside its Agenda and Notes, from the live message's

@@ -102,7 +102,7 @@ const app = boot({
     const historyPage = new HistoryPage($(".history-view"), { app, onLeave: () => app().leaveView() });
     // A note newly opened in the note window, any way, brings the Live page up here.
     const live = new LivePage($(".live-view"), { changes, app, viewer: $("pd-image-viewer"),
-      onNewNote: () => app().showView("live", "push"), ready: () => app()?.started ?? null });
+      onNewNote: () => app().showView("live", "push"), onClosed: () => app().guard(app().leaveLive()), ready: () => app()?.started ?? null });
     const windowButton = $(".topbar__window");
     windowButton.addEventListener("click", () => openMenu(windowButton, [
       { label: "Live note", hint: "the note window's note, rendered as it is typed (gn)", run: () => app().showView("live", "push") },

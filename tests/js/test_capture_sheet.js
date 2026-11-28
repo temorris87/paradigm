@@ -17,6 +17,15 @@ const tree = new NoteTree([
   { id: 5, parent_id: null, title: "Ben Ortiz", kind: "person", updated_at: T },
 ]);
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+
+// The editor draws only the lines on screen, and its height is known once its stylesheet is in
+// and the ResizeObserver has run after the sheet closed: wait for that rather than race it.
+async function lineDrawn(editor, line) {
+  const selector = `.pd-line[data-line="${line}"]`;
+  for (let i = 0; i < 120 && !editor.shadowRoot.querySelector(selector); i += 1) await frame();
+  return editor.shadowRoot.querySelector(selector);
+}
 
 function press(key, mods = {}) {
   const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...mods });
@@ -290,9 +299,9 @@ test("note captures: \\t opens the sheet; Enter saves, marks the line and says w
     assertTrue(sent.includes("changed"));
     // The open sheet squeezed the editor to a row or so; its ResizeObserver gives the rows back
     // only on the next frame, which two setTimeout ticks do not always reach under load. Measure
-    // now so line 1 is drawn when its mark is looked for.
+    // now, then wait for line 1 to be drawn before its mark is looked for.
     editor.measure();
-    const mark =editor.shadowRoot.querySelector('.pd-line[data-line="1"] .pd-mark');
+    const mark = (await lineDrawn(editor, 1))?.querySelector(".pd-mark");
     assertEqual(mark?.textContent, "Task → Grace · follow up Mon");
     assertEqual(strip.textContent, "From this meeting:Tasks 1Questions 0Decisions 0they live in Team · Tab opens");
     await captures.uncapture({ line: 0, text: "Intro" }).catch((error) => said.push(`fail ${error.message}`));

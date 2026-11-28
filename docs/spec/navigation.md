@@ -193,6 +193,14 @@ How the app behaves. Kept up to date by each feature that changes it.
   is closed"; trashed: "Moved to trash"; empty: "Empty note". Unchanged blocks are not drawn
   again, so math and diagrams don't redraw on each keystroke. A task's notes in the note window
   (tasks.md) are not shown here: their `live` messages carry `task` and go to the task page.
+  Closing the note window closes the Live page (Tyson, 2026-11-27): about 2 s after the note
+  window goes, the main window shows again the page it showed when Live took over (a dashboard,
+  Today, People and so on), in Live's own history step, so Back never lands on a dead Live page.
+  Live reached again by Back or Forward still goes back to that page. A reload of the note window
+  (F5: a new note within the 2 s) keeps Live up. If the main window has moved off Live by then,
+  it stays where it is; if the page under Live has gone (its note trashed), it shows Today. Live
+  opened by hand with no note window (`gn`) still shows "The note window is closed" (defaults
+  approved by Tyson, 2026-11-27).
 - Trash: trashing a note (its menu, or `:trash!`) takes the notes under it too; `:trash` on a
   note with notes under it says "E: The note has notes under it: :trash! deletes them too"
   without asking the server (which refuses it as well, but the browser's console would list

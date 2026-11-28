@@ -82,6 +82,7 @@ import { StatusLogs, healthOf } from "../status/status-model.js";
 import { navCounts } from "../today/today-model.js";
 import { Rota } from "../oncall/oncall-model.js";
 import { drawPins, drawSaveState, saveStateOf } from "../layout/navigator-parts.js";
+import { returnTo, viewUnderLive } from "../live/live-return.js";
 
 // The blocks of time loaded for the pages (a task's next block, Home's Today).
 const SESSIONS_BACK_DAYS = 7;
@@ -133,6 +134,7 @@ export class NotesApp {
     this.taskId = null; // the task page's (the main window)
     this.taskNoteId = null; // its note, as the URL had it: says "in the trash" after a reload
     this.weekView = "plan"; // the Week page's Plan, Timesheet, Settings or On call
+    this.underLive = null; // the page the Live page took over from, to show when the note window closes
     this.editor = editor;
     this.tasksApi = tasksApi;
     this.calendarApi = calendarApi;
@@ -1171,11 +1173,29 @@ export class NotesApp {
       key = "week";
     }
     // A page about one thing keeps which one in its URL flag.
+    // An address already on &live (Back, Forward, a reload) is Live's own step: the page under
+    // it stays the one remembered when that step was made (open() hides the view first).
+    if (key === "live" && this.views.shown !== "live") {
+      this.underLive = viewUnderLive(this.location.search, this.history.state) ?? this.underLive;
+    }
     const flag = key === "folder" ? `folder=${this.folderId}` : key === "template" ? `template=${this.templateId}`
       : key === "history" ? `history=${this.historyRequest?.id ?? this.currentId}`
       : key === "task" ? `task=${this.taskId}` : key === "week" && this.weekView !== "plan" ? `week=${this.weekView}` : key;
     this.views.show(key, history, flag);
     this.redraw();
+  }
+
+  /** The note window closed: the page Live took over from shows again in the Live page's
+   * history step, so Back never lands on a dead Live page. A gone note shows Today
+   * (mainFromUrl). Nothing happens once the window has moved off Live. */
+  async leaveLive() {
+    const under = returnTo(this.views.shown, this.underLive);
+    if (!under) return;
+    this.underLive = null;
+    this.history.replaceState(under.state, "", `${this.location.pathname}${under.search}`);
+    await this.openFromUrl("replace");
+    // The step keeps its mark (a page reached by a command): Escape there still goes Back.
+    if (this.views.shown) this.history.replaceState(under.state, "", this.location.href);
   }
 
   leaveView() {
