@@ -41,6 +41,7 @@ function runItem(app, id, item) {
       run: ({ title }) => app.renameCommand(title),
       ...focusNote(app),
     });
+    case "editDetails": return app.personDetails(id);
     case "move": return moveDialog(app, id);
     case "moveToFolder": return moveToFolderDialog(app, id);
     case "newBeside": return newNoteDialog(app, app.tree.parentId(id), { heading: `New note beside "${note.title}"` });

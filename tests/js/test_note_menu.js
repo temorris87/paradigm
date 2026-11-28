@@ -25,7 +25,9 @@ test("note menu: a hub can be renamed, moved, filed, archived, exported and tras
 });
 
 test("note menu: a person is never moved or filed; a meeting is never filed; nested notes are not archived", () => {
-  assertEqual(keys(5), "rename newBeside newUnder insertTemplate insertTable dashboard | archive export | trash");
+  assertEqual(keys(5), "rename editDetails newBeside newUnder insertTemplate insertTable dashboard | archive export | trash");
+  assertEqual(noteMenuItems(tree(), 5).find((item) => item.key === "editDetails").label, "Edit details…",
+    "a person's role, org and email are edited from the note menu");
   assertEqual(keys(2), "rename move newBeside insertTemplate insertTable dashboard | export | trash", "a meeting has no notes under it");
   assertEqual(keys(3).includes("archive"), false);
   const file = noteMenuItems(tree(), 3).filter((item) => item.key === "file");

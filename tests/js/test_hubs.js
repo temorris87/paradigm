@@ -1,4 +1,4 @@
-import { HUB_KEYS, hubAction } from "../../static/js/hubs/hub-keys.js";
+import { HUB_KEYS, hubAction, keysFor } from "../../static/js/hubs/hub-keys.js";
 import { archivedProjectsIn, areaOf, projectsIn } from "../../static/js/hubs/hub-areas.js";
 import { HubPage } from "../../static/js/hubs/hub-page.js";
 import { DASHBOARD_LAYOUT, HUB_SECTIONS, dashboardFor, dayOf, sectionsFor } from "../../static/js/hubs/hub-sections.js";
@@ -94,10 +94,22 @@ test("project facts: status and due texts", () => {
   assertEqual(dueText({ due: "" }, TODAY), "");
 });
 
-test("hub keys: one table, Tab never bound, modifiers left to the browser", () => {
-  const all = HUB_KEYS.flatMap((entry) => entry.keys);
-  assertEqual(new Set(all).size, all.length, "no key bound twice");
-  assertTrue(!all.includes("Tab"));
+test("hub keys: one table, Tab bound only on a person, modifiers left to the browser", () => {
+  for (const page of [null, "project", "person"]) {
+    const all = keysFor(page).flatMap((entry) => entry.keys);
+    assertEqual(new Set(all).size, all.length, `no key bound twice on ${page}`);
+  }
+  assertTrue(!keysFor("project").flatMap((entry) => entry.keys).includes("Tab"));
+  assertTrue(HUB_KEYS.filter((entry) => entry.keys.includes("Tab")).every((entry) => entry.page === "person"));
+  assertEqual(hubAction({ key: "Tab" }), null, "Tab moves the focus on");
+  assertEqual(hubAction({ key: "Tab" }, "person"), "nextColumn");
+  assertEqual(hubAction({ key: "Tab", shiftKey: true }, "person"), "previousColumn");
+  assertEqual(hubAction({ key: "a" }, "person"), "addTopic");
+  assertEqual(hubAction({ key: "a" }), "add");
+  assertEqual(hubAction({ key: "r" }, "person"), "raised");
+  assertEqual(hubAction({ key: "n" }, "person"), "oneOnOne");
+  assertEqual(hubAction({ key: "n" }, "project"), "newTask", "n on a project: a new task");
+  assertEqual(hubAction({ key: "o" }, "person"), "openRow");
   assertEqual(hubAction({ key: "j" }), "next");
   assertEqual(hubAction({ key: "}" }), "nextSection");
   assertEqual(hubAction({ key: "z" }), "fold");
@@ -343,7 +355,7 @@ test("hub card: its buttons call the controls with the hub", () => {
 
 test("hub sections: add buttons; link rows can be changed", () => {
   const withAdd = HUB_SECTIONS.filter((each) => each.add).map((each) => each.key).join();
-  assertEqual(withAdd, "where,digest,projects,questions,openQuestions,plan,milestones,tasks,raise,files,templates,decisions,notes,meetings,upcomingMeetings,outcome,openTasks,projectQuestions,nextMeetings,latestDecisions,projectPeople,people,active");
+  assertEqual(withAdd, "where,digest,projects,questions,openQuestions,plan,milestones,tasks,owe,raise,waiting,personNotes,together,files,templates,decisions,notes,meetings,upcomingMeetings,outcome,openTasks,projectQuestions,nextMeetings,latestDecisions,projectPeople,people,active");
   const projectRows = section("projects").rows({ tree: tree(), today: TODAY }, tree().get(1));
   assertEqual(projectRows.map((row) => row.actions.map((action) => action.key).join("+")).join(), "remove,remove");
 });
@@ -377,7 +389,7 @@ test("hub page: a adds in the section, x and r work only on rows offering them",
 test("dashboard: every lane's section is in the table; a project's and an area's lanes", () => {
   const keys = new Set(HUB_SECTIONS.map((each) => each.key));
   for (const [kind, lanes] of Object.entries(DASHBOARD_LAYOUT)) {
-    for (const key of [...(lanes.wide ?? []), ...lanes.act, ...lanes.know]) assertTrue(keys.has(key), `${kind}: ${key}`);
+    for (const key of [...(lanes.wide ?? []), ...(lanes.cards ?? []), ...lanes.act, ...lanes.know]) assertTrue(keys.has(key), `${kind}: ${key}`);
   }
   const lanes = (kind) => ["wide", "act", "know"].map((lane) => dashboardFor({ kind })[lane].map((each) => each.key).join()).join(" | ");
   assertEqual(lanes("project"), " | openTasks,projectQuestions | outcome,nextMeetings,latestDecisions,projectPeople,notes,files,projectAnswered",
@@ -385,6 +397,9 @@ test("dashboard: every lane's section is in the table; a project's and an area's
   assertEqual(dashboardFor({ kind: "project" }).emptyLine, "foot", "a project's empty sections share one line under both columns");
   assertEqual(dashboardFor({ kind: "area" }).emptyLine, "lane");
   assertTrue(lanes("area").startsWith("projects | portfolio,"), "an area's Projects come first, across both lanes");
+  const cards = dashboardFor({ kind: "person" });
+  assertEqual(["wide", "cards", "act", "know"].map((lane) => cards[lane].map((each) => each.key).join()).join(" | "),
+    " | waiting,owe,raise | personNotes | together,togetherBacklinks,togetherArchived");
   assertEqual(dashboardFor({ kind: "meeting" }), null, "the note window's single list for the rest");
   assertTrue(!lanes("project").includes("plan"), "the chart shows the plan");
 });

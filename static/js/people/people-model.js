@@ -11,6 +11,9 @@
 //   filterOptions(tree, people)              what its dropdowns offer
 //   matchPerson(tree, text)                  who a typed name means: { person, matches }
 //   personLabel(tree, text, labels)          a person field's submit button: { text, blocked }
+//   SORTS, sortPeople(entries, sort)         the People page's Sort: most overdue, name, next
+//                                            together
+//   footnoteText({ view, sort, idle })       the line under the People page's list
 import { projectsIn } from "../hubs/hub-areas.js";
 import { isArchived, isHub, isPerson } from "../notes/hub-groups.js";
 import { NoteTree } from "../notes/tree-model.js";
@@ -162,4 +165,46 @@ export function filterOptions(tree, people) {
     && hubScope(tree, note.id).some((id) => linked.has(id)));
   const sorted = (set) => [...set].sort((a, b) => titleKey(a).localeCompare(titleKey(b)));
   return { hubs, roles: sorted(roles), orgs: sorted(orgs) };
+}
+
+// The People page's Sort dropdown, the first the default.
+export const SORTS = [["overdue", "most overdue"], ["name", "name"], ["next", "next together"]];
+
+const SORT_WORDS = { overdue: "most overdue first", name: "by name", next: "next together first" };
+
+/**
+ * People in a Sort's order. entries: [{ note, lateDays, earliest, next }]: the most days late of
+ * what they owe me or I owe them, the earliest follow-up or due day ("" none), and when we next
+ * meet ("YYYY-MM-DD HH:MM", "" none). Most overdue: most days late first, then the earliest
+ * day, then name; next together: the soonest first, no meeting last, then name.
+ */
+export function sortPeople(entries, sort = "overdue") {
+  const name = (a, b) => titleKey(a.note.title).localeCompare(titleKey(b.note.title));
+  const day = (a, b) => (a || "9999").localeCompare(b || "9999");
+  const order = {
+    overdue: (a, b) => b.lateDays - a.lateDays || day(a.earliest, b.earliest) || name(a, b),
+    next: (a, b) => day(a.next, b.next) || name(a, b),
+    name,
+  }[sort] ?? name;
+  return [...entries].sort(order);
+}
+
+/** "Ann, Bob and Cy"; past three, "Ann, Bob, Cy and 2 others". */
+function namesText(names) {
+  if (names.length <= 1) return names.join("");
+  if (names.length <= 3) return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+  const rest = names.length - 3;
+  return `${names.slice(0, 3).join(", ")} and ${rest} other${rest === 1 ? "" : "s"}`;
+}
+
+/**
+ * "Showing people with something open, most overdue first. Ann and Bob have nothing open
+ * (o shows everyone)". view: "open" | "everyone"; idle: the names of who has nothing open.
+ */
+export function footnoteText({ view = "open", sort = "overdue", idle = [] } = {}) {
+  const order = SORT_WORDS[sort] ?? SORT_WORDS.name;
+  if (view === "everyone") return `Showing everyone, ${order}.`;
+  const lead = `Showing people with something open, ${order}.`;
+  if (!idle.length) return lead;
+  return `${lead} ${namesText(idle)} ${idle.length === 1 ? "has" : "have"} nothing open (o shows everyone)`;
 }

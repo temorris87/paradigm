@@ -1,6 +1,7 @@
 // The page around the open note's text: the card under the breadcrumb (hub-line.js), the
 // label over each text box (fields.js), and the sections under the text (hub-sections.js).
-// A hub, a person, a meeting, a phase or a milestone gets the card and its sections; a
+// A hub, a person, a meeting, a phase or a milestone gets the card and its sections (a person
+// in the main window: the sections only, its dashboard head taking the card's place); a
 // decision or question the card; any other note its Tasks and Files. It knows the tree, the
 // people, the meetings, the records, the plan and the section table, and tells the page which
 // note to open; it never opens notes itself.
@@ -68,6 +69,7 @@ export class HubPage {
     this.sections = [];
     this.folds = loadFolds();
     this.showingAll = new Set(); // "hubId:section" while its "Show all" is on
+    this.revealed = false; // a person's Backlinks and Archived, unfolded under Together
     this.panel = new HubPanel(section, {
       onRow: (sectionDef, row) => this.onRow(sectionDef, row),
       onToggle: (sectionDef) => this.toggle(sectionDef),
@@ -108,20 +110,27 @@ export class HubPage {
     this.ctx = { people: new People(), meetings: new Meetings(), records: new Records(), links: new Links(), mentions: [],
       tasks: new Tasks(), sessions: [], ...ctx, expanded: this.expanded };
     const { tree } = this.ctx;
-    const carded = [isHub, isPerson, isMeeting, isDecisionOrQuestion, isPhase, isMilestone].some((is) => is(tree, currentId));
+    // A person in the main window has no card: their dashboard head shows the role, org and
+    // email, and the note menu's Edit details… changes them.
+    const carded = [isHub, isPerson, isMeeting, isDecisionOrQuestion, isPhase, isMilestone].some((is) => is(tree, currentId))
+      && !(this.dashboard && isPerson(tree, currentId));
     const note = tree.get(currentId) ?? null;
     if (this.hub?.id !== note?.id) {
       this.showingAll.clear();
+      this.revealed = false;
       this.expanded.clear();
       this.sheet?.close();
       this.panel.reset();
     }
     // hub: the page's owner, whose sections these are (any note but a template).
     this.hub = note && note.kind !== "template" ? note : null;
-    const shown = (sections) => sections.filter((section) => section && !this.hideSections.has(section.key));
+    const shown = (sections) => sections.filter((section) => section && !this.hideSections.has(section.key)
+      && (!section.reveal || this.revealed));
     const lanes = this.dashboard ? dashboardFor(this.hub) : null;
-    this.lanes = lanes && { wide: shown(lanes.wide), act: shown(lanes.act), know: shown(lanes.know), emptyLine: lanes.emptyLine };
-    this.sections = this.lanes ? [...this.lanes.wide, ...this.lanes.act, ...this.lanes.know] : shown(sectionsFor(this.hub));
+    this.lanes = lanes && { wide: shown(lanes.wide), cards: shown(lanes.cards), act: shown(lanes.act), know: shown(lanes.know),
+      emptyLine: lanes.emptyLine };
+    this.sections = this.lanes ? [...this.lanes.wide, ...this.lanes.cards, ...this.lanes.act, ...this.lanes.know]
+      : shown(sectionsFor(this.hub));
     this.page.dataset.page = this.hub?.kind ?? "note";
     this.showLabels(note);
     // A project's dashboard has its head's facts row instead of the card (dash-head.js).
@@ -168,8 +177,8 @@ export class HubPage {
     if (!this.hasPanel) return this.sheet?.setSummary([]);
     const rows = new Map(this.sections.map((section) => [section, section.rows(this.ctx, this.hub)]));
     const drawn = (sections) => sections.map((section) => this.drawn(section, rows.get(section)));
-    this.panel.draw(this.lanes ? { wide: drawn(this.lanes.wide), act: drawn(this.lanes.act), know: drawn(this.lanes.know),
-      emptyLine: this.lanes.emptyLine } : drawn(this.sections));
+    this.panel.draw(this.lanes ? { wide: drawn(this.lanes.wide), cards: drawn(this.lanes.cards), act: drawn(this.lanes.act),
+      know: drawn(this.lanes.know), emptyLine: this.lanes.emptyLine, page: this.hub.kind } : drawn(this.sections));
     this.sheet?.setSummary(sectionSummary(this.sections.map((section) => ({
       key: section.key, label: typeof section.label === "function" ? section.label(this.hub) : section.label,
       rows: rows.get(section) }))));
@@ -183,6 +192,13 @@ export class HubPage {
     if (row.statusEntry !== undefined || row.statusHistory) return this.tabActions.row("statusHistory", sectionDef.key, this.hub, row);
     if (row.digest) return this.tabActions.add("digest", this.hub);
     if (row.outcome) return this.tabActions.command?.("editOutcome", this.hub);
+    if (row.inert) return undefined;
+    // A person's Notes: written in the note window, as its Edit ↗ does.
+    if (row.doc !== undefined) return this.tabActions.add(sectionDef.key, this.hub);
+    if (row.reveal) {
+      this.revealed = !this.revealed;
+      return this.show(this.ctx, this.hub.id);
+    }
     // A task (Tasks, Waiting on, I owe, a subtask opened in place) opens its own page.
     if (row.task !== undefined) return this.tabActions.row("openTask", sectionDef.key, this.hub, row);
     return this.onOpen(row.id, row.at);

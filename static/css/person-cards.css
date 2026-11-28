@@ -1,0 +1,103 @@
+/* A person's dashboard cards: They owe me, I owe and To raise in a row, Notes and Together
+   under them (hub-sections.js DASHBOARD_LAYOUT person, drawn by hub-panel.js). */
+
+/* A person's three cards (They owe me, I owe, To raise) in one row of equal widths, then Notes
+   (two of those widths) and Together (one) under them; one column under 1400 px. Each card
+   is a lane of its own (hub-panel.js), so a card's rows never push another's. */
+[data-role="main"] .hub__list--cards {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  row-gap: var(--sp-4);
+  column-gap: var(--sp-4);
+}
+
+[data-role="main"] .hub__list--cards .hub__lane--act {
+  grid-column: span 2;
+}
+
+.hub__list--cards .hub__lane {
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
+  border: 1px solid var(--border-divider);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+
+/* One heading height in every card, so the first rows line up across the row. */
+.hub__list--cards .hub__heading {
+  white-space: nowrap;
+}
+
+.hub__list--cards .hub__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hub__list--cards .hub__row + .hub__row {
+  border-top: 1px solid var(--border-divider);
+}
+
+.hub__list--cards .hub__row {
+  padding-top: var(--sp-1);
+  padding-bottom: var(--sp-1);
+}
+
+/* They owe me, I owe and To raise: the title has the first line to itself and wraps rather than being
+   cut; the chip, the hub and where it is placed go on a line of their own under it, selected
+   or not, wrapping too instead of shrinking to nothing. The title's basis is what is left
+   after the ▸ and the box (less a hair for rounding), so the chip can never share its line;
+   a topic has only its ○ before the title, so its lead is shorter.
+   The line rule ties with hub.css's selected-row one and wins by coming later. */
+.hub__list--cards :is(.hub__section--waiting, .hub__section--owe, .hub__section--raise) .hub__row .hub__line {
+  --card-lead: calc(0.8rem + var(--task-box, 1em) + 2 * var(--sp-3));
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  row-gap: var(--sp-0);
+}
+
+.hub__list--cards .hub__section--raise .hub__row .hub__line {
+  --card-lead: calc(var(--task-box, 1em) + var(--sp-3));
+}
+
+/* The ○ one box wide, so the source under the title starts where the title does. */
+.hub__list--cards .hub__section--raise .hub__bullet {
+  flex: none;
+  width: var(--task-box, 1em);
+}
+
+.hub__list--cards :is(.hub__section--waiting, .hub__section--owe, .hub__section--raise) .hub__title {
+  flex: 1 1 calc(100% - var(--card-lead) - 2px);
+  min-width: 0;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.hub__list--cards :is(.hub__section--waiting, .hub__section--owe, .hub__section--raise) .hub__title + :is(.hub__chips, .hub__detail) {
+  margin-left: var(--card-lead);
+}
+
+/* A small basis keeps the detail beside its chip; it grows into the rest of the line and
+   wraps its own words when they need more. */
+.hub__list--cards :is(.hub__section--waiting, .hub__section--owe, .hub__section--raise) .hub__detail {
+  flex: 1 1 6rem;
+  min-width: 0;
+  overflow: visible;
+  white-space: normal;
+}
+
+.hub__list--cards :is(.hub__section--waiting, .hub__section--owe, .hub__section--raise) .hub__date:empty {
+  display: none;
+}
+
+.hub__list--cards :is(.hub__section--waiting, .hub__section--owe, .hub__section--raise) .hub__row-actions {
+  margin-left: auto;
+}
+
+@media (max-width: 1399.98px) {
+  [data-role="main"] .hub__list--cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  [data-role="main"] .hub__list--cards .hub__lane--act {
+    grid-column: auto;
+  }
+}

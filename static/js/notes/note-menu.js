@@ -3,7 +3,8 @@
 //
 //   noteMenuItems(tree, id, { window }) -> [{ key, label, ... } | { group } | "separator"]
 //     keys: logStatus (a project or area, first, under the hub's name as a group label), area and
-//           status (a project in the main window, after it: its dashboard has no card), rename, move, moveToFolder (a resource), newBeside, newUnder, file (with filing: a
+//           status (a project in the main window, after it: its dashboard has no card), rename,
+//           editDetails (a person: the person details dialog, names, email, org, role), move, moveToFolder (a resource), newBeside, newUnder, file (with filing: a
 //           HUB_GROUPS entry, checked),
 //           insertTemplate (the note window: a template's text at the cursor), insertTable (the
 //           note window: an empty Markdown table at the cursor), makePhase (a plain
@@ -30,6 +31,7 @@ export function noteMenuItems(tree, id, { window = "note" } = {}) {
     items.push("separator");
   }
   items.push({ key: "rename", label: "Rename…", hint: ":rename" });
+  if (person) items.push({ key: "editDetails", label: "Edit details…" });
   if (!person && !template) items.push({ key: "move", label: "Move…" });
   if (note.kind === "resource" && !nested) items.push({ key: "moveToFolder", label: "Move to folder…" });
   // A meeting, decision or question has no notes under it: its page holds its text.

@@ -8,11 +8,19 @@
 // counts (the Projects section).
 //
 //   sectionsFor(note)          the sections for a hub, person or meeting note, in page order
-//   dashboardFor(note)         the main window's lanes { wide: [...], act: [...], know: [...], emptyLine }, or null
+//   dashboardFor(note)         the main window's lanes { wide: [...], cards: [...], act: [...],
+//                              know: [...], emptyLine }, or null; cards: a row of equal cards
+//                              over the lanes, each a column of its own (a person's)
 //   section.rows(ctx, note)    [{ id, title, depth, detail, date?, cells?, muted?, late?, actions?,
 //                              snippet?, at?, task?, file?, template?, addSubtask?, next?,
 //                              health?, statusEntry?, statusHistory?, box?, bar?, pre?,
-//                              cellClasses?, folder?, tip?, chip? }]
+//                              cellClasses?, folder?, tip?, chip?, chips?, bullet?, doc?,
+//                              reveal?, inert? }]
+//                              chips: [{ text, tone }] shared chips before the detail;
+//                              bullet: a mark before the title ("○" a topic); doc: Markdown
+//                              drawn as the whole row (a person's Notes); reveal: the row
+//                              unfolds the sections marked reveal (Together's Backlinks ·
+//                              Archived); inert: a fact, nothing opens
 //                              folder: a linked folder's id (the Files section's folder rows);
 //                              chip: { text, tone, lead: true } a kind chip before the title (Agreed)
 //                              tip: the row's hover text
@@ -57,6 +65,7 @@
 // History page (static/js/history/). Its row fields besides the above: chip: { text, tone,
 // lead? } a status chip after the title (lead: before it); lead: a small label first ("Next");
 // avatar: initials before the title; outcome: the Outcome's row (e edits it)
+//   section.reveal             shown only once its lane's reveal row is opened
 import { archivedProjectsIn, projectsIn } from "./hub-areas.js";
 import { attendeesOf, attendeesText, meetingsOn, meetingsWith, shortTitle } from "../meetings/meetings-model.js";
 import { localDay, splitMeetings, whenText } from "../meetings/meeting-days.js";
@@ -72,7 +81,7 @@ import { projectFactsText, statusText } from "./project-facts.js";
 import { dayText, daysAgo } from "../ui/dates.js";
 import { StatusLogs, digest, firstSentence, healthLabel, healthOf } from "../status/status-model.js";
 import { portfolioBars } from "../plan/plan-rows.js";
-import { firstName, owedTo, toRaise } from "../people/one-on-one.js";
+import { firstName, lastTogether, meetingsThisMonth, owedTo, soonDay, toRaise } from "../people/one-on-one.js";
 import { historyCounts } from "../history/history-model.js";
 import { initials, outcomeLine } from "./project-facts.js";
 import { agreedRows } from "../notes/capture-model.js";
@@ -123,11 +132,12 @@ export const DASHBOARD_LAYOUT = {
     act: ["portfolio", "tasks", "openQuestions", "where"],
     know: ["digest", "meetings", "decisions", "answeredQuestions", "templates", "notes", "files", "people"],
   },
-  // A person as 1:1 prep: three columns over the lanes (dashboard.css).
+  // A person as 1:1 prep: three cards in a row, then their Notes (wide) and Together
+  // (narrow) under them (person-cards.css). Backlinks and Archived unfold under Together.
   person: {
-    wide: ["waiting", "owe", "raise"],
-    act: ["backlinks"],
-    know: ["active", "archived"],
+    cards: ["waiting", "owe", "raise"],
+    act: ["personNotes"],
+    know: ["together", "togetherBacklinks", "togetherArchived"],
   },
 };
 
@@ -268,39 +278,61 @@ export const HUB_SECTIONS = [
     // Open tasks of mine done for them, with where each is on the calendar.
     rows: (ctx, person) => owedTo(ctx.tree, ctx.tasks, person.id).map((entry) => {
       const today = localDay(ctx.today ?? new Date());
-      const place = nextBlockText(ctx, entry.task.id);
       return {
         id: entry.note.id, title: entry.task.title, depth: 0, task: entry.task.id, done: false,
-        detail: [entry.task.due ? `due ${shortDay(entry.task.due, today)}` : "no due date", place || "not placed",
-          entry.hub && entry.hub.id !== entry.note.id ? entry.hub.title : ""].filter(Boolean).join(" · "),
-        late: Boolean(entry.task.due && entry.task.due < today),
-        actions: [DONE, EDIT],
+        chips: dueChips(entry.task.due, today),
+        detail: [entry.hub?.title ?? "", placedText(ctx, entry.task.id)].filter(Boolean).join(" · "),
+        actions: [DONE, EDIT, DELEGATE],
       };
     }),
     detail: (rows) => String(rows.length),
-    empty: (person) => `Nothing you owe ${firstName(person)}`,
-    add: null,
+    empty: () => "Nothing owed.",
+    add: { label: "Task" },
   },
   {
     key: "raise",
     label: "To raise next 1:1",
     // Topics not raised yet ("@Name ?" lines, or + Add), then open questions they are on.
     rows: (ctx, person) => toRaise(ctx, person.id).map((item) => ({
-      id: item.id, title: item.title, depth: 0, detail: item.detail, topic: item.topic,
+      id: item.id, title: item.title, depth: 0, detail: item.detail, topic: item.topic, bullet: "○",
       actions: item.topic !== undefined ? [RAISED, REMOVE] : [],
     })),
     detail: (rows) => String(rows.length),
-    empty: (person) => `Nothing to raise with ${firstName(person)}. Write @${person.title.split(/\s+/)[0]} ? in any note, or + Add.`,
-    add: { label: "Add" },
+    empty: () => "Nothing to raise. a adds a topic.",
+    add: { label: "Topic" },
   },
   {
     key: "waiting",
-    label: (person) => (person?.kind === "person" ? `Waiting on ${firstName(person)}` : "Waiting on"),
+    label: (person) => (person?.kind === "person" ? "They owe me" : "Waiting on"),
     // What they are doing for me: open tasks delegated to them, soonest follow-up first.
-    rows: (ctx, person) => waitingOn(ctx.tree, ctx.tasks, person.id).map((entry) => waitingRow(ctx, entry, false)),
+    rows: (ctx, person) => waitingOn(ctx.tree, ctx.tasks, person.id).map((entry) => {
+      const today = localDay(ctx.today ?? new Date());
+      return { ...waitingRow(ctx, entry, false), chips: followChips(entry.task.follow_up, today),
+        detail: [entry.hub?.title, placedText(ctx, entry.task.id)].filter(Boolean).join(" · "), late: false };
+    }),
     detail: (rows) => String(rows.length),
-    empty: (person) => `Nothing delegated to ${person.title}`,
-    add: null,
+    empty: () => "Delegate any task with d; it lands here.",
+    add: { label: "Delegate" },
+  },
+  {
+    key: "personNotes",
+    label: "Notes",
+    // The person's own text, rendered; Edit ↗ (or Enter) writes it in the note window.
+    rows: (ctx, person) => (personNotes(ctx, person).trim() ? [{ id: person.id, title: "Notes", depth: 0, doc: personNotes(ctx, person) }] : []),
+    detail: () => "",
+    empty: () => "No notes. Edit ↗ to add some.",
+    add: { label: "Edit ↗", plain: true },
+  },
+  {
+    key: "together",
+    base: "active",
+    label: "Together",
+    // The live hubs they are on, when we last met, how often this month, and the line that
+    // unfolds their Backlinks and Archived under it.
+    rows: (ctx, person) => togetherRows(ctx, person),
+    detail: () => "",
+    empty: () => "",
+    add: { label: "Add to a hub" },
   },
   {
     key: "files",
@@ -535,6 +567,12 @@ export const HUB_SECTIONS = [
   },
 ];
 
+// Under a person's Together: the same lists, shown once its "Backlinks n · Archived n" line opens.
+HUB_SECTIONS.push(
+  { ...HUB_SECTIONS.find((section) => section.key === "backlinks"), key: "togetherBacklinks", base: "backlinks", reveal: true },
+  { ...HUB_SECTIONS.find((section) => section.key === "archived"), key: "togetherArchived", base: "archived", reveal: true, folded: false },
+);
+
 const BY_KEY = new Map(HUB_SECTIONS.map((section) => [section.key, section]));
 
 export function sectionsFor(note) {
@@ -546,7 +584,8 @@ export function dashboardFor(note) {
   const layout = note ? DASHBOARD_LAYOUT[note.kind] : null;
   if (!layout) return null;
   const sections = (keys = []) => keys.map((key) => BY_KEY.get(key));
-  return { wide: sections(layout.wide), act: sections(layout.act), know: sections(layout.know), emptyLine: layout.emptyLine ?? "lane" };
+  return { wide: sections(layout.wide), cards: sections(layout.cards), act: sections(layout.act), know: sections(layout.know),
+    emptyLine: layout.emptyLine ?? "lane" };
 }
 
 function questionRows(ctx, owner) {
@@ -748,6 +787,11 @@ function taskRows(ctx, owner, entry) {
   return [row, ...subs, ...add];
 }
 
+/** A person's own text, when it is the open note's (their Notes card). */
+function personNotes(ctx, person) {
+  return ctx.body?.id === person.id ? ctx.body.text : "";
+}
+
 /** A project's Outcome: its text's first line, the rest under it; one row, or none while empty. */
 function outcomeRows(ctx, hub) {
   const body = ctx.body?.id === hub.id ? ctx.body.text : "";
@@ -857,6 +901,61 @@ function projectPeopleRows(ctx, hub) {
       muted: archived, role: own?.role ?? "", actions: own ? [ROLE, REMOVE] : [],
     };
   });
+}
+
+/** A follow-up's chip on They owe me: "Follow up Mon", "Follow up · 4 d late" (info either way). */
+function followChips(day, today) {
+  if (!day) return [];
+  const late = daysBetweenDays(day, today);
+  return [{ text: late > 0 ? `Follow up · ${late} d late` : `Follow up ${soonDay(day, today)}`, tone: "info" }];
+}
+
+/** A due day's chip on I owe: "Overdue 1 d" (danger), "Due Mon" (caution). */
+function dueChips(day, today) {
+  if (!day) return [];
+  const late = daysBetweenDays(day, today);
+  return [late > 0 ? { text: `Overdue ${late} d`, tone: "danger" } : { text: `Due ${soonDay(day, today)}`, tone: "caution" }];
+}
+
+function daysBetweenDays(from, to) {
+  const serial = (day) => {
+    const [y, m, d] = day.split("-").map(Number);
+    return Date.UTC(y, m - 1, d) / 86400000;
+  };
+  return serial(to) - serial(from);
+}
+
+/** "45 min placed Mon": a task's next block on the calendar, from today on; "not placed". */
+function placedText(ctx, taskId) {
+  const today = localDay(ctx.today ?? new Date());
+  const next = (ctx.sessions ?? []).filter((session) => session.task_id === taskId && session.day >= today)
+    .sort((a, b) => `${a.day} ${a.start}`.localeCompare(`${b.day} ${b.start}`))[0];
+  if (!next) return "not placed";
+  const minutes = (time) => {
+    const [h, m] = String(time).split(":").map(Number);
+    return h * 60 + m;
+  };
+  const length = minutes(next.end) - minutes(next.start);
+  return `${length >= 0 ? `${length} min ` : ""}placed ${soonDay(next.day, today)}`;
+}
+
+/** A person's Together card: hubs, Last together, Meetings this month, Backlinks · Archived. */
+function togetherRows(ctx, person) {
+  const { tree, people, meetings } = ctx;
+  const now = ctx.today ?? new Date();
+  const hubs = hubLinks(tree, people, person.id).filter((link) => !link.archived).map(({ hub, role }) => ({
+    id: hub.id, title: hub.title, depth: 0, role,
+    detail: [groupForKind(hub.kind).label, role].filter(Boolean).join(" · "),
+    actions: [ROLE, REMOVE],
+  }));
+  const last = meetings ? lastTogether(tree, meetings, person.id, now) : null;
+  const lastRow = last ? [{ id: last.note.id, title: "Last together", depth: 0,
+    detail: `${shortTitle(last.note, last.meeting)} · ${dayText(last.meeting.day, { today: localDay(now) })}` }] : [];
+  const month = meetings ? meetingsThisMonth(tree, meetings, person.id, now) : 0;
+  const archived = referencedIn(ctx, person).filter((row) => row.archived).length;
+  return [...hubs, ...lastRow,
+    { id: person.id, title: "Meetings this month", depth: 0, detail: String(month), inert: true },
+    { id: person.id, title: `Backlinks ${backlinks(ctx, person).length} · Archived ${archived}`, depth: 0, muted: true, reveal: true }];
 }
 
 /** A row of Waiting on (a person's page, Home): the task, where it is, when to chase it. */

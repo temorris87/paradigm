@@ -2,7 +2,7 @@
 // later, No due date, Follow-ups), each once; the project/area filter with Other notes, and
 // the hub choice remembered.
 import { HUB_STORE, TaskSidebar } from "../../static/js/calendar/task-sidebar.js";
-import { HUB_KEYS } from "../../static/js/hubs/hub-keys.js";
+import { HUB_KEYS, keysFor } from "../../static/js/hubs/hub-keys.js";
 import { HUB_SECTIONS } from "../../static/js/hubs/hub-sections.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
 import { Tasks, hubChoices } from "../../static/js/tasks/tasks-model.js";
@@ -144,5 +144,8 @@ test("next action gone: a project's Tasks keep their order, offer no Make next, 
   const rows = section.rows({ tree, tasks, sessions: [], today: new Date(2026, 10, 25), expanded: new Set() }, tree.get(2));
   assertEqual(rows.map((row) => row.title).join(), "Overdue one,Later,Undated move,Delegated no follow,Phase undated,Done");
   assertTrue(rows.every((row) => row.next === undefined && !row.actions.some((action) => action.key === "next")));
-  assertEqual(HUB_KEYS.filter((entry) => entry.keys.includes("n")).map((entry) => `${entry.action}/${entry.only}`).join(), "newTask/project");
+  assertEqual(HUB_KEYS.filter((entry) => entry.keys.includes("n")).map((entry) => `${entry.action}/${entry.only ?? entry.page}`).join(),
+    "newTask/project,oneOnOne/person");
+  assertEqual(keysFor("project").filter((entry) => entry.keys.includes("n")).map((entry) => entry.action).join(), "newTask");
+  assertEqual(keysFor("person").filter((entry) => entry.keys.includes("n")).map((entry) => entry.action).join(), "oneOnOne");
 });

@@ -10,7 +10,7 @@ import { HUB_KEYS } from "../../static/js/hubs/hub-keys.js";
 import { MAIN_KEYS, installMainKeys, mainAction } from "../../static/js/layout/main-keys.js";
 import { noteHints, shadowedMainActions, viewHints, viewKeyGroups, viewTable } from "../../static/js/layout/view-keys.js";
 import { ONCALL_KEYS } from "../../static/js/oncall/oncall-keys.js";
-import { PAGE_KEYS } from "../../static/js/pages/page-keys.js";
+import { PAGE_KEYS, pageKeysFor } from "../../static/js/pages/page-keys.js";
 import { FOLDER_KEYS } from "../../static/js/resources/folder-keys.js";
 import { TASK_PAGE_KEYS } from "../../static/js/tasks/task-page-keys.js";
 import { TIME_KEYS } from "../../static/js/timesheet/time-keys.js";
@@ -67,7 +67,7 @@ test("view keys: n and g h are a project's only: another dashboard's bar and ? l
 test("key hints: a bar from a table: a cap and its words per hint, in table order", () => {
   assertEqual(hintsOf(TODAY_KEYS).map(({ cap, words }) => `${cap}=${words}`).join(),
     "j k=move,Space=done,s=schedule into next free slot,d=delegate,z=snooze to tomorrow,o=open");
-  assertEqual(hintsOf(PAGE_KEYS, { scope: "list" }).map(({ cap }) => cap).join(), "j k,Enter,/,a");
+  assertEqual(hintsOf(PAGE_KEYS, { scope: "list" }).map(({ cap }) => cap).join(), "j k,Enter,/,o,n,a");
   assertEqual(hintsOf(TIME_KEYS, { without: ["copy"] }).map(({ cap }) => cap).join(), "[ ],t");
   const bar = document.createElement("footer");
   drawKeyHints(bar, hintsOf(TIME_KEYS));
@@ -174,7 +174,7 @@ test("view keys: ? is the main window's, never in a text box", () => {
 });
 
 test("keys dialog: lists a table as it groups its keys; Escape closes it, the focus goes back", async () => {
-  assertEqual(keyGroups(PAGE_KEYS).map((group) => `${group.name}:${group.rows.length}`).join(), "list:11,search:1");
+  assertEqual(keyGroups(PAGE_KEYS).map((group) => `${group.name}:${group.rows.length}`).join(), "list:13,search:1");
   const groups = viewKeyGroups("people");
   assertEqual(groups.map((group) => group.name).join("|"), "People: The list|People: The search box|Anywhere in this window");
   const row = document.createElement("button");
@@ -185,7 +185,7 @@ test("keys dialog: lists a table as it groups its keys; Escape closes it, the fo
     const dialog = document.querySelector("dialog.keys-dialog");
     assertTrue(dialog?.open, "open");
     assertEqual(dialog.querySelectorAll(".keys-dialog__group").length, 3);
-    assertEqual(dialog.querySelectorAll(".keys-dialog__help").length, PAGE_KEYS.length + MAIN_KEYS.length, "every key with its help");
+    assertEqual(dialog.querySelectorAll(".keys-dialog__help").length, pageKeysFor("people").length + MAIN_KEYS.length, "every key with its help");
     const first = dialog.querySelector(".keys-dialog__keys");
     assertEqual([...first.querySelectorAll(".key")].map((cap) => cap.textContent).join(), "j,↓");
     assertTrue(!dialog.querySelector("input, textarea, select"), "read-only");
@@ -206,4 +206,25 @@ test("note keys: the note window's bar, as Figma has it: the capture leader, the
   const bound = (table, keys) => table.some((entry) => entry.keys === keys);
   for (const keys of ["\\t", "\\q", "\\d", "\\u"]) assertTrue(bound(NORMAL_KEYS, keys), keys);
   assertTrue(bound(VISUAL_KEYS, "\\t") && bound(NORMAL_KEYS, "v"));
+});
+
+test("view keys: a person's page has its own bar; People shows n, not a", () => {
+  const bar = (view, options) => viewHints(view, "plan", options).map(({ cap, words }) => `${cap} ${words}`).join(",");
+  assertEqual(bar(null, { person: true }),
+    "j k move,Tab next column,Space done,d delegate,a add topic,r raised,n 1:1 notes,o open,? all keys");
+  assertEqual(bar("people"), "j k move,Enter open,/ filter by name,o open items / everyone,n new person,? all keys");
+  assertEqual(bar("meetings"), "j k move,Enter open,/ search,a new,? all keys", "Meetings has no o or n");
+  const helps = (...args) => viewKeyGroups(...args).flatMap((group) => group.rows.map((row) => row.keys.join()));
+  assertTrue(helps("people").includes("a"), "a still makes a new person: in the ? list");
+  assertTrue(helps("people").includes("n") && helps("people").includes("o"));
+  assertTrue(!helps("meetings").includes("n"));
+  const person = helps(null, "plan", { person: true });
+  for (const key of ["Tab", "Shift-Tab", "a", "r", "n", "o", "d", "Space"]) assertTrue(person.includes(key), `person ? lists ${key}`);
+  assertTrue(!person.includes("L"), "a person logs no status");
+  assertTrue(!helps(null).includes("Tab"), "no Tab on other dashboards");
+  assertEqual(viewTable(null, "plan", { person: true }).name, "Person");
+  const { table } = viewTable(null, "plan", { person: true });
+  const bound = new Set(table.flatMap((entry) => entry.keys));
+  for (const entry of table.filter((each) => each.page === "person")) assertTrue(entry.help, entry.action);
+  assertTrue(bound.has("S-Tab"));
 });

@@ -3,9 +3,10 @@
 // the buttons Log status L, Open in note window ↗, History g h and ··· (the note menu); then
 // the facts row: Due, Next milestone, Area, People, Time code ("—" when empty; each opens what
 // changes it). An area: its name, its health from the status log (a badge, "No update for
-// 16 d" once stale), its Purpose on one line, Copy weekly digest / Log area status. A person: their name, job,
-// organisation, email and how many projects they are on; the next 1:1 (the next meeting they
-// attend), their next on-call week (oncall/) and Start 1:1 notes. The card under it
+// 16 d" once stale), its Purpose on one line, Copy weekly digest / Log area status. A person:
+// their initials in a circle, name, "Role · Org" and email (a link); on the right NEXT 1:1
+// (still to come: people/one-on-one.js), "Before that: ..." when another meeting with them
+// comes first, their next on-call week (oncall/) and Start 1:1 notes. The card under it
 // (hub-line.js) holds the rest.
 //
 //   const head = new DashHead(headerElement, { onLog(note), onDigest(note), onEdit(note), onOneOnOne(person),
@@ -14,9 +15,11 @@
 import { localDay } from "../meetings/meeting-days.js";
 import { StatusLogs, healthOf } from "../status/status-model.js";
 import { fieldsFor } from "./fields.js";
-import { nextTogether } from "../people/one-on-one.js";
+import { beforeThat, nextOneOnOne, soonDay } from "../people/one-on-one.js";
+import { shortTitle } from "../meetings/meetings-model.js";
+import { avatar } from "../ui/avatar.js";
 import { nextOnCall, nextOnCallText } from "../oncall/oncall-model.js";
-import { dayText } from "../ui/dates.js";
+import { dayText, timeSpan } from "../ui/dates.js";
 import { chip } from "../ui/chip.js";
 import { toneOf } from "../ui/chip-tones.js";
 import { NO_CONTROLS } from "./hub-line-controls.js";
@@ -81,33 +84,42 @@ export class DashHead {
 
 DashHead.prototype.showPerson = function showPerson(ctx, person) {
   this.root.hidden = false;
+  this.root.classList.remove("dash-head--project");
   this.note = person;
-  const today = localDay(ctx.today ?? new Date());
+  const now = ctx.today ?? new Date();
+  const today = localDay(now);
   const details = ctx.people?.get(person.id) ?? {};
-  const projects = (details.hubs ?? []).filter((link) => ctx.tree.get(link.hub_id)?.kind === "project" && !ctx.tree.get(link.hub_id)?.archived_at);
-  const main = element("div", "dash-head__main");
-  main.append(element("h1", "dash-head__title", person.title));
+  const main = element("div", "dash-head__main dash-head__main--person");
+  const who = element("div", "dash-head__who");
+  who.append(element("h1", "dash-head__title dash-head__title--person", person.title));
   const meta = element("div", "dash-head__meta");
   const parts = [details.job, details.org].filter(Boolean);
   if (parts.length) meta.append(element("span", "", parts.join(" · ")));
-  if (details.email) meta.append(element("span", "dash-head__email", details.email));
-  if (projects.length) meta.append(element("span", "", `on ${projects.length} project${projects.length === 1 ? "" : "s"}`));
-  main.append(meta);
-  const actions = element("div", "dash-head__actions");
-  const next = ctx.meetings ? nextTogether(ctx.tree, ctx.meetings, person.id, today) : null;
-  if (next) {
-    const when = element("div", "dash-head__next");
-    when.append(element("span", "dash-head__next-label", "Next 1:1"),
-      element("span", "dash-head__next-when", `${dayText(next.meeting.day, { today })}${next.meeting.time ? `, ${next.meeting.time}` : ""}`));
-    actions.append(when);
+  if (details.email) {
+    const email = element("a", "dash-head__email", details.email);
+    email.href = `mailto:${details.email}`;
+    meta.append(email);
   }
+  who.append(meta);
+  main.append(avatar(person.title, "dash-head__avatar"), who);
+  const actions = element("div", "dash-head__actions dash-head__actions--person");
+  const meets = ctx.meetings ? personMeetings(ctx, person, now) : { next: null, before: null };
+  const when = element("div", "dash-head__next");
+  when.append(element("span", "dash-head__next-label", "Next 1:1"),
+    element("span", "dash-head__next-when", meets.next ? meetingWhen(meets.next.meeting, today) : "None planned"));
+  if (meets.before) {
+    const { note, meeting } = meets.before;
+    when.append(element("span", "dash-head__before",
+      `Before that: ${shortTitle(note, meeting)}, ${soonDay(meeting.day, today)}${meeting.time ? ` ${meeting.time}` : ""}`));
+  }
+  actions.append(when);
   const onCall = ctx.onCall ? nextOnCall(ctx.onCall, ctx.tree, person.id, today) : null;
   if (onCall) {
-    const when = element("div", `dash-head__oncall${onCall.thisWeek ? " dash-head__oncall--now" : ""}`, nextOnCallText(onCall, today));
-    when.title = "From the on-call rota (Week › On call)";
-    actions.append(when);
+    const line = element("div", `dash-head__oncall${onCall.thisWeek ? " dash-head__oncall--now" : ""}`, nextOnCallText(onCall, today));
+    line.title = "From the on-call rota (Week › On call)";
+    actions.append(line);
   }
-  const start = button("Start 1:1 notes", "", "The next meeting with them, its agenda filled from To raise", () => this.handlers.onOneOnOne(person));
+  const start = button("Start 1:1 notes", "", "The next 1:1 with them, its agenda filled from To raise (n)", () => this.handlers.onOneOnOne(person));
   start.classList.add("dash-head__button--primary");
   actions.append(start);
   this.root.replaceChildren(main, actions);
@@ -183,6 +195,17 @@ function factButton(text, title, run) {
   node.title = title;
   node.addEventListener("click", run);
   return node;
+}
+
+/** The next 1:1 still to come, and another meeting with them that comes first. */
+function personMeetings(ctx, person, now) {
+  return { next: nextOneOnOne(ctx.tree, ctx.meetings, person.id, now), before: beforeThat(ctx.tree, ctx.meetings, person.id, now) };
+}
+
+/** "Tue 1 Dec · 10:00–10:30" */
+function meetingWhen(meeting, today) {
+  const time = timeSpan(meeting.time, meeting.end_time);
+  return [dayText(meeting.day, { today }), time].filter(Boolean).join(" · ");
 }
 
 function button(text, key, title, run) {

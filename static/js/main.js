@@ -48,11 +48,12 @@ let appNow = () => null;
 const weekTab = () => weekPage?.view ?? "plan";
 const hintBar = $(".key-hints");
 // L on a dashboard logs status only when the note belongs to a project or an area; a
-// project's page has a bar of its own.
+// project's page has a bar of its own, and a person's dashboard its own keys (Tab, a, r, n, o).
 const hintOptions = (app) => {
   const note = app?.tree?.get(app.currentId);
   return { logStatus: Boolean(app?.tree && statusHubOf(app)),
-    project: note?.kind === "project" && app.tree.parentId(note.id) === null };
+    project: note?.kind === "project" && app.tree.parentId(note.id) === null,
+    person: note?.kind === "person" };
 };
 const drawHints = () => drawKeyHints(hintBar, viewHints(appNow()?.views?.shown ?? null, weekTab(), hintOptions(appNow())));
 

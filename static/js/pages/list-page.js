@@ -6,19 +6,30 @@
 //     name: "people",                      class list-page--people on the section
 //     heading: "People",
 //     filters: [{ key, label, any: "any" }],  dropdowns; values are strings, "" is any
-//     search: { key, label, placeholder },  the text box ("/" reaches it)
+//                                          (any: null: no "any"; the first option is the default;
+//                                          fit: true: never narrower than its longest option, for
+//                                          a short fixed list such as Sort; inline: true:
+//                                          one line, "Hub: any ▾", the label inside the
+//                                          control as each option's prefix, not over it)
+//     search: { key, label, placeholder?, cap?, inline? },  the text box ("/" reaches it; cap: a
+//                                          key cap after its label; inline: true: one line, the
+//                                          label as the box's name and placeholder, the cap
+//                                          inside the box at its right, as in the top bar)
 //     options(ctx) -> { [filter key]: [[value, text]] }
 //     rows(ctx, filters) -> [{ id, ... }]   what matches, in the order shown
-//     cells(row, ctx) -> [[className, text]]
+//     cells(row, ctx) -> [[className, text | Node | [Node]]]
 //     columns: ["Name", ...]               optional: a heading over each cell's column
 //     empty: "No one matches",
-//     add: { label: "New person", run() },  optional: a button in the bar (and the a key)
+//     add: { label: "New person", run(), key? },  optional: a button in the bar (and the a key;
+//                                          key: the one its tooltip names)
 //     pills: { key, choices(ctx) -> [[value, text]] }   optional: quick filters as pills, one
 //                                          on (the first unless chosen); the value is in filters
 //     groupOf(row) -> { key, label, className? }   optional: rows under day (or other)
 //                                          headings; } and { jump between them
 //     onAction(action, filters) -> true    optional: a page key the list doesn't know (the
-//                                          Meetings page's p); true: draw again
+//                                          Meetings page's p); true: draw again (it may change
+//                                          filters, the pills' value too)
+//     footnote(ctx, filters, rows) -> text  optional: a quiet line under the list
 //     onOpen(id), onLeave() });
 //   page.show(ctx)    draw (again) with the filters as they are
 //   page.focus()      the list
@@ -29,6 +40,7 @@
 // the filters are ordinary form fields, so Tab goes through them like on any web page.
 import { pageAction } from "./page-keys.js";
 import { chip } from "../ui/chip.js";
+import { keyCap } from "../ui/key-hints.js";
 
 export class ListPage {
   constructor(section, spec) {
@@ -45,11 +57,12 @@ export class ListPage {
     heading.append(this.count);
     this.selects = new Map(spec.filters.map((filter) => [filter.key, this.select(filter)]));
     this.searchBox = element("input", "list-page__search");
-    Object.assign(this.searchBox, { type: "search", placeholder: spec.search.placeholder, autocomplete: "off" });
+    Object.assign(this.searchBox, { type: "search", placeholder: spec.search.placeholder ?? "", autocomplete: "off" });
     this.searchBox.addEventListener("input", () => this.setFilter(spec.search.key, this.searchBox.value));
     this.searchBox.addEventListener("keydown", (event) => this.onSearchKey(event));
     const filters = element("div", "list-page__filters");
-    filters.append(...[...this.selects.values()].map((s) => s.closest("label")), labelled(spec.search.label, this.searchBox));
+    const searchLabel = this.searchField(spec.search);
+    filters.append(...[...this.selects.values()].map((s) => s.closest("label")), searchLabel);
     this.list = element("ul", "list-page__list");
     this.list.id = `${spec.name}-list`;
     this.list.tabIndex = 0;
@@ -72,8 +85,13 @@ export class ListPage {
     if (spec.add) {
       const add = element("button", "list-page__add", `+ ${spec.add.label}`);
       add.type = "button";
-      add.title = `${spec.add.label} (a)`;
-      add.addEventListener("click", () => spec.add.run());
+      add.title = `${spec.add.label} (${spec.add.key ?? "a"})`;
+      // The list takes the focus first, so a dialog the add opens gives it back to the list (its
+      // keys), not to this button, when it closes.
+      add.addEventListener("click", () => {
+        this.focus();
+        spec.add.run();
+      });
       bar.append(add);
     }
     this.message = element("p", "list-page__message");
@@ -85,7 +103,8 @@ export class ListPage {
       head.setAttribute("aria-hidden", "true");
       head.append(...spec.columns.map((text, index) => element("span", "list-page__cell", text)));
     }
-    section.replaceChildren(...[bar, this.message, head, this.list].filter(Boolean));
+    this.foot = spec.footnote ? element("p", "list-page__foot") : null;
+    section.replaceChildren(...[bar, this.message, head, this.list, this.foot].filter(Boolean));
   }
 
   say(text) {
@@ -93,11 +112,38 @@ export class ListPage {
     this.message.hidden = !text;
   }
 
-  select({ key, label }) {
+  // Inline, the box names itself (its placeholder) and holds its key cap, so a bar with three
+  // dropdowns, the pills and the New button still fits on one line.
+  searchField({ label, cap, inline = false }) {
+    if (inline) {
+      this.searchBox.setAttribute("aria-label", label);
+      this.searchBox.placeholder = label;
+    }
+    const wrap = labelled(inline ? null : label, this.searchBox);
+    wrap.classList.toggle("list-page__label--search-inline", inline);
+    if (cap && inline) wrap.append(keyCap(cap));
+    else if (cap) wrap.querySelector(".list-page__label-text").append(" ", keyCap(cap));
+    return wrap;
+  }
+
+  select({ key, label, fit = false, inline = false }) {
     const select = element("select", "list-page__filter");
     select.dataset.filter = key;
-    select.addEventListener("change", () => this.setFilter(key, select.value));
-    labelled(label, select);
+    // A choice made with the mouse hands the focus back to the list, so its keys work again
+    // without a click on it; one made with the keys stays, so the arrows can step on.
+    let pointed = false;
+    select.addEventListener("pointerdown", () => { pointed = true; });
+    select.addEventListener("keydown", () => { pointed = false; });
+    select.addEventListener("change", () => {
+      this.setFilter(key, select.value);
+      if (pointed) this.focus();
+      pointed = false;
+    });
+    // Inline: the options say what the field is, so the label element only wraps it.
+    if (inline) select.setAttribute("aria-label", label);
+    const wrap = labelled(inline ? null : label, select);
+    wrap.classList.toggle("list-page__label--fit", fit);
+    wrap.classList.toggle("list-page__label--inline", inline);
     return select;
   }
 
@@ -114,13 +160,13 @@ export class ListPage {
 
   fillOptions() {
     const choices = this.spec.options(this.ctx);
-    for (const { key, any = "any" } of this.spec.filters) {
+    for (const { key, label, any = "any", inline = false } of this.spec.filters) {
       const select = this.selects.get(key);
-      const options = [["", any], ...(choices[key] ?? [])];
+      const options = [...(any === null ? [] : [["", any]]), ...(choices[key] ?? [])];
       // A value no one has any more (a role renamed in another tab): back to "any".
-      if (!options.some(([value]) => value === this.values[key])) this.values[key] = "";
+      if (!options.some(([value]) => value === this.values[key])) this.values[key] = options[0]?.[0] ?? "";
       select.replaceChildren(...options.map(([value, text]) => {
-        const option = element("option", "", text);
+        const option = element("option", "", inline ? `${label}: ${text}` : text);
         option.value = value;
         return option;
       }));
@@ -138,9 +184,11 @@ export class ListPage {
       const on = value === this.values[key];
       const pill = chip(text, on ? "info" : "neutral", { tag: "button" });
       pill.setAttribute("aria-pressed", String(on));
+      // Drawn again, the pressed pill is gone: the list takes the focus, not the page body.
       pill.addEventListener("click", () => {
         this.setFilter(key, value);
         this.drawPills();
+        this.focus();
       });
       return pill;
     }));
@@ -169,6 +217,10 @@ export class ListPage {
       nodes.push(this.row(row, index));
     });
     this.list.replaceChildren(...(total ? nodes : [element("li", "list-page__empty", this.spec.empty)]));
+    if (this.foot) {
+      this.foot.textContent = this.spec.footnote(this.ctx, this.values, this.rows) ?? "";
+      this.foot.hidden = !this.foot.textContent;
+    }
     this.markActive();
   }
 
@@ -177,7 +229,12 @@ export class ListPage {
     li.id = `${this.spec.name}-row-${index}`;
     li.dataset.index = String(index);
     li.setAttribute("role", "option");
-    li.append(...this.spec.cells(row, this.ctx).map(([className, text]) => element("span", `list-page__cell ${className}`, text)));
+    li.append(...this.spec.cells(row, this.ctx).map(([className, content]) => {
+      if (typeof content === "string") return element("span", `list-page__cell ${className}`, content);
+      const cell = element("span", `list-page__cell ${className}`);
+      cell.append(...[content].flat());
+      return cell;
+    }));
     return li;
   }
 
@@ -194,7 +251,7 @@ export class ListPage {
   }
 
   onListKey(event) {
-    const action = pageAction(event, "list");
+    const action = pageAction(event, "list", this.spec.name);
     if (!action) return;
     event.preventDefault();
     event.stopPropagation();
@@ -206,13 +263,17 @@ export class ListPage {
       case "last": return this.moveTo(last);
       case "open": return this.openRow(this.active);
       case "search": return this.searchBox.focus();
-      case "add": return this.spec.add?.run();
+      case "add":
+      case "new": return this.spec.add?.run();
       case "leave": return this.spec.onLeave();
       case "nextGroup": return this.moveTo(this.groupStart(1));
       case "previousGroup": return this.moveTo(this.groupStart(-1));
       case "pending": return undefined;
       default:
-        if (this.spec.onAction?.(action, this.values)) this.setFilter("", undefined);
+        if (this.spec.onAction?.(action, this.values)) {
+          this.drawPills();
+          this.setFilter("", undefined);
+        }
         return undefined;
     }
   }
@@ -227,7 +288,7 @@ export class ListPage {
   }
 
   onSearchKey(event) {
-    if (pageAction(event, "search") !== "list") return;
+    if (pageAction(event, "search", this.spec.name) !== "list") return;
     event.preventDefault();
     event.stopPropagation();
     this.focus();
@@ -249,9 +310,11 @@ export class ListPage {
   }
 }
 
+/** A field in its label; text null: no words over it (the field names itself). */
 function labelled(text, field) {
   const label = element("label", "list-page__label");
-  label.append(element("span", "list-page__label-text", text), field);
+  if (text !== null) label.append(element("span", "list-page__label-text", text));
+  label.append(field);
   return label;
 }
 
