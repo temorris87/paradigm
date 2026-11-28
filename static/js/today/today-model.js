@@ -1,15 +1,24 @@
 // What the Today page shows (static/js/today/today-page.js), worked out from the app's ctx:
-// { tree, meetings, records, tasks, sessions, statusLogs, timeSettings, importStatus }.
+// { tree, meetings, records, tasks, sessions, statusLogs, timeSettings, importStatus, pending }
+// (pending: the imported events still to file, GET /api/calendar/pending).
 // now is a Date (passed in, so tests set the clock). Pure.
 //
 //   planningSettings(timeSettings)   the working hours and the holidays' days, for capacity.js
 //   nowBlock(ctx, now)               the task block on now: { entry, session, start, end, elapsed,
 //                                    left, next: false }; else today's next block (next: true);
 //                                    else null
-//   dayTimeline(ctx, now)            { capacity, rows: [{ key, time, kind: meeting | task | free |
-//                                    suggest, title, detail, id, taskId?, sessionId?, past, done,
-//                                    current, minutes? }] } by time; free: a gap of 30 min or
-//                                    more in the working hours not yet over
+//   dayTimeline(ctx, now)            { capacity, rows: [{ key, time, kind: meeting | pending | task |
+//                                    free | suggest, title, detail, id, taskId?, sessionId?, past,
+//                                    done, current, minutes? }] } by time; free: a gap of 30 min or
+//                                    more in the working hours not yet over; pending: an imported
+//                                    event still to file (on the Week's To file), muted
+//   freeLeft(ctx, now)               the day column's head: { state: left | none | over | off,
+//                                    freeMin (free working time from now on, outside meetings
+//                                    and blocks), meetingMin, focusMin (the whole day's) }
+//   freeLeftText(left)               "2.5 h free left today · 1.5 h meetings · 1 h focus",
+//                                    "No free time left today", "Working day over", "Day off"
+//   restIsFree(ctx, now)             the Now card's empty headline: nothing more on today (no
+//                                    meeting still to come) and free working time left
 //   upNext(ctx, now)                 [item], ranked: overdue (oldest due first), follow-ups past
 //                                    due, due today, due within 5 working days, questions
 //                                    waiting over 7 days (oldest first). Never done tasks,
@@ -34,7 +43,7 @@ import { isArchived } from "../notes/hub-groups.js";
 import { DEFAULT_LENGTH, clock, minutes } from "../calendar/week-model.js";
 import { StatusLogs, firstSentence, healthOf } from "../status/status-model.js";
 import { estimateText, taskEntries } from "../tasks/tasks-model.js";
-import { dayCapacity, freeGaps, isWorkingDay } from "../week/capacity.js";
+import { dayCapacity, freeGaps, hoursText, isWorkingDay, workingSpans } from "../week/capacity.js";
 import { dayText } from "../ui/dates.js";
 import { openQuestions } from "./today-facts.js";
 
@@ -92,6 +101,15 @@ export function dayTimeline(ctx, now) {
         muted: Boolean(meeting.cancelled) });
     }
   }
+  // A first import's events wait in To file (no hub yet): show them, or the day looks empty.
+  for (const event of ctx.pending ?? []) {
+    if (event.day !== day) continue;
+    const start = minutes(event.time);
+    const end = minutes(event.end_time) ?? (start === null ? null : start + DEFAULT_LENGTH);
+    rows.push({ key: `pending:${event.id}`, time: event.time || "", sort: start ?? 24 * 60, kind: "pending",
+      title: event.title, detail: "to file on the Week (g w)", id: null, past: end !== null && end <= at, done: false,
+      current: start !== null && start <= at && at < end, muted: true });
+  }
   const entries = new Map(liveEntries(ctx).map((entry) => [entry.task.id, entry]));
   for (const session of ctx.sessions ?? []) {
     const entry = entries.get(session.task_id);
@@ -103,7 +121,7 @@ export function dayTimeline(ctx, now) {
       sessionId: session.id, past: end <= at, done: entry.task.done, current: start <= at && at < end });
   }
   if (isWorkingDay(day, settings)) {
-    for (const [start, end] of freeGaps(ctx, day, settings, at)) {
+    for (const [start, end] of freeGaps(busyCtx(ctx), day, settings, at)) {
       if (end - start < MIN_GAP) continue;
       rows.push({ key: `free:${start}`, time: clock(start), sort: start, kind: "free", title: `${gapText(end - start)} free`,
         detail: "press s on an item to fill", id: null, past: false, done: false, current: false, minutes: end - start });
@@ -116,11 +134,52 @@ export function dayTimeline(ctx, now) {
       detail: `${stale} project${stale === 1 ? "" : "s"} stale (suggested)`, id: null, past: false, done: false, current: false });
   }
   rows.sort((a, b) => a.sort - b.sort || kindOrder(a) - kindOrder(b));
-  return { capacity: dayCapacity(ctx, day, settings), rows: rows.map(({ sort, ...row }) => row) };
+  return { capacity: dayCapacity(busyCtx(ctx), day, settings), rows: rows.map(({ sort, ...row }) => row) };
+}
+
+// Imported events still in To file fill the day as meetings do, or a first import's day reads free.
+function busyCtx(ctx) {
+  return { ...ctx, held: ctx.pending ?? [] };
+}
+
+export function freeLeft(ctx, now) {
+  const day = localDay(now);
+  const at = minuteOf(now);
+  const settings = planningSettings(ctx.timeSettings);
+  const capacity = dayCapacity(busyCtx(ctx), day, settings);
+  const facts = { freeMin: 0, meetingMin: capacity.meetingMin, focusMin: capacity.focusMin };
+  if (!isWorkingDay(day, settings)) return { state: "off", ...facts };
+  const spans = workingSpans(settings);
+  if (at >= spans[spans.length - 1][1]) return { state: "over", ...facts };
+  const gaps = freeGaps(busyCtx(ctx), day, settings, at).reduce((sum, [start, end]) => sum + (end - start), 0);
+  // A part day off shrinks the day, not a time range: never more left than the day has free.
+  const freeMin = Math.min(gaps, capacity.freeMin);
+  return { state: freeMin > 0 ? "left" : "none", ...facts, freeMin };
+}
+
+export function freeLeftText({ state, freeMin, meetingMin, focusMin }) {
+  if (state === "off") return "Day off";
+  if (state === "over") return "Working day over";
+  if (state === "none") return "No free time left today";
+  const parts = [`${hoursText(freeMin)} free left today`];
+  if (meetingMin) parts.push(`${hoursText(meetingMin)} meetings`);
+  if (focusMin) parts.push(`${hoursText(focusMin)} focus`);
+  return parts.join(" · ");
+}
+
+export function restIsFree(ctx, now) {
+  if (freeLeft(ctx, now).state !== "left") return false;
+  const day = localDay(now);
+  const at = minuteOf(now);
+  const later = ctx.meetings ? allMeetings(ctx.tree, ctx.meetings).some(({ meeting, archived }) => !archived && !meeting.cancelled
+    && meeting.day === day && (minutes(meeting.end_time) ?? (minutes(meeting.time) ?? 0) + DEFAULT_LENGTH) > at) : false;
+  const toFile = (ctx.pending ?? []).some((event) => event.day === day
+    && (minutes(event.end_time) ?? (minutes(event.time) ?? 0) + DEFAULT_LENGTH) > at);
+  return !later && !toFile;
 }
 
 function kindOrder(row) {
-  return { meeting: 0, task: 1, free: 2, suggest: 3 }[row.kind];
+  return { meeting: 0, pending: 0, task: 1, free: 2, suggest: 3 }[row.kind];
 }
 
 function gapText(total) {

@@ -4,24 +4,35 @@
 //   2. Up next: one list ranked across every project (today-model.js upNext); its keys are in
 //      the window's key-hint bar (layout/view-keys.js).
 //   3. Who is on call this week (the rota, oncall/), Projects with their latest status, the
-//      Inbox, and whether today's calendar is in.
+//      Inbox.
+// While today's calendar isn't imported (calendar/import-state.js showsPanel, today the only
+// day), the Week's Import panel (calendar/import-panel.js) greys the day under the Now card:
+// its rows take no clicks and drop out of the listbox. i or Import a file… picks .ics files, a
+// drop anywhere on the page imports them (actions.importCalendar), and Not today hides it for
+// the rest of today, in the flag the Week's Plan without it sets (calendar/import-upload.js).
 // It draws what today-model.js works out and reports what was asked (actions); the app runs
 // it. The whole page is one focus stop: a listbox over Up next, the day, On call, Projects and
 // the Inbox, in that order (} and { jump between them), starting on Up next.
 //
-//   const page = new TodayPage(section, { onOpen(id), onLeave(), today(), actions });
+//   const page = new TodayPage(section, { onOpen(id), onLeave(), today(), actions, storage? });
 //     actions: { done(taskId, done), schedule(taskId), delegate(taskId), snooze(taskId),
-//                answer(questionId), extend(sessionId), log(), fileAll(), onCall() }
+//                answer(questionId), extend(sessionId), log(), fileAll(), onCall(),
+//                importCalendar(files), toFile() }
+//     A row still to file (an import's new series) opens the Week, where To file files it.
+//     storage: where Not today is kept (localStorage by default)
 //   page.show(ctx); page.focus();
 // The Now card's bar moves on once a minute while the page shows.
 import { localDay } from "../meetings/meeting-days.js";
 import { nextMeeting, inboxNotes } from "./today-facts.js";
 import { todayAction } from "./today-keys.js";
-import { dayTimeline, nowBlock, projectRows, upNext } from "./today-model.js";
+import { dayTimeline, freeLeft, freeLeftText, nowBlock, projectRows, restIsFree, upNext } from "./today-model.js";
+import { ImportPanel } from "../calendar/import-panel.js";
+import { lastImportedText, showsPanel } from "../calendar/import-state.js";
+import { calendarPicker, planWithoutDay, setPlanWithout } from "../calendar/import-upload.js";
 import { hoursText } from "../week/capacity.js";
 import { clock } from "../calendar/week-model.js";
 import { dayText, whenText } from "../ui/dates.js";
-import { allMeetings, shortTitle } from "../meetings/meetings-model.js";
+import { shortTitle } from "../meetings/meetings-model.js";
 import { cellPeople } from "../oncall/oncall-model.js";
 import { chip } from "../ui/chip.js";
 import { toneOf } from "../ui/chip-tones.js";
@@ -29,12 +40,13 @@ import { toneOf } from "../ui/chip-tones.js";
 const MINUTE_MS = 60 * 1000;
 
 export class TodayPage {
-  constructor(section, { onOpen, onLeave, today = () => new Date(), actions = {} }) {
+  constructor(section, { onOpen, onLeave, today = () => new Date(), actions = {}, storage = window.localStorage }) {
     this.section = section;
     this.onOpen = onOpen;
     this.onLeave = onLeave;
     this.today = today;
     this.actions = actions;
+    this.storage = storage;
     this.ctx = null;
     this.options = []; // [{ key, part, item }]
     this.active = 0;
@@ -46,7 +58,19 @@ export class TodayPage {
     this.list.setAttribute("aria-label", "Today");
     this.list.addEventListener("keydown", (event) => this.onKey(event));
     this.list.addEventListener("click", (event) => this.onClick(event));
-    section.replaceChildren(this.list);
+    this.picker = calendarPicker((files) => this.importFiles(files));
+    // The day and the panel over it share one grid cell (css/today.css), kept across redraws.
+    this.dayCell = element("div", "today-daycell");
+    this.panel = new ImportPanel({ cell: this.dayCell, grid: this.dayCell, onPick: () => this.pickFiles(),
+      onPlanWithout: () => this.notToday(), withoutLabel: "Not today" });
+    section.replaceChildren(this.list, this.picker);
+    for (const type of ["dragover", "drop"]) {
+      section.addEventListener(type, (event) => {
+        if (![...(event.dataTransfer?.types ?? [])].includes("Files")) return;
+        event.preventDefault();
+        if (type === "drop") this.importFiles(event.dataTransfer.files);
+      });
+    }
     setInterval(() => {
       if (!section.hidden && this.ctx) this.show(this.ctx);
     }, MINUTE_MS);
@@ -60,6 +84,10 @@ export class TodayPage {
     const timeline = dayTimeline(ctx, now);
     const projects = projectRows(ctx, now);
     const inbox = inboxNotes(ctx.tree);
+    const day = localDay(now);
+    const covered = showsPanel({ days: [day], today: day, status: ctx.importStatus, planWithout: planWithoutDay(this.storage) });
+    // Redrawing moves the panel, which drops a focus inside it: put it back after.
+    const panelHadFocus = this.panel.node.contains(document.activeElement);
     this.options = [];
     // Options are numbered in key order (Up next first), whatever the column they sit in.
     const order = ["next", "day", "oncall", "projects", "inbox"];
@@ -69,12 +97,15 @@ export class TodayPage {
       return parts[part].length - 1;
     };
     const nowColumn = element("div", "today__col today__col--now");
-    nowColumn.append(this.nowCard(ctx, now), this.dayPart(ctx, now, timeline, register));
+    const dayPart = this.dayPart(ctx, now, timeline, covered ? null : register);
+    this.dayCell.replaceChildren(dayPart, this.panel.node);
+    this.panel.grid = dayPart;
+    this.panel.draw({ shown: covered, lastText: lastImportedText(ctx.importStatus, day) });
+    nowColumn.append(this.nowCard(ctx, now), this.dayCell);
     const nextColumn = element("div", "today__col today__col--next");
     nextColumn.append(this.upNextPart(next, register));
     const sideColumn = element("div", "today__col today__col--side");
-    sideColumn.append(this.onCallPart(ctx, now, register), this.projectsPart(projects, register), this.inboxPart(inbox, register),
-      this.importChip(ctx));
+    sideColumn.append(this.onCallPart(ctx, now, register), this.projectsPart(projects, register), this.inboxPart(inbox, register));
     this.list.replaceChildren(nowColumn, nextColumn, sideColumn);
     this.options = order.flatMap((part) => parts[part]);
     // Number the nodes now that the order is known.
@@ -91,6 +122,10 @@ export class TodayPage {
     const again = this.options.findIndex((option) => option.key === activeKey);
     this.active = Math.max(0, again);
     this.markActive();
+    if (panelHadFocus) {
+      if (this.panel.shown) this.panel.focus();
+      else this.focus();
+    }
   }
 
   // ---- column 1 ----
@@ -130,7 +165,7 @@ export class TodayPage {
     const card = element("section", "today-now today-now--empty");
     card.setAttribute("aria-label", "Now");
     card.append(element("span", "today-now__label today-now__label--empty", "NOTHING PLANNED"),
-      element("h2", "today-now__title", `${weekdayName(now)} is clear.`));
+      element("h2", "today-now__title", restIsFree(ctx, now) ? "The rest of today is free" : `${weekdayName(now)} is clear.`));
     const next = ctx.meetings ? nextMeeting(ctx.tree, ctx.meetings, now) : null;
     const due = upNext(ctx, now).filter((item) => item.kind === "task").length;
     const line = element("p", "today-now__meta");
@@ -138,6 +173,8 @@ export class TodayPage {
     if (due) {
       const plan = element("button", "today-now__link", `${due} item${due === 1 ? " is" : "s are"} up next — plan the day`);
       plan.type = "button";
+      // The page is one focus stop (as the card's buttons): a redraw would drop a focus here.
+      plan.tabIndex = -1;
       plan.addEventListener("click", () => this.moveTo(0));
       line.append(plan);
     }
@@ -145,14 +182,14 @@ export class TodayPage {
     return card;
   }
 
-  dayPart(ctx, now, { capacity, rows }, register) {
+  /** The day's rows; register null while the Import panel greys it (no row is an option then). */
+  dayPart(ctx, now, { rows }, register) {
     const part = element("section", "today-day");
     part.setAttribute("role", "group");
     const heading = element("h2", "today__heading", dayText(localDay(now), { today: now }));
     heading.id = "today-heading-day";
     part.setAttribute("aria-labelledby", heading.id);
-    heading.append(element("span", "today__detail",
-      [`${hoursText(capacity.meetingMin)} meetings`, `${hoursText(capacity.focusMin)} focus`, `${hoursText(capacity.freeMin)} free`].join(" · ")));
+    heading.append(element("span", "today__detail", freeLeftText(freeLeft(ctx, now))));
     part.append(heading);
     if (!rows.length) part.append(element("p", "today__empty", "Nothing on the calendar today"));
     for (const row of rows) {
@@ -165,7 +202,7 @@ export class TodayPage {
       if (row.current && row.kind === "task") title.append(element("span", "today-day__detail", " · now"));
       else if (row.detail) title.append(element("span", "today-day__detail", ` · ${row.detail}`));
       node.append(element("span", "today-day__time", row.time || "—"), title);
-      part.append(this.option(node, register("day", row.key, row), "day"));
+      part.append(register ? this.option(node, register("day", row.key, row), "day") : node);
     }
     return part;
   }
@@ -274,16 +311,22 @@ export class TodayPage {
     return part;
   }
 
-  importChip({ importStatus, tree, meetings }) {
-    const chip = element("p", "today-import");
-    chip.hidden = !importStatus;
-    if (!importStatus) return chip;
-    const done = Boolean(importStatus.imported_today);
-    const count = meetings ? meetingsThisWeek(tree, meetings, this.today()) : 0;
-    chip.append(element("span", `today-import__dot${done ? " today-import__dot--done" : ""}`, "● "),
-      done ? `Calendar imported today · ${count} meeting${count === 1 ? "" : "s"} this week`
-        : "Today's calendar isn't imported · Week (g w) to import");
-    return chip;
+  // ---- the import ----
+
+  /** i, or the panel's Import a file…: the browser's file picker, .ics only, several at once. */
+  pickFiles() {
+    this.picker.click();
+  }
+
+  importFiles(files) {
+    this.actions.importCalendar?.(files);
+  }
+
+  /** Not today: no panel for the rest of today in this browser, here and on the Week. */
+  notToday() {
+    setPlanWithout(this.storage, localDay(this.today()));
+    if (this.ctx) this.show(this.ctx);
+    this.focus();
   }
 
   // ---- the listbox ----
@@ -306,6 +349,8 @@ export class TodayPage {
   onKey(event) {
     const action = todayAction(event);
     if (!action) return;
+    // Enter and Space on the panel's buttons are the buttons' own.
+    if (event.target !== this.list && event.target.closest?.("button") && (action === "open" || action === "done")) return;
     event.preventDefault();
     event.stopPropagation();
     const last = this.options.length - 1;
@@ -319,6 +364,7 @@ export class TodayPage {
       case "leave": return this.onLeave();
       case "pending": return undefined;
       case "fileAll": return this.actions.fileAll?.();
+      case "import": return this.pickFiles();
       default: return this.run(action);
     }
   }
@@ -333,6 +379,7 @@ export class TodayPage {
       case "open":
         if (item.kind === "suggest") return this.actions.log?.();
         if (item.kind === "oncall") return this.actions.onCall?.();
+        if (item.kind === "pending") return this.actions.toFile?.();
         return item.id !== null && item.id !== undefined ? this.onOpen(item.id) : undefined;
       case "done":
         if (item.questionId) return this.actions.answer?.(item.questionId);
@@ -375,13 +422,6 @@ export class TodayPage {
   focus() {
     this.list.focus();
   }
-}
-
-function meetingsThisWeek(tree, meetings, now) {
-  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
-  const first = localDay(monday);
-  const last = localDay(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6));
-  return allMeetings(tree, meetings).filter(({ meeting, archived }) => !archived && !meeting.cancelled && meeting.day >= first && meeting.day <= last).length;
 }
 
 function minuteOf(now) {

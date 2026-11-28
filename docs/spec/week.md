@@ -86,8 +86,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   meeting of that name; File, File all, Don't import) and show muted on the week. Skipped:
   all-day, free, tentative, out of office, working elsewhere. Attendees are matched by email,
   then name, else made as people (rooms, groups and you left out; none past 20). A trashed
-  imported meeting is never made again. Today's banner reads "Today's calendar isn't imported ·
-  Week (g w) to import" until today's import.
+  imported meeting is never made again. Today shows the same Import panel until today's import
+  (2026-11-27; feature 030, which replaced its "Week (g w) to import" chip).
 - Import panel (Figma "Week · not imported", Tyson, 2026-11-27): on the Plan tab, while the
   week shown holds today and nothing was imported today, the grid greys out (its blocks wash
   with the page; no clicks or drags) under a raised panel centred over it: "Today's calendar
@@ -99,7 +99,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   `j` `k` do nothing in the grid while it shows. Once a file goes in, the panel goes, the grid
   redraws and the focus stays on the page; a failed file leaves it up. Plan without it hides it
   for the rest of today in this browser (`localStorage` `paradigm.planWithout`, the day), so
-  tomorrow it is back; meanwhile the bar keeps a quiet "Not imported today · i" on the right.
+  tomorrow it is back; Today's Not today sets the same day, so either hides both (Tyson,
+  2026-11-27); meanwhile the bar keeps a quiet "Not imported today · i" on the right.
   `/api/calendar/status` gives `imported_today`, `last_day` and `last_at` (null when never).
 - Imported agenda (Tyson, 2026-11-26): the invite's text, without Teams' joining text. A section
   between underscore rules is Teams' block when one of its lines is wholly a Teams phrase

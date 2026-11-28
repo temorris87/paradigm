@@ -2,7 +2,10 @@
 // commands as the dashboards and the calendar). Each wraps its work in app.guard, so errors
 // show in the status line.
 //
-//   const actions = todayActions(app);    { done, schedule, delegate, snooze, answer, extend, fileAll, log, onCall }
+//   const actions = todayActions(app);    { done, schedule, delegate, snooze, answer, extend, fileAll, log, onCall,
+//                                           importCalendar, toFile }
+import { hasError, uploadText } from "../calendar/import-state.js";
+import { ONLY_CALENDAR_FILES, uploadCalendarFiles } from "../calendar/import-upload.js";
 import { answerDialog } from "../hubs/hub-actions.js";
 import { logStatusDialog } from "../status/status-commands.js";
 import { delegateDialog, extendBlock, scheduleTask, setTaskDone, snoozeTask } from "../tasks/task-commands.js";
@@ -20,6 +23,9 @@ export function todayActions(app) {
     extend: (sessionId) => run(() => extendBlock(app, sessionId)),
     fileAll: () => run(() => triageInbox(app)),
     onCall: () => app.onCallCommand(),
+    // An event still to file: the Week, whose To file tab files it.
+    toFile: () => app.calendarCommand(),
+    importCalendar: (files) => run(() => importCalendar(app, files)),
     // The day's "Log status" line: the stalest project first.
     log: () => run(() => {
       const stale = projectRows({ tree: app.tree, statusLogs: app.statusLogs }, app.today())
@@ -27,4 +33,17 @@ export function todayActions(app) {
       return logStatusDialog(app, stale ? app.tree.get(stale.id) : null);
     }),
   };
+}
+
+// The same uploads as the Week's (calendar/import-upload.js); once one goes in, everything is
+// read again, so Today redraws without its panel, and the other windows hear of it.
+async function importCalendar(app, files) {
+  const results = await uploadCalendarFiles((file) => app.calendarApi.upload(file), files);
+  if (!results) return app.say(ONLY_CALENDAR_FILES);
+  if (results.some((each) => !each.error)) {
+    await app.refreshTree();
+    app.changes.send({ type: "changed", what: ["meetings"] });
+  }
+  const text = uploadText(results);
+  return app.say(text, { error: hasError(text) });
 }

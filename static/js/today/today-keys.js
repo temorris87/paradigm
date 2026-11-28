@@ -16,6 +16,8 @@ export const TODAY_KEYS = [
   { keys: ["d"], action: "delegate", help: "Delegate… the task, or change who has it", hint: "delegate" },
   { keys: ["z"], action: "snooze", help: "snooze the task to tomorrow: off Up next until then", hint: "snooze to tomorrow" },
   { keys: ["f"], action: "fileAll", help: "File all…: go through the Inbox one note at a time" },
+  // No hint: the Import panel shows its own key.
+  { keys: ["i"], action: "import", help: "import today's calendar (.ics)" },
   { keys: ["o", "Enter"], action: "open", help: "open its note (a task's, a meeting, a project)", hint: "open" },
   { keys: ["Escape"], action: "leave", help: "back to the dashboard" },
 ];

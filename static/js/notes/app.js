@@ -135,6 +135,7 @@ export class NotesApp {
     this.tasks = new Tasks();
     this.sessions = [];
     this.importStatus = null;
+    this.pending = [];
     this.changes = changes;
     this.peopleApi = peopleApi;
     this.meetingsApi = meetingsApi;
@@ -496,7 +497,7 @@ export class NotesApp {
   async refreshTree() {
     const today = this.today();
     this.captures?.invalidate();
-    const [notes, people, meetings, records, trash, , tasks, sessions, importStatus, plan, planTemplates, files, folders, status, timeSettings, topics, onCall] = await Promise.all([
+    const [notes, people, meetings, records, trash, , tasks, sessions, importStatus, plan, planTemplates, files, folders, status, timeSettings, topics, onCall, pending] = await Promise.all([
       this.api.list(), this.peopleApi.list(), this.meetingsApi.list(), this.recordsApi.list(),
       this.trashApi.list(), this.linkIndex.refresh(), this.tasksApi?.list() ?? [],
       this.tasksApi?.sessions(localDay(addDays(today, -SESSIONS_BACK_DAYS)), localDay(addDays(today, SESSIONS_AHEAD_DAYS))) ?? [],
@@ -504,7 +505,10 @@ export class NotesApp {
       this.planApi?.list() ?? undefined, this.planTemplatesApi?.list() ?? [], this.filesApi?.list() ?? undefined,
       this.foldersApi?.list() ?? [], this.statusApi?.list() ?? null, this.timeApi?.settings().catch(() => null) ?? null,
       this.peopleApi.topics?.() ?? [], this.onCallApi?.list().catch(() => []) ?? [],
+      // Imported events not yet filed: Today's day shows them (today-model.js dayTimeline).
+      this.calendarApi?.pending?.().catch(() => []) ?? [],
     ]);
+    this.pending = pending;
     this.onCall = new Rota(onCall);
     this.topics = topics;
     this.timeSettings = timeSettings;
@@ -612,7 +616,7 @@ export class NotesApp {
       (button) => openNoteMenu(this, button));
     const ctx = { tree: this.tree, people: this.people, meetings: this.meetings, records: this.records,
       links: this.linkIndex.links, mentions: this.linkIndex.mentions, trash: this.trash, tasks: this.tasks,
-      sessions: this.sessions, importStatus: this.importStatus, plan: this.plan, planTemplates: this.planTemplates,
+      sessions: this.sessions, importStatus: this.importStatus, pending: this.pending ?? [], plan: this.plan, planTemplates: this.planTemplates,
       body: { id, text: this.session.note?.id === id ? this.session.note.body ?? "" : "" },
       files: this.files, templateId: this.templateId, folders: this.folders, folderId: this.folderId, taskId: this.taskId, taskNoteId: this.taskNoteId, statusLogs: this.statusLogs,
       timeSettings: this.timeSettings, topics: this.topics ?? [], onCall: this.onCall, today: this.today(),

@@ -36,7 +36,8 @@ import { formDialog, confirmDialog } from "../ui/dialog.js";
 import { openMenu } from "../ui/menu.js";
 import { calendarAction } from "./calendar-keys.js";
 import { ImportPanel } from "./import-panel.js";
-import { PLAN_WITHOUT_STORE, hasError, lastImportedText, quietNote, showsPanel, uploadText } from "./import-state.js";
+import { hasError, lastImportedText, quietNote, showsPanel, uploadText } from "./import-state.js";
+import { ONLY_CALENDAR_FILES, calendarPicker, planWithoutDay, setPlanWithout, uploadCalendarFiles } from "./import-upload.js";
 import { trackDrag } from "./drag.js";
 import { GridView } from "./grid-view.js";
 import { TaskSidebar } from "./task-sidebar.js";
@@ -224,20 +225,12 @@ export class CalendarPage {
   }
 
   planWithoutDay() {
-    try {
-      return this.storage?.getItem(PLAN_WITHOUT_STORE) ?? null;
-    } catch {
-      return null;
-    }
+    return planWithoutDay(this.storage);
   }
 
   /** Plan without it: no panel for the rest of today in this browser; tomorrow it is back. */
   planWithout() {
-    try {
-      this.storage?.setItem(PLAN_WITHOUT_STORE, localDay(this.today()));
-    } catch {
-      // Storage refused (private mode): the panel goes for now all the same.
-    }
+    setPlanWithout(this.storage, localDay(this.today()));
     this.drawImport();
     this.focus();
   }
@@ -264,12 +257,7 @@ export class CalendarPage {
     };
     const week = element("h1", "cal-bar__week");
     const weekend = make("Show weekend", "Show or hide Saturday and Sunday (w)", () => this.toggleWeekend());
-    const picker = element("input", "");
-    Object.assign(picker, { type: "file", accept: ".ics", multiple: true, hidden: true });
-    picker.addEventListener("change", () => {
-      this.run(this.uploadFiles(picker.files));
-      picker.value = "";
-    });
+    const picker = calendarPicker((files) => this.run(this.uploadFiles(files)));
     this.picker = picker;
     const importButton = make("Import ", "Import a calendar file (.ics) saved from Outlook (i)", () => this.pickFiles());
     importButton.append(keyCap("i"));
@@ -511,19 +499,11 @@ export class CalendarPage {
     this.picker.click();
   }
 
-  // Each file is its own upload. A file that fails leaves the status as it was, so the panel
-  // stays until one goes in.
+  // Each file is its own upload (import-upload.js). A file that fails leaves the status as it
+  // was, so the panel stays until one goes in.
   async uploadFiles(files) {
-    const list = [...(files ?? [])].filter((file) => /\.ics$/i.test(file.name) || file.type === "text/calendar");
-    if (!list.length) return this.say("Only calendar files (.ics) can be imported");
-    const results = [];
-    for (const file of list) {
-      try {
-        results.push({ name: file.name, counts: await this.api.calendar.upload(file) });
-      } catch (error) {
-        results.push({ name: file.name, error });
-      }
-    }
+    const results = await uploadCalendarFiles((file) => this.api.calendar.upload(file), files);
+    if (!results) return this.say(ONLY_CALENDAR_FILES);
     await this.load();
     this.drawStatus(uploadText(results));
     if (results.some((each) => !each.error)) this.changes.send({ type: "changed", what: ["meetings"] });

@@ -154,9 +154,11 @@ static/
                          history-keys.js (THE History key table)
   js/today/              the Today page (the start page, &home): today-facts.js (today's
                          meetings, open questions, live projects by area, the Inbox; pure),
-                         today-model.js (the Now block, the day's timeline with free gaps,
-                         the ranked Up next, projects' status; pure), today-page.js (three
-                         columns, one listbox), today-actions.js (what its keys run),
+                         today-model.js (the Now block, the day's timeline with free gaps
+                         and To file events, the free time left, the ranked Up next,
+                         projects' status; pure), today-page.js (three columns, one
+                         listbox, the Import panel over the day), today-actions.js (what its
+                         keys run, the import),
                          today-keys.js (THE Today key table), context-strip.js (the note
                          window's NOW strip)
   js/week/               capacity.js (working hours, a day's meetings / focus / free,
@@ -294,8 +296,10 @@ static/
                          (the week grid), drag.js (pointer drags: drop, move, resize),
                          task-sidebar.js (Tasks and To file), calendar-page.js (the page:
                          loading, menus, dialogs, the import), import-panel.js (the Import
-                         panel greying the grid while today isn't imported), import-state.js
+                         panel greying the grid while today isn't imported; Today's too), import-state.js
                          (when it shows, Plan without it by day, its texts; pure),
+                         import-upload.js (the import's browser side, Today's too: the .ics
+                         picker, one upload per file, the stored Plan without it / Not today day),
                          calendar-keys.js (THE Plan tab's key table; its gt, the tray,
                          shadows the window's gt there)
   js/oncall/             the on-call rota: sheet.js (the Excel sheet: header dates in many

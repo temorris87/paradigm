@@ -2,17 +2,19 @@
 // isn't imported (import-state.js showsPanel), the grid greys out under it and takes no
 // clicks, drags or focus; the tray beside it stays live. The panel holds the Outlook steps, a
 // drop zone (a drop anywhere on the Plan tab imports: CalendarPage listens), Import a file… (i)
-// and Plan without it. It draws and reports; CalendarPage decides.
+// and Plan without it. It draws and reports; the page holding it (CalendarPage, TodayPage) decides.
 //
-//   const panel = new ImportPanel({ cell, grid, onPick(), onPlanWithout() })
+//   const panel = new ImportPanel({ cell, grid, onPick(), onPlanWithout(), withoutLabel? })
 //     cell: where the panel goes (over grid, in the same grid cell); grid: the element it greys
+//     (panel.grid may be set again when the page redraws it); withoutLabel: the second button's
+//     words ("Plan without it" on the Week, "Not today" on Today)
 //   panel.draw({ shown, lastText })   shown: whether it shows; lastText: the "Last imported" line
 //   panel.shown -> boolean
 //   panel.focus()                     its Import a file… button
 import { keyCap } from "../ui/key-hints.js";
 
 export class ImportPanel {
-  constructor({ cell, grid, onPick, onPlanWithout }) {
+  constructor({ cell, grid, onPick, onPlanWithout, withoutLabel = "Plan without it" }) {
     this.grid = grid;
     this.node = element("div", "import-panel");
     this.node.hidden = true;
@@ -28,7 +30,7 @@ export class ImportPanel {
       element("span", "import-panel__drop-hint", "or press i to pick it"));
     this.pick = button("import-panel__button import-panel__button--primary", "Import a file… ", onPick);
     this.pick.append(keyCap("i"));
-    const without = button("import-panel__button", "Plan without it", onPlanWithout);
+    const without = button("import-panel__button", withoutLabel, onPlanWithout);
     const actions = element("div", "import-panel__actions");
     actions.append(this.pick, without);
     this.last = element("p", "import-panel__last");
