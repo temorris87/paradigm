@@ -32,6 +32,9 @@ const PRESSED = ".cal-block, .cal-task__grip";
 // What a mouse click would focus: the target or the nearest of these around it.
 const FOCUSABLE = "a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex]";
 
+// F1 to F24: the browser's own keys, never follow mode's.
+const FUNCTION_KEY = /^F\d{1,2}$/;
+
 // Keys that only modify another: they neither type nor end follow mode.
 const MODIFIERS = new Set(["Shift", "Control", "Alt", "Meta", "CapsLock", "AltGraph"]);
 
@@ -108,8 +111,9 @@ export function installFollowMode(target, { root = document, redraws = null } = 
     if (!session) return;
     if (MODIFIERS.has(event.key)) return;
     event.stopImmediatePropagation();
-    // A browser shortcut (Ctrl-W...) is the browser's: follow mode just ends.
-    if (event.ctrlKey || event.altKey || event.metaKey) return stop();
+    // A browser shortcut (Ctrl-W..., or a function key: F5 reloads, F12 the dev tools) is the
+    // browser's: follow mode just ends.
+    if (event.ctrlKey || event.altKey || event.metaKey || FUNCTION_KEY.test(event.key)) return stop();
     // Its own keys are ui/ui-keys.js's "follow" scope (Shift ignored, as for a label's letters).
     const action = uiAction({ key: event.key }, "follow");
     // Tab ends it and still moves the focus on, as everywhere.

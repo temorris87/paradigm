@@ -107,7 +107,8 @@ None: no route is added or changed.
   completes a label for the user, and a label never acts on a target no longer on the page.
 - **Follow mode's own keys are a table**: `UI_KEYS` scope `follow` in `ui/ui-keys.js` (Backspace
   `back`, Esc `close`, Tab `leave`: it ends follow mode without `preventDefault`, so the focus
-  still moves on); the overlay reads it, a label's letters are `HINT_LETTERS`, and any other
+  still moves on; a function key, F1–F24, ends it the same way and stays the browser's, as Ctrl, Alt and Cmd
+  chords do); the overlay reads it, a label's letters are `HINT_LETTERS`, and any other
   key ends it. A keydown with `repeat` set is taken and ignored, so a held `f` never types a
   label. `f`'s help in `MAIN_KEYS` is written from that table (`uiKeysText`), so the `?` list
   names Backspace, Esc and Tab; their help has no brackets, as `f`'s wraps them in its own.

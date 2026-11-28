@@ -514,3 +514,21 @@ test("follow overlay: a row button shown only on hover (opacity 0) gets a label;
     box.remove();
   }
 });
+
+test("follow overlay: a function key (F5, F12) ends follow mode and is still the browser's", () => {
+  const { root, clicked } = fixture(3);
+  const follow = installFollowMode(root, { root });
+  try {
+    for (const name of ["F5", "F12"]) {
+      follow.start();
+      const key = new KeyboardEvent("keydown", { key: name, bubbles: true, cancelable: true });
+      root.firstChild.dispatchEvent(key);
+      assertTrue(!follow.active, `${name} ends it`);
+      assertTrue(!key.defaultPrevented, `and ${name} still does what the browser does with it`);
+    }
+    assertEqual(clicked.join(), "", "nothing clicked");
+  } finally {
+    follow.stop();
+    root.remove();
+  }
+});
