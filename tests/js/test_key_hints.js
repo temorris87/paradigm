@@ -12,6 +12,7 @@ import { noteHints, shadowedMainActions, viewHints, viewKeyGroups, viewTable } f
 import { ONCALL_KEYS } from "../../static/js/oncall/oncall-keys.js";
 import { PAGE_KEYS, pageKeysFor } from "../../static/js/pages/page-keys.js";
 import { FOLDER_KEYS } from "../../static/js/resources/folder-keys.js";
+import { SETTINGS_KEYS } from "../../static/js/settings/settings-keys.js";
 import { TASK_PAGE_KEYS } from "../../static/js/tasks/task-page-keys.js";
 import { TIME_KEYS } from "../../static/js/timesheet/time-keys.js";
 import { TODAY_KEYS } from "../../static/js/today/today-keys.js";
@@ -22,9 +23,9 @@ import { openKeysDialog } from "../../static/js/ui/keys-dialog.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
 const TABLES = { MAIN_KEYS, TODAY_KEYS, HUB_KEYS, HISTORY_KEYS, CALENDAR_KEYS, TIME_KEYS, ONCALL_KEYS, PAGE_KEYS, TASK_PAGE_KEYS, GANTT_KEYS,
-  FOLDER_KEYS, UI_KEYS, TRIAGE_KEYS, FOLDER_BROWSER_KEYS, CAPTURE_SHEET_KEYS };
-const VIEWS = [null, "home", "people", "meetings", "trash", "template", "folder", "task", "plan", "live", "history"];
-const WEEK_TABS = ["plan", "timesheet", "settings", "oncall"];
+  FOLDER_KEYS, UI_KEYS, TRIAGE_KEYS, FOLDER_BROWSER_KEYS, CAPTURE_SHEET_KEYS, SETTINGS_KEYS };
+const VIEWS = [null, "home", "people", "meetings", "trash", "template", "folder", "task", "plan", "live", "history", "settings"];
+const WEEK_TABS = ["plan", "timesheet", "oncall"];
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 test("key hints: keys written as on a keyboard; a label's keys read back", () => {
@@ -104,7 +105,7 @@ test("view keys: every main-window view's bar ends with ? all keys; Live shows t
     "j k move,Space done,n new task,d delegate,L log status,e edit outcome,g p Gantt,? all keys", "a project's page: Figma's bar");
   assertEqual(caps("history"), "j k,Enter,1-5,/,Esc,?", "History's bar");
   assertEqual(caps(null), "j k,Enter,z,a,Space,e,?", "a person's dashboard: no status to log");
-  assertEqual(caps("week", "settings"), "[ ],t,?", "Settings has no grid to copy");
+  assertEqual(viewHints("settings").map(({ cap, words }) => `${cap} ${words}`).join(), "Esc back,? all keys", "Settings: Esc back, ? all keys");
   assertEqual(caps("trash"), "j k,Enter,/,?", "the Trash has no New");
   assertEqual(viewHints("task").map(({ cap, words }) => `${cap} ${words}`).join(),
     "Space done,e edit,d delegate,s schedule,a add subtask,j k move,Esc back,? all keys", "a task's page, as in Figma");
@@ -129,7 +130,7 @@ test("view keys: the Week Plan's bar as in Figma, g t the tray there and Today e
   assertEqual(viewHints("week", "plan").map(({ cap, words }) => `${cap} ${words}`).join(),
     "[ ] week,g t tray,g c calendar,j k move,s schedule,Enter block menu,? all keys");
   assertEqual(shadowedMainActions("week", "plan").join(), "today", "the Plan tab's gt shadows the window's");
-  for (const tab of ["timesheet", "settings", "oncall"]) assertEqual(shadowedMainActions("week", tab).join(), "", tab);
+  for (const tab of ["timesheet", "oncall"]) assertEqual(shadowedMainActions("week", tab).join(), "", tab);
   for (const view of VIEWS) assertEqual(shadowedMainActions(view).join(), "", String(view));
   const plan = viewKeyGroups("week", "plan");
   const anywhere = plan.find((group) => group.name === "Anywhere in this window").rows.map((row) => row.help);
@@ -168,7 +169,7 @@ test("view keys: the ? list leaves out what the bar leaves out", () => {
   const helps = (...args) => viewKeyGroups(...args).flatMap((group) => group.rows.map((row) => row.keys.join()));
   assertTrue(!helps("trash").includes("a"), "the Trash: no New");
   assertTrue(helps("people").includes("a"));
-  assertTrue(!helps("week", "settings").includes("c"), "Settings: no grid to copy");
+  assertTrue(helps("settings").includes("g ,"), "Settings: the window's keys in its ? list");
   assertTrue(helps("week", "timesheet").includes("c"));
   assertTrue(!helps(null).includes("L"), "a person's dashboard: no Log status");
   assertTrue(helps(null, "plan", { logStatus: true }).includes("L"));

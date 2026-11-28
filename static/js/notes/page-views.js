@@ -1,7 +1,7 @@
 // The pages the main window draws in place of a dashboard (Home, People, Meetings, Trash, the
-// calendar, the timesheet, a plan template, a folder, a task, the Live note): which one shows, if any, and its URL flag and
-// history step. The dashboard stays open under them: /?note=N&people, /?note=N&template=4,
-// /?note=N&task=12.
+// calendar, the timesheet, a plan template, a folder, a task, the Live note, Settings): which
+// one shows, if any, and its URL flag and history step. The dashboard stays open under them:
+// /?note=N&people, /?note=N&template=4, /?note=N&task=12.
 //
 //   const views = new PageViews({ main, pages: { home, people, meetings }, history, noteUrl() });
 //   views.shown                    "home" | "people" | "meetings" | "trash" | null
@@ -33,10 +33,12 @@ export const PAGE_VIEWS = [
   { key: "plan", label: "Plan" },
   { key: "live", label: "Live note" },
   { key: "history", label: "History" },
+  { key: "settings", label: "Settings" },
 ];
 
-// Pages that push their own history step even when another page is shown.
-const STEPS_OVER_PAGES = new Set(["task"]);
+// Pages that push their own history step even when another page is shown: Back from Settings
+// returns to the page it was opened from.
+const STEPS_OVER_PAGES = new Set(["task", "settings"]);
 // Pages whose step stays under whatever opens from them: a note opened from a project's History
 // goes Back to History, not to the project.
 const STEPS_KEPT_UNDER = new Set(["history"]);
@@ -58,6 +60,8 @@ export class PageViews {
   fromUrl(params) {
     // The calendar and the timesheet became the Week page: their old flags still reach it.
     if ((params.has("calendar") || params.has("time")) && this.pages.week) return "week";
+    // The Week's Settings tab became the Settings page.
+    if (params.get("week") === "settings" && this.pages.settings) return "settings";
     return PAGE_VIEWS.find(({ key }) => params.has(key) && this.pages[key])?.key ?? null;
   }
 

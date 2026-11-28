@@ -13,6 +13,8 @@ export const MAIN_KEYS = [
   { keys: ["gp"], action: "plan", help: "the full plan (its Gantt chart) of the project or area on the dashboard", command: "plan" },
   { keys: ["gh"], action: "history", help: "the History of the project on the dashboard (done tasks, earlier meetings, decisions, answers)" },
   { keys: ["gn"], action: "live", help: "the Live note: the note window's note as it is typed", command: "live" },
+  { keys: ["g,"], action: "settings", help: "Settings: the note window, codes and hours, holidays, time off, linked folders, the data folder",
+    command: "settings" },
   { keys: ["?"], action: "keys", help: "every key of the page shown, in a list", hint: "all keys" },
 ];
 
@@ -29,7 +31,8 @@ export function mainAction(event) {
   return read(event);
 }
 
-/** Puts the keys on the window: handlers { palette(), today(), week(), plan(), history(), live(), keys() }.
+/** Puts the keys on the window: handlers { palette(), today(), week(), plan(), history(), live(), settings(),
+ * keys() }.
  * shadowed(event): the actions the scope under the focus takes over (layout/view-keys.js
  * shadowedMainActions): their keys go on to it, as if this table didn't bind them. */
 export function installMainKeys(target, handlers, { shadowed = () => [] } = {}) {

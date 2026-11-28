@@ -16,7 +16,9 @@ tests/js/                index.html runner, harness.js, fakes.js, editor-helpers
                          test_import_panel.js: the Import panel's show rule and texts;
                          test_calendar_import_wiring.js: a real CalendarPage on a fake API
                          and storage: the panel, Plan without it, uploads, gt/gc/j/k;
-                         test_focus_ring.js: every :focus-visible rule one of the two rings)
+                         test_focus_ring.js: every :focus-visible rule one of the two rings;
+                         test_settings.js: the Settings page, and the focus kept after
+                         Save, Add holiday, a holiday's Remove and an Unlink)
                          markdown-sample.html: dev-only page rendering every Markdown construct
 ```
 

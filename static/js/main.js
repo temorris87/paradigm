@@ -1,5 +1,5 @@
 // The main window (/): dashboards, Home, People, Meetings, the calendar, the timesheet, plan
-// templates, folders, a task's page, a project's History and the Live note, wide. A note opens in the note window (windows/note-window.js),
+// templates, folders, a task's page, a project's History, the Live note and Settings, wide. A note opens in the note window (windows/note-window.js),
 // and the Live page here shows it as it is typed there (live/live-page.js).
 import { boot } from "./boot.js";
 import { installMainKeys } from "./layout/main-keys.js";
@@ -20,12 +20,13 @@ import { WeekPage } from "./week/week-page.js";
 import { OnCallPage } from "./oncall/oncall-page.js";
 import { onCallApi } from "./oncall/api.js";
 import { planApi } from "./plan/api.js";
-import { openMenu } from "./ui/menu.js";
 import { drawKeyHints } from "./ui/key-hints.js";
 import { openKeysDialog } from "./ui/keys-dialog.js";
 import { shadowedMainActions, viewHints, viewKeyGroups, viewTable } from "./layout/view-keys.js";
 import { statusHubOf } from "./status/status-commands.js";
-import { MAIN_WINDOW, WINDOW_MODES, forgetPlaced, setWindowMode, windowMode } from "./windows/note-window.js";
+import { MAIN_WINDOW, forgetPlaced } from "./windows/note-window.js";
+import { SettingsPage } from "./settings/settings-page.js";
+import { aboutApi } from "./settings/about-api.js";
 import { calendarApi } from "./calendar/api.js";
 import { meetingsApi } from "./meetings/api.js";
 import { notesApi } from "./notes/api.js";
@@ -103,26 +104,9 @@ const app = boot({
     // A note newly opened in the note window, any way, brings the Live page up here.
     const live = new LivePage($(".live-view"), { changes, app, viewer: $("pd-image-viewer"),
       onNewNote: () => app().showView("live", "push"), ready: () => app()?.started ?? null });
-    const windowButton = $(".topbar__window");
-    windowButton.addEventListener("click", () => openMenu(windowButton, [
-      { label: "Live note", hint: "the note window's note, rendered as it is typed (gn)", run: () => app().showView("live", "push") },
-      "separator",
-      ...WINDOW_MODES.map((mode) => ({
-        label: mode.label,
-        hint: mode.help,
-        checked: windowMode() === mode.key,
-        run: () => {
-          setWindowMode(mode.key);
-          if (mode.key === "split") {
-            // An open note window moves there now; else it opens there next time.
-            changes.send({ type: "place", to: "note", mode: "split" });
-            app().say(`${mode.label} (${mode.help}). An open note window moves there now.`);
-          } else {
-            app().say(`${mode.label} (${mode.help}). Close the note window for it to open there next time.`);
-          }
-        },
-      })),
-    ], { label: "Window" }));
+    // Escape goes back to the page Settings was opened from (its own history step).
+    const settings = new SettingsPage($(".settings-view"), { app, changes, timeApi, aboutApi,
+      onLeave: () => (app().history.state?.view ? app().views.leave() : app().leaveView()) });
     return {
       home: { section: $(".home"), button: null },
       people: { section: $(".people"), button: null },
@@ -139,6 +123,7 @@ const app = boot({
           focus: () => historyPage.focus(), crumbs: (ctx) => historyPage.crumbs(ctx) },
         // state: what the Live page shows, which note commands read (notes/screen-note.js).
         live: { section: $(".live-view"), show: () => live.show(), focus: () => live.focus(), get state() { return live.state; } },
+        settings: { section: $(".settings-view"), show: (ctx) => settings.show(ctx), enter: () => settings.enter(), focus: () => settings.focus() },
       },
       buttons: { today: $(".topbar__today"), week: $(".topbar__week"), palette: $(".topbar__palette") },
       status: $(".status-line"),
@@ -157,6 +142,11 @@ const app = boot({
 app.events.addEventListener("redraw", drawHints);
 drawHints();
 
+$(".topbar__gear").addEventListener("click", () => {
+  app.navigator.hide({ refocus: false });
+  app.showView("settings", "push");
+});
+
 /** Whether a key's target is on the Week page, or on the page body (the focus nowhere). The
  * navigator and the top bar are other scopes: the Plan tab's keys don't reach past the page. */
 function onWeekPage(target) {
@@ -172,7 +162,7 @@ function showKeys() {
 }
 
 // Keys of the whole main window (layout/main-keys.js): the palette, Today, the Week, the plan,
-// a project's History, the Live note, the ? list.
+// a project's History, the Live note, Settings, the ? list.
 // The Week Plan's own gt (the tray) is read first while that tab is shown and the focus is on
 // the Week page: the calendar takes the keys typed outside .week-plan too (above). With the focus
 // in the navigator, gt is Today again.
@@ -190,5 +180,6 @@ installMainKeys(window, {
   plan: () => app.guard(app.planKey()),
   history: () => app.guard(app.historyKey()),
   live: () => app.showView("live", "push"),
+  settings: () => app.showView("settings", "push"),
   keys: () => app.guard(showKeys()),
 }, { shadowed });

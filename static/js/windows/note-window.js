@@ -23,7 +23,7 @@
 //   placeOnFirstLoad(win)                   the note window, once note.html has loaded
 //   forgetPlaced()                          the main window, at start: windows it opens
 //                                           don't inherit the note window's "placed" mark
-//   placeNoteWindow(win, mode)              places it again (Window > right third)
+//   placeNoteWindow(win, mode)              places it again (Settings > Note window: Right third)
 //   windowMode() / setWindowMode(mode)      the setting, kept per browser
 //   openNoteWindow(id, { at, changes })     shows a note there; false when popups are blocked
 //   showMainWindow(message, changes)        brings the main window forward with a message:
@@ -35,9 +35,9 @@ export const WIDE_MIN_RATIO = 2.1;
 export const NOTE_WINDOW = "paradigm-note";
 export const MAIN_WINDOW = "paradigm-main";
 export const WINDOW_MODES = [
-  { key: "auto", label: "Note window: by screen", help: "the right third on a wide screen, the whole screen on a laptop" },
-  { key: "split", label: "Note window: right third", help: "always beside the main window" },
-  { key: "full", label: "Note window: whole screen", help: "always over the main window" },
+  { key: "auto", label: "By screen", help: "the right third on a wide screen, the whole screen on a laptop" },
+  { key: "split", label: "Right third", help: "always beside the main window" },
+  { key: "full", label: "Whole screen", help: "always over the main window" },
 ];
 export const MAX_FRAME_BORDER = 10;
 const MODE_KEY = "paradigm.noteWindow";

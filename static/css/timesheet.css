@@ -71,12 +71,6 @@
   font-size: var(--fs-sm);
 }
 
-.time-tab[aria-pressed="true"] {
-  border-color: var(--border-selected);
-  color: var(--text-strong);
-  font-weight: 600;
-}
-
 .time-main {
   flex: 1 1 auto;
   min-height: 0;

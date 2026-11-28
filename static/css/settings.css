@@ -1,0 +1,232 @@
+/* The Settings page (settings/settings-page.js, &settings): its heading, the index of its
+   sections on the left, one card per section on the right, scrolling as one page. The cards'
+   fields and lists are the timesheet's (timesheet.css: .time-form, .time-list...). */
+.settings-view[hidden],
+.settings-view [hidden] {
+  display: none;
+}
+
+.settings-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  height: calc(100vh - 4.5rem - var(--key-hints-height));
+  min-height: 20rem;
+  line-height: 1.45;
+  outline: none;
+}
+
+.settings__title {
+  flex: none;
+  margin: 0;
+  color: var(--text-heading);
+  font-size: var(--fs-xl);
+  font-weight: 600;
+}
+
+.settings__layout {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: 14rem minmax(0, 1fr);
+  gap: var(--sp-5);
+  min-height: 0;
+}
+
+.settings__entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-0);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings__entry {
+  width: 100%;
+  padding: var(--sp-1) var(--sp-3);
+  border: none;
+  border-left: 2px solid transparent;
+  border-radius: 0 4px 4px 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-md);
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings__entry:hover {
+  background: var(--surface-hover);
+  color: var(--text-strong);
+}
+
+.settings__entry:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: -2px;
+}
+
+/* The entry of the card at the top. */
+.settings__entry[aria-current="true"] {
+  border-left-color: var(--border-focus);
+  background: var(--surface-selected);
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+/* The scroller: the index entries' tops are measured against it (position: relative). */
+.settings__cards {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-height: 0;
+  overflow: auto;
+  padding: 0 var(--sp-2) var(--sp-6) 0;
+}
+
+.settings-card {
+  flex: none;
+  max-width: 60rem;
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  border: 1px solid var(--border-divider);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+
+.settings-card__title {
+  margin: 0 0 var(--sp-3);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--border-divider);
+  color: var(--text-heading);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.settings-card__body > * + * {
+  margin-top: var(--sp-3);
+}
+
+/* Note window: three radio choices, each with its help under it. */
+.settings-choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.settings-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  cursor: pointer;
+}
+
+.settings-choice__input {
+  margin: var(--sp-0) 0 0;
+}
+
+.settings-choice__words {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-choice__label {
+  color: var(--text-strong);
+}
+
+.settings-choice__help {
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+/* Linked folders: hub, path, Unlink… */
+.settings-folders {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-folder {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-1) 0;
+  border-bottom: 1px solid var(--border-faint);
+}
+
+.settings-folder__hub {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.settings-folder__hub:hover {
+  text-decoration: underline;
+}
+
+.settings-folder__hub:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+.settings-folder__path {
+  flex: 1 100 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-folder__unlink {
+  flex: none;
+}
+
+/* Data folder: the path, read only, and Copy path. */
+.settings-data {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.settings-data__path {
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--border-divider);
+  border-radius: 4px;
+  background: var(--surface-sunken);
+  color: var(--text-code);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1000px) {
+  .settings__layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .settings__entries {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .settings__entry {
+    width: auto;
+  }
+}

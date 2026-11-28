@@ -43,8 +43,9 @@ How the app behaves. Kept up to date by each feature that changes it.
   Ctrl-Enter confirms. Non-red confirms (Make it a plain note, Make it a decision) still open
   on OK, and a dialog with fields starts in its first field (Tyson, 2026-11-26).
 - Top bar and palette (Tyson, 2026-11-22): the main window's bar is ☰, Today | Week, the
-  breadcrumb, the palette's field and Window ▾ (Go to, Home, People, Meetings, Calendar and
-  Time left it; Live note added 2026-11-26). The note window's: ☰, the breadcrumb, Go to…, Dashboard ↗. The palette
+  breadcrumb, the palette's field and the Settings gear (it replaced Window ▾, 2026-11-27; Go
+  to, Home, People, Meetings, Calendar and Time had left that menu, and its Live note is `gn` or
+  `:live` now). The note window's: ☰, the breadcrumb, Go to…, Dashboard ↗. The palette
   (`static/js/palette/`; the field, Go to…, `:find`, or `:` anywhere in the main window outside
   a text box, which opens it on ":") lists Recent (the last 8 opened) and Pages with nothing
   typed; notes and pages as you type (each word in the title or path); after ":", every note
@@ -53,6 +54,23 @@ How the app behaves. Kept up to date by each feature that changes it.
   `:time` Enter opens the Timesheet, never `:timecode` (2026-11-27). Enter opens or runs, Shift-Enter opens in the note
   window, Tab completes a command. Buttons never show `:command` names; the palette's command
   mode is the one place they appear.
+- Settings (Tyson, 2026-11-27): a main-window page, `&settings`, opened by the gear at the top
+  bar's right end (lit while Settings is shown), `g ,` or `:settings` (typed in full: `:set` is
+  the editor's), with its own history step, so Back returns to the page before; an old
+  `&week=settings` URL opens it too. Heading **Settings**; on the left an index of its sections,
+  on the right one card each, scrolling as one page: clicking an entry scrolls its card to the
+  top, and the entry of the card at the top is lit (at the foot, the entry clicked stays lit).
+  The cards: **Note window** (radios By screen, Right third, Whole screen; saved at once, and
+  Right third moves an open note window there now), **Codes and hours**, **Holidays** and
+  **Time off and sick time** (the Week's old Settings tab, its fields, lists and Save), **Linked
+  folders** (each folder linked to a hub: the hub's title, which opens it, the path, and
+  Unlink… with the Files section's confirm; "No folders linked yet. Link one from a project's
+  Files section." when none), **Data folder** (the folder the notes are kept in, read only,
+  with Copy path, and the version). No theme switcher yet: Nord Light is the only theme.
+  Keys: the window's own, `Escape` back, `?` all keys. After Save, Add holiday, a Remove or an
+  Unlink the card is drawn again with the focus where it was; a removed row's focus goes to
+  the next row's button, else the previous one's, else the card's first field (or the Linked
+  folders card when no folder is left).
 - Note commands act on the note on screen (Tyson, 2026-11-27). In the main window a page is
   drawn over the dashboard, which stays open under it, so every "this note" command (`:trash`,
   `:rename`, `:parent`, the kind commands, `:inarea`, `:archive`, `:restore`, `:export`,
@@ -125,9 +143,9 @@ How the app behaves. Kept up to date by each feature that changes it.
   section row, Go to, the calendar, a Gantt bar) shows it in the one note window, reused. Its
   place: the right third, full height, on a wide screen (`availWidth >= 2400` CSS px and
   over 2.1 times as wide as tall), else the whole screen (the laptop); the main window's
-  Window ▾ menu can force either. The page can't place the main window itself. Once
+  Settings' Note window card can force either. The page can't place the main window itself. Once
   `note.html` has loaded, the note window places itself again (first load only, so a second
-  note opened in it doesn't move it), and Window ▾ "right third" re-places an open window, so
+  note opened in it doesn't move it), and choosing Right third in Settings re-places an open window, so
   a misplaced one is fixed without closing it (Tyson, 2026-11-26). The left edge falls on a
   whole device pixel under display scaling (not when the page is zoomed); the box is exactly
   the right third, not grown by Windows' invisible border, as Chrome keeps every window inside
@@ -169,7 +187,7 @@ How the app behaves. Kept up to date by each feature that changes it.
   the note window, any way, switches the main window to its Live page; hubs and people too
   (their live text, not the dashboard; Dashboard ↗ or `:dashboard` still shows that). Typing
   alone never switches it, nor does the note that opens by itself after a trash. Back to it:
-  `gn`, Window ▾ Live note, `:live`. Links open as on a dashboard, an image click opens the
+  `gn` or `:live`. Links open as on a dashboard, an image click opens the
   image viewer, and the page has no keys of its own. A main window opened after the note
   window asks it what it shows. No note open: "No note open in the note window." with an
   Open note window button; the note window closed: the last view stays, with "The note window

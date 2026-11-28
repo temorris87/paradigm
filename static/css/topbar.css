@@ -1,5 +1,5 @@
 /* The bar above the note. The main window: ☰, Today | Week, the breadcrumb, the palette's
-   field, Window ▾. The note window: ☰, the breadcrumb, Go to…, Dashboard ↗. */
+   field, the Settings gear. The note window: ☰, the breadcrumb, Go to…, Dashboard ↗. */
 .topbar {
   display: flex;
   align-items: center;
@@ -38,7 +38,7 @@
   outline-offset: 1px;
 }
 
-/* The buttons at the right end of the bar (Window ▾; the note window's Go to… and Dashboard ↗). */
+/* The buttons at the right end of the note window's bar (Go to… and Dashboard ↗). */
 .topbar__page {
   flex: none;
   padding: var(--sp-0) var(--sp-3);
@@ -132,8 +132,37 @@
   display: inline;
 }
 
-.topbar__window {
+/* The Settings gear at the bar's right end: lit while Settings is shown. */
+.topbar__gear {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
   margin-left: auto;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.topbar__gear:hover {
+  background: var(--surface-hover);
+  color: var(--text-strong);
+}
+
+.topbar__gear:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+.app__note[data-view="settings"] .topbar__gear {
+  border-color: var(--border-focus);
+  background: var(--surface-selected);
+  color: var(--text-strong);
 }
 
 /* On Today the crumb would only say "Today": the switch says it already. */

@@ -17,6 +17,7 @@ paradigm/                Python package
                          static.py (serves static/), responses.py, security.py
                          (headers_for: the diagram frame page's own CSP)
   api/                   JSON endpoints; session.py = /api/ping, /api/events, /api/closing;
+                         about.py (/api/about: the data folder and version, for Settings);
                          notes.py (also /api/note/status|due: a project's); images.py
                          (raw-bytes upload, GET /api/image?id=N cached);
                          people.py (/api/people, /api/person/create|update|link|unlink);

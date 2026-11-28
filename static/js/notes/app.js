@@ -128,7 +128,7 @@ export class NotesApp {
     this.templateId = null;
     this.taskId = null; // the task page's (the main window)
     this.taskNoteId = null; // its note, as the URL had it: says "in the trash" after a reload
-    this.weekView = "plan"; // the Week page's Plan, Timesheet, Settings or On call
+    this.weekView = "plan"; // the Week page's Plan, Timesheet or On call
     this.editor = editor;
     this.tasksApi = tasksApi;
     this.calendarApi = calendarApi;
@@ -461,7 +461,7 @@ export class NotesApp {
       this.taskId = Number(params.get("task"));
       this.taskNoteId = Number.isInteger(wanted) && wanted > 0 ? wanted : null;
     }
-    this.weekView = params.has("time") ? "timesheet" : ["timesheet", "settings", "oncall"].includes(params.get("week")) ? params.get("week") : "plan";
+    this.weekView = params.has("time") ? "timesheet" : ["timesheet", "oncall"].includes(params.get("week")) ? params.get("week") : "plan";
     const flagged = this.views.fromUrl(params);
     // Only the asked note's own dashboard, or its hub's, may show it; anything else is Home,
     // never the first dashboard found, which a note command would then act on unseen.

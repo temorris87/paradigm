@@ -25,6 +25,7 @@ static/
                          sheet.css (the note window's sections sheet and its bar),
                          capture-sheet.css (the capture sheet and the strip under the editor),
                          live.css (the Live page: its head, the caret, the cursor's band),
+                         settings.css (the Settings page: its index and cards),
                          chip.css (THE status chip: .chip and its tones), key-hints.css
                          (THE key cap .key, the key-hint bar at the foot, the ? list),
                          tokens.css (THE design tokens: --font-ui, --font-mono, --fs-xs..2xl,
@@ -40,9 +41,9 @@ static/
                          (editor.css is loaded inside <pd-editor>'s shadow root;
                          markdown.css styles rendered notes under .md-doc)
   js/boot.js             what both windows start with (connection, navigator, NotesApp)
-  js/main.js             the main window: its pages, the dashboard, the Window menu
+  js/main.js             the main window: its pages, the dashboard, the Settings gear
   js/note-main.js        the note window
-  js/layout/main-keys.js THE main window's own key table (: gt gw gp gh gn ?)
+  js/layout/main-keys.js THE main window's own key table (: gt gw gp gh gn g, ?)
   js/layout/view-keys.js which key table each main-window view reads (its hint bar, its ?
                          list) and the note window's short fixed hints; pure
   js/layout/navigator-parts.js  the navigator's pinned Today / Week and its save state
@@ -103,7 +104,7 @@ static/
                          window's note; pure),
                          page-views.js (which page the main window shows: &home, &people,
                          &meetings, &trash, &calendar, &time, &live, &template=ID, &folder=ID,
-                         &task=ID; the URL flag and Back),
+                         &task=ID, &settings (the old &week=settings too); the URL flag and Back),
                          hub-groups.js (THE PARA group table: Inbox, Projects, Areas,
                          Resources; then People, Templates and the Archive, folded by
                          default; phase, milestone and template kinds),
@@ -163,7 +164,7 @@ static/
                          free gaps, the first free slot, days off and their chips; pure),
                          tray-model.js (the tray's groups, the "due" strip, the week's
                          totals; pure), week-page.js
-                         (&week: the bar, Plan | Timesheet | Settings, time so far)
+                         (&week: the bar, Plan | Timesheet | On call, time so far)
   js/pages/              list-page.js (a list page in place of the note: filters, search
                          box, one-focus-stop listbox), page-keys.js (THE key table of the
                          People and Meetings pages)
@@ -229,7 +230,9 @@ static/
                          under a button), dialog.js (formDialog, confirmDialog on <dialog>:
                          errors show inside and keep it open; a blocked submit), picker.js (a text box over a
                          filtered list; filterItems is pure), ui-keys.js (THE key table of
-                         menus, pickers and dialogs), dom.js, rendered-text.js (rendered
+                         menus, pickers and dialogs), dom.js (restoreFocus; data-focus-key:
+                         focusedKey, focusFirstKey, keysAfterRemoving, so a part drawn again
+                         puts the focus back on the same button or the next row's), rendered-text.js (rendered
                          Markdown in the main window, the dashboard's and the Live page's:
                          maths and diagrams drawn, links to notes open the note)
   js/triage/             triage-model.js (the hub a note's links and mentions point to most;
@@ -243,9 +246,9 @@ static/
                          "open" a note, "place" the note window)
   js/windows/note-window.js  the note window: the right third on a wide screen (>= 2400 CSS
                          px and > 2.1 times as wide as tall), else the whole screen, or as
-                         the Window menu says; one window, reused; showMainWindow;
+                         Settings says; one window, reused; showMainWindow;
                          placed again once note.html loads (first load only) and from
-                         Window > right third: move, resize, move again (Chrome clamps each
+                         Settings' Right third: move, resize, move again (Chrome clamps each
                          step to the screen, so it can't grow past it by Windows' invisible
                          border), left edge on a whole device pixel (all whole CSS px; no
                          rounding when the page is zoomed)
@@ -305,8 +308,14 @@ static/
                          paste's preview; pure), oncall-page.js (the Week's On call tab),
                          oncall-keys.js (THE On call key table), api.js
   js/timesheet/          api.js, copy.js (the grid as HTML and tab-separated text; pure),
-                         time-page.js (Week and Settings), time-keys.js (THE timesheet key
-                         table)
+                         time-page.js (the week's grid), time-settings.js (Codes and hours,
+                         Holidays, Time off: the Settings page's cards), time-keys.js (THE
+                         timesheet key table)
+  js/settings/           the Settings page (&settings: the gear, g , and :settings):
+                         settings-model.js (the sections, the index's lit entry, the note
+                         window's choices, the linked folders' rows; pure), settings-page.js
+                         (the index and the cards), settings-keys.js (THE Settings key table),
+                         about-api.js (/api/about: the data folder)
   js/markdown/           the Markdown renderer: pure, Markdown in, HTML string out, no DOM
     index.js             parseMarkdown, renderMarkdown, renderBlocks (blocks with source lines)
     blocks.js            block parser (CommonMark algorithm); block-types.js, block-starts.js

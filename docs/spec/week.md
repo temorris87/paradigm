@@ -4,7 +4,7 @@ How the app behaves. Kept up to date by each feature that changes it.
 
 - Week (Tyson, 2026-11-22; the calendar and the timesheet became one page): `&week` in the main
   window (`:calendar`, `gw`; `:time` opens its Timesheet; old `&calendar` / `&time` URLs still
-  land there). Its bar: the week (‹ This week ›, `[` `]` `t`), Plan | Timesheet | Settings, and
+  land there). Its bar: the week (‹ This week ›, `[` `]` `t`), Plan | Timesheet | On call, and
   the week's totals (focus planned, meetings, free). Plan: Monday to Sunday (Saturday and Sunday
   only when something is on them, or with Show weekend); each day's head has its free hours
   and a capacity bar (meetings, then focus blocks, as parts of the working day, lunch out);
@@ -60,7 +60,7 @@ How the app behaves. Kept up to date by each feature that changes it.
   off is hours off the day, not a time range: its free hours, capacity bar and room for `s`
   shrink by them. The days come from `/api/time/week`'s `pto` for the week shown, so a past
   week shows its own holidays; beyond it (where `s` may look), the upcoming holidays and the
-  time off in Settings. Today's `s` and free gaps don't count time off yet.
+  time off in Settings (`&settings`). Today's `s` and free gaps don't count time off yet.
 - The day heads, the all-day row and the hour grid keep the same columns whatever scroll bar
   the system draws (Windows' classic one, the Mac's overlay, a wide one under high contrast or
   scaling): above the hour grid's scroll bar the heads leave an empty strip in their own
@@ -117,7 +117,7 @@ How the app behaves. Kept up to date by each feature that changes it.
   `url`, `* ` bullets `- `. The Join button still comes from the uncleaned invite. Only new
   imports and events waiting in To file get it; meetings already made keep their agenda, and
   only Teams is cleaned, not Zoom, Webex or Meet (Tyson, 2026-11-26).
-- On call (Tyson, 2026-11-23): the Week page's fourth tab (`:oncall`, the palette's Pages; URL
+- On call (Tyson, 2026-11-23): the Week page's third tab (`:oncall`, the palette's Pages; URL
   `&week=oncall`). Copy the Excel sheet (Role, then one column per week, a date in each header)
   and Ctrl-V on the tab, or Paste sheet… (`p`): a dialog shows the sheet and a preview ("3 roles ×
   6 weeks … replaces 2 weeks already in · 1 name not in People: …"), then Save rota. Each column
@@ -143,6 +143,7 @@ How the app behaves. Kept up to date by each feature that changes it.
   scroll at 1280 px and wider: number cells about 4.5rem with tabular figures, codes never
   wrap, a very long one cut with "…" and its full code as its title (2026-11-27). Clicking a
   tab or a row leaves the focus on the Timesheet, where `[` `]` `t` and `c` are heard. Copy for
-  timesheet (`c`) puts it on the clipboard as HTML and tab-separated text. Settings: the codes, the
-  working day and lunch, holiday rules (US federal ones seeded; observed Sat->Fri, Sun->Mon),
-  time off and sick days. Its keys live in `js/timesheet/time-keys.js`.
+  timesheet (`c`) puts it on the clipboard as HTML and tab-separated text. Its settings (the
+  codes, the working day and lunch, holiday rules (US federal ones seeded; observed Sat->Fri,
+  Sun->Mon), time off and sick days) moved from the Week's Settings tab to the Settings page
+  (the gear, `g ,`, `:settings`; Tyson, 2026-11-27; see `navigation.md`). Its keys live in `js/timesheet/time-keys.js`.

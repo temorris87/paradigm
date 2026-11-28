@@ -5,7 +5,7 @@
 //   viewTable(view, weekTab, { logStatus, project, person })  { name, table, without?, words?,
 //                              field?, barWithout?, bar? } of a view: view is the PageViews key
 //                              ("home", "week"...) or null for the dashboard; weekTab the Week
-//                              page's "plan" | "timesheet" | "settings" | "oncall"; logStatus
+//                              page's "plan" | "timesheet" | "oncall"; logStatus
 //                              whether the dashboard's note is a project or an area (only they
 //                              keep a status log: L is left out elsewhere); project whether it
 //                              is a project's (its own bar, and the rows only: "project" keeps);
@@ -31,6 +31,7 @@ import { pageKeysFor } from "../pages/page-keys.js";
 import { FOLDER_KEYS } from "../resources/folder-keys.js";
 import { TASK_PAGE_KEYS } from "../tasks/task-page-keys.js";
 import { TIME_KEYS } from "../timesheet/time-keys.js";
+import { SETTINGS_KEYS } from "../settings/settings-keys.js";
 import { TODAY_KEYS } from "../today/today-keys.js";
 import { capOf, hintsOf, keyGroups } from "../ui/key-hints.js";
 import { MAIN_KEYS } from "./main-keys.js";
@@ -39,8 +40,6 @@ const WEEK_TABLES = {
   // Its gt is the tray's (Figma, Tyson 2026-11-27): it shadows the window's gt (Today) here only.
   plan: { name: "Week: Plan", table: CALENDAR_KEYS, shadows: true },
   timesheet: { name: "Week: Timesheet", table: TIME_KEYS },
-  // Settings moves the week too, but has no grid to copy.
-  settings: { name: "Week: Settings", table: TIME_KEYS, without: ["copy"] },
   oncall: { name: "Week: On call", table: ONCALL_KEYS },
 };
 
@@ -57,6 +56,7 @@ const VIEW_TABLES = {
   plan: { name: "Plan", table: GANTT_KEYS },
   live: { name: "Live note", table: [] },
   history: { name: "History", table: HISTORY_KEYS },
+  settings: { name: "Settings", table: SETTINGS_KEYS },
 };
 
 // Keys only a project's page has (hub-keys.js only: "project").
