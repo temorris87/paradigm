@@ -243,8 +243,10 @@ static/
                          caps; pure apart from drawing), keys-dialog.js (the ? list),
                          follow-hints.js (f's follow mode: labels for n targets, reading
                          order, what typed letters reach; pure), follow-overlay.js (the
-                         targets in view, their labels, its keys, a target clicked or
-                         pressed; installed before the window's keys),
+                         targets in view, cut to the boxes that clip them, their labels, its keys, a target clicked or
+                         pressed and focused as a click would, labels drawn again on a
+                         redraw; its keys: ui-keys.js's follow scope; installed before the
+                         window's keys),
                          key-sequence.js
                          (two-key entries in a key table: gg, gp; pure), column-target.js
                          (h l on a page of columns: the nearest column that way with rows,
@@ -260,7 +262,7 @@ static/
                          errors show inside and keep it open; a blocked submit; key caps on
                          the buttons; anchor: opens under an element), picker.js (a text box over a
                          filtered list; filterItems is pure), ui-keys.js (THE key table of
-                         menus, pickers and dialogs), dom.js (restoreFocus; data-focus-key:
+                         menus, pickers, dialogs and follow mode), dom.js (restoreFocus; data-focus-key:
                          focusedKey, focusFirstKey, keysAfterRemoving, so a part drawn again
                          puts the focus back on the same button or the next row's), rendered-text.js (rendered
                          Markdown in the main window, the dashboard's and the Live page's:
@@ -310,7 +312,8 @@ static/
                          MAX_TASK_DEPTH; taskTree, J/K's moveTarget; waiting on; the calendar's
                          open list of mine and its filter; today's blocks; pure),
                          task-commands.js, task-page.js (a task's page in the main window,
-                         &task=ID: breadcrumb, head, Notes | the side column; one listbox),
+                         &task=ID: breadcrumb, head, Notes | the side column; one listbox,
+                         data-follow="enter": follow mode presses Enter after a row's click),
                          task-head.js (title, chips, Done / Schedule / Delegate / Edit… / ···,
                          the facts row), task-side.js (the cards, their order, Subtasks),
                          task-files.js (the Files card: Add file…, open, x unlinks),

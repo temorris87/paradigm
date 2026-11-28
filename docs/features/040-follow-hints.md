@@ -81,6 +81,12 @@ None: no route is added or changed.
 - **The overlay module is `static/js/ui/follow-overlay.js`** (`installFollowMode(window)`, `start()`,
   `stop()`, `active`). `main.js` installs it before `installMainKeys`, so its capture-phase
   keydown listener runs first. `start()` does nothing when nothing is in view to label.
+- **What is in view** (`visibleBox`): the target's box cut to the window and to every box around
+  it that clips (overflow not visible), so a row half scrolled out of its list is labelled on
+  the part in the list. `shown()` leaves out what is `visibility: hidden` or inside a
+  transparent box, but not a button that is itself transparent in a box that isn't: the rows'
+  hover-only buttons (Timesheet's remove, On call's change) can be followed, and focusing them
+  shows them.
 - **More targets** than listed: `[role=button]`, `[role=tab]` and `summary` too. A target also
   needs a point a click would reach (`elementFromPoint` at its middle or its top-left), so
   things under a dialog or another layer get no label. At most 361 targets, in reading order.
@@ -91,8 +97,27 @@ None: no route is added or changed.
 - **Ending it**: a pointer press (not only a click) ends it; so does a Ctrl, Alt or Cmd shortcut,
   which is left to the browser. Modifier keys alone do nothing. Backspace with letters typed
   takes the last one back.
+- **Labels over 9**: their first letters are spread evenly over up to 19 letters (a run each,
+  in reading order) rather than filling `aa`..`al` first, so the first letter typed leaves at
+  most ceil(n / 19) labels. Reading order groups lines by their first top (within 2 px).
+- **The page drawn again while it is on** (the app's `redraw` event, passed as
+  `installFollowMode(window, { redraws: app.events })`, or a labelled target leaving the page,
+  seen by a MutationObserver or at the next key): the labels are drawn again for what is in view,
+  keeping the letters typed while they still start a label, else follow mode ends. A redraw never
+  completes a label for the user, and a label never acts on a target no longer on the page.
+- **Follow mode's own keys are a table**: `UI_KEYS` scope `follow` in `ui/ui-keys.js` (Backspace
+  `back`, Esc `close`, Tab `leave`: it ends follow mode without `preventDefault`, so the focus
+  still moves on; a function key, F1–F24, ends it the same way and stays the browser's, as Ctrl, Alt and Cmd
+  chords do); the overlay reads it, a label's letters are `HINT_LETTERS`, and any other
+  key ends it. A keydown with `repeat` set is taken and ignored, so a held `f` never types a
+  label. `f`'s help in `MAIN_KEYS` is written from that table (`uiKeysText`), so the `?` list
+  names Backspace, Esc and Tab; their help has no brackets, as `f`'s wraps them in its own.
+- **The focus follows**: before the click, a target that isn't a list row (or the nearest
+  focusable thing around it, a tree row's item) is focused (`preventScroll`), as a mouse click
+  would, so following a row whose click does nothing (an empty tree group) still moves the focus.
 - **Typed letters are marked** in each label still shown (`.follow-hints__typed`).
 - **The bar**: every view's bar ends with `f follow` then `? all keys` (`EVERY_BAR` in
   `layout/view-keys.js`). Today's "File all… F" button shows `F` in its cap and title.
-- Tests: `tests/js/test_follow_hints.js`; `test_key_hints.js`, `test_today.js` and
-  `test_follow_ups.js` updated for `f follow` and `F`.
+- Tests: `tests/js/test_follow_hints.js` (a half-scrolled row and a hover-only button
+  included); `test_key_hints.js`, `test_today.js` and
+  `test_follow_ups.js` updated for `f follow` and `F`; `test_ui.js` covers the `follow` scope.

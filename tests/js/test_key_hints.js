@@ -175,6 +175,14 @@ test("view keys: the ? list leaves out what the bar leaves out", () => {
   assertTrue(helps(null, "plan", { logStatus: true }).includes("S"));
 });
 
+test("main keys: f's help names follow mode's own keys from their table", () => {
+  const help = MAIN_KEYS.find((entry) => entry.action === "follow").help;
+  for (const entry of UI_KEYS.filter((each) => each.scope === "follow")) {
+    assertTrue(help.includes(`${keyName(entry.keys[0])}: ${entry.help}`), `${entry.action} in ${JSON.stringify(help)}`);
+  }
+  assertTrue(help.includes("Backspace"), "Backspace is named");
+});
+
 test("main keys: f is follow anywhere in the window, never in a text box; it is under Anywhere in the ? list", () => {
   assertEqual(mainAction({ key: "f", target: document.body }), "follow");
   assertEqual(mainAction({ key: "F", shiftKey: true, target: document.body }), null, "F is a view's (Today's File all…)");

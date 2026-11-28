@@ -146,7 +146,7 @@ export class TreeView {
     }
     li.append(row);
     if (open && rows.length) li.append(this.group(rows, 2, Boolean(group.showsKind)));
-    // Under the Inbox: File all… (the triage dialog), for the mouse; f on Today does it too.
+    // Under the Inbox: File all… (the triage dialog), for the mouse; F on Today does it too.
     if (open && group.kind === null && hubs.length && this.onFileAll) {
       const file = document.createElement("button");
       file.type = "button";

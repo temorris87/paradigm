@@ -166,8 +166,9 @@ function showKeys() {
 }
 
 // f's follow mode (ui/follow-overlay.js) reads keys on the window's capture phase before the
-// window's own keys, so while it is on no other key fires: installed first.
-const follow = installFollowMode(window);
+// window's own keys, so while it is on no other key fires: installed first. The app's redraw
+// draws its labels again for the page now shown.
+const follow = installFollowMode(window, { redraws: app.events });
 
 // Keys of the whole main window (layout/main-keys.js): the palette, Today, the Week, the plan,
 // a project's History, the Live note, Settings, follow mode, H and L (back and forward a page),

@@ -1,4 +1,4 @@
-// Inbox triage (File all…, f on Today): the Inbox one note at a time. Each shows its title,
+// Inbox triage (File all…, F on Today): the Inbox one note at a time. Each shows its title,
 // the start of its text and when it was made, the hub its links and mentions point to most,
 // and what to do with it, each with a key (triage-keys.js): under that hub, into a Resources
 // folder, under another note, a project or an area, a task (and the note to the Trash), or the

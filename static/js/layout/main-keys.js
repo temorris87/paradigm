@@ -4,7 +4,9 @@
 // waits for gg. command: the note command it matches (the palette shows the key beside it).
 // hint: shown in the key-hint bar (ui/key-hints.js): "?" at the end of every view's, the rest on
 // Live's, which has no keys of its own (layout/view-keys.js).
+import { keyName } from "../ui/key-hints.js";
 import { keyReader, resetSequences } from "../ui/key-sequence.js";
+import { uiKeysText } from "../ui/ui-keys.js";
 
 export const MAIN_KEYS = [
   { keys: ["gt"], action: "today", help: "Today", command: "home", hint: "Today" },
@@ -20,7 +22,7 @@ export const MAIN_KEYS = [
   { keys: ["H"], action: "back", help: "back a page", hint: "back / forward", label: "H L" },
   { keys: ["L"], action: "forward", help: "forward a page" },
   // Every bar shows it (layout/view-keys.js EVERY_BAR); no view binds f (Today's File all… is F).
-  { keys: ["f"], action: "follow", help: "follow: a letter or two on everything you can click in view; type one to click it (Esc: none)",
+  { keys: ["f"], action: "follow", help: `follow: a letter or two on everything you can click in view; type one to click it (${uiKeysText("follow", keyName)})`,
     hint: "follow" },
   { keys: ["?"], action: "keys", help: "every key of the page shown, in a list", hint: "all keys" },
 ];
