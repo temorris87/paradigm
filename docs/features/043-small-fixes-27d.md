@@ -94,3 +94,13 @@ None.
   menus), so the Observed checkbox gets the page's keys as well as the Note window radios.
 - Item 6: the changed cell's `was …` title goes on the person link as well as the cell and chip.
 - The duplicate `import-panel-title` id was not touched.
+- Post-batch fixes (front end, no route changed):
+  - Go to…: a note chosen in the palette (`palette/palette.js`) and opened in the same window
+    gets the focus (`app.focusNote()`) once `app.open` resolves, in the note window or for a
+    dashboard in the main window; `finish()` had left it on the Go to… button.
+  - To file: after File, File all or Don't import, `TaskSidebar.focusPending(after)`
+    (`calendar/task-sidebar.js`, with `focusFirstKey` / `keysAfterRemoving` from `ui/dom.js`)
+    puts the focus on the same button of the next row left, else the one before, else the list;
+    the buttons carry `data-focus-key` `file-file-<id>` / `file-ignore-<id>`.
+  - On call: a test (`test_oncall.js`) that an open On call tab redraws on a `"changed"` message
+    from another window; no code change.

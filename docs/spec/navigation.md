@@ -100,7 +100,9 @@ How the app behaves. Kept up to date by each feature that changes it.
   command by its label with its usage and key (`label` in `commands.js`; keys from the key
   tables' `command` fields), then notes; the command the typed name means comes first, so
   `:time` Enter opens the Timesheet, never `:timecode` (2026-11-27). Enter opens or runs, Shift-Enter opens in the note
-  window, Tab completes a command. Buttons never show `:command` names; the palette's command
+  window, Tab completes a command. A note opened in the window the palette is in takes the
+  focus once it has loaded, not what opened the palette (Go to…), 2026-11-28; one sent to the
+  note window leaves it. Buttons never show `:command` names; the palette's command
   mode is the one place they appear.
 - Settings (Tyson, 2026-11-27): a main-window page, `&settings`, opened by the gear at the top
   bar's right end (lit while Settings is shown), `g ,` or `:settings` (typed in full: `:set` is

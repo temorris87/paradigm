@@ -79,8 +79,8 @@ export class CalendarPage {
       onTaskDown: (entry, event) => this.dragTask(entry, event),
       onToggle: (entry) => this.run(this.setDone(entry.task.id, !entry.task.done)),
       onOpen: (entry) => this.run(this.openNote(entry.note.id)),
-      onFile: (ids, hubId) => this.run(this.file(ids, hubId)),
-      onIgnore: (ids) => this.run(this.ignore(ids)),
+      onFile: (ids, hubId, after) => this.run(this.file(ids, hubId).then(() => this.side.focusPending(after))),
+      onIgnore: (ids, after) => this.run(this.ignore(ids).then(() => this.side.focusPending(after))),
       onFilter: () => this.drawSide(),
     });
     this.grid = new GridView(week, {

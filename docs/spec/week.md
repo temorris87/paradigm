@@ -88,7 +88,9 @@ How the app behaves. Kept up to date by each feature that changes it.
   gone from an export that covers it: cancelled; back on), new ones of a series with meetings
   go into that hub, the rest wait in the sidebar's To file tab (hub guessed from the newest
   meeting of that name; File, File all, Don't import; each tells Today, whose "to file" rows
-  follow without a reload) and show muted on the week. Skipped:
+  follow without a reload; the focus goes to the same button on the next row left, else the
+  one before, else the list, and File all skips the rows filed with it, 2026-11-28) and show
+  muted on the week. Skipped:
   all-day, free, tentative, out of office, working elsewhere. Attendees are matched by email,
   then name, else made as people (rooms, groups and you left out; none past 20). A trashed
   imported meeting is never made again. Today shows the same Import panel until today's import
@@ -153,7 +155,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   Martin)" (the name shown → the sheet's); a sheet that now holds the stand-in's name is not
   counted. Save rota writes the sheet's names (no chip), Cancel pastes nothing; a paste that
   leaves that week out keeps the change; Clear rota… takes changes too. After a save, or `]`
-  `[` `t` on a cell, the focus stays on that cell.
+  `[` `t` on a cell, the focus stays on that cell. A change made in another main window shows
+  in an open On call tab without a reload (it redraws on the "changed" message).
 - Timesheet (the Week page's Timesheet, `:time`): a code per row (with its hub) x Mon-Fri, each
   day exactly the working day (8.00 h) in quarter hours: holidays, time off and sick time first,
   then meetings and task blocks inside the working hours (not lunch), overlaps shared evenly,

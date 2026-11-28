@@ -118,3 +118,30 @@ test("palette: the \"on\" label names the note on screen, none on a page with no
   assertEqual(label("live"), "on Kickoff", "Live: the Live note");
   assertEqual(label(null, "acme"), "", "no command typed: no label");
 });
+
+test("palette: a note chosen from Go to… gets the focus once it is open, not the Go to… button", async () => {
+  const { openPalette } = await import("../../static/js/palette/palette.js");
+  const tree = new NoteTree([{ id: 1, parent_id: null, title: "Acme" }, { id: 2, parent_id: null, title: "Northwind kickoff" }]);
+  const button = document.createElement("button");
+  const editor = document.createElement("textarea");
+  document.body.append(button, editor);
+  let release;
+  const loading = new Promise((resolve) => { release = resolve; });
+  const app = { role: "note", currentId: 1, tree, meetings: null, views: { shown: null },
+    focusNote: () => editor.focus(), guard: (promise) => promise,
+    open: async () => { await loading; return true; } };
+  try {
+    button.focus();
+    const closed = openPalette(app, "northwind");
+    const box = document.querySelector(".palette__box");
+    box.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    await closed;
+    release();
+    for (let tick = 0; tick < 5; tick += 1) await Promise.resolve();
+    assertTrue(document.activeElement === editor, "the opened note's editor has the focus");
+  } finally {
+    button.remove();
+    editor.remove();
+    document.querySelector(".palette")?.remove();
+  }
+});

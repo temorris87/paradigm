@@ -6,6 +6,8 @@ import { Rota, barText, cellPeople, changedTitle, nextOnCall, nextOnCallText, pa
   sheetName } from "../../static/js/oncall/oncall-model.js";
 import { onCallAction } from "../../static/js/oncall/oncall-keys.js";
 import { OnCallPage } from "../../static/js/oncall/oncall-page.js";
+import { WeekPage } from "../../static/js/week/week-page.js";
+import { NotesApp } from "../../static/js/notes/app.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
 const T = "2026-11-01T12:00:00.000Z";
@@ -261,6 +263,44 @@ test("oncall page: Enter on a cell opens its dialog under it; Esc saves nothing;
     assertEqual(blankAt().querySelector(".chip"), null, "empty puts the sheet's no one back");
   } finally {
     document.querySelectorAll("dialog.dialog").forEach((node) => node.remove());
+    root.remove();
+  }
+});
+
+test("oncall: an open On call tab redraws on a \"changed\" message from another window", async () => {
+  let rows = [{ week: "2026-11-23", role: "Primary", name: "Tom Reyes", sheet_name: "", changed: false, position: 0 }];
+  const node = () => document.createElement("div");
+  const root = node();
+  const oncall = node();
+  oncall.tabIndex = -1;
+  root.append(oncall);
+  document.body.append(root);
+  const listeners = [];
+  const changes = { listen: (handler) => listeners.push(handler), send() {} };
+  const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+  const week = new WeekPage({ root, bar: node(), plan: node(), time: node(), oncall, foot: node(), api: {}, changes, today: () => TODAY });
+  // Enough of the main window's NotesApp: its own handler for "changed", and a refreshTree that
+  // reads the rota and redraws the page shown, as the real one does.
+  const app = { role: "main", tree: tree(), onCall: new Rota(rows), guard: (promise) => promise, say() {},
+    refreshTree: async () => {
+      app.onCall = new Rota(rows);
+      week.redraw({ tree: app.tree, onCall: app.onCall });
+    },
+    reloadIfChanged: async () => {} };
+  app.onMessage = NotesApp.prototype.onMessage;
+  try {
+    week.hold({ setMonday() {} }, { setMonday() {} }, new OnCallPage({ root: oncall, api: {}, app: () => app, changes, today: () => TODAY }));
+    week.show("oncall");
+    assertTrue(oncall.textContent.includes("Tom Reyes"));
+    // Changed in the other main window: it sends "changed", and this window's app and tab hear it.
+    rows = [{ ...rows[0], name: "Ana Kim", sheet_name: "Tom Reyes", changed: true }];
+    const message = { type: "changed", what: ["oncall"] };
+    for (const listen of listeners) listen(message);
+    await app.onMessage(message);
+    for (let i = 0; i < 5; i += 1) await tick();
+    assertTrue(oncall.textContent.includes("Ana Kim"), "the new name is drawn without a reload");
+    assertTrue(!oncall.textContent.includes("Tom Reyes changed"), "the old one is gone");
+  } finally {
     root.remove();
   }
 });
