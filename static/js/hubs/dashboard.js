@@ -71,7 +71,8 @@ export class Dashboard {
     // A hub's head shows its first line; the text box only when there is more than that.
     const headed = shown && (note.kind === "project" || note.kind === "area");
     const more = body.trim().split("\n").filter((line) => line.trim()).length > 1;
-    this.text.box.hidden = !shown || (headed && !more);
+    // A person's text is their Notes card, among the sections (hub-sections.js).
+    this.text.box.hidden = !shown || (headed && !more) || note.kind === "person";
     if (this.text.box.hidden) return;
     const fields = fieldsFor(note);
     this.text.label.textContent = fields.main.label;

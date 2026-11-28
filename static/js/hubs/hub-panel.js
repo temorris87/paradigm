@@ -9,8 +9,12 @@
 //     onCommand(action), onLeave(), renderSnippet(markdown) -> html });
 //     onExpand: z (or a click on its ▸) on a row that opens in place (row.expanded set)
 //   panel.draw(sections)            one lane (the note window)
-//   panel.draw({ wide, act, know })  two lanes side by side (the main window's dashboard),
-//                                   under the wide sections (full width)
+//   panel.draw({ wide, cards, act, know, page })  two lanes side by side (the main window's
+//                                   dashboard), under the wide sections (full width) and the
+//                                   cards (a row of equal columns, each a lane of its own: a
+//                                   person's); page: the owner's kind, for its page-specific keys
+//                                   (hub-keys.js). With cards, every section draws its own
+//                                   empty line, and Tab / Shift+Tab move across the columns.
 //     each section: { key, label, detail, folded, rows, empty, add, addPlain, menu, more, columns? }
 //     add: the button's label or null (addPlain: without the "+"); menu: the label of a
 //     "···" button after it (onMenu opens the menu under it) or null; more: how many rows
@@ -24,6 +28,7 @@
 // aria-activedescendant. The buttons are for the mouse (tabIndex -1); the keys do the same
 // (hub-keys.js).
 import { hubAction } from "./hub-keys.js";
+import { chip } from "../ui/chip.js";
 
 const MAX_DEPTH = 6;
 const KEYS_OF = { remove: "x", role: "r", answer: "r", done: "Space", edit: "e", delegate: "d", takeBack: "d", history: "h" };
@@ -44,9 +49,12 @@ export class HubPanel {
     this.list.tabIndex = 0;
     this.list.id = "hub-list";
     section.replaceChildren(this.list);
+    this.page = null;
     this.list.addEventListener("keydown", (event) => {
-      const action = hubAction(event);
+      const action = hubAction(event, this.page);
       if (!action) return;
+      // Tab past the first or last column leaves the panel, as Tab does anywhere.
+      if ((action === "nextColumn" || action === "previousColumn") && this.columnTarget(action === "nextColumn" ? 1 : -1) < 0) return;
       event.preventDefault();
       event.stopPropagation();
       this.perform(action);
@@ -58,12 +66,17 @@ export class HubPanel {
     const hadFocus = this.hasFocus();
     const activeId = this.options[this.active]?.id;
     const activeSection = this.options[this.active]?.section.key;
+    const cards = Array.isArray(layout) ? [] : layout.cards ?? [];
+    const whole = cards.length > 0;
+    this.page = Array.isArray(layout) ? null : layout.page ?? null;
     const lanes = Array.isArray(layout) ? [{ key: "page", label: "Sections", sections: layout }]
       : [...(layout.wide?.length ? [{ key: "wide", label: "Overview", sections: layout.wide }] : []),
-        { key: "act", label: "To act on", sections: layout.act }, { key: "know", label: "To look up", sections: layout.know }];
+        ...cards.map((section) => ({ key: "card", label: section.label, sections: [section], whole })),
+        { key: "act", label: "To act on", sections: layout.act, whole }, { key: "know", label: "To look up", sections: layout.know, whole }];
     this.sections = lanes.flatMap((lane) => lane.sections);
     this.options = [];
     this.list.classList.toggle("hub__list--lanes", lanes.length > 1);
+    this.list.classList.toggle("hub__list--cards", whole);
     this.list.replaceChildren(...lanes.map((lane, index) => this.lane(lane, index)));
     const again = this.againIndex(activeId, activeSection);
     // Untouched, the panel starts on the first task, the row most likely acted on.
@@ -89,11 +102,22 @@ export class HubPanel {
     node.setAttribute("role", "group");
     node.setAttribute("aria-label", lane.label);
     this.laneIndex = index;
-    // Empty, folded or not, a section is only a name on the lane's Nothing yet line.
-    const empty = lane.sections.filter((section) => !section.rows.length);
+    // Empty, folded or not, a section is only a name on the lane's Nothing yet line (a lane
+    // drawn whole keeps each section, with its own empty line).
+    const empty = lane.whole ? [] : lane.sections.filter((section) => !section.rows.length);
     node.append(...lane.sections.filter((section) => !empty.includes(section)).map((section) => this.group(section)));
     if (empty.length) node.append(this.empties(empty));
     return node;
+  }
+
+  /** The add button's tooltip: on a person's page a always adds a topic, so only To raise names it. */
+  addTitle(section) {
+    return this.page === "person" && section.key !== "raise" ? section.add : `${section.add} (a)`;
+  }
+
+  /** The key a row's button names: on a person's page a topic's Raised is r, as the hint bar says. */
+  actionKey(row, key) {
+    return this.page === "person" && row.topic !== undefined && key === "done" ? "r" : KEYS_OF[key] ?? "";
   }
 
   /** "Nothing yet: Open questions + · Files + · Past meetings": the lane's empty sections on one line. */
@@ -105,7 +129,7 @@ export class HubPanel {
       const item = this.option(element("span", "hub__empty-item"), { type: "empty", section });
       item.title = section.empty;
       item.append(element("span", "hub__empty-label", section.label));
-      if (section.add) item.append(button("hub__empty-add", "+", `${section.add} (a)`, "add"));
+      if (section.add) item.append(button("hub__empty-add", "+", this.addTitle(section), "add"));
       if (section.menu) item.append(menuButton("hub__empty-add", section));
       line.append(item);
     });
@@ -122,11 +146,11 @@ export class HubPanel {
     group.setAttribute("aria-labelledby", label.id);
     heading.append(element("span", "hub__twisty", section.folded ? "▸" : "▾"), label,
       element("span", "hub__count", section.detail));
-    if (section.add) heading.append(button("hub__add", section.addPlain ? section.add : `+ ${section.add}`, `${section.add} (a)`, "add"));
+    if (section.add) heading.append(button("hub__add", section.addPlain ? section.add : `+ ${section.add}`, this.addTitle(section), "add"));
     if (section.menu) heading.append(menuButton("hub__add hub__menu", section));
     group.append(heading);
     if (section.folded) return group;
-    if (!section.rows.length) {
+    if (!section.rows.length && section.empty) {
       group.classList.add("hub__section--empty");
       const empty = element("div", "hub__empty", section.empty);
       group.append(empty);
@@ -155,6 +179,14 @@ export class HubPanel {
       (row.task !== undefined || row.addSubtask !== undefined) && "hub__row--task"];
     const node = this.option(element("div", classes.filter(Boolean).join(" ")), { type: "row", section, row });
     if (row.tip) node.title = row.tip;
+    if (row.doc !== undefined) {
+      node.classList.add("hub__row--doc");
+      const doc = element("div", "hub__doc md-doc");
+      doc.innerHTML = this.handlers.renderSnippet?.(row.doc) ?? "";
+      for (const link of doc.querySelectorAll("a")) link.tabIndex = -1;
+      node.append(doc);
+      return node;
+    }
     const line = element("div", "hub__line");
     if (row.task !== undefined && row.depth === 0 && !row.addSubtask) {
       const twisty = element("span", "hub__twisty hub__twisty--task", row.expanded ? "▾" : "▸");
@@ -165,11 +197,17 @@ export class HubPanel {
       line.append(twisty);
     }
     if (row.task !== undefined && !row.addSubtask) line.append(element("span", "hub__box", row.done ? "☑" : "☐"));
+    if (row.bullet) line.append(element("span", "hub__box hub__bullet", row.bullet));
     if (row.pre !== undefined) {
       node.append(element("pre", "hub__pre", row.pre));
       return node;
     }
     line.append(element("span", "hub__title", row.title));
+    if (row.chips?.length) {
+      const chips = element("span", "hub__chips");
+      chips.append(...row.chips.map(({ text, tone }) => chip(text, tone)));
+      line.append(chips);
+    }
     if (row.bar) line.append(barOf(row.bar));
     if (section.columns && row.cells) {
       line.append(...row.cells.map((cell, index) => element("span", `hub__cell ${row.cellClasses?.[index] ?? ""}`.trim(), cell)));
@@ -178,7 +216,7 @@ export class HubPanel {
     if (!section.columns) line.append(element("span", "hub__date", row.date ?? ""));
     if (row.actions?.length) {
       const box = element("span", "hub__row-actions");
-      for (const { key, label } of row.actions) box.append(button("hub__row-action", label, `${label} (${KEYS_OF[key] ?? ""})`, key));
+      for (const { key, label } of row.actions) box.append(button("hub__row-action", label, `${label} (${this.actionKey(row, key)})`, key));
       line.append(box);
     }
     node.append(line);
@@ -193,7 +231,7 @@ export class HubPanel {
 
   option(node, option) {
     const index = this.options.length;
-    const rowId = option.row ? `${option.row.id}:${option.row.at?.line ?? ""}:${option.row.task ?? option.row.file ?? (option.row.folder !== undefined ? `folder${option.row.folder}` : undefined) ?? option.row.template ?? option.row.addSubtask ?? ""}` : "";
+    const rowId = option.row ? `${option.row.id}:${option.row.at?.line ?? ""}:${option.row.task ?? option.row.file ?? (option.row.folder !== undefined ? `folder${option.row.folder}` : undefined) ?? option.row.template ?? option.row.addSubtask ?? ""}${option.row.reveal ? ":reveal" : ""}${option.row.inert ? ":inert" : ""}` : "";
     this.options.push({ ...option, lane: this.laneIndex ?? 0, id: `${option.type}:${option.section.key}:${rowId}` });
     node.id = `hub-option-${index}`;
     node.dataset.index = String(index);
@@ -242,7 +280,15 @@ export class HubPanel {
       case "previousSection": return this.moveTo(this.headingIndex(-1));
       case "nextLane": return this.moveTo(this.laneTarget(1));
       case "previousLane": return this.moveTo(this.laneTarget(-1));
-      case "open": return this.activate(option);
+      case "open":
+      case "openRow": return this.activate(option);
+      case "nextColumn": return this.moveTo(this.columnTarget(1));
+      case "previousColumn": return this.moveTo(this.columnTarget(-1));
+      case "addTopic":
+      case "oneOnOne": return this.handlers.onCommand?.(action);
+      // r on the person page: a topic is raised; any other row's second button (a hub's Role…).
+      case "raised": return option?.row?.topic !== undefined ? this.rowAction(option, ["done"])
+        : this.rowAction(option, ["role", "answer"]);
       case "fold": return this.fold(option);
       case "add": return option?.section.add ? this.handlers.onAdd(option.section) : undefined;
       case "menu": return this.openMenu(option);
@@ -284,6 +330,16 @@ export class HubPanel {
     const headings = this.options.map((option, index) => (option.type === "heading" ? index : -1)).filter((index) => index >= 0);
     if (direction > 0) return headings.find((index) => index > this.active) ?? this.active;
     return headings.filter((index) => index < this.active).pop() ?? this.active;
+  }
+
+  /** Tab: the first row of the next (1) or previous (-1) lane (its heading when it has none);
+   * -1 past the first or last. */
+  columnTarget(direction) {
+    const from = this.options[this.active];
+    if (!from) return -1;
+    const lane = from.lane + direction;
+    const row = this.options.findIndex((option) => option.lane === lane && option.type === "row");
+    return row >= 0 ? row : this.options.findIndex((option) => option.lane === lane);
   }
 
   /** The option in the next (1) or previous (-1) lane nearest the active one's height. */

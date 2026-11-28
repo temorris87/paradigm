@@ -263,45 +263,68 @@
   }
 }
 
-/* A person's head: the next 1:1 over Start 1:1 notes. */
+/* A person's head: avatar, name, "Role · Org" and email | NEXT 1:1, Before that, Start 1:1 notes. */
+.dash-head__main--person {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.dash-head__avatar {
+  width: 48px;
+  height: 48px;
+  font-size: var(--fs-md);
+}
+
+.dash-head__who {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-0);
+  min-width: 0;
+}
+
+.dash-head__title--person {
+  font-size: var(--fs-xl);
+}
+
 .dash-head__email {
+  color: var(--text-dim);
+}
+
+.dash-head__email:hover,
+.dash-head__email:focus-visible {
   color: var(--link);
+}
+
+.dash-head__actions--person {
+  align-items: flex-start;
+  gap: var(--sp-4);
 }
 
 .dash-head__next {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  margin-right: var(--sp-3);
+  gap: var(--sp-0);
 }
 
 .dash-head__next-label {
   color: var(--text-dim);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .dash-head__next-when {
   color: var(--text-strong);
-  font-size: var(--fs-lg);
+  font-size: var(--fs-md);
   font-weight: 600;
 }
 
-/* A person's Waiting on, I owe and To raise: three columns over the lanes. */
-[data-page="person"] .hub__lane--wide {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: start;
-  column-gap: var(--sp-6);
-}
-
-[data-page="person"] .hub__lane--wide .hub__empties {
-  grid-column: 1 / -1;
-}
-
-@media (max-width: 1399.98px) {
-  [data-page="person"] .hub__lane--wide {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.dash-head__before {
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
 }
 
 /* The full plan: the chart and its legend | the chosen phase's date history. */

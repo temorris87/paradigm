@@ -3,7 +3,8 @@
 // characters starting with a lowercase letter; named keys ("End", "ArrowDown") never are.
 // Pure apart from the clock it is given.
 //
-//   const read = keyReader(TABLE);         TABLE: [{ keys: ["gg", "Home"], action }]
+//   const read = keyReader(TABLE);         TABLE: [{ keys: ["gg", "Home"], action }]; "S-Tab":
+//                                          a named key with Shift (else Shift is ignored)
 //   read(event) -> action | "pending" | null
 //     "pending": the key starts a sequence; the caller swallows it and waits for the next.
 //     A second key that makes no sequence means nothing (null), as in Vim.
@@ -43,6 +44,8 @@ export function keyReader(table, { now = () => Date.now(), timeout = SEQUENCE_TI
       return byKey.get(combo) ?? null;
     }
     pending = null;
+    // A named key with Shift held reads as "S-Tab" where the table binds that.
+    if (event.shiftKey && event.key.length > 1 && byKey.has(`S-${event.key}`)) return byKey.get(`S-${event.key}`);
     if (starts.has(event.key)) {
       pending = event.key;
       pendingAt = now();

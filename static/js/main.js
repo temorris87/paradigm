@@ -46,8 +46,10 @@ let weekPage = null;
 let appNow = () => null;
 const weekTab = () => weekPage?.view ?? "plan";
 const hintBar = $(".key-hints");
-// L on a dashboard logs status only when the note belongs to a project or an area.
-const hintOptions = (app) => ({ logStatus: Boolean(app?.tree && statusHubOf(app)) });
+// L on a dashboard logs status only when the note belongs to a project or an area; a person's
+// dashboard has its own keys (Tab, a, r, n, o).
+const hintOptions = (app) => ({ logStatus: Boolean(app?.tree && statusHubOf(app)),
+  person: Boolean(app?.tree && app.tree.get(app.currentId)?.kind === "person") });
 const drawHints = () => drawKeyHints(hintBar, viewHints(appNow()?.views?.shown ?? null, weekTab(), hintOptions(appNow())));
 
 const app = boot({
@@ -141,7 +143,7 @@ drawHints();
 /** ? : every key of the view shown, in a list. */
 function showKeys() {
   const view = app.views?.shown ?? null;
-  return openKeysDialog({ title: `Keys: ${viewTable(view, weekTab()).name}`, groups: viewKeyGroups(view, weekTab(), hintOptions(app)) });
+  return openKeysDialog({ title: `Keys: ${viewTable(view, weekTab(), hintOptions(app)).name}`, groups: viewKeyGroups(view, weekTab(), hintOptions(app)) });
 }
 
 // Keys of the whole main window (layout/main-keys.js): the palette, Today, the Week, the plan,

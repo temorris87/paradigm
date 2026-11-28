@@ -58,6 +58,7 @@ import { Meetings } from "../meetings/meetings-model.js";
 import { meetingsPage } from "../meetings/meetings-page.js";
 import { People } from "../people/people-model.js";
 import { peoplePage } from "../people/people-page.js";
+import { endedCount } from "../people/one-on-one.js";
 import { Records } from "../records/records-model.js";
 import { TreeView, addLabel } from "./tree-view.js";
 import { NO_TRASH } from "../trash/trash-model.js";
@@ -110,6 +111,9 @@ export class NotesApp {
     this.contextStrip = contextStrip ? new ContextStrip(contextStrip, { onOpen: (id) => this.guard(this.open(id)) }) : null;
     // The strip's bar and "left" move on with the clock.
     if (this.contextStrip) setInterval(() => this.drawContext(), 60 * 1000);
+    // A person's Next 1:1 and the People page's Next together count only meetings still to
+    // come: when one ends while they stay open, they are drawn again.
+    if (role === "main") setInterval(() => this.redrawWhenMeetingEnds(), 60 * 1000);
     this.prep = prep ? new PrepBox(prep, { onOpen: (id) => this.guard(this.openFromHub(id)),
       onAddAll: (lines) => this.guard(this.addToAgenda(lines)) }) : null;
     this.saveStateNode = saveState;
@@ -576,8 +580,15 @@ export class NotesApp {
     else this.editor.goToLine(line);
   }
 
+  redrawWhenMeetingEnds() {
+    if (this.endedAtDraw === undefined) return; // not drawn yet
+    const showsPeople = this.views.shown === "people" || (!this.views.shown && isPerson(this.tree, this.currentId));
+    if (showsPeople && endedCount(this.tree, this.meetings, this.today()) !== this.endedAtDraw) this.redraw();
+  }
+
   redraw() {
     const id = this.currentId;
+    this.endedAtDraw = endedCount(this.tree, this.meetings, this.today());
     // While a page (Home, Calendar...) is shown, no tree row is the current one.
     const now = this.today();
     const health = new Map(this.tree.children(null).filter((note) => note.kind === "project" && !note.archived_at)
@@ -593,7 +604,8 @@ export class NotesApp {
       links: this.linkIndex.links, mentions: this.linkIndex.mentions, trash: this.trash, tasks: this.tasks,
       sessions: this.sessions, importStatus: this.importStatus, plan: this.plan, planTemplates: this.planTemplates,
       files: this.files, templateId: this.templateId, folders: this.folders, folderId: this.folderId, taskId: this.taskId, taskNoteId: this.taskNoteId, statusLogs: this.statusLogs,
-      timeSettings: this.timeSettings, topics: this.topics ?? [], onCall: this.onCall, today: this.today() };
+      timeSettings: this.timeSettings, topics: this.topics ?? [], onCall: this.onCall, today: this.today(),
+      noteBody: this.session.note?.body ?? "" };
     const trashed = this.trash.entries.length;
     if (this.trashButton) this.trashButton.textContent = trashed ? `Trash · ${trashed}` : "Trash";
     this.hubPage.show(ctx, id);

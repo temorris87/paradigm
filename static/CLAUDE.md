@@ -14,6 +14,8 @@ static/
   vendor/mermaid-12.3.0/ Mermaid exactly as audited (same check, mermaid-12.3.0.sha256)
   css/                   dashboard.css (the main window's dashboard: sections flowing down
                          columns, long text folded under Show more),
+                         person-cards.css (a person's dashboard: the three cards in a
+                         row, Notes and Together under them, stacked under 1400 px),
                          gantt.css, plan-template.css, folder-page.css, task-page.css (a
                          task's page: Subtask | Notes, stacked under 1400 px), oncall.css (the
                          On call tab, the Week bar's line, Today's rows, a person's head line),
@@ -102,7 +104,8 @@ static/
                          People, Next meeting; a meeting's Attendees; a person's details; a
                          record's state, people and From), hub-line-controls.js (the card's
                          buttons: ▾ ✎ + ×, they only report), dash-head.js (a project's or
-                         area's dashboard head: name, health badge, Outcome, Log status),
+                         area's dashboard head: name, health badge, Outcome, Log status; a
+                         person's: avatar, Role · Org, email, NEXT 1:1, Before that),
                          plan-strip.js (a project's phases in one strip, Gantt gp), hub-actions.js (what the card's
                          and the sections' buttons do: menus, pickers, dialogs, then the same
                          code as the ex commands; personDialog, personDetailsDialog,
@@ -116,11 +119,14 @@ static/
                          table and each kind's order: Plan, Projects, Tasks, Questions,
                          Decisions, Meetings, Files, Plan templates, Notes, People, Linked
                          from; a phase's Milestones; a plain note's Tasks and Files; a
-                         person's Waiting on, Active, Archived, Backlinks; pure), dashboard.js (the main window: a hub's text
+                         person's They owe me, I owe, To raise (three cards in a row on the
+                         dashboard), Notes and Together (Backlinks and Archived unfold under
+                         it); pure), dashboard.js (the main window: a hub's text
                          rendered with Edit ↗, a project's or an area's Gantt chart),
                          project-facts.js (status, due, next meeting texts;
                          pure), hub-areas.js (project <-> area; pure), hub-folds.js (folded
-                         sections, remembered per kind), hub-keys.js (THE sections key table)
+                         sections, remembered per kind), hub-keys.js (THE sections key table;
+                         page: "person" rows work only on a person's page: Tab, a, r, n, o)
   js/today/              the Today page (the start page, &home): today-facts.js (today's
                          meetings, open questions, live projects by area, the Inbox; pure),
                          today-model.js (the Now block, the day's timeline with free gaps,
@@ -136,10 +142,13 @@ static/
   js/pages/              list-page.js (a list page in place of the note: filters, search
                          box, one-focus-stop listbox), page-keys.js (THE key table of the
                          People and Meetings pages)
-  js/people/             one-on-one.js (I owe them, to raise, next together; pure),
+  js/people/             one-on-one.js (I owe them, to raise; still to come by the clock:
+                         next together, the next 1:1, Before that, last together, this
+                         month's meetings; pure),
                          topic-commands.js (+ Add, Raised, Start 1:1 notes), api.js, people-model.js (who is on a hub, an area with its projects;
-                         the People page filters; matchPerson, who a typed name means; pure), people-page.js (the People page,
-                         a ListPage), people-commands.js
+                         the People page filters, Sort and footnote; matchPerson, who a typed
+                         name means; pure), people-page.js (the People page, a ListPage),
+                         people-commands.js
   js/meetings/           api.js, prep-model.js (a meeting's prep: open questions with its
                          attendees, what they owe, last time; pure), meeting-days.js (local days, today/tomorrow, times, the
                          Period filter; pure), meetings-model.js (a hub's meetings, an area
@@ -179,7 +188,8 @@ static/
                          digest; pure), status-commands.js (Log status…, history, :log,
                          Copy weekly digest)
   js/ui/                 shared pieces that know nothing about notes: chip.js (THE status
-                         chip), chip-tones.js (a state or kind -> its tone; pure),
+                         chip), chip-tones.js (a state or kind -> its tone; pure), avatar.js
+                         (a person's initials in a circle),
                          key-hints.js (the key-hint bar from a table's hint:/label:; key
                          caps; pure apart from drawing), keys-dialog.js (the ? list),
                          key-sequence.js

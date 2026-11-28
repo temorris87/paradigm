@@ -756,3 +756,24 @@
 .hub-line__action--answer {
   margin-left: var(--sp-3);
 }
+
+/* A row's chips (Follow up Mon, Overdue 1 d), between its title and detail. */
+.hub__chips {
+  display: inline-flex;
+  flex: none;
+  gap: var(--sp-1);
+}
+
+/* A topic's ○, where a task's box sits. */
+.hub__bullet {
+  color: var(--text-dim);
+}
+
+/* A person's Notes: their text, rendered as the whole row. */
+.hub__doc > :first-child {
+  margin-top: 0;
+}
+
+.hub__doc > :last-child {
+  margin-bottom: 0;
+}

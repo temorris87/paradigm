@@ -1,19 +1,59 @@
-/* The People page's columns (the page itself: list-page.css): Name, Role · organisation, On,
-   Waiting on them, I owe, To raise, Next together. On a narrow window the counts wrap. */
+/* The People page's columns (the page itself: list-page.css): Name (avatar, name, role and
+   organisation under it), They owe me, I owe them, To raise, Next together, On. On a narrow
+   window the cells wrap two to a line. */
 .people .list-page__row {
-  grid-template-columns: minmax(8rem, 1.2fr) minmax(0, 1.3fr) minmax(0, 1.4fr) 120px 100px 100px 150px;
+  grid-template-columns: minmax(12rem, 1.6fr) 150px 150px 80px minmax(9rem, 1fr) minmax(0, 1.2fr);
+  align-items: center;
+}
+
+/* The bar's button at the size of its dropdowns (list-page.css), so the bar keeps one line. */
+.people .list-page__add {
+  font-size: var(--fs-sm);
+}
+
+.people__name {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.people__name-text,
+.people__next {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.people__title,
+.people__work,
+.people__next-when,
+.people__next-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.people__title {
+  color: var(--text-strong);
 }
 
 .people__work,
 .people__hubs,
 .people__count,
-.people__next {
+.people__next-title {
   color: var(--text-dim);
   font-size: var(--fs-sm);
 }
 
-.people__count--late {
-  color: var(--state-warning-fg);
+.people__owed,
+.people__owe {
+  display: flex;
+  gap: var(--sp-1);
+  color: var(--text-faint);
+}
+
+.people__next {
+  font-size: var(--fs-sm);
 }
 
 @media (max-width: 1000px) {

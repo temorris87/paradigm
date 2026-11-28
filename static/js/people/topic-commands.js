@@ -4,11 +4,15 @@
 //   addTopicDialog(app, person)        + Add: a few words to raise with them
 //   raiseTopic(app, id, raised)        ticked off in a 1:1 (Space, Raised)
 //   removeTopic(app, id)               x
-//   startOneOnOne(app, person)         the next meeting with them, its agenda with the topics
-//                                      to raise; none: New meeting "1:1 First" with them
+//   startOneOnOne(app, person)         the next 1:1 with them still to come (else the next
+//                                      meeting with them), its agenda with the topics to
+//                                      raise; none: New meeting "1:1 First" with them
+//   delegateNewDialog(app, person)     + Delegate (They owe me): a new task, delegated to them
+//   oweNewDialog(app, person)          + Task (I owe): a new task of mine, for them
+// The new tasks live on the person's own note, as nothing else is open there.
 import { newMeetingDialog } from "../hubs/hub-actions.js";
 import { formDialog } from "../ui/dialog.js";
-import { firstName, nextTogether } from "./one-on-one.js";
+import { firstName, nextOneOnOne, nextTogether } from "./one-on-one.js";
 
 function changed(app) {
   app.changes.send({ type: "changed", what: ["topics"] });
@@ -41,13 +45,16 @@ export async function removeTopic(app, id) {
   app.say("Topic removed");
 }
 
+const meetingFor = (app, person) => nextOneOnOne(app.tree, app.meetings, person.id, app.today())
+  ?? nextTogether(app.tree, app.meetings, person.id, app.today());
+
 export async function startOneOnOne(app, person) {
-  let next = nextTogether(app.tree, app.meetings, person.id, app.today());
+  let next = meetingFor(app, person);
   if (!next) {
     const made = await newMeetingDialog(app, person, { title: `1:1 ${firstName(person)}` });
     if (!made) return;
     await app.refreshTree();
-    next = nextTogether(app.tree, app.meetings, person.id, app.today());
+    next = meetingFor(app, person);
     if (!next) return;
   }
   const topics = (app.topics ?? []).filter((topic) => topic.person_id === person.id && !topic.raised_at);
@@ -58,4 +65,47 @@ export async function startOneOnOne(app, person) {
     if (lines.length) await app.saveOtherAgenda(note, agenda ? `${agenda}\n${lines.join("\n")}` : lines.join("\n"));
   }
   await app.openInNoteWindow(next.note.id);
+}
+
+function tasksChanged(app) {
+  app.changes.send({ type: "changed", what: ["tasks"] });
+  return app.refreshTree();
+}
+
+export function delegateNewDialog(app, person) {
+  return formDialog({
+    title: `Delegate to ${person.title}`,
+    fields: [
+      { key: "title", label: "Task", placeholder: "what they will do" },
+      { key: "follow", label: "Follow up on (optional)", type: "date", optional: true },
+    ],
+    submit: "Delegate",
+    run: async ({ title, follow }) => {
+      if (!title.trim()) throw new Error("A task needs some text");
+      const task = await app.tasksApi.create(person.id, title.trim());
+      await app.tasksApi.delegate(task.id, person.id, follow || "");
+      await tasksChanged(app);
+      app.say(`"${task.title}" delegated to ${person.title}`);
+    },
+    fallbackFocus: () => app.focusNote(),
+  });
+}
+
+export function oweNewDialog(app, person) {
+  return formDialog({
+    title: `A task for ${person.title}`,
+    fields: [
+      { key: "title", label: "Task", placeholder: "what you owe them" },
+      { key: "due", label: "Due (optional)", type: "date", optional: true },
+    ],
+    submit: "Add task",
+    run: async ({ title, due }) => {
+      if (!title.trim()) throw new Error("A task needs some text");
+      const task = await app.tasksApi.create(person.id, title.trim(), { due: due || "" });
+      await app.tasksApi.setFor(task.id, person.id);
+      await tasksChanged(app);
+      app.say(`"${task.title}" added: you owe it ${firstName(person)}`);
+    },
+    fallbackFocus: () => app.focusNote(),
+  });
 }

@@ -654,3 +654,18 @@
   font-size: var(--fs-xs);
   white-space: pre-wrap;
 }
+
+/* A person's avatar (static/js/ui/avatar.js): their initials in a circle. */
+.avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-selected);
+  color: var(--text-strong);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}

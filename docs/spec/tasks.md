@@ -24,8 +24,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   alone, and ticking the last open subtask leaves its parent open. A subtask keeps its parent:
   no indent or outdent. A delegated task shows "→ Name, follow up …" (red past
   the follow-up day), leaves the Week tray (but for Follow-ups, when its follow-up day is in
-  the week shown or before), and is listed in Waiting on (Home and
-  the person's page). Roll-up: a project lists its tasks and those of the notes inside it;
+  the week shown or before), and is listed in Waiting on (Home) and
+  They owe me (the person's page). Roll-up: a project lists its tasks and those of the notes inside it;
   an area lists its own only, and each of its projects in Projects with that project's
   counts (open tasks, decisions, open questions, next milestone).
 - Task page (2026-11-26; `?note=HUB&task=ID`, `static/js/tasks/task-page.js`): a task's own

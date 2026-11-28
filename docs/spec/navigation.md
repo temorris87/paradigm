@@ -33,7 +33,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   `o`/Enter open (`static/js/today/today-keys.js`, also the key-hint bar at the foot).
 - Note menu: clicking the open note's name (the last crumb, with ▾) opens its menu: rename,
   move (a picker), new note beside / under, file as, archive or restore, export, move to
-  trash (with a confirm); a project's or area's starts with Log status…. The table is
+  trash (with a confirm); a project's or area's starts with Log status…; a person's has Edit
+  details… after rename (the person details dialog: names, email, org, role). The table is
   `static/js/notes/note-menu.js`. Menus, pickers and dialogs share `static/js/ui/` and its
   keys (`ui-keys.js`).
 - A red confirm (Cancel the meeting, Move to trash, Clear rota, Remove a holiday, Unlink

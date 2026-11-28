@@ -26,7 +26,7 @@ import { openMenu } from "../ui/menu.js";
 import { pickFrom } from "../ui/picker.js";
 import { areaOf, projectsIn } from "./hub-areas.js";
 import { copyDigest, logStatusDialog, statusHistoryDialog, statusHubOf } from "../status/status-commands.js";
-import { addTopicDialog, raiseTopic, removeTopic } from "../people/topic-commands.js";
+import { addTopicDialog, delegateNewDialog, oweNewDialog, raiseTopic, removeTopic, startOneOnOne } from "../people/topic-commands.js";
 import { addTask, delegateDialog, editTaskDialog, newTaskDialog, removeTaskDialog, setTaskDone, takeBack } from "../tasks/task-commands.js";
 import { editDatesDialog, historyDialog, newMilestoneDialog, newPhaseDialog, newPlanTemplateDialog,
   setMilestoneDone } from "../plan/plan-commands.js";
@@ -253,6 +253,9 @@ export function hubTabActions(app) {
   const add = {
     where: (hub) => logStatusDialog(app, hub),
     raise: (person) => addTopicDialog(app, person),
+    waiting: (person) => delegateNewDialog(app, person),
+    owe: (person) => oweNewDialog(app, person),
+    personNotes: (person) => app.openInNoteWindow(person.id),
     digest: (area) => copyDigest(app, area),
     notes: (owner) => newNoteDialog(app, owner.id, { heading: `New note in "${owner.title}"` }),
     people: (hub) => addPersonTo(app, hub),
@@ -302,10 +305,12 @@ export function hubTabActions(app) {
     add: (tabKey, owner) => app.guard(add[tabKey]?.(owner)),
     // A section heading's "···" button (anchor): its menu; toList() puts the focus back on the list.
     menu: (tabKey, owner, anchor, toList) => menus[tabKey]?.(owner, anchor, toList),
-    // Keys about the page's owner: L, gp.
+    // Keys about the page's owner: L, gp; on a person, a (add topic) and n (Start 1:1 notes).
     command: (action, owner) => {
       if (action === "logStatus") return app.guard(logStatusDialog(app, statusHubOf(app, owner?.id)));
       if (action === "plan") return app.guard(app.showPlan(owner?.id));
+      if (action === "addTopic" && owner?.kind === "person") return app.guard(addTopicDialog(app, owner));
+      if (action === "oneOnOne" && owner?.kind === "person") return app.guard(startOneOnOne(app, owner));
       return undefined;
     },
     row: (key, tabKey, owner, row) => {

@@ -24,6 +24,9 @@
   display: none;
 }
 
+/* One line when it fits: the filters take the room between the pills and the New button and
+   give up width first. When even their narrowest does not fit, they move to a line of their
+   own (the New button with them, on the right). */
 .list-page__bar {
   display: flex;
   flex-wrap: wrap;
@@ -33,7 +36,7 @@
 
 .list-page__heading {
   margin: 0;
-  flex: 1 0 auto;
+  flex: none;
   font-size: var(--fs-lg);
   font-weight: 600;
   color: var(--text-heading);
@@ -46,12 +49,18 @@
 
 .list-page__filters {
   display: flex;
-  flex-wrap: wrap;
+  /* A zero basis: the bar breaks its line on the filters' narrowest (every field at its
+     minimum), not their widest, so a wide window keeps the bar on one line. */
+  flex: 1 1 0;
+  justify-content: flex-end;
   gap: var(--sp-2);
 }
 
 .list-page__label {
   display: flex;
+  /* A field shrinks with its label and never below it, so no two fields overlap. */
+  flex: 0 1 auto;
+  min-width: 6rem;
   flex-direction: column;
   gap: var(--sp-0);
   font-size: var(--fs-sm);
@@ -60,7 +69,9 @@
 
 .list-page__filter,
 .list-page__search {
-  min-width: 8rem;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
   max-width: 14rem;
   padding: var(--sp-0) var(--sp-2);
   border: 1px solid var(--border-control);
@@ -69,6 +80,62 @@
   color: var(--text-strong);
   font: inherit;
   font-size: var(--fs-md);
+}
+
+/* A short fixed list (Sort): the field keeps its longest option whole and lets the others
+   give up the width. */
+.list-page__label--fit {
+  flex: none;
+}
+
+.list-page__label--fit .list-page__filter {
+  width: auto;
+  max-width: none;
+}
+
+/* A dropdown that names itself ("Hub: any ▾"): one line, sitting level with the search box,
+   and never cut: as wide as the option chosen (field-sizing; where a browser lacks it, its
+   longest option), up to the usual cap. When the bar runs out of room the filters take a
+   line of their own instead. */
+.list-page__label--inline {
+  flex: none;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.list-page__label--inline .list-page__filter {
+  width: auto;
+  /* The small size of the pills beside them: a bar with three dropdowns, the search box and
+     the New button still fits one line at 1400 px. */
+  font-size: var(--fs-sm);
+}
+
+.list-page__label--inline:not(.list-page__label--fit) .list-page__filter {
+  field-sizing: content;
+}
+
+/* A search box that names itself ("Filter by name /"): one line, level with the dropdowns,
+   its key cap inside at the right end, as in the top bar's box. It gives up width first. */
+.list-page__label--search-inline {
+  position: relative;
+  /* Its width is its own (not the box's), so the box adds nothing to the bar's narrowest. */
+  flex: 0 1 11rem;
+  min-width: 7rem;
+  justify-content: flex-end;
+}
+
+.list-page__label--search-inline .list-page__search {
+  font-size: var(--fs-sm);
+  max-width: none;
+  padding-right: calc(var(--sp-2) + 1.5em);
+}
+
+.list-page__label--search-inline .key {
+  position: absolute;
+  right: var(--sp-1);
+  bottom: 50%;
+  transform: translateY(50%);
+  pointer-events: none;
 }
 
 .list-page__filter:focus-visible,
@@ -125,7 +192,10 @@
 
 /* The page's New button (New person, New meeting). */
 .list-page__add {
+  flex: none;
   align-self: flex-end;
+  /* On the right even when the bar wraps. */
+  margin-left: auto;
   padding: var(--sp-0) var(--sp-3);
   border: 1px solid var(--border-default);
   border-radius: 4px;
@@ -173,11 +243,16 @@
   .list-page__head {
     display: none;
   }
+
+  .list-page__filters {
+    flex-wrap: wrap;
+  }
 }
 
 /* Quick filters as pills (the Meetings page's Upcoming / Past / Needs notes; People's). */
 .list-page__pills {
   display: flex;
+  flex: none;
   align-self: center;
   gap: var(--sp-1);
 }
@@ -198,4 +273,19 @@
 
 .list-page__group--today {
   color: var(--state-caution-fg);
+}
+
+/* A quiet line under the list (People: who has nothing open). */
+.list-page__foot {
+  margin: var(--sp-2) 0 0;
+  color: var(--text-faint);
+  font-size: var(--fs-sm);
+}
+
+.list-page__foot[hidden] {
+  display: none;
+}
+
+.list-page__label-text .key {
+  margin-left: var(--sp-0);
 }

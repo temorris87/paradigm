@@ -2,7 +2,7 @@
 // later, No due date, Follow-ups), each once; the project/area filter with Other notes, and
 // the hub choice remembered.
 import { HUB_STORE, TaskSidebar } from "../../static/js/calendar/task-sidebar.js";
-import { HUB_KEYS } from "../../static/js/hubs/hub-keys.js";
+import { keysFor } from "../../static/js/hubs/hub-keys.js";
 import { HUB_SECTIONS } from "../../static/js/hubs/hub-sections.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
 import { Tasks, hubChoices } from "../../static/js/tasks/tasks-model.js";
@@ -144,5 +144,5 @@ test("next action gone: a project's Tasks keep their order, offer no Make next, 
   const rows = section.rows({ tree, tasks, sessions: [], today: new Date(2026, 10, 25), expanded: new Set() }, tree.get(2));
   assertEqual(rows.map((row) => row.title).join(), "Overdue one,Later,Undated move,Delegated no follow,Phase undated,Done");
   assertTrue(rows.every((row) => row.next === undefined && !row.actions.some((action) => action.key === "next")));
-  assertTrue(!HUB_KEYS.some((entry) => entry.keys.includes("n")));
+  assertTrue(!keysFor("project").some((entry) => entry.keys.includes("n")), "n is a person's key only");
 });
