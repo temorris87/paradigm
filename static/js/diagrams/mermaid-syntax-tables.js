@@ -30,13 +30,31 @@ const sequenceNames = (body) => [
 ].map((name) => name.trim()).filter((name) => !/\s/.test(name) && !/^(Note|note|loop|alt|else|opt|par|and|rect|end|critical|break|box)$/.test(name));
 
 const FLOW_KEYWORDS = /^\s*(subgraph|end|classDef|class|style|linkStyle|click|direction|%%)\b/;
+
+// A flowchart node's shape after its id, every one Mermaid draws, longest opener first:
+// (((…))), ((…)), ([…]), [(…)], [[…]], {{…}}, […] (with [/…/], [\…\], [/…\], [\…/] in
+// it), (…), {…}, >…] and @{ shape: …, label: "…" }. Text in one holds no bracket, unless
+// quoted ("Again (now)").
+const SHAPE_TEXT = String.raw`(?:"[^"]*"|[^"()\[\]{}])*`;
+const FLOW_BOXES = [
+  ["(((", ")))"], ["((", "))"], ["([", "])"], ["[(", ")]"], ["[[", "]]"], ["{{", "}}"],
+  ["[", "]"], ["(", ")"], ["@{", "}"], ["{", "}"],
+].map(([open, close]) => escapeRegExp(open) + SHAPE_TEXT + escapeRegExp(close)).join("|");
+const FLOW_FLAG = `>${SHAPE_TEXT}\\]`;
+const FLOW_SHAPE = `${FLOW_BOXES}|${FLOW_FLAG}`;
+// A flag's ">" follows its id straight on: the ">" ending an edge (-->, ==>, -.->) is not one.
+const FLOW_LABELS = new RegExp(`${FLOW_BOXES}|(?<=\\w)${FLOW_FLAG}`, "g");
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 const flowNames = (body) => {
   const ids = [];
   for (const line of body) {
     if (FLOW_KEYWORDS.test(line)) continue;
-    // Labels out first ([...], (...), {...}, |...|, "..."), then split at the edges. A flag's
-    // ">" follows its id straight on: the ">" ending an edge (-->, ==>, -.->) is not one.
-    const bare = line.replace(/"[^"]*"/g, "").replace(/\|[^|]*\|/g, " ").replace(/(\[[^\]]*\]|\([^)]*\)|\{[^}]*\}|(?<=\w)>[^\]]*\])/g, " ")
+    // Labels out first (shapes, |...|, "..."), then split at the edges.
+    const bare = line.replace(/"[^"]*"/g, "").replace(/\|[^|]*\|/g, " ").replace(FLOW_LABELS, " ")
       .replace(/:::\S+/g, " ");
     for (const part of bare.split(/<?(?:-{2,}|={2,}|-\.+-?)[>ox]?|~~~|&|;|\s+/)) {
       const id = part.trim();
@@ -83,10 +101,9 @@ const flowShapes = (id) => [
   row(`${id}[[‹text›]]`, "subroutine"), row(`${id}{{‹text›}}`, "hexagon"), row(`${id}>‹text›]`, "flag"),
 ];
 
-// A line that is one node written with its shape, then a space ("A[Again] "), and what was
-// typed after that space. A shape's text holds none of its own closing brackets.
-const SHAPED_NODE = new RegExp(String.raw`^\s*([A-Za-z_][\w-]*)(?:\(\([^)]*\)\)|\[\([^)]*\)\]|\(\[[^\]]*\]\)|\[\[[^\]]*\]\]|`
-  + String.raw`\{\{[^}]*\}\}|\[[^\]]*\]|\([^)]*\)|\{[^}]*\}|>[^\]]*\])(\s+\S*)$`);
+// A line that is one node written with its shape or a class or both, then a space
+// ("A[Again] ", "A(((Again))):::warn ", "A:::warn "), and what was typed after that space.
+const SHAPED_NODE = new RegExp(String.raw`^\s*([A-Za-z_][\w-]*)(${FLOW_SHAPE})?(:::[\w-]+)?(\s+\S*)$`);
 
 const FLOWCHART = {
   nameWord: "node",
@@ -112,7 +129,8 @@ const FLOWCHART = {
   ],
   afterNode: (before) => {
     const found = SHAPED_NODE.exec(before);
-    return found ? { name: found[1], token: found[2] } : null;
+    // A bare id is a name, not a written node (after-name has its rows).
+    return found && (found[2] || found[3]) ? { name: found[1], token: found[4] } : null;
   },
   // After a node with its shape: its edges, without the node (it is written already); the
   // shapes and the class need the bare id, so they are not offered there.

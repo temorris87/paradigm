@@ -153,12 +153,14 @@ How the app behaves. Kept up to date by each feature that changes it.
   the block's first line, a keyword typed in full ("flowchart") opens nothing unless Ctrl-Space,
   so Enter starts a new line. At a blank nothing has been typed over yet, the list does not
   open by itself (Ctrl-Space still opens it), nor where a blank was just deleted or a row just
-  went in, so Tab, Enter and Esc there are the editor's: one Esc leaves insert mode (042). In a flowchart, a node written with its shape and a space
-  (`A[Again] `) offers its edges on Ctrl-Space (`-->`, `-->|‹label›| ‹node›`...), each going in
+  went in, so Tab, Enter and Esc there are the editor's: one Esc leaves insert mode (042). In a
+  flowchart, a node written with its shape and a space (`A[Again] `, any shape Mermaid draws,
+  `A(((Again))) ` or `A@{ shape: rect } ` too, with or without `:::class`, or a class alone:
+  `A:::warn `) offers its edges on Ctrl-Space (`-->`, `-->|‹label›| ‹node›`...), each going in
   after the node without replacing it; an edge's target with a shape (`B -->|yes| C[Do this]`)
-  counts as one of the block's nodes (042). Tab in a mermaid block jumps to the next `‹blank›`
-  (wrapping), left for typing to replace; with none left Tab does what it did. The status line shows
-  the type while the cursor is in a block ("mermaid · sequenceDiagram · 2 participants").
+  counts as one of the block's nodes, in any of those shapes (042). Tab in a mermaid block jumps
+  to the next `‹blank›` (wrapping), left for typing to replace; with none left Tab does what it
+  did. The status line shows the type while the cursor is in a block ("mermaid · sequenceDiagram · 2 participants").
   Outside a block nothing opens; `@` still works everywhere.
 - Files (OneDrive): a folder synced on this computer is linked to a hub ("Link a OneDrive
   folder…": a picker over the folders under the `OneDriveCommercial` / `OneDrive` roots, or a

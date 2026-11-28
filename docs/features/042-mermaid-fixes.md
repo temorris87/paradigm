@@ -111,3 +111,9 @@ None: no route is added or changed.
     `commit id:` again). `insert.js` keeps the spot as `session.quiet` (`quietHere`), cleared by
     the next key or a click; `vim.completionWaits()` replaces `vim.atCurrentBlank()`, and
     `pd-editor`'s `replaceBeforeCursor` ends with `vim.quietCompletion()`.
+  - After a node, every flowchart shape Mermaid draws counts, not only the nine the rows offer:
+    `[ ]`, `( )`, `(( ))`, `((( )))`, `[[ ]]`, `[( )]`, `[/ /]`, `[\ \]`, `[/ \]`, `[\ /]`, `{ }`,
+    `{{ }}`, `> ]`, `([ ])` and `@{ shape: …, label: "…" }`, each optionally followed by
+    `:::class`, and a class alone (`A:::warn `). The shapes are one pattern in
+    `mermaid-syntax-tables.js` (`FLOW_SHAPE`, text in a shape holds no bracket unless quoted),
+    shared by `afterNode` and `flowNames`, so a node in any of them is also read as a name.

@@ -73,10 +73,10 @@ Paths from the repo root. Update this layout when the structure here changes.
 - Blanks and context completion (Tyson, 2026-11-27; 038): the host may hand the editor a
   completion source that reads the cursor's place (`editor.contextCompletion`) and the lines
   Tab looks for a `‹blank›` in (`editor.blankScope`); Ctrl-Space (insert mode only) asks the
-  source for everything there. `editor.insertLines(text, { insert: true, cursorAt, line })` starts
-  insert mode at the text's first `‹blank›`, else at the end of line `cursorAt` (`line`: below
-  that line, not the cursor's; `-1`: above the first line). A blank reached (inserted lines, Tab, a taken completion row)
-  stays in the text as the *current blank*, the cursor at its start: the first character typed
+  source for everything there. `editor.insertLines(text, { insert: true, cursorAt, line })`
+  starts insert mode at the text's first `‹blank›`, else at the end of line `cursorAt` (`line`:
+  below that line, not the cursor's; `-1`: above the first line). A blank reached (inserted
+  lines, Tab, a taken completion row) stays in the text as the *current blank*, the cursor at its start: the first character typed
   replaces it whole, Backspace deletes it, a completion row goes in its place; a move, a click,
   Tab or Esc forgets it and leaves it as it is (042). At the current blank, and where one was
   just deleted or a completion row just went in (`vim.completionWaits()`), the completion list

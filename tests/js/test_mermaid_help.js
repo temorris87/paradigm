@@ -536,6 +536,38 @@ test("mermaid syntax: Ctrl-Space after a node written with its shape and a space
   assertEqual(labels(mermaidCompletion({ lines, row: 4, col: lines[4].length })).join(), "-.-> ‹node›", "narrowed by what is typed");
 });
 
+// Every flowchart node shape Mermaid draws, as written after a node's id.
+const FLOW_SHAPES = ["[Again]", "(Again)", "((Again))", "(((Again)))", "[[Again]]", "[(Again)]", "[/Again/]", "[\\Again\\]",
+  "[/Again\\]", "[\\Again/]", "{Again}", "{{Again}}", ">Again]", "([Again])", "[\"Again (now)\"]", "@{ shape: rect, label: \"Again\" }"];
+
+test("mermaid syntax: Ctrl-Space after a node in any shape, with or without :::class, offers its edges", () => {
+  for (const shape of FLOW_SHAPES) {
+    for (const node of [`A${shape}`, `A${shape}:::warn`]) {
+      const lines = fence("flowchart TD", "    B --> C", `    ${node} `);
+      const result = mermaidCompletion({ lines, row: 4, col: lines[4].length, forced: true });
+      assertEqual(result?.head, "Flowchart · after a node", node);
+      assertTrue(labels(result).includes("-.-> ‹node›"), `${node}: its edges`);
+      const arrow = result.items.find((item) => item.insert === " --> ‹node›");
+      assertEqual(lines[4].slice(0, lines[4].length - result.replace) + arrow.insert, `    ${node} --> ‹node›`, `${node}: taking one keeps the node`);
+    }
+  }
+  const lines = fence("flowchart TD", "    B --> C", "    A:::warn ");
+  const result = mermaidCompletion({ lines, row: 4, col: lines[4].length, forced: true });
+  assertEqual(result?.head, "Flowchart · after a node", "a class with no shape");
+  assertTrue(result.items.some((item) => item.insert === " --> ‹node›"), "A:::warn: its edges");
+});
+
+test("mermaid syntax: a flowchart node in any shape, with or without :::class, is read as a name", () => {
+  for (const shape of FLOW_SHAPES) {
+    for (const line of [`    X${shape}`, `    X${shape}:::warn --> Y${shape}`, `    Q --> X${shape}`]) {
+      const names = mermaidContext(fence("flowchart TD", line, "    "), 4, 4).names;
+      const want = line.includes("Y") ? "X,Y" : line.includes("Q") ? "Q,X" : "X";
+      assertEqual(names.join(), want, line);
+    }
+  }
+  assertEqual(mermaidContext(fence("flowchart TD", "    X:::warn --> Y", "    "), 4, 4).names.join(), "X,Y", "a class with no shape");
+});
+
 test("insert diagram: inside a mermaid block, fences included, the new block goes after its closing fence", () => {
   const lines = ["# Note", "```mermaid", "pie", "  \"a\" : 1", "```", "after", "```mermaid", "pie"];
   for (const row of [1, 2, 3, 4]) assertEqual(JSON.stringify(diagramPlace(lines, row)), JSON.stringify({ line: 4, emptyLine: "before" }), `row ${row}`);
