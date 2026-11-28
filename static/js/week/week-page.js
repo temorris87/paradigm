@@ -1,7 +1,8 @@
 // The Week page, in the main window (&week): the calendar, the timesheet and the on-call rota
 // as one page with Plan / Timesheet / On call (the timesheet's settings are on the Settings
-// page, settings/settings-page.js). It owns the week shown (‹ This week ›,
-// the keys [ ] t), the switch, the week's totals in its bar (focus planned, meetings, free),
+// page, settings/settings-page.js). It owns the week shown (‹ This week › first in its bar so
+// they never move, then the range; the keys [ ] t), the switch, the week's totals in its bar
+// (focus planned, meetings, free),
 // who is on call that week (on every tab; a click opens On call), and the footer under
 // Plan: the hours so far by time code and the week projected, with Timesheet ↗. The calendar
 // (calendar/calendar-page.js), the timesheet (timesheet/time-page.js) and the rota
@@ -90,9 +91,12 @@ export class WeekPage {
     onCall.hidden = true;
     const copy = make("Copy for timesheet", "Copy the grid: paste it into the timesheet, Excel or an email (c)",
       () => this.timesheet?.run(this.timesheet.copy()), "cal-button week-bar__primary");
-    bar.replaceChildren(range, make("‹", "The week before ([)", () => this.moveWeek(-7)),
-      make("This week", "This week (t)", () => this.moveWeek(0)), make("›", "The week after (])", () => this.moveWeek(7)),
-      switcher, summary, onCall, copy);
+    // The buttons first, at the bar's edge: the range's width changes with the week, and they
+    // must stay under the pointer for click after click. The range has a fixed width (week.css).
+    bar.replaceChildren(make("‹", "The week before ([)", () => this.moveWeek(-7), "cal-button week-bar__move"),
+      make("This week", "This week (t)", () => this.moveWeek(0), "cal-button week-bar__move"),
+      make("›", "The week after (])", () => this.moveWeek(7), "cal-button week-bar__move"),
+      range, switcher, summary, onCall, copy);
     return { range, tabs, summary, onCall, copy };
   }
 

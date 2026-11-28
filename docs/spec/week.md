@@ -5,7 +5,11 @@ How the app behaves. Kept up to date by each feature that changes it.
 - Week (Tyson, 2026-11-22; the calendar and the timesheet became one page): `&week` in the main
   window (`:calendar`, `gw`; `:time` opens its Timesheet; old `&calendar` / `&time` URLs still
   land there). Its bar: the week (‹ This week ›, `[` `]` `t`), Plan | Timesheet | On call, and
-  the week's totals (focus planned, meetings, free). Plan: Monday to Sunday (Saturday and Sunday
+  the week's totals (focus planned, meetings, free). ‹ This week › come first, at the bar's left
+  edge, then the range ("23–29 Nov 2026") in a fixed width that fits the longest one ("28 Dec
+  2026 – 3 Jan 2027"), left-aligned: the buttons and the tabs stay put as the week changes, so
+  `›` can be clicked again and again without moving the mouse; the same on every tab, and when a
+  narrow window wraps the bar the three stay together at its start (Tyson, 2026-11-27). Plan: Monday to Sunday (Saturday and Sunday
   only when something is on them, or with Show weekend); each day's head has its free hours
   and a capacity bar (meetings, then focus blocks, as parts of the working day, lunch out);
   the "due" strip holds tasks due that day ("not placed" when no block comes before it),

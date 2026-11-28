@@ -1,5 +1,5 @@
-/* The Week page (static/js/week/week-page.js, &week): its bar (the week, Plan | Timesheet |
-   Settings, the week's totals), then Plan (calendar.css: the tray and the grid, with the
+/* The Week page (static/js/week/week-page.js, &week): its bar (‹ This week ›, the week's range,
+   Plan | Timesheet | Settings, the week's totals), then Plan (calendar.css: the tray and the grid, with the
    footer of hours so far) or the timesheet (timesheet.css), as tall as the window. */
 .week-view {
   --cal-hour: 40px; /* grid-view.js sets the real value on the grid (hourPxFor) */
@@ -53,8 +53,20 @@
   padding: var(--sp-0) var(--sp-3);
 }
 
+.week-bar__move {
+  flex: none;
+}
+
+/* A fixed width, so the tabs after it stay put as the week changes: wide enough for the longest
+   range, a year's turn ("28 Dec 2026 – 3 Jan 2027"), digits all one width. */
 .week-bar__range {
-  margin: 0 var(--sp-3) 0 0;
+  flex: none;
+  width: 24ch;
+  margin: 0 0 0 var(--sp-3);
+  overflow: hidden;
+  white-space: nowrap;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
   color: var(--text-heading);
   font-size: var(--fs-lg);
   font-weight: 600;
