@@ -46,7 +46,7 @@ paradigm/                Python package
                          calendar.py (the Outlook import: /api/calendar/status|upload|
                          pending|file|ignore); timesheet.py (/api/time/week, /api/time/
                          settings, holiday/add|update|remove, off/add|remove);
-                         oncall.py (/api/oncall, /api/oncall/paste|clear: the on-call rota);
+                         oncall.py (/api/oncall, /api/oncall/paste|set|clear: the on-call rota);
                          emails.py (/api/task/emails, /api/task/email/upload|reply|open|
                          remove: Outlook .msg files on tasks; the upload's own 30 MB cap);
                          task_files.py (/api/task/files, /api/task/file/attach|attach_path|
@@ -88,7 +88,9 @@ paradigm/                Python package
                          029 drops tasks.is_next: the next action is gone, 030 task_emails:
                          a task's .msg files, their reply state, 031 task_files: OneDrive
                          files linked to a task, 032 follow_up_logs: each follow-up of a
-                         delegated task, again with a new day or closed)
+                         delegated task, again with a new day or closed, 033
+                         on_call.sheet_name and changed: the sheet's name and a flag when a
+                         cell was changed by hand)
                          connection.py (one locked connection, transactions, VACUUM at start
                          when worth it), migrate.py
                          (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py,
@@ -137,7 +139,9 @@ paradigm/                Python package
                          upload), time_repo.py (settings, holidays,
                          time off; gathers a week for the report; holiday_dates),
                          oncall_repo.py (the rota: a paste replaces the weeks it holds, keeps
-                         the rest; clear), emails_repo.py (a task's emails: the row, and the
+                         the rest, its changes gone; set_name: one cell by hand, the
+                         sheet's name kept, changed flagged; clear),
+                         emails_repo.py (a task's emails: the row, and the
                          .msg saved at <data>/emails/<task>/<id>.msg in the same transaction;
                          drop_emails/remove_saved: task remove and trash purge take them)
   files/                 folders.py (a synced OneDrive folder: OneDrive roots from the

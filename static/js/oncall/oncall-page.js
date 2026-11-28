@@ -1,8 +1,10 @@
 // The Week page's On call tab (&week=oncall): the rota pasted from the Excel sheet, a row per
 // role and a column per week, the week shown lit; earlier weeks fold under "Earlier (n)".
 // Ctrl-V on the tab, or Paste sheet…, reads the sheet (sheet.js) and asks before it saves;
-// Clear rota… empties it. A name that is a person opens their dashboard. Its keys live in
-// oncall-keys.js.
+// Clear rota… empties it. A name that is a person opens their dashboard. Each cell's Change…
+// (or Enter on the cell) opens a dialog under it to put another name in that week and role (a
+// replacement); a changed cell wears a "changed" chip, and an empty name puts the sheet's back.
+// Its keys live in oncall-keys.js.
 //
 //   const page = new OnCallPage({ root, api, app, changes, onMove, today })
 //     app(): the NotesApp (its tree, its rota, refreshTree, open, say)
@@ -12,8 +14,10 @@ import { confirmDialog, formDialog } from "../ui/dialog.js";
 import { weekOf } from "../calendar/week-model.js";
 import { localDay } from "../meetings/meeting-days.js";
 import { dayText } from "../ui/dates.js";
+import { chip } from "../ui/chip.js";
+import { allPeople } from "../people/people-model.js";
 import { parseSheet } from "./sheet.js";
-import { cellPeople, pasteSummary } from "./oncall-model.js";
+import { cellPeople, changedTitle, pasteReplaces, pasteSummary, sheetName } from "./oncall-model.js";
 import { onCallAction } from "./oncall-keys.js";
 
 export class OnCallPage {
@@ -47,6 +51,7 @@ export class OnCallPage {
       case "nextWeek": return this.onMove(7);
       case "thisWeek": return this.onMove(0);
       case "paste": return this.app().guard(this.paste(""));
+      case "change": return this.app().guard(this.change(event.target.dataset.week, event.target.dataset.role));
       case "earlier":
         this.showEarlier = !this.showEarlier;
         return this.draw();
@@ -58,7 +63,7 @@ export class OnCallPage {
     return !this.root.hidden && !this.root.closest("[hidden]");
   }
 
-    setMonday(monday) {
+  setMonday(monday) {
     this.monday = monday;
     if (this.shown()) this.draw();
   }
@@ -97,7 +102,25 @@ export class OnCallPage {
       button("Paste sheet…", "Paste the Excel sheet into a box, then save it (p)", () => this.paste(""), "cal-button oncall__paste"));
     if (!rota.empty) foot.append(button("Clear rota…", "Remove every week of the rota", () => this.clear(), "cal-button"));
     parts.push(foot);
+    const focused = this.focusedCell();
     this.root.replaceChildren(...parts);
+    this.refocus(focused);
+  }
+
+  /** Where the focus is in the tab before a redraw: its cell's week and role, or just "inside". */
+  focusedCell() {
+    const active = this.root.ownerDocument.activeElement;
+    if (!active || active === this.root || !this.root.contains(active)) return null;
+    const cell = active.closest(".oncall__cell[data-week]");
+    return cell ? { week: cell.dataset.week, role: cell.dataset.role } : {};
+  }
+
+  // Any redraw (a save, the app's own redraw after it, ] [ t) replaces the cells: a focus left
+  // on a removed one would fall to the body, where the tab's keys no longer reach.
+  refocus(focused) {
+    if (!focused) return;
+    const cell = focused.week ? this.cellNode(focused.week, focused.role) : null;
+    (cell ?? this.root).focus({ preventScroll: true });
   }
 
   grid(tree, rota, weeks, today) {
@@ -115,23 +138,71 @@ export class OnCallPage {
     for (const role of rota.roles()) {
       const row = element("tr");
       row.append(element("th", "oncall__role", role));
-      for (const week of weeks) row.append(this.cell(tree, rota.name(week, role), week === this.monday));
+      for (const week of weeks) row.append(this.cell(tree, rota.cell(week, role), { week, role, today }));
       body.append(row);
     }
     table.append(thead, body);
     return table;
   }
 
-  cell(tree, name, shown) {
-    const cell = element("td", `oncall__cell${shown ? " oncall__cell--shown" : ""}`);
-    cellPeople(tree, name).forEach((part, index) => {
+  /** A role's cell in a week: its names, a "changed" chip, and Change… when the rota has it. */
+  cell(tree, row, { week, role, today }) {
+    const cell = element("td", `oncall__cell${week === this.monday ? " oncall__cell--shown" : ""}`);
+    if (!row) return cell;
+    cell.tabIndex = 0;
+    cell.dataset.week = week;
+    cell.dataset.role = role;
+    cellPeople(tree, row.name).forEach((part, index) => {
       if (index) cell.append(" / ");
       if (part.person) {
         const link = button(part.person.title, `Open ${part.person.title}`, () => this.app().guard(this.app().open(part.person.id)), "oncall__person");
         cell.append(link);
       } else cell.append(element("span", "oncall__name", part.text));
     });
+    const title = changedTitle(row);
+    if (title) {
+      cell.title = title;
+      cell.append(" ", chip("changed", "info", { title }));
+    }
+    const change = button("✎", "Change… (Enter)", () => this.app().guard(this.change(week, role)), "oncall__change");
+    change.setAttribute("aria-label", `Change ${role}, week of ${dayText(week, { today, weekday: false })}`);
+    cell.append(change);
     return cell;
+  }
+
+  cellNode(week, role) {
+    return [...this.root.querySelectorAll(".oncall__cell[data-week]")]
+      .find((node) => node.dataset.week === week && node.dataset.role === role) ?? null;
+  }
+
+  /** Asks for another name in a role that week; "" (or the sheet's own) puts the sheet's back. */
+  async change(week, role) {
+    const app = this.app();
+    const row = app.onCall.cell(week, role);
+    if (!row) return;
+    const anchor = this.cellNode(week, role);
+    const day = dayText(week, { today: localDay(this.today()), weekday: false });
+    const sheet = sheetName(row);
+    const saved = await formDialog({
+      title: `${role} · week of ${day}`,
+      text: `On the sheet: ${sheet || "no one"}`,
+      fields: [{ key: "name", label: "Name", value: row.name, optional: true,
+        suggestions: allPeople(app.tree).map((person) => person.title), placeholder: "a name in People, or any name" }],
+      live: () => ({ text: "Only this week and role change. Empty puts the sheet's name back.", plain: true }),
+      submit: "Save",
+      submitKey: "Enter",
+      cancelKey: "Esc",
+      anchor,
+      returnFocus: anchor ?? this.root,
+      run: async ({ name }) => {
+        await this.api.set({ week, role, name: name.trim() });
+        return { name: name.trim() };
+      },
+    });
+    if (!saved) return;
+    const back = !saved.name || saved.name === sheet;
+    await this.saved(back ? `On call: ${role} · ${day} is the sheet's ${sheet || "no one"} again` : `On call: ${role} · ${day} is now ${saved.name}`);
+    (this.cellNode(week, role) ?? this.root).focus({ preventScroll: true });
   }
 
   /** Asks before saving a pasted sheet (text: what was pasted; "" opens an empty box). */
@@ -149,7 +220,10 @@ export class OnCallPage {
         const parsed = parseSheet(sheet, today);
         // A sheet that reads is a preview; one that doesn't is the warning.
         const text = pasteSummary(parsed, app.onCall, app.tree, localDay(today));
-        return parsed.problem ? text : { text, plain: true };
+        if (parsed.problem) return text;
+        // Changed names in the weeks it holds go back to the sheet's: said on a line of its own.
+        const replaces = pasteReplaces(parsed, app.onCall, localDay(today));
+        return { text: replaces ? `${text}\n${replaces}` : text, plain: true };
       },
       returnFocus: this.root,
       run: async ({ sheet }) => {

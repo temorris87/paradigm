@@ -96,6 +96,12 @@
   box-shadow: 0 8px 28px var(--shadow-strong);
 }
 
+/* A dialog opened under what it changes (an On call cell): placed by dialog.js. */
+.dialog--anchored {
+  position: fixed;
+  margin: 0;
+}
+
 .dialog::backdrop {
   background: var(--backdrop);
 }
@@ -173,6 +179,15 @@
   font: inherit;
   font-size: var(--fs-md);
   cursor: pointer;
+}
+
+/* A key cap on a button (Save Enter, Cancel Esc). */
+.dialog__button .key {
+  margin-left: var(--sp-1);
+}
+
+.dialog__button--ok .key {
+  border-color: transparent;
 }
 
 .dialog__button:hover {
@@ -545,6 +560,7 @@
 /* A dialog's live line (Edit dates: what the move does to the rest). */
 .dialog__live {
   margin: 0;
+  white-space: pre-line;
   color: var(--state-danger-fg);
   font-size: var(--fs-sm);
 }

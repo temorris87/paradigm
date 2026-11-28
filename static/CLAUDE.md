@@ -236,7 +236,8 @@ static/
                          "23–29 Nov" (weekRange), 24-hour, the year only when not this year;
                          pure), menu.js (a popup menu
                          under a button), dialog.js (formDialog, confirmDialog on <dialog>:
-                         errors show inside and keep it open; a blocked submit), picker.js (a text box over a
+                         errors show inside and keep it open; a blocked submit; key caps on
+                         the buttons; anchor: opens under an element), picker.js (a text box over a
                          filtered list; filterItems is pure), ui-keys.js (THE key table of
                          menus, pickers and dialogs), dom.js (restoreFocus; data-focus-key:
                          focusedKey, focusFirstKey, keysAfterRemoving, so a part drawn again
@@ -320,8 +321,10 @@ static/
                          forms, month/day, nearest year; each column its date's Monday; pure),
                          oncall-model.js (Rota, names to people: "First Last", "Last, First", a
                          unique first name; a person's next week; the Week bar's line; the
-                         paste's preview; pure), oncall-page.js (the Week's On call tab),
-                         oncall-keys.js (THE On call key table), api.js
+                         paste's preview and the changed names it replaces; changed cells by
+                         the row's changed flag; pure), oncall-page.js (the Week's On call
+                         tab; Change… a cell's name in a dialog under it; a redraw keeps the
+                         focused cell), oncall-keys.js (THE On call key table), api.js
   js/timesheet/          api.js, copy.js (the grid as HTML and tab-separated text; pure),
                          time-page.js (the week's grid), time-settings.js (Codes and hours,
                          Holidays, Time off: the Settings page's cards), time-keys.js (THE

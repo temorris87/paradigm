@@ -1,15 +1,21 @@
-// The on-call rota in the page: the rows the server keeps ({ week, role, name, position }),
+// The on-call rota in the page: the rows the server keeps ({ week, role, name, sheet_name,
+// changed, position }; changed marks a cell changed by hand, and sheet_name is then the sheet's
+// name, '' when the sheet left the cell empty),
 // who holds each role in a week, which person a name in a cell is, and the texts for the Week
 // bar, Today, a person's head and the paste's preview. Pure.
 //
 //   const rota = new Rota(rows)
 //   rota.weeks                       Mondays with rows, oldest first
 //   rota.of(monday)                  [{ role, name }] holding a name, in the sheet's order
+//   rota.cell(week, role)            the row, or null (a role that week isn't on the rota)
+//   sheetName(row)                   the name the sheet says (the row's own when unchanged)
+//   changedTitle(row)                "was Hugo Martin" ("was no one") for a changed cell, else ""
 //   cellPeople(tree, cell)           [{ text, person }] (person: a note, or null)
 //   personForName(tree, name)        a person note or null
 //   nextOnCall(rota, tree, personId, today)  { week, roles, thisWeek } | null
 //   barText(tree, entries)           { text, title } for the Week bar ("" when none)
 //   pasteSummary(parsed, rota, tree) the preview's line
+//   pasteReplaces(parsed, rota, today) "Replaces 1 changed name: Primary 30 Nov (A → B)" or ""
 import { weekOf } from "../calendar/week-model.js";
 import { localDay } from "../meetings/meeting-days.js";
 import { personForMention } from "../notes/mentions.js";
@@ -53,8 +59,50 @@ export class Rota {
 
   /** The name in a role that week ("" when none). */
   name(week, role) {
-    return (this.byWeek.get(week) ?? []).find((row) => row.role.toLowerCase() === role.toLowerCase())?.name ?? "";
+    return this.cell(week, role)?.name ?? "";
   }
+
+  /** The row of a role that week, or null. */
+  cell(week, role) {
+    return (this.byWeek.get(week) ?? []).find((row) => row.role.toLowerCase() === role.toLowerCase()) ?? null;
+  }
+
+  /** Every changed cell, oldest week first. */
+  changed() {
+    return this.weeks.flatMap((week) => this.byWeek.get(week).filter((row) => row.changed));
+  }
+}
+
+/** The name the sheet says for a cell: the one it was changed from ("" for no one), else its own. */
+export function sheetName(row) {
+  if (!row) return "";
+  return (row.changed ? row.sheet_name : row.name) || "";
+}
+
+/** A changed cell's tooltip: "was {the sheet's name}"; "" when the cell is as the sheet says. */
+export function changedTitle(row) {
+  return row?.changed ? `was ${row.sheet_name || "no one"}` : "";
+}
+
+// The changes a paste names before the rest ("…" after them).
+const REPLACES_SHOWN = 3;
+
+/**
+ * The changed cells a pasted sheet writes over (a paste replaces each week it holds whole), as
+ * the confirm's line: "Replaces 1 changed name: Primary 30 Nov (Farid Haddad → Hugo Martin)".
+ */
+export function pasteReplaces(parsed, rota, today = null) {
+  if (parsed.problem) return "";
+  const pasted = new Map(parsed.weeks.map((week) => [week.week, week.roles]));
+  const lost = rota.changed().filter((row) => pasted.has(row.week)).flatMap((row) => {
+    const now = pasted.get(row.week).find((entry) => entry.role.toLowerCase() === row.role.toLowerCase())?.name || "";
+    // A sheet that now says the stand-in's name loses nothing but the chip, so it isn't named.
+    if (now.trim().toLowerCase() === (row.name || "").trim().toLowerCase()) return [];
+    return [`${row.role} ${dayText(row.week, { today, weekday: false })} (${row.name || "no one"} → ${now || "no one"})`];
+  });
+  if (!lost.length) return "";
+  const more = lost.length > REPLACES_SHOWN ? ", …" : "";
+  return `Replaces ${lost.length} changed name${lost.length === 1 ? "" : "s"}: ${lost.slice(0, REPLACES_SHOWN).join(", ")}${more}`;
 }
 
 /** A person by "First Last", "Last, First" or a first name only one live person has. */
