@@ -115,7 +115,10 @@ export class TimeSettings {
     const rowKeys = timeOff.map((entry) => `timeoff-remove-${entry.id}`);
     list.append(...timeOff.map((entry, index) => {
       const row = element("li", "");
-      const days = entry.first === entry.last ? entry.first : `${entry.first} to ${entry.last}`;
+      // In words, as the holidays are: "Mon 1 Dec to Fri 5 Dec".
+      const today = localDay(this.today());
+      const days = [entry.first, entry.last].filter((day, at) => !at || day !== entry.first)
+        .map((day) => dayText(day, { today })).join(" to ");
       row.append(element("span", "time-list__main", `${KIND_LABELS[entry.kind]}: ${days}`),
         element("span", "time-list__meta", [entry.hours ? `${entry.hours} h a day` : "whole days", entry.note].filter(Boolean).join(" · ")),
         removeButton("Remove it", rowKeys[index], () => this.run(this.api.removeTimeOff(entry.id)

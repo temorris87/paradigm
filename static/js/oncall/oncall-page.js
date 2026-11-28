@@ -152,14 +152,16 @@ export class OnCallPage {
     cell.tabIndex = 0;
     cell.dataset.week = week;
     cell.dataset.role = role;
+    const title = changedTitle(row);
     cellPeople(tree, row.name).forEach((part, index) => {
       if (index) cell.append(" / ");
       if (part.person) {
-        const link = button(part.person.title, `Open ${part.person.title}`, () => this.app().guard(this.app().open(part.person.id)), "oncall__person");
+        // A changed name's hover says who the sheet had (its own title would hide the cell's);
+        // a click still opens the person.
+        const link = button(part.person.title, title || `Open ${part.person.title}`, () => this.app().guard(this.app().open(part.person.id)), "oncall__person");
         cell.append(link);
       } else cell.append(element("span", "oncall__name", part.text));
     });
-    const title = changedTitle(row);
     if (title) {
       cell.title = title;
       cell.append(" ", chip("changed", "info", { title }));

@@ -23,7 +23,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   minute, Done / Open note / +15 min; else the next block; else "<Day> is clear.") over the
   day (meetings with their prep, blocks, free gaps of 30 min or more in the working hours,
   "Log status" when projects are stale; imported events still in the Week's To file show
-  muted, "to file on the Week (g w)", and open the Week); Up next, one list ranked across every project
+  muted, "to file on the Week (g w)", and open the Week; one the Week files or Don't imports
+  leaves them without a reload, 2026-11-28); Up next, one list ranked across every project
   (overdue, due today, due within 5 working days, questions waiting over
   7 days; never done, on-hold, archived or snoozed; next actions left it with the flag,
   2026-11-26, and an empty list reads "Nothing urgent: nothing overdue, due soon or waiting on
@@ -37,7 +38,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   Import panel sits centred over the day column, which greys out and takes no clicks; the Now
   card, Up next and the side column stay live. "Today's calendar isn't imported", the Outlook
   steps, the drop zone ("Drop the .ics here" / "or press i to pick it"), Import a file… `i` and
-  Not today, and the "Last imported" line. `i`, Import a file… or a drop of `.ics` files
+  Not today, and the "Last imported" line ("Last imported: Wed 25 Nov 08:12" or "Never imported
+  yet": no tray clause, as Today has no tray; 2026-11-28). `i`, Import a file… or a drop of `.ics` files
   anywhere on Today uploads them as the Week does (`calendar/import-upload.js`): the panel goes,
   Today redraws, the status line says "Imported n meetings from {file}"; a file that won't
   parse says `E: not a calendar file: {name}` and the panel stays. Not today sets the Week's
@@ -66,7 +68,10 @@ How the app behaves. Kept up to date by each feature that changes it.
     YYYY-MM-DD, tomorrow, a weekday (the next one after today) or +3, shows the day it reads
     beside it, and must be after today; quick picks +1 tomorrow · +3 · Mon. `j k` and the
     arrows switch the choices while they have the focus; Enter logs, Esc cancels. A bad day or
-    a server refusal shows inside the dialog, which stays open. Follow up again moves the
+    a server refusal shows inside the dialog, which stays open; a task done meanwhile is
+    refused with 409 "task is done" and nothing is logged (default, approved by Tyson,
+    2026-11-28). Once the log is stored the dialog closes and it is never sent again: a redraw
+    that fails after it only shows its error (`c` alike). Follow up again moves the
     task's follow-up day (the row leaves the group); Close it ticks the task done today, as
     Space on a task does. The status line says "Logged: follow up again Tue 1 Dec" or "Logged
     and closed: {title}".
@@ -110,7 +115,9 @@ How the app behaves. Kept up to date by each feature that changes it.
   Unlink… with the Files section's confirm; "No folders linked yet. Link one from a project's
   Files section." when none), **Data folder** (the folder the notes are kept in, read only,
   with Copy path, and the version). No theme switcher yet: Nord Light is the only theme.
-  Keys: the window's own, `Escape` back, `?` all keys. After Save, Add holiday, a Remove or an
+  Time off lists its days in words, as holidays do ("Time off: Mon 1 Dec to Fri 5 Dec").
+  Keys: the window's own, `Escape` back (on the Note window radios and the Observed checkbox
+  too: they are not text fields, 2026-11-28), `?` all keys. After Save, Add holiday, a Remove or an
   Unlink the card is drawn again with the focus where it was; a removed row's focus goes to
   the next row's button, else the previous one's, else the card's first field (or the Linked
   folders card when no folder is left).

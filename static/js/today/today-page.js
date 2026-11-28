@@ -106,7 +106,7 @@ export class TodayPage {
     const dayPart = this.dayPart(ctx, now, timeline, covered ? null : register);
     this.dayCell.replaceChildren(dayPart, this.panel.node);
     this.panel.grid = dayPart;
-    this.panel.draw({ shown: covered, lastText: lastImportedText(ctx.importStatus, day) });
+    this.panel.draw({ shown: covered, lastText: lastImportedText(ctx.importStatus, day, "today") });
     nowColumn.append(this.nowCard(ctx, now), this.dayCell);
     const nextColumn = element("div", "today__col today__col--next");
     nextColumn.append(this.upNextPart(next, register));

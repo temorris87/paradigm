@@ -99,7 +99,10 @@ How the app behaves. Kept up to date by each feature that changes it.
   typing stops, on `:w` ("{title}" notes saved), and on leaving or closing the window, with
   `POST /api/task/update {id, notes}`. No versions: the last write wins (Tyson, 2026-11-27). A
   failed save keeps the text and says `E: notes not saved: {error}`. Opening another note or
-  task there saves them first (`:e!` drops a note's edits, never the task's notes). A task gone
+  task there saves them first (`:e!` drops a note's edits, never the task's notes), and again
+  once the note has loaded, just before they close, so text typed during the load is kept; if
+  that save fails the switch stops, the task's notes stay open and the error shows
+  (2026-11-28). A task gone
   says `E: that task is gone (deleted in another window?)`.
   While the note window holds them, the task page shows the info chip **Live · editing in the
   note window** (with its dot) in the Notes card's head, left of Edit, and the card renders the

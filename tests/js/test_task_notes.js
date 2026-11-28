@@ -245,7 +245,7 @@ function noteWindow({ api = fakeTasksApi(), noteDirty = false } = {}) {
     guard: () => {},
     get currentId() { return this.session.note?.id ?? null; },
   };
-  for (const name of ["openTask", "switchTo", "saveBeforeSwitching", "saveCommand"]) app[name] = NotesApp.prototype[name];
+  for (const name of ["openTask", "switchTo", "saveBeforeSwitching", "saveTaskNotesBeforeClosing", "saveCommand"]) app[name] = NotesApp.prototype[name];
   app.taskNotes = new TaskNotesMode(app, { api, timers: new FakeTimers() });
   return { app, channel, editor, said, pushed, noteSaves, api };
 }
@@ -287,6 +287,38 @@ test("task notes: a failed save keeps them open, with the text", async () => {
   assertEqual(said.at(-1), "E: notes not saved: Paradigm is not answering");
   assertTrue(app.taskNotes.active && app.taskNotes.dirty);
   assertEqual(editor.value, "typed");
+});
+
+test("task notes: text typed while the note loads is saved to the task before they close", async () => {
+  const { app, api } = noteWindow();
+  await app.openTask(7);
+  app.taskNotes.edited("typed");
+  const get = app.api.get;
+  app.api.get = async (id) => {
+    app.taskNotes.edited("typed, and more");
+    return get(id);
+  };
+  assertTrue(await app.switchTo(2, { history: "none", discard: false, heading: "" }));
+  assertEqual(api.saves.map((each) => each.notes).join("|"), "typed|typed, and more", "the late text is on the task");
+  assertTrue(!app.taskNotes.active);
+  assertEqual(app.currentId, 2);
+});
+
+test("task notes: a failed save of what was typed during the load stops the switch", async () => {
+  const api = fakeTasksApi();
+  const { app, said, editor } = noteWindow({ api });
+  await app.openTask(7);
+  app.api.get = async (id) => {
+    api.update = () => Promise.reject(new Error("Paradigm is not answering"));
+    editor.value = "typed late";
+    app.taskNotes.edited("typed late");
+    return { id, title: "Kickoff", body: "the note" };
+  };
+  assertEqual(await app.switchTo(2, { history: "none", discard: false, heading: "" }), false);
+  assertEqual(said.at(-1), "E: notes not saved: Paradigm is not answering");
+  assertTrue(app.taskNotes.active && app.taskNotes.dirty, "the task's notes stay open");
+  assertEqual(editor.value, "typed late");
+  assertEqual(app.currentId, null, "the note did not open");
 });
 
 test("task notes: the task page asks once, shows the chip in its Notes card, and reads the notes again on close", async () => {
