@@ -92,7 +92,13 @@ None: no route is added or changed.
   held a valid sample value. A test parses every template, unwrapped, with the vendored Mermaid.
 - **Unwrap:** `unwrapBlanks` is in `static/js/editor/blanks.js` and is applied once, in the
   shared renderer (`diagrams/mermaid.js`), which `:export` also uses (`diagramSvg`). There is no
-  separate copy-as-image path in the app, so nothing else needed it.
+  separate copy-as-image path in the app, so nothing else needed it. From the batch re-check
+  (2026-11-28): it goes through `drawnSource` in `diagrams/mermaid.js`, which in the
+  flowchart-like types (`SLOT_TYPES`) also draws an emptied edge label (`-->||`), node text
+  (`A[]`, `a[""]`) or architecture title (`(cloud)[]`) as none, so a blank Backspaced away and
+  left doesn't break the drawing. A test empties every blank of every template one at a time;
+  the types where the blank is text the diagram needs (`TEXT_NEEDED`: titles, sections, task
+  and tree names) are left to Mermaid's error.
 - **After a node with its shape:** a new `after-node` place (`afterNode`/`afterNodeRows` in the
   flowchart table, checked first in `placeIn`). It offers only the edge rows of
   `FLOWCHART.after`, without the node's id; the shape and `:::class` rows are left out, since

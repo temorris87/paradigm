@@ -124,6 +124,11 @@ body.is-dragging * {
   gap: var(--sp-2);
 }
 
+/* Only on the To plan tab: the display above would otherwise keep them on To file. */
+.cal-side__filters[hidden] {
+  display: none;
+}
+
 .cal-side__hub,
 .cal-side__search,
 .cal-file__hub {

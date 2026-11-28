@@ -10,7 +10,7 @@ import { INSERT_KEYS } from "../../static/js/editor/keys.js";
 import { DIAGRAM_TYPES, MOST_USED, detectDiagramType, diagramFence, diagramGroups } from "../../static/js/diagrams/mermaid-types.js";
 import { mermaidBlankScope, mermaidBlockAt, mermaidCompletion, mermaidContext, mermaidStatus } from "../../static/js/diagrams/mermaid-syntax.js";
 import { diagramPlace, insertDiagramDialog } from "../../static/js/diagrams/insert-diagram.js";
-import { createDiagramRenderer } from "../../static/js/diagrams/mermaid.js";
+import { createDiagramRenderer, drawnSource } from "../../static/js/diagrams/mermaid.js";
 import { mermaidEditorHelp, mermaidStatusHint } from "../../static/js/diagrams/mermaid-help.js";
 import { noteMenuItems } from "../../static/js/notes/note-menu.js";
 import { tableMenuItems } from "../../static/js/notes/selection-menu.js";
@@ -510,6 +510,34 @@ test("mermaid types: every template, its ‹blanks› unwrapped, parses with the
     const blanks = type.template.match(/‹[^‹›\n]*›/g) ?? [];
     assertTrue(blanks.every((blank) => blank.length > 2 && !blank.includes("…")), `${type.id}: every blank holds a sample value`);
   }
+});
+
+// Where a blank holds text the diagram needs (a title, a section, a task's or a tree entry's
+// name), emptied it is half-written Mermaid, and Mermaid's error says so.
+const TEXT_NEEDED = new Set(["gantt", "timeline", "journey", "quadrantChart", "requirementDiagram", "C4Context",
+  "xychart-beta", "treeView-beta", "ishikawa"]);
+
+test("mermaid types: an emptied label or node text (Backspace on its ‹blank›) still draws", async () => {
+  const mermaid = (await import("../../static/vendor/mermaid-12.3.0/dist/mermaid.esm.min.mjs")).default;
+  mermaid.initialize({ startOnLoad: false, securityLevel: "strict" });
+  const failed = [];
+  for (const type of DIAGRAM_TYPES.filter((each) => !TEXT_NEEDED.has(each.id))) {
+    const blanks = [...type.template.matchAll(/‹[^‹›\n]*›/g)];
+    for (const blank of blanks) {
+      const emptied = type.template.slice(0, blank.index) + type.template.slice(blank.index + blank[0].length);
+      try {
+        await mermaid.parse(drawnSource(emptied));
+      } catch (error) {
+        const line = emptied.split("\n").find((each) => !type.template.split("\n").includes(each)) ?? "";
+        failed.push(`${type.id} ${blank[0]} -> "${line.trim()}"`);
+      }
+    }
+  }
+  assertEqual(failed.join(" | "), "", "a blank that, emptied, breaks its drawing");
+  assertTrue([...TEXT_NEEDED].every((id) => DIAGRAM_TYPES.some((type) => type.id === id)), "every type named is one");
+  assertEqual(drawnSource("flowchart TD\n  B -->|| C[‹Do this›]"), "flowchart TD\n  B --> C[Do this]", "an empty edge label is drawn as no label");
+  assertEqual(drawnSource("classDiagram\n  class A {\n    +run()\n  }"), "classDiagram\n  class A {\n    +run()\n  }",
+    "only flowchart-like diagrams: a class's method() is left as written");
 });
 
 test("mermaid syntax: a flowchart edge whose target has a shape names its target", () => {

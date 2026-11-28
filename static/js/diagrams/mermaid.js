@@ -11,9 +11,33 @@
 // Mermaid itself runs in a hidden frame page with its own CSP (frame-client.js says why); it
 // is loaded there the first time a diagram is seen, and the frame is emptied after each one.
 import { unwrapBlanks } from "../editor/blanks.js";
+import { detectDiagramType } from "./mermaid-types.js";
 import { diagramFrame } from "./frame-client.js";
 import { insertSvg } from "./insert-svg.js";
 import { currentTheme, themeOf } from "../theme/themes.js";
+
+// An edge's label left empty (a label blank Backspaced away: B -->|| C) draws as no label.
+const EMPTY_EDGE_LABEL = /([-=.]{2,}[>ox]?)\|\s*\|/g;
+// A node's shape left empty (A[], B{}, block's a[""]) draws as the node by its id.
+const EMPTY_SHAPE = /\b([A-Za-z_][\w-]*)(?:\[""\]|\[\]|\(\)|\{\}|\(\(\)\)|\[\[\]\]|\{\{\}\}|\(\[\]\)|\[\(\)\])(?=[\s;:]|$)/gm;
+
+// An architecture group's or service's title left empty (group api(cloud)[]) draws without one.
+const EMPTY_TITLE = /(\))\[\]/g;
+
+// The types whose nodes and edges are written id[text] and -->|label|: only there do the rules
+// above read as an empty slot (elsewhere, a class's method() is text of its own).
+const SLOT_TYPES = new Set(["flowchart", "flowchart-elk", "agentflow-beta", "swimlane-beta", "mindmap", "kanban",
+  "block-beta", "architecture-beta"]);
+
+/** The source as Mermaid is given it: ‹blanks› as their sample value, and in a flowchart-like
+ *  diagram an edge label or a node's text emptied (as Backspace on its blank leaves it) drawn
+ *  as none, not as an error. */
+export function drawnSource(source) {
+  const text = unwrapBlanks(source);
+  const type = text.split("\n").map((line) => detectDiagramType(line)).find(Boolean);
+  if (!type || !SLOT_TYPES.has(type.id)) return text;
+  return text.replace(EMPTY_EDGE_LABEL, "$1").replace(EMPTY_SHAPE, "$1").replace(EMPTY_TITLE, "$1");
+}
 
 const CACHE_LIMIT = 50;
 const MESSAGE_LIMIT = 500;
@@ -96,7 +120,7 @@ export function createDiagramRenderer({ load = async () => diagramFrame() } = {}
     let result;
     try {
       const api = await mermaid();
-      const { svg } = await api.render(id, unwrapBlanks(source));
+      const { svg } = await api.render(id, drawnSource(source));
       result = { svg, id };
     } catch (error) {
       result = { error: messageOf(error) };

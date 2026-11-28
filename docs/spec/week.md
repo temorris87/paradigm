@@ -30,7 +30,7 @@ How the app behaves. Kept up to date by each feature that changes it.
   hub); an area includes its projects. The choice is remembered (`localStorage`
   `paradigm.week.trayHub`: reloads, week changes, the other window) and falls back to All once
   that hub has nothing in the tray; the search box isn't remembered and narrows inside the
-  filter. Empty: "No open task matches" with a filter or search, else "Nothing to plan: every
+  filter. Both show on To plan only (fixed 2026-11-28: they also showed on To file). Empty: "No open task matches" with a filter or search, else "Nothing to plan: every
   task is done or delegated." Drag one onto the week for a 30-minute block; `s` on a tray
   row drops its estimate into the first free slot before its due day (no due date: within
   the next two weeks). `gw` (or opening Plan) puts the focus on the calendar, so `[` `]` `t`

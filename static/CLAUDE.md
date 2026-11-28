@@ -210,7 +210,8 @@ static/
                          in the page, since Chrome ignores it inside a shadow root
   js/diagrams/           mermaid.js: draws the renderer's .md-mermaid placeholders (Mermaid
                          loaded on first use, strict, one render at a time, cached by source,
-                         ‹blanks› drawn unwrapped; onDiagramDrawn tells the editor to
+                         ‹blanks› drawn unwrapped and emptied flowchart slots as none,
+                         drawnSource; onDiagramDrawn tells the editor to
                          remeasure); frame-client.js: the window's hidden diagram frame,
                          Mermaid's {initialize, render} over postMessage, 20 s per diagram;
                          frame-main.js + frame-listener.js: the frame page's side (Mermaid

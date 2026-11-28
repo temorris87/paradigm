@@ -143,7 +143,11 @@ How the app behaves. Kept up to date by each feature that changes it.
   taken row) stays in the text, the cursor at its start: the first character typed replaces it
   whole, Backspace deletes it; a move, Tab or Esc leaves it as it is. Blanks not typed over are
   saved with their marks, and the page and `:export` draw `‹Start›` as `Start`,
-  so a template left as inserted still draws (Tyson, 2026-11-28; not deleted on Esc).
+  so a template left as inserted still draws (Tyson, 2026-11-28; not deleted on Esc). In a
+  flowchart-like diagram (flowchart, ELK, agentflow, swimlane, mindmap, kanban, block,
+  architecture) a label or a node's text Backspaced away is drawn as none: `B -->|| C` draws
+  as `B --> C` and `A[]` as `A`, while the text keeps what was typed. Elsewhere, a title,
+  section or name left empty is half-written Mermaid, and its error says so.
 - Mermaid as you type (Tyson, 2026-11-27; 038), the note window's editor, insert mode, inside a
   ```` ```mermaid ```` block (its type is the first keyword line after `---` front matter and
   `%%` lines): a list under the cursor, headed with the type and place ("SEQUENCE DIAGRAM ·

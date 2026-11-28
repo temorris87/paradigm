@@ -313,3 +313,9 @@ test("import wiring: after File all from the last rows, the focus goes back to t
     root.remove();
   }
 });
+
+test("import wiring: the To plan filters are hidden on the To file tab (their display rule keeps [hidden])", async () => {
+  const css = await (await fetch(new URL("../../static/css/calendar.css", import.meta.url))).text();
+  assertTrue(/\.cal-side__filters\[hidden\]\s*\{\s*display:\s*none/.test(css),
+    ".cal-side__filters sets display: flex, so without its own [hidden] rule the filters show on To file");
+});
