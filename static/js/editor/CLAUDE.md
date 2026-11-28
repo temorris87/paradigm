@@ -75,10 +75,11 @@ Paths from the repo root. Update this layout when the structure here changes.
   Tab looks for a `‹blank›` in (`editor.blankScope`); Ctrl-Space (insert mode only) asks the
   source for everything there. `editor.insertLines(text, { insert: true, cursorAt, line })` starts
   insert mode at the text's first `‹blank›`, else at the end of line `cursorAt` (`line`: below
-  that line, not the cursor's). A blank reached (inserted lines, Tab, a taken completion row)
+  that line, not the cursor's; `-1`: above the first line). A blank reached (inserted lines, Tab, a taken completion row)
   stays in the text as the *current blank*, the cursor at its start: the first character typed
   replaces it whole, Backspace deletes it, a completion row goes in its place; a move, a click,
-  Tab or Esc forgets it and leaves it as it is (042). At the current blank the completion list
+  Tab or Esc forgets it and leaves it as it is (042). At the current blank, and where one was
+  just deleted or a completion row just went in (`vim.completionWaits()`), the completion list
   does not open by itself (only Ctrl-Space opens it), so Tab, Enter and Esc there are the
   editor's. The editor
   knows nothing about what they are for: the note window's Mermaid help lives in

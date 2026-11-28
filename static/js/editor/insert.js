@@ -2,7 +2,9 @@
 // typed (to repeat for "3ix<Esc>"), the characters replace mode overwrote, the block for
 // a visual-block insert, and the current ‹blank› (blank: { line, start, end }, the cursor at
 // its start): the first character typed replaces it whole, Backspace deletes it, and any
-// other key (a move, Tab, Esc) forgets it, leaving it in the text.
+// other key (a move, Tab, Esc) forgets it, leaving it in the text. quiet ({ line, col, text })
+// is where a blank was just deleted or a completion row went in: the completion list waits
+// there for the next key, as at a current blank.
 import { findBlank, nextBlank } from "./blanks.js";
 import { findKey, INSERT_KEYS } from "./keys.js";
 import { isTextKey } from "./key-names.js";
@@ -14,6 +16,7 @@ import { isTableLine } from "./tables.js";
 
 export function insertKey(vim, key) {
   const session = vim.insert;
+  session.quiet = null;
   if (session.awaitingRegister) {
     session.awaitingRegister = false;
     record(vim, key);
@@ -183,9 +186,20 @@ function currentBlank(vim) {
   return found && found.start === blank.start && found.end === blank.end ? found : null;
 }
 
-/** True while the cursor sits at the current blank, nothing typed over it yet. */
-export function atCurrentBlank(vim) {
-  return Boolean(currentBlank(vim));
+/** True while the completion list waits for a key: at the current blank, nothing typed over
+ * it yet, or where a blank was just deleted or a completion row just went in. */
+export function completionWaits(vim) {
+  if (currentBlank(vim)) return true;
+  const quiet = vim.insert?.quiet;
+  const { line, col } = vim.cursor;
+  return Boolean(quiet) && quiet.line === line && quiet.col === col && quiet.text === vim.buf.line(line);
+}
+
+/** The completion list waits here for the next key (a completion row just went in). */
+export function quietHere(vim) {
+  if (!vim.insert) return;
+  const { line, col } = vim.cursor;
+  vim.insert.quiet = { line, col, text: vim.buf.line(line) };
 }
 
 /** The current blank, if any, is deleted (Backspace there; a completion row taken there goes
@@ -196,6 +210,9 @@ export function deleteCurrentBlank(vim) {
   if (!blank) return false;
   vim.edit(pos(blank.line, blank.start), pos(blank.line, blank.end), "");
   vim.setCursor(pos(blank.line, blank.start));
+  // What is left around it may read as a place with a list (B -->|| after a node): that list
+  // would take Tab and Esc from the next blank and the insert.
+  quietHere(vim);
   return true;
 }
 

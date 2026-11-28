@@ -133,7 +133,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   types instead: "kan" finds Kanban, "jou" User journey); typing filters by name or keyword;
   Enter inserts (with no match it stays open); Esc closes. The ```` ```mermaid ```` block goes
   in below the cursor line as one undo step (with the cursor on any line of a mermaid block,
-  its fences included, after that block's closing fence and one empty line instead; 042), the
+  its fences included, after that block's closing fence and one empty line instead, or above
+  its opening fence and one empty line when it has no closing fence; 042), the
   editor in insert mode at its first `‹blank›` (Sankey and Event modeling have none, since their
   parsers refuse `‹ ›`: at the end of the template's last line). Every blank holds a sample
   value that is valid there (`‹Start›`, `‹Alice›`). A blank reached (on insert, by Tab, or in a
@@ -151,8 +152,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   and place. Up/Down move, Tab or Enter take the row, Esc closes it and stays in insert mode. On
   the block's first line, a keyword typed in full ("flowchart") opens nothing unless Ctrl-Space,
   so Enter starts a new line. At a blank nothing has been typed over yet, the list does not
-  open by itself (Ctrl-Space still opens it), so Tab, Enter and Esc there are the editor's: one
-  Esc leaves insert mode (042). In a flowchart, a node written with its shape and a space
+  open by itself (Ctrl-Space still opens it), nor where a blank was just deleted or a row just
+  went in, so Tab, Enter and Esc there are the editor's: one Esc leaves insert mode (042). In a flowchart, a node written with its shape and a space
   (`A[Again] `) offers its edges on Ctrl-Space (`-->`, `-->|‹label›| ‹node›`...), each going in
   after the node without replacing it; an edge's target with a shape (`B -->|yes| C[Do this]`)
   counts as one of the block's nodes (042). Tab in a mermaid block jumps to the next `‹blank›`

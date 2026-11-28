@@ -80,7 +80,8 @@ None: no route is added or changed.
 - **Current blank:** `insert.js` keeps it on the insert session (`session.blank`); `takeBlank`
   no longer deletes. Typing over it, Backspace (`deleteCurrentBlank`) and a completion row
   taken there (`pd-editor`'s `replaceBeforeCursor` calls `vim.dropCurrentBlank()` first) act on
-  it; Tab moves on from its end. `vim.atCurrentBlank()` tells the completion list.
+  it; Tab moves on from its end. `vim.completionWaits()` tells the completion list (it was
+  `atCurrentBlank()` until the post-batch fixes, below).
 - **Added in the fix round (browser check):** at the current blank the completion list no
   longer opens by itself (`completion.js`'s `update()` skips it unless Ctrl-Space forced it).
   Without this, Flowchart's `A[|‹Start›]` and Mindmap's `root((|‹Topic›` read as a line start,
@@ -97,6 +98,16 @@ None: no route is added or changed.
   `FLOWCHART.after`, without the node's id; the shape and `:::class` rows are left out, since
   they need the bare id. The head reads "FLOWCHART · after a node".
 - **Insert diagram… in a block:** `diagramPlace(lines, row)` in `insert-diagram.js` uses
-  `mermaidBlockAt(lines, row, { fences: true })`; a block with no closing fence puts the new
-  one after its last line. `pd-editor` gains `editor.cursor` (a copy) and `insertLines`'s
-  `line` option.
+  `mermaidBlockAt(lines, row, { fences: true })` and returns `{ line, emptyLine }`. `pd-editor`
+  gains `editor.cursor` (a copy) and `insertLines`'s `line` option (`line: -1` with `insert`:
+  above the first line, `vim.putLinesAtTop`).
+- **Post-batch fixes (after review and the browser check):**
+  - A block with no closing fence: the new block goes above its opening fence, followed by one
+    empty line, since anything below it would still be inside it (the plan put it after its
+    last line).
+  - The completion list also waits for a key where a current blank was just deleted with
+    Backspace (`B -->|‹label›|` became `B -->||`, which read as "after a node" and opened a list
+    that took Tab and Esc) and where a completion row just went in (gitGraph's `commit` offered
+    `commit id:` again). `insert.js` keeps the spot as `session.quiet` (`quietHere`), cleared by
+    the next key or a click; `vim.completionWaits()` replaces `vim.atCurrentBlank()`, and
+    `pd-editor`'s `replaceBeforeCursor` ends with `vim.quietCompletion()`.

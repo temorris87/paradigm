@@ -11,7 +11,8 @@
 //   editor.insertText("text");        // at the cursor, as if pasted (see "files" below)
 //   editor.insertText("a\nb", { asLines: true, line: 4 })  // whole lines below line 4
 //   editor.insertLines("a\nb", { cursorAt: 1 })   // below the cursor's line; the cursor on "b"
-//   editor.insertLines("a", { line: 7 })   // below line 7 instead (0-based)
+//   editor.insertLines("a", { line: 7 })   // below line 7 instead (0-based); with insert,
+//                                     // line -1 is above the first line
 //   editor.insertLines("a\n‹b›", { insert: true })   // and insert mode in them, at their first
 //                                     // ‹blank› (left in the text until typed over), else their
 //                                     // start: one undo step; with cursorAt and no blank, at the
@@ -199,11 +200,12 @@ export class PdEditor extends HTMLElement {
     return this.vim.mode;
   }
 
-  /** Puts the cursor at the start of a line (0-based), scrolling it into view. */
+  /** The cursor, { line, col } (0-based): a copy. */
   get cursor() {
     return { ...this.vim.cursor };
   }
 
+  /** Puts the cursor at the start of a line (0-based), scrolling it into view. */
   goToLine(line) {
     this.vim.click({ line: Math.max(0, Math.min(line, this.vim.buf.lastLine)), col: 0 });
     this.render();
@@ -437,6 +439,8 @@ export class PdEditor extends HTMLElement {
     for (let index = 0; index < length; index += 1) this.enqueue("<BS>");
     this.enqueue({ paste: text });
     if (this.vim.blankScope && text.includes("‹")) this.enqueue(() => this.vim.takeBlankBefore(from));
+    // Not a list for the row just taken (gitGraph's commit offers commit id:): it waits for a key.
+    this.enqueue(() => this.vim.quietCompletion());
   }
 
   onWheel(event) {
