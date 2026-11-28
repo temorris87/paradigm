@@ -190,8 +190,8 @@ Features in build order. "build feature" takes the first unchecked item.
 - [x] Week as in Figma (Week · imported / not imported): calendar import is file-only. With no
   import this week, the calendar greys out under a centered Import panel (drop the .ics, or
   `i` to pick it; "Plan without it"). The `<data>/import/` folder scan goes. (done 2026-11-27)
-- [ ] Today as in Figma (Today): the same Import panel ("Not today"), and plain wording for
-  the free time left.
+- [x] Today as in Figma (Today): the same Import panel ("Not today"), and plain wording for
+  the free time left. (done 2026-11-28)
 - [x] Project page as in Figma (Project, Project history): it shows now and next (this week
   on); each section's older entries go to the project's own History page (`g h`). (done 2026-11-27)
 - [x] Task page as in Figma (Task): Notes is the main column; Subtasks, Emails, Files, From and
@@ -216,11 +216,11 @@ Features in build order. "build feature" takes the first unchecked item.
   sample data). The note on screen must follow what the main window shows. (done 2026-11-27)
 - [x] Week, Timesheet tab at 1400 px wide: the right-hand panel ("Check before you submit", "This
   week off", "Not counted") is drawn over the hours grid's Thu, Fri and Total columns. (done 2026-11-27)
-- [ ] Edit a task's notes in the note window: the task page's Edit opens them there, with a
-  "Live · editing in the note window" chip on the task page while they are open.
-- [ ] When a note is closed, the preview should also close.
-- [ ] Follow ups should only show up on Today if they need to be followed up on that day. They
-  should appear at the top.
+- [x] Edit a task's notes in the note window: the task page's Edit opens them there, with a
+  "Live · editing in the note window" chip on the task page while they are open. (done 2026-11-28)
+- [x] When a note is closed, the preview should also close. (done 2026-11-28)
+- [x] Follow ups should only show up on Today if they need to be followed up on that day. They
+  should appear at the top. (done 2026-11-28)
 - [ ] For pages that have multiple columns, h and l should work from vim key bindings to move
   left and right, not having to only use j and k.
 - [ ] If the f key is free, I want to be able to use it (or another key if it's not free) to use
@@ -232,11 +232,22 @@ Features in build order. "build feature" takes the first unchecked item.
   and k should now scroll the page up and down if it has enough content that it's scrollable.
   Shift H and L should let me move into the left and right sidebars and j and k should scroll
   there as well, with the f key targeting the panel I'm in, sidebar, middle.
-- [ ] Move all settings into a gear icon setting.
-- [ ] Previous, This Week, and Next Week buttons shouldn't move as the width of the date's text
+- [x] Move all settings into a gear icon setting. (done 2026-11-28)
+- [x] Previous, This Week, and Next Week buttons shouldn't move as the width of the date's text
   adjusts. I should be able to keep clicking the same location to move forward or backward with
-  ease.
-- [ ] On call entries should be editable in case someone ends up with a replacement.
-- [ ] I need a solution for mermaid diagrams on notes to insert preformatted text for all
+  ease. (done 2026-11-28)
+- [x] On call entries should be editable in case someone ends up with a replacement. (done 2026-11-28)
+- [x] I need a solution for mermaid diagrams on notes to insert preformatted text for all
   supported diagram types. I also need some solution for showing me possible syntax within that
-  diagram type -- must be context sensitive -- to help me write diagrams quickly.
+  diagram type -- must be context sensitive -- to help me write diagrams quickly. (done 2026-11-28)
+- [ ] Mermaid help fixes (from the browser check of batch 2026-11-27d): a ‹blank› stays in the
+  text until it is typed over, so a template left as inserted still draws (15 of 36 types broke
+  after Esc); flowchart reads the target of an edge that has a shape (`B -->|yes| C[Do this]`);
+  Ctrl-Space after a node written with its shape (`A[Again] `) offers edges; Insert diagram… with
+  the cursor inside a mermaid block puts the new block after that block's closing fence.
+- [ ] Small fixes from batch 2026-11-27d: Today's Import panel says "the tray still works" (Today
+  has no tray); Today's "to file" rows go stale after Don't import on the Week; switching the note
+  window from a task's notes to a note drops what is typed meanwhile; the follow-up route logs on a
+  done task, and a failed redraw after logging can log it twice; Settings shows time-off dates raw
+  and Escape does nothing on a Note window choice; hovering a changed on-call name says "Open …",
+  not "was …".
