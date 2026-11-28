@@ -97,7 +97,7 @@ const app = boot({
     week.hold(calendar, time, onCall);
     const template = new TemplatePage($(".plan-template-view"), { app, onLeave: () => app().leaveView() });
     const folder = new FolderPage($(".folder-view"), { app, onLeave: () => app().leaveView() });
-    const task = new TaskPage($(".task-view"), { app, onLeave: () => app().leaveView(), emailsApi });
+    const task = new TaskPage($(".task-view"), { app, onLeave: () => app().leaveView(), emailsApi, changes });
     const plan = new PlanPage($(".plan-view"), { app, onLeave: () => app().leaveView() });
     const historyPage = new HistoryPage($(".history-view"), { app, onLeave: () => app().leaveView() });
     // A note newly opened in the note window, any way, brings the Live page up here.

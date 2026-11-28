@@ -1,4 +1,5 @@
-// The note window (/note.html): one note at a time, written here, with its card and sections.
+// The note window (/note.html): one note at a time, written here, with its card and sections,
+// or a task's notes (?task=ID: tasks/task-notes-session.js).
 // Today, People, a hub's dashboard... show in the main window (the navigator's Today and Week,
 // the palette), and its Live page shows the note as it is typed here (live/live-sender.js).
 import { boot } from "./boot.js";
@@ -21,7 +22,8 @@ startLiveSender(app);
 
 // The key-hint bar: the editor's few keys that matter most, and Tab when the note has its
 // sections sheet. No ?: here it is the editor's search backwards.
-const drawHints = () => drawKeyHints($(".key-hints"), noteHints({ sheet: !$(".sheet").hidden }));
+// A task's notes: only @ and :w.
+const drawHints = () => drawKeyHints($(".key-hints"), noteHints({ sheet: !$(".sheet").hidden, task: Boolean(app.taskNotes?.active) }));
 app.events.addEventListener("redraw", drawHints);
 drawHints();
 

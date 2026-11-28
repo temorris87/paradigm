@@ -17,7 +17,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   Enter (or a click on its title) opens its own page (below), `z` (or a click on its ▸) opens
   it in place: its notes, every level of subtasks, each box under the start of the title above
   it, and + Add subtask for direct ones (deeper ones are added on the task page). Row buttons:
-  Done (Space), Edit… (`e`: text, notes, due), Delegate… / Take back (`d`), Delete (`x`; it
+  Done (Space), Edit… (`e`: text, due; no notes field since 2026-11-27, the notes are written
+  in the note window from the task's page), Delegate… / Take back (`d`), Delete (`x`; it
   takes every subtask under it, and its confirm says how many and opens on Cancel; a task
   with logged time keeps its row, so the timesheet doesn't change). Marking a task done marks
   every open subtask under it done too, at every level, delegated ones included, with today's
@@ -38,13 +39,15 @@ How the app behaves. Kept up to date by each feature that changes it.
     caution; "Due Fri 4 Dec" further off, neutral; none once done), "2 h estimate" (neutral),
     and one "2 h placed Mon" per block of time, "· done" once over (success). On the right the
     buttons Done `Space` (primary), Schedule `s`, Delegate `d` (Take back `d` on a delegated
-    task, as in hub sections), Edit `e`, and ··· (the other task actions).
+    task, as in hub sections), Edit… `E` (title, due date, estimate, for whom: no notes field;
+    it was `e`, Tyson, 2026-11-27), and ··· (the other task actions).
   - Facts row, small caps labels over values: PROJECT (AREA or PERSON on those hubs; a link to
     the hub), FOR (I owe it to them, or "—"), DELEGATED TO ("Ben Ortiz · follow up Mon", or
     "—"), NEXT BLOCK (the next block not over: "Mon 30 Nov 10:00–12:00"; else "None · s finds
     Fri 08:00", the slot `s` would take, worked out now; "None" when done, archived or no room).
-  - Two columns: Notes, the main one, a card (Notes, Edit `e`) with the task's notes rendered
-    (maths, diagrams, note links), or "No notes yet. e to write them." (Tyson, 2026-11-27); and
+  - Two columns: Notes, the main one, a card (Notes, Edit `e`: the notes in the note window,
+    below) with the task's notes rendered (maths, diagrams, note links), or "No notes yet. e
+    to write them." (Tyson, 2026-11-27); and
     a side column about 24rem wide of cards, in this order (`task-side.js`):
     Subtasks "1 of 2 done", + Subtask `a`: each row ☐ and the title, a tree (each box under the
     start of its parent's title), on the right "done Thu 26 Nov", "→ Ben · follow up Mon" or
@@ -66,20 +69,41 @@ How the app behaves. Kept up to date by each feature that changes it.
     day); Next block then shows it.
   - Keys (`task-page-keys.js`), one listbox: the head is the first row, then the side column's
     rows top to bottom (subtasks, emails, files, From, History). `j`/`k`/arrows, `gg`/`G`;
-    Space done or reopen, `e` Edit…, `d` delegate or take back, `s` schedule (each on the
-    selected subtask, else the page's task); `a` adds a subtask under the row (elsewhere: a
+    Space done or reopen, `E` Edit…, `d` delegate or take back, `s` schedule (each on the
+    selected subtask, else the page's task); `e` the page's task's notes in the note window;
+    `a` adds a subtask under the row (elsewhere: a
     direct one); Enter opens the row (a subtask's page, the email, the file, the meeting or
     note); `o`, `r` and `x`/Delete on emails and files (below); `x`/Delete on a subtask deletes
     it; `J`/`K` move a subtask among its siblings; Escape back to the dashboard. The hint bar:
-    `Space` done, `e` edit, `d` delegate, `s` schedule, `a` add subtask, `j k` move, `Esc` back,
+    `Space` done, `e` edit notes, `d` delegate, `s` schedule, `a` add subtask, `j k` move, `Esc` back,
     `?` all keys; the rest are in `?`.
-  - Notes are edited through Edit… only, never on the page (the main window never edits text);
-    the "Live · editing in the note window" chip was dropped, as the note window can't open a
-    task's notes (Tyson, 2026-11-27). It redraws when another window changes something; a
+  - Notes are written in the note window, never on the page (the main window never edits
+    text). The chip "Live · editing in the note window" was first dropped, as the note window
+    couldn't open a task's notes (Tyson, 2026-11-27); 031 brought both back (Figma wins, Tyson,
+    2026-11-27; below). It redraws when another window changes something; a
     deleted task shows "This task is gone", one on a trashed note "Its note is in the trash" (a
     link to Trash), each with Back; a task on an archived note is read-only (no buttons, "No
     files", "No emails"). Waiting on and I owe rows open it too; the calendar, the Week tray and
     Today keep opening the note (the block menu has Open task); the palette lists no tasks.
+- A task's notes in the note window (Tyson, 2026-11-27; `note.html?task=ID`,
+  `static/js/tasks/task-notes-session.js`, `task-notes-live.js`): on a task's page, the Notes
+  card's Edit `e` (or the key) opens the task's notes in the note window, placed as it always
+  is, and says `"{title}" notes are open in the note window` (popups blocked: `E: the browser
+  blocked the note window: …`). The note window's crumb reads Task › {project or hub} › {task};
+  there is no note menu, sheet, captures or note Live page, and its hint bar has only `@` and
+  `:w`. The editor holds the notes as Markdown with `@` completion; they save about 1 s after
+  typing stops, on `:w` ("{title}" notes saved), and on leaving or closing the window, with
+  `POST /api/task/update {id, notes}`. No versions: the last write wins (Tyson, 2026-11-27). A
+  failed save keeps the text and says `E: notes not saved: {error}`. Opening another note or
+  task there saves them first (`:e!` drops a note's edits, never the task's notes). A task gone
+  says `E: that task is gone (deleted in another window?)`.
+  While the note window holds them, the task page shows the info chip **Live · editing in the
+  note window** (with its dot) in the Notes card's head, left of Edit, and the card renders the
+  notes as they are typed with the caret where the cursor is (the Live page's throttled `live`
+  message, carrying `task`). A task page opened later asks (`live-ask`) and shows the chip at
+  once. When the note window closes or opens something else the chip goes and the card reads
+  the saved notes again (once more a second later, for a save sent as the window closed). A
+  task's notes never switch the main window to its Live page.
 - Files on tasks (2026-11-27; `static/js/tasks/task-files.js`, `paradigm/api/task_files.py`,
   `task_files`, migration 031): + Add file… on the task page's Files card opens 020's native
   picker starting in the task's hub's linked folder (without tkinter, the folder browser), and

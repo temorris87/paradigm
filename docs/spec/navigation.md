@@ -191,7 +191,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   window asks it what it shows. No note open: "No note open in the note window." with an
   Open note window button; the note window closed: the last view stays, with "The note window
   is closed"; trashed: "Moved to trash"; empty: "Empty note". Unchanged blocks are not drawn
-  again, so math and diagrams don't redraw on each keystroke.
+  again, so math and diagrams don't redraw on each keystroke. A task's notes in the note window
+  (tasks.md) are not shown here: their `live` messages carry `task` and go to the task page.
 - Trash: trashing a note (its menu, or `:trash!`) takes the notes under it too; `:trash` on a
   note with notes under it says "E: The note has notes under it: :trash! deletes them too"
   without asking the server (which refuses it as well, but the browser's console would list

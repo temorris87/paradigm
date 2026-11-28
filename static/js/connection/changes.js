@@ -5,6 +5,7 @@
 //   const changes = new Changes();
 //   changes.send({ type: "changed", what: ["tasks"] })   others refresh what they show
 //   changes.send({ type: "open", id, at })               the notes page opens the note
+//   changes.send({ type: "open", to: "note", task })     the note window opens a task's notes
 //   changes.send({ type: "place", to: "note", mode })    the note window places itself again
 //                                                         (Window > right third)
 //   changes.listen((message) => ...)

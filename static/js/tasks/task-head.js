@@ -1,6 +1,7 @@
 // The head of a task's page (task-page.js): on the left the box (Space), the title and its
 // chips (due or late, the estimate, each placed block); on the right Done, Schedule, Delegate,
-// Edit and ··· (the other task actions); under it the facts row (Project, For, Delegated to,
+// Edit… (E: title, due date, estimate, for whom; the notes are the Notes card's) and ··· (the
+// other task actions); under it the facts row (Project, For, Delegated to,
 // Next block). The words are task-page-model.js's; the buttons only carry a data-action the
 // page performs on the page's own task.
 //
@@ -36,7 +37,7 @@ function buttons(task) {
     [task.done ? "Reopen" : "Done", "Space", "toggleTask", task.done ? "Open it again" : "Mark it done, with everything under it", true],
     ["Schedule", "s", "scheduleTask", "Its estimate (or 30 min) in the first free slot before it is due", false],
     [delegated ? "Take back" : "Delegate", "d", "delegateTask", delegated ? "Make it yours again" : "Hand it to someone, and when to follow it up", false],
-    ["Edit", "e", "editTask", "Title, notes, due date, estimate, for whom", false],
+    ["Edit…", "E", "editTask", "Title, due date, estimate, for whom", false],
   ]) {
     const node = element("button", `task-page__button${primary ? " task-page__button--primary" : ""}`, text);
     node.type = "button";

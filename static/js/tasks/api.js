@@ -7,8 +7,9 @@ export const tasksApi = {
   list: async () => (await call("/api/tasks")).tasks,
   create: (noteId, title, { parentId = null, due = "", notes = "" } = {}) =>
     call("/api/task/create", { payload: { note_id: noteId, title, parent_id: parentId, due, notes } }),
-  // values: any of { title, notes, due, follow_up }
-  update: (id, values) => call("/api/task/update", { payload: { id, ...values } }),
+  // values: any of { title, notes, due, follow_up }; keepalive: a save sent as the tab closes
+  // (the note window's task notes) still arrives
+  update: (id, values, { keepalive = false } = {}) => call("/api/task/update", { payload: { id, ...values }, keepalive }),
   delegate: (id, personId, followUp = "") => call("/api/task/delegate", { payload: { id, person_id: personId, follow_up: followUp } }),
   setDone: (id, done) => call("/api/task/done", { payload: { id, done } }),
   setFor: (id, personId) => call("/api/task/for", { payload: { id, person_id: personId } }),

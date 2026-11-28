@@ -281,6 +281,16 @@
   margin-left: auto;
 }
 
+/* The Notes card's "Live · editing in the note window" (task-notes-live.js): at the right end
+   with Edit, just left of it. */
+.task-card__head .task-notes__live {
+  margin-left: auto;
+}
+
+.task-card__head .task-notes__live + .task-card__add {
+  margin-left: 0;
+}
+
 .task-card__hint,
 .task-page__no-notes {
   margin: var(--sp-1) 0 0;

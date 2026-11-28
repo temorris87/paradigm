@@ -31,7 +31,7 @@ export const APIS = { api: notesApi, imagesApi, peopleApi, meetingsApi, recordsA
 export function boot({ role, kind, options }) {
   const connection = new Connection({ tabId: tabId(sessionStorage, kind) });
   let app = null;
-  mountBanner(connection, { unsaved: () => Boolean(app?.session.dirty || app?.agenda?.dirty) });
+  mountBanner(connection, { unsaved: () => Boolean(app?.session.dirty || app?.agenda?.dirty || app?.taskNotes?.dirty) });
   window.addEventListener("pagehide", () => connection.sendClosing());
   connection.start();
 

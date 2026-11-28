@@ -1,7 +1,8 @@
 // The Live page (&live, the main window): the note open in the note window, rendered as on a
 // dashboard while it is typed, with a caret where the cursor is, so a screen share of this
 // window shows where the typing is. The note window sends what it shows (live-sender.js) on
-// the windows' channel: { type: "live", id, title, kind, crumbs, fields: [{ name, label,
+// the windows' channel (messages with a task are a task's notes: not this page's):
+// { type: "live", id, title, kind, crumbs, fields: [{ name, label,
 // text, highlights }], active, line, col, mode, trashed, captures, reply? } (reply: the
 // answer to "live-ask"; captures: what was captured from it, notes/capture-model.js), and
 // "live-closed" when it goes. A meeting gets the card "Agreed in this meeting" beside its
@@ -75,6 +76,8 @@ export class LivePage {
   }
 
   receive(message) {
+    // A task's notes in the note window are the task page's (tasks/task-notes-live.js).
+    if (message.task !== undefined) return;
     if (message.type === "live") {
       // The answer to live-ask (reply) shows what was open already: no note was just opened.
       const fresh = !message.reply && !message.trashed && message.id !== this.state?.id;
@@ -326,7 +329,7 @@ function blankLineGap(pieces, caret) {
  * the character in a span. So empty nodes are skipped, and a character at the start of the
  * element beside it counts as beside it.
  */
-function coverNextCharacter(caret) {
+export function coverNextCharacter(caret) {
   let next = caret.nextSibling;
   while (next && next.nodeType === Node.TEXT_NODE && !next.data) next = next.nextSibling;
   const text = next ? leadingText(next) : null;
