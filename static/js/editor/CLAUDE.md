@@ -12,8 +12,9 @@ Paths from the repo root. Update this layout when the structure here changes.
                          host gives the items); a host's context source opens with no
                          trigger ({lines, row, col, forced}; Ctrl-Space forces it), with a
                          head and a foot line
-    blanks.js            ‹blanks›: the next one from a place, wrapping (pure); with
-                         editor.blankScope on, Tab in insert mode takes it
+    blanks.js            ‹blanks›: the next one from a place, wrapping; unwrapBlanks (‹x›
+                         as x, for Mermaid) (pure); with editor.blankScope on, Tab in
+                         insert mode goes to it (insert.js keeps it as the current blank)
     render.js            draws visible lines, cursor, selection, matches, status line, the
                          host's line marks (a gutter glyph, a chip at the line's right)
     view.js              viewport math in steps: top line + skip rows, scrolloff, H/M/L
@@ -72,7 +73,13 @@ Paths from the repo root. Update this layout when the structure here changes.
 - Blanks and context completion (Tyson, 2026-11-27; 038): the host may hand the editor a
   completion source that reads the cursor's place (`editor.contextCompletion`) and the lines
   Tab looks for a `‹blank›` in (`editor.blankScope`); Ctrl-Space (insert mode only) asks the
-  source for everything there. `editor.insertLines(text, { insert: true, cursorAt })` starts
-  insert mode at the text's first `‹blank›`, else at the end of line `cursorAt`. The editor
+  source for everything there. `editor.insertLines(text, { insert: true, cursorAt, line })` starts
+  insert mode at the text's first `‹blank›`, else at the end of line `cursorAt` (`line`: below
+  that line, not the cursor's). A blank reached (inserted lines, Tab, a taken completion row)
+  stays in the text as the *current blank*, the cursor at its start: the first character typed
+  replaces it whole, Backspace deletes it, a completion row goes in its place; a move, a click,
+  Tab or Esc forgets it and leaves it as it is (042). At the current blank the completion list
+  does not open by itself (only Ctrl-Space opens it), so Tab, Enter and Esc there are the
+  editor's. The editor
   knows nothing about what they are for: the note window's Mermaid help lives in
   `static/js/diagrams/`.

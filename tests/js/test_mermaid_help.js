@@ -4,12 +4,13 @@
 // context completion source and Ctrl-Space.
 import "../../static/js/editor/pd-editor.js";
 import { Completion } from "../../static/js/editor/completion.js";
-import { findBlank, nextBlank } from "../../static/js/editor/blanks.js";
+import { findBlank, nextBlank, unwrapBlanks } from "../../static/js/editor/blanks.js";
 import { keyName } from "../../static/js/editor/key-names.js";
 import { INSERT_KEYS } from "../../static/js/editor/keys.js";
 import { DIAGRAM_TYPES, MOST_USED, detectDiagramType, diagramFence, diagramGroups } from "../../static/js/diagrams/mermaid-types.js";
 import { mermaidBlankScope, mermaidBlockAt, mermaidCompletion, mermaidContext, mermaidStatus } from "../../static/js/diagrams/mermaid-syntax.js";
-import { insertDiagramDialog } from "../../static/js/diagrams/insert-diagram.js";
+import { diagramPlace, insertDiagramDialog } from "../../static/js/diagrams/insert-diagram.js";
+import { createDiagramRenderer } from "../../static/js/diagrams/mermaid.js";
 import { mermaidEditorHelp, mermaidStatusHint } from "../../static/js/diagrams/mermaid-help.js";
 import { noteMenuItems } from "../../static/js/notes/note-menu.js";
 import { tableMenuItems } from "../../static/js/notes/selection-menu.js";
@@ -188,9 +189,9 @@ test("blanks: Tab in insert mode takes the next ‹blank› where the host has t
   const vim = vimAt("x ‹no›\n|A[‹text›] --> ‹B›\nC");
   vim.blankScope = scope;
   type(vim, "i<Tab>");
-  assertEqual(show(vim), "x ‹no›\nA[|] --> ‹B›\nC");
+  assertEqual(show(vim), "x ‹no›\nA[|‹text›] --> ‹B›\nC", "the blank stays until typed over");
   type(vim, "go<Tab>");
-  assertEqual(show(vim), "x ‹no›\nA[go] --> |\nC");
+  assertEqual(show(vim), "x ‹no›\nA[go] --> |‹B›\nC");
   type(vim, "D<Tab>");
   assertEqual(show(vim), "x ‹no›\nA[go] --> D |\nC", "no blank left: Tab indents");
   const outside = vimAt("|a ‹no›");
@@ -203,7 +204,7 @@ test("blanks: lines inserted from the host open insert mode at their first ‹bl
   const vim = vimAt("|top\nend");
   vim.insertLinesFromOutside("```mermaid\npie title ‹Title›\n    \"‹A›\" : 1\n```");
   assertEqual(vim.mode, "insert");
-  assertEqual(show(vim), "top\n```mermaid\npie title |\n    \"‹A›\" : 1\n```\nend");
+  assertEqual(show(vim), "top\n```mermaid\npie title |‹Title›\n    \"‹A›\" : 1\n```\nend");
   type(vim, "Time<Esc>u");
   assertEqual(vim.text, "top\nend", "the block and what was typed go in one undo");
   const plain = vimAt("|top");
@@ -215,7 +216,7 @@ test("blanks: lines inserted from the host open insert mode at their first ‹bl
   assertEqual(fenced.mode, "insert");
   const both = vimAt("|top");
   both.insertLinesFromOutside("a\n‹b›\nc", null, { cursorAt: 2 });
-  assertEqual(show(both), "top\na\n|\nc", "a blank wins");
+  assertEqual(show(both), "top\na\n|‹b›\nc", "a blank wins");
 });
 
 test("completion: a context source opens without a trigger; Ctrl-Space forces it; Esc closes it", () => {
@@ -326,7 +327,46 @@ test("element: insertLines with insert opens insert mode at the first ‹blank�
     editor.shadowRoot.querySelector(".pd-input").dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true, composed: true }));
     const lines = editor.value.split("\n");
     assertEqual(lines[3], "    participant A as Ann");
-    assertEqual(lines[4], "    participant B as ", "Tab took the next blank");
+    assertEqual(lines[4], "    participant B as ‹Bob›", "Tab went to the next blank, left as it is");
+    [..."Bo"].forEach((key) => editor.shadowRoot.querySelector(".pd-input").dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, composed: true })));
+    assertEqual(editor.value.split("\n")[4], "    participant B as Bo", "typing replaced it");
+  } finally {
+    editor.remove();
+  }
+});
+
+test("element: at the current ‹blank› no list opens by itself: Tab, Enter and Esc are the editor's", () => {
+  const editor = document.createElement("pd-editor");
+  document.body.append(editor);
+  const press = (key, mods = {}) => editor.shadowRoot.querySelector(".pd-input")
+    .dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, composed: true, ...mods }));
+  const insert = (id) => {
+    editor.value = "top";
+    editor.goToLine(0);
+    editor.insertLines(diagramFence(DIAGRAM_TYPES.find((type) => type.id === id)), { insert: true });
+  };
+  try {
+    mermaidEditorHelp(editor);
+    const box = editor.shadowRoot.querySelector(".pd-complete");
+    insert("flowchart");
+    assertTrue(box.hidden, "A[|‹Start›]: no line-start list");
+    press("Tab");
+    assertEqual(editor.value.split("\n")[3], "    A[‹Start›] --> B{‹Question›}", "Tab went to the next blank, no row taken");
+    assertEqual(editor.cursor.col, "    A[‹Start›] --> B{".length);
+    insert("flowchart");
+    press("Escape");
+    assertEqual(editor.mode, "normal", "one Esc leaves insert mode");
+    assertEqual(editor.value.split("\n")[3], "    A[‹Start›] --> B{‹Question›}");
+    insert("mindmap");
+    assertTrue(box.hidden, "root((|‹Topic›: no list");
+    press("Tab");
+    assertEqual(editor.value.split("\n")[3], "  root((‹Topic›))", "no row taken");
+    insert("flowchart");
+    press(" ", { ctrlKey: true });
+    assertTrue(!box.hidden, "Ctrl-Space still opens the list there");
+    press("Escape");
+    press("X");
+    assertEqual(editor.value.split("\n")[3], "    A[X] --> B{‹Question›}", "typing still replaces the blank");
   } finally {
     editor.remove();
   }
@@ -394,4 +434,141 @@ test("insert diagram: a word starting with k or j still filters; Enter with no m
   await done;
   assertEqual(inserted.length, 0);
   assertTrue(!document.querySelector(".diagram-picker"), "closed");
+});
+
+test("blanks: the current ‹blank›: the first character typed replaces it whole, the rest go after", () => {
+  const vim = vimAt("|top");
+  vim.blankScope = () => ({ first: 1, last: 3 });
+  vim.insertLinesFromOutside("A[‹Start›] --> B{‹Question›}\nB --> C[‹Do›]");
+  assertEqual(show(vim), "top\nA[|‹Start›] --> B{‹Question›}\nB --> C[‹Do›]");
+  type(vim, "X");
+  assertEqual(show(vim), "top\nA[X|] --> B{‹Question›}\nB --> C[‹Do›]");
+  type(vim, "y");
+  assertEqual(show(vim), "top\nA[Xy|] --> B{‹Question›}\nB --> C[‹Do›]", "only the first character replaces it");
+  type(vim, "<Tab>Z");
+  assertEqual(show(vim), "top\nA[Xy] --> B{Z|}\nB --> C[‹Do›]", "Tab, then typing replaces the next");
+  type(vim, "<Tab><Tab>");
+  assertEqual(show(vim), "top\nA[Xy] --> B{Z}\nB --> C[‹Do›]".replace("C[", "C[|"), "Tab from a current blank: the next one, wrapping");
+  type(vim, "<Esc>");
+  assertEqual(vim.text, "top\nA[Xy] --> B{Z}\nB --> C[‹Do›]", "Esc leaves the blank in the text");
+});
+
+test("blanks: Backspace at the current ‹blank› deletes it; a move forgets it", () => {
+  const vim = vimAt("|top");
+  vim.insertLinesFromOutside("a ‹one› b ‹two›");
+  type(vim, "<BS>");
+  assertEqual(show(vim), "top\na | b ‹two›", "the whole blank");
+  type(vim, "<BS>");
+  assertEqual(show(vim), "top\na| b ‹two›", "then Backspace as always");
+  const moved = vimAt("|top");
+  moved.insertLinesFromOutside("a ‹one›");
+  type(moved, "<Right><Left>x");
+  assertEqual(show(moved), "top\na x|‹one›", "moved away and back: typing goes before it");
+  const clicked = vimAt("|top");
+  clicked.insertLinesFromOutside("a ‹one›");
+  clicked.click({ line: 1, col: 2 });
+  type(clicked, "x");
+  assertEqual(show(clicked), "top\na x|‹one›", "a click forgets it too");
+  const taken = vimAt("|top");
+  taken.insertLinesFromOutside("a ‹one›");
+  taken.dropCurrentBlank();
+  assertEqual(show(taken), "top\na |", "a completion row about to go in takes its place");
+});
+
+test("blanks: unwrapBlanks draws ‹x› as x and leaves the rest", () => {
+  assertEqual(unwrapBlanks("A[‹Start›] --> B{‹Is it?›}\n‹›"), "A[Start] --> B{Is it?}\n");
+  assertEqual(unwrapBlanks("no ‹ blank\n› here"), "no ‹ blank\n› here", "never across lines");
+});
+
+test("diagrams: the renderer hands Mermaid the source with its ‹blanks› unwrapped", async () => {
+  const sources = [];
+  const renderer = createDiagramRenderer({ load: async () => ({
+    initialize() {},
+    render: async (id, source) => {
+      sources.push(source);
+      return { svg: `<svg id="${id}" xmlns="http://www.w3.org/2000/svg"></svg>` };
+    },
+  }) });
+  const result = await renderer.svgFor("flowchart TD\n    A[‹Start›]\n");
+  assertTrue(result.svg !== undefined);
+  assertEqual(sources.join(), "flowchart TD\n    A[Start]\n");
+});
+
+test("mermaid types: every template, its ‹blanks› unwrapped, parses with the vendored Mermaid", async () => {
+  const mermaid = (await import("../../static/vendor/mermaid-12.3.0/dist/mermaid.esm.min.mjs")).default;
+  mermaid.initialize({ startOnLoad: false, securityLevel: "strict" });
+  const failed = [];
+  for (const type of DIAGRAM_TYPES) {
+    try {
+      await mermaid.parse(unwrapBlanks(type.template));
+    } catch (error) {
+      failed.push(`${type.id}: ${String(error?.message ?? error).split("\n")[0]}`);
+    }
+  }
+  assertEqual(failed.join(" | "), "", "templates that do not parse");
+  for (const type of DIAGRAM_TYPES) {
+    const blanks = type.template.match(/‹[^‹›\n]*›/g) ?? [];
+    assertTrue(blanks.every((blank) => blank.length > 2 && !blank.includes("…")), `${type.id}: every blank holds a sample value`);
+  }
+});
+
+test("mermaid syntax: a flowchart edge whose target has a shape names its target", () => {
+  const lines = fence("flowchart TD", "    A[Start] --> B{Question}", "    B -->|yes| C[Do this]", "    B ==> D(Do that)", "    D -.-> E>flag]", "    ");
+  const context = mermaidContext(lines, 7, 4);
+  assertEqual(context.names.join(), "A,B,C,D,E");
+  const node = labels(mermaidCompletion({ lines: fence("flowchart TD", "    B -->|yes| C[Do this]", "    C"), row: 4, col: 5 }));
+  assertEqual(node[0], "C --> B", "C is a node: its rows");
+});
+
+test("mermaid syntax: Ctrl-Space after a node written with its shape and a space offers its edges", () => {
+  for (const lines of [fence("flowchart TD", "    B --> C", "    A[Again] "), fence("flowchart TD", "    A --> B", "    A[Again] ")]) {
+    const result = mermaidCompletion({ lines, row: 4, col: lines[4].length, forced: true });
+    assertEqual(result.head, "Flowchart · after a node");
+    assertEqual(result.replace, 1, "the space, never the node");
+    for (const edge of ["--> ‹node›", "-.-> ‹node›", "==> ‹node›", "-->|‹label›| ‹node›"]) assertTrue(labels(result).includes(edge), edge);
+    assertTrue(!labels(result).some((label) => label.includes("A")), "the node is not written again");
+    const arrow = result.items.find((item) => item.insert === " --> ‹node›");
+    assertEqual(lines[4].slice(0, lines[4].length - result.replace) + arrow.insert, "    A[Again] --> ‹node›");
+  }
+  const lines = fence("flowchart TD", "    A --> B", "    A[Again] ");
+  assertEqual(mermaidCompletion({ lines, row: 4, col: lines[4].length }), null, "a space alone opens nothing by itself");
+  lines[4] = "    A[Again] -.";
+  assertEqual(labels(mermaidCompletion({ lines, row: 4, col: lines[4].length })).join(), "-.-> ‹node›", "narrowed by what is typed");
+});
+
+test("insert diagram: inside a mermaid block, fences included, the new block goes after its closing fence", () => {
+  const lines = ["# Note", "```mermaid", "pie", "  \"a\" : 1", "```", "after", "```mermaid", "pie"];
+  for (const row of [1, 2, 3, 4]) assertEqual(diagramPlace(lines, row), 4, `row ${row}`);
+  assertEqual(diagramPlace(lines, 0), null, "outside");
+  assertEqual(diagramPlace(lines, 5), null);
+  assertEqual(diagramPlace(lines, 7), 7, "an open block: after its last line");
+  assertEqual(JSON.stringify(mermaidBlockAt(lines, 1, { fences: true })), JSON.stringify({ open: 1, close: 4 }));
+  assertEqual(mermaidBlockAt(lines, 1), null, "without fences, as before");
+  assertEqual(mermaidBlockAt(["```js", "x", "```"], 0, { fences: true }), null, "not a mermaid block");
+});
+
+test("insert diagram: chosen with the cursor in a mermaid block, the first block is unchanged", async () => {
+  const editor = document.createElement("pd-editor");
+  document.body.append(editor);
+  try {
+    const first = "```mermaid\npie\n  \"a\" : 1\n```";
+    editor.value = `top\n${first}\nend`;
+    editor.goToLine(2);
+    const done = insertDiagramDialog(editor);
+    const box = document.querySelector(".diagram-picker .diagram-picker__box");
+    box.value = "pie";
+    box.dispatchEvent(new Event("input"));
+    box.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    await done;
+    const lines = editor.value.split("\n");
+    assertEqual(lines.slice(0, 5).join("\n"), `top\n${first}`, "the first block as it was");
+    assertEqual(lines[5], "", "one empty line between them");
+    assertEqual(lines[6], "```mermaid");
+    assertEqual(lines[7], "pie title ‹Time spent›");
+    assertEqual(lines.at(-1), "end");
+    assertEqual(editor.mode, "insert");
+    assertEqual(editor.cursor.line, 7, "at the new block's first blank");
+  } finally {
+    editor.remove();
+  }
 });

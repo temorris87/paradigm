@@ -1,6 +1,8 @@
 // Insert and replace mode. vim.insert is the session: where it started, its count, the keys
-// typed (to repeat for "3ix<Esc>"), the characters replace mode overwrote, and the block for
-// a visual-block insert.
+// typed (to repeat for "3ix<Esc>"), the characters replace mode overwrote, the block for
+// a visual-block insert, and the current ‹blank› (blank: { line, start, end }, the cursor at
+// its start): the first character typed replaces it whole, Backspace deletes it, and any
+// other key (a move, Tab, Esc) forgets it, leaving it in the text.
 import { findBlank, nextBlank } from "./blanks.js";
 import { findKey, INSERT_KEYS } from "./keys.js";
 import { isTextKey } from "./key-names.js";
@@ -21,6 +23,7 @@ export function insertKey(vim, key) {
   const entry = typeof key === "string" ? findKey(INSERT_KEYS, key) : null;
   if (entry?.name !== "leave" && entry?.name !== "oneCommand" && entry?.name !== "complete") record(vim, key);
   if (entry) {
+    if (!KEEPS_BLANK.has(entry.name)) session.blank = null;
     HANDLERS[entry.name](vim, session);
   } else if (typeof key === "object" && key.paste !== undefined) {
     pasteText(vim, key.paste);
@@ -38,12 +41,19 @@ function record(vim, key) {
   if (vim.recording && !vim.replaying) vim.recording.insertKeys.push(key);
 }
 
+// Keys that look at the current blank themselves (Ctrl-Space keeps it for a completion row).
+const KEEPS_BLANK = new Set(["tab", "backspace", "complete"]);
+
 function typeText(vim, text) {
   const session = vim.insert;
   session.pendingIndent = null;
+  const blank = currentBlank(vim);
+  session.blank = null;
   const { line, col } = vim.cursor;
   const current = vim.buf.line(line);
-  if (vim.mode === "replace" && !text.includes("\n")) {
+  if (blank) {
+    vim.edit(pos(line, blank.start), pos(line, blank.end), text);
+  } else if (vim.mode === "replace" && !text.includes("\n")) {
     // Overwrite as many characters as were typed, remembering them for <BS>.
     const end = Math.min(current.length, col + text.length);
     for (let index = 0; index < text.length; index += 1) session.replaced.push(col + index < current.length ? current[col + index] : null);
@@ -62,6 +72,7 @@ function pasteText(vim, text) {
     return;
   }
   vim.insert.pendingIndent = null;
+  vim.insert.blank = null;
   putTable(vim, table, { insert: true });
 }
 
@@ -98,6 +109,8 @@ function dropUnusedIndent(vim) {
 }
 
 function backspace(vim, session) {
+  if (deleteCurrentBlank(vim)) return;
+  session.blank = null;
   const { line, col } = vim.cursor;
   if (vim.mode === "replace") {
     if (col === 0) return;
@@ -131,7 +144,7 @@ function softTabStart(vim, line, col) {
 }
 
 // <Tab>: spaces up to the next multiple of shiftwidth (a real tab without expandtab). Where the
-// host has blanks on (vim.blankScope), the next ‹blank› first.
+// host has blanks on (vim.blankScope), the next ‹blank› first (after the current one, if any).
 function tab(vim, session) {
   if (takeNextBlank(vim, session)) return;
   if (inTable(vim)) {
@@ -143,18 +156,47 @@ function tab(vim, session) {
 }
 
 function takeNextBlank(vim, session) {
+  const current = currentBlank(vim);
+  session.blank = null;
   const scope = vim.mode === "insert" ? vim.blankScope?.(vim.buf.lines, vim.cursor.line) : null;
-  const blank = scope && nextBlank(vim.buf.lines, vim.cursor, scope.first, scope.last);
+  const from = current ? pos(current.line, current.end) : vim.cursor;
+  const blank = scope && nextBlank(vim.buf.lines, from, scope.first, scope.last);
   if (!blank) return false;
   takeBlank(vim, session, blank);
   return true;
 }
 
-/** The blank goes and the cursor sits where it was, so what is typed replaces it. Like a
- * cursor move, "." and a count repeat only what comes after. */
+/** The cursor goes to the blank's start and it becomes the current blank: it stays in the text
+ * until typed over. Like a cursor move, "." and a count repeat only what comes after. */
 export function takeBlank(vim, session, blank) {
-  vim.edit(pos(blank.line, blank.start), pos(blank.line, blank.end), "");
   moveTo(vim, session, pos(blank.line, blank.start));
+  session.blank = { line: blank.line, start: blank.start, end: blank.end };
+}
+
+/** The current blank, while the cursor is still at its start and it is still in the text. */
+function currentBlank(vim) {
+  const blank = vim.insert?.blank;
+  if (!blank || vim.mode !== "insert") return null;
+  const { line, col } = vim.cursor;
+  if (line !== blank.line || col !== blank.start) return null;
+  const found = findBlank(vim.buf.lines, pos(line, blank.start), pos(line, blank.end));
+  return found && found.start === blank.start && found.end === blank.end ? found : null;
+}
+
+/** True while the cursor sits at the current blank, nothing typed over it yet. */
+export function atCurrentBlank(vim) {
+  return Boolean(currentBlank(vim));
+}
+
+/** The current blank, if any, is deleted (Backspace there; a completion row taken there goes
+ * in its place). The cursor stays at its start. */
+export function deleteCurrentBlank(vim) {
+  const blank = currentBlank(vim);
+  if (vim.insert) vim.insert.blank = null;
+  if (!blank) return false;
+  vim.edit(pos(blank.line, blank.start), pos(blank.line, blank.end), "");
+  vim.setCursor(pos(blank.line, blank.start));
+  return true;
 }
 
 /** The first blank between two positions (to: the cursor by default), if any, is taken. */
@@ -215,6 +257,7 @@ function insertRegister(vim, name) {
 
 // Moving with the arrow keys starts afresh: "." and a count only repeat what comes after.
 function moveTo(vim, session, at, want) {
+  session.blank = null;
   vim.setCursor(at);
   if (want !== undefined) vim.want = want;
   session.start = { ...vim.cursor };

@@ -6,7 +6,7 @@ import { cmdlineKey, startCmdline } from "./cmdline.js";
 import { commandKey, repeatLastChange } from "./command.js";
 import { EditorError } from "./errors.js";
 import { runEx } from "./ex.js";
-import { insertKey, takeBlankIn } from "./insert.js";
+import { atCurrentBlank, deleteCurrentBlank, insertKey, takeBlankIn } from "./insert.js";
 import { LEADER } from "./keys.js";
 import { Marks } from "./marks.js";
 import { defaultOptions } from "./options.js";
@@ -117,7 +117,7 @@ export class Vim {
 
   /**
    * Whole lines from the host below `line` (the cursor's by default), then insert mode in them:
-   * at their first ‹blank›, taken out so typing replaces it, else at the end of their line
+   * at their first ‹blank›, the current one so typing replaces it, else at the end of their line
    * cursorAt (0-based in the text) when given, else at their start. The lines and what is typed
    * after them are one undo step, as with "o".
    */
@@ -139,11 +139,22 @@ export class Vim {
     this.afterKey();
   }
 
-  /** Text pasted in insert mode from from to the cursor: its first ‹blank› is taken (a
-   * completion's row). */
+  /** Text pasted in insert mode from from to the cursor: its first ‹blank› becomes the
+   * current one (a completion's row). */
   takeBlankBefore(from) {
     if (this.isInsertLike()) takeBlankIn(this, from);
     this.afterKey();
+  }
+
+  /** The cursor is at the current ‹blank›, nothing typed over it yet (the completion list
+   * waits for a key there). */
+  atCurrentBlank() {
+    return this.isInsertLike() && atCurrentBlank(this);
+  }
+
+  /** A completion row about to go in at the current ‹blank› takes its place: it goes first. */
+  dropCurrentBlank() {
+    if (this.isInsertLike()) deleteCurrentBlank(this);
   }
 
   /** An ex command from the host (a menu item): insert or visual mode is left first, and an
@@ -249,6 +260,7 @@ export class Vim {
   click(at) {
     if (this.mode === "cmdline") return;
     if (this.mode === "visual") exitVisual(this);
+    if (this.insert) this.insert.blank = null;
     this.pending = [];
     this.setCursor(at);
     if (!this.isInsertLike()) this.clampCursor();
@@ -410,6 +422,7 @@ export class Vim {
       block: null,
       replaying: false,
       awaitingRegister: false,
+      blank: null, // the current ‹blank› (insert.js)
       pendingIndent: autoIndented ? this.cursor.line : null,
     };
     this.undo.begin(this.commandStart ?? this.cursor);

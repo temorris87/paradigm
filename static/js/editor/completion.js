@@ -12,7 +12,8 @@
 //   const completion = new Completion(frame, { accept(length, text), onRun() });
 //   completion.sources = { "@": (query) => [{ label, detail?, insert } | { label, run(query) }] };
 //   completion.context = ({ lines, row, col, forced }) => ...;
-//   completion.update(vim, cursorBox, frameBox)   after every key (closes outside insert mode)
+//   completion.update(vim, cursorBox, frameBox)   after every key (closes outside insert mode,
+//                                                 and at the editor's current ‹blank› unless forced)
 //   completion.force(vim, cursorBox, frameBox)    Ctrl-Space: everything for here
 //   completion.onKey(name) -> true when the key was the list's
 //
@@ -60,7 +61,10 @@ export class Completion {
 
   update(vim, cursorBox, frameBox) {
     if (this.forcedLine !== null && this.forcedLine !== vim.cursor.line) this.forcedLine = null;
-    const found = vim.isInsertLike() ? this.find(vim) ?? this.fromContext(vim) : null;
+    // At the current ‹blank› nothing has been typed yet: the list waits for a key (Ctrl-Space
+    // still opens it), so Esc, Tab and Enter there are the editor's, not a row's.
+    const waiting = this.forcedLine === null && vim.atCurrentBlank?.();
+    const found = vim.isInsertLike() && !waiting ? this.find(vim) ?? this.fromContext(vim) : null;
     const key = found && `${found.line}:${found.start}:${found.query}`;
     if (!found || key === this.dismissed) {
       if (!found) this.dismissed = null;

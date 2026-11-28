@@ -206,8 +206,8 @@ static/
                          options, errors caught, groups nested past 100 refused first); ensureMathFonts() puts KaTeX's @font-face
                          in the page, since Chrome ignores it inside a shadow root
   js/diagrams/           mermaid.js: draws the renderer's .md-mermaid placeholders (Mermaid
-                         loaded on first use, strict, one render at a time, cached by source;
-                         onDiagramDrawn tells the editor to remeasure); frame-client.js: the
+                         loaded on first use, strict, one render at a time, cached by source,
+                         ‹blanks› drawn unwrapped; onDiagramDrawn tells the editor to remeasure); frame-client.js: the
                          window's hidden diagram frame, Mermaid's {initialize, render} over
                          postMessage, 20 s per diagram; frame-main.js + frame-listener.js: the
                          frame page's side (Mermaid loaded there, answers only its parent at
