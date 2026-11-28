@@ -132,6 +132,20 @@ How the app behaves. Kept up to date by each feature that changes it.
   the person, or the rota for an unknown name); a person's head has "On call this week
   (Role)" / "On call from Mon 7 Dec (Role)". Firefox sends a paste outside a text box to the
   body, so the tab listens on the document while it shows.
+- Changing an on-call name (a replacement, Tyson, 2026-11-27): every rota cell takes the focus
+  (Tab) and holds a ✎ Change… button, shown on hover and focus ("Change {role}, week of {day}").
+  Enter on the cell, or ✎, opens a dialog under the cell: "{Role} · week of 30 Nov", "On the
+  sheet: {name}" (or "no one"), a name box suggesting People (any text allowed), "Only this week
+  and role change. Empty puts the sheet's name back.", Save Enter and Cancel Esc. A changed
+  cell shows the new name with a "changed" chip, its tooltip "was {sheet's name}" ("was no
+  one" for a cell the sheet left empty); changing it again keeps the sheet's name. The Week
+  bar, Today and a person's head use the new name. Saving an empty name or the sheet's own puts
+  the sheet's back, without the chip. A paste over a week holding a change says so in its
+  preview, on a line of its own: "Replaces 1 changed name: Primary 30 Nov (Farid Haddad → Hugo
+  Martin)" (the name shown → the sheet's); a sheet that now holds the stand-in's name is not
+  counted. Save rota writes the sheet's names (no chip), Cancel pastes nothing; a paste that
+  leaves that week out keeps the change; Clear rota… takes changes too. After a save, or `]`
+  `[` `t` on a cell, the focus stays on that cell.
 - Timesheet (the Week page's Timesheet, `:time`): a code per row (with its hub) x Mon-Fri, each
   day exactly the working day (8.00 h) in quarter hours: holidays, time off and sick time first,
   then meetings and task blocks inside the working hours (not lunch), overlaps shared evenly,

@@ -83,6 +83,45 @@
   color: var(--text);
 }
 
+/* A cell takes the focus (Enter changes it); its Change… button shows on hover and on focus, and
+   Tab still reaches it while it is clear. */
+.oncall__cell:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: -2px;
+}
+
+.oncall__change {
+  margin-left: var(--sp-1);
+  padding: 0 var(--sp-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.oncall__cell:hover .oncall__change,
+.oncall__cell:focus-within .oncall__change {
+  opacity: 1;
+}
+
+.oncall__change:hover {
+  border-color: var(--border-default);
+  color: var(--text-strong);
+}
+
+.oncall__change:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+  color: var(--text-strong);
+}
+
+.oncall__cell .chip {
+  margin-left: var(--sp-1);
+}
+
 .oncall__foot {
   display: flex;
   flex-wrap: wrap;

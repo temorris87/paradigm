@@ -24,6 +24,8 @@
 //     safeFocus: false,                 // opens on Cancel, so a reflex Enter changes nothing
 //                                       // (every red confirm; Tab, a click or Ctrl-Enter confirms)
 //     cancel: "Cancel",                 // the safe button's label ("Keep the meeting")
+//     submitKey: "", cancelKey: "",     // a key cap on the buttons ("Enter", "Esc")
+//     anchor: null,                     // an element to open under (an On call cell), not centred
 //     live: (values) => "...",          // a line under the fields, worked out again as they
 //                                       // change (Edit dates' knock-on effect), in red; or
 //                                       // { text, plain: true }: dim, not a warning (a preview)
@@ -38,9 +40,11 @@
 // where it was; when that element is gone (or was the page itself), fallbackFocus() decides.
 import { element, openModal, restoreFocus, uniqueId } from "./dom.js";
 import { uiAction } from "./ui-keys.js";
+import { keyCap } from "./key-hints.js";
 
 export function formDialog({ title, text = "", lines = [], fields = [], submit = "OK", danger = false, run = async (values) => values,
-  returnFocus = null, fallbackFocus = () => {}, live = null, safeFocus = false, cancel: cancelLabel = "Cancel" }) {
+  returnFocus = null, fallbackFocus = () => {}, live = null, safeFocus = false, cancel: cancelLabel = "Cancel",
+  submitKey = "", cancelKey = "", anchor = null }) {
   return new Promise((resolve) => {
     const before = document.activeElement;
     const dialog = element("dialog", "dialog");
@@ -67,6 +71,7 @@ export function formDialog({ title, text = "", lines = [], fields = [], submit =
     ok.type = "submit";
     const cancel = element("button", "dialog__button", cancelLabel);
     cancel.type = "button";
+    if (cancelKey) cancel.append(" ", keyCap(cancelKey));
     const buttons = element("div", "dialog__buttons");
     buttons.append(cancel, ok);
     form.append(error, buttons);
@@ -78,6 +83,7 @@ export function formDialog({ title, text = "", lines = [], fields = [], submit =
     const label = () => {
       const button = typeof submit === "function" ? submit(values()) : submit;
       ok.textContent = typeof button === "string" ? button : button.text ?? "";
+      if (submitKey) ok.append(" ", keyCap(submitKey));
       blocked = typeof button !== "string" && Boolean(button.blocked);
       ok.disabled = blocked;
       if (liveLine) {
@@ -138,9 +144,24 @@ export function formDialog({ title, text = "", lines = [], fields = [], submit =
     });
     // A red confirm destroys something, so a reflex Enter must land on the safe button.
     const first = inputs.values().next().value ?? (safeFocus || danger ? cancel : ok);
+    if (anchor) dialog.classList.add("dialog--anchored");
     openModal(dialog, first);
+    if (anchor) placeUnder(dialog, anchor);
     if (first.select && first.type === "text") first.select();
   });
+}
+
+/** Puts an open dialog just under anchor, kept inside the window (above it when no room below). */
+function placeUnder(dialog, anchor) {
+  const box = anchor.getBoundingClientRect();
+  const width = dialog.offsetWidth;
+  const height = dialog.offsetHeight;
+  const left = Math.max(4, Math.min(box.left, window.innerWidth - width - 8));
+  const below = box.bottom + 4;
+  const top = below + height > window.innerHeight - 4 ? Math.max(4, box.top - height - 4) : below;
+  // CSSOM, not a style="" attribute: the CSP allows this one.
+  dialog.style.setProperty("left", `${left}px`);
+  dialog.style.setProperty("top", `${top}px`);
 }
 
 export function confirmDialog({ title, text, lines = [], confirm = "OK", danger = false, run = async () => true, ...rest }) {
