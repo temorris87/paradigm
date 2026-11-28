@@ -17,7 +17,8 @@
 //     tabActions: { add(sectionKey, owner), menu(sectionKey, owner, anchorButton, back),
 //             row(key, sectionKey, owner, row), command(action, owner) }
 //             (hub-actions.js); menu: a heading's "···" button (back() refocuses the list); command: "logStatus", "plan",
-//             "newTask", "editOutcome", "projectHistory" (with the History tab to open on);
+//             "newTask", "editOutcome", "projectHistory" (with the History tab to open on),
+//             and on a person "addTopic" and "oneOnOne";
 //             row keys besides the row's buttons: "addSubtask", "openFile", "openFolder",
 //             "openTemplate", "openTask"
 //     at: { field, line } when a row points into the text (a mention)
@@ -82,7 +83,8 @@ export class HubPage {
         () => this.panel.focus()),
       onRowAction: (sectionDef, row, key) => this.tabActions.row(key, sectionDef.base ?? sectionDef.key, this.hub, row),
       // Keys about the page's owner, not a row: L (Log status…), gp (the full plan), n (a new
-      // task), gh (its History), e on the Outcome.
+      // task on a project, 1:1 notes on a person), a (a topic, on a person), gh (its History),
+      // e on the Outcome.
       onCommand: (action) => this.tabActions.command?.(action, this.hub),
       // A section's History ↗: the project's History page, on that section's tab.
       onHistory: (tab) => this.tabActions.command?.("projectHistory", this.hub, tab),

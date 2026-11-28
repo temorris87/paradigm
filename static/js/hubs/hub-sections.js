@@ -32,7 +32,9 @@
 //                              ctx: { tree, people, meetings, records, links, mentions, tasks,
 //                              sessions, plan, files, planTemplates, expanded: Set of task ids
 //                              shown in place with their subtasks, today, captures: { source,
-//                              list }: the open note's captures (notes/capture-actions.js) }
+//                              list }: the open note's captures (notes/capture-actions.js),
+//                              body: { id, text }: the open owner's own text (a person's
+//                              Notes card, a project's Outcome) }
 //                              task: a task's id (Tasks, Waiting on, I owe): Enter opens its
 //                              page; expanded (Tasks' top rows): whether it is open in place
 //                              (static/js/people/people-model.js, static/js/meetings/
@@ -77,13 +79,12 @@ import { isOpen, peopleOf, recordsOn } from "../records/records-model.js";
 import { estimateText, openCount, subtaskText, taskTree, tasksOn, waitingOn } from "../tasks/tasks-model.js";
 import { Files, fileDir, filesOn, folderSummary, foldersOf } from "../files/files-model.js";
 import { Plan, daysBetween, milestonesOf, nextMilestone, phasesOf, shortDay, slipOf, slipText } from "../plan/plan-model.js";
-import { projectFactsText, statusText } from "./project-facts.js";
+import { initials, outcomeLine, projectFactsText, statusText } from "./project-facts.js";
 import { dayText, daysAgo } from "../ui/dates.js";
 import { StatusLogs, digest, firstSentence, healthLabel, healthOf } from "../status/status-model.js";
 import { portfolioBars } from "../plan/plan-rows.js";
 import { firstName, lastTogether, meetingsThisMonth, owedTo, soonDay, toRaise } from "../people/one-on-one.js";
 import { historyCounts } from "../history/history-model.js";
-import { initials, outcomeLine } from "./project-facts.js";
 import { agreedRows } from "../notes/capture-model.js";
 
 const REMOVE = Object.freeze({ key: "remove", label: "Remove" });

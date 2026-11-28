@@ -7,6 +7,7 @@ import { peopleNamed, splitNameRole } from "../../static/js/people/people-comman
 import { PAGE_KEYS, pageAction } from "../../static/js/pages/page-keys.js";
 import { People, filterOptions, filterPeople, findPerson, hubLinks, matchPerson, peopleOn, personLabel, rolesText } from "../../static/js/people/people-model.js";
 import { peoplePage } from "../../static/js/people/people-page.js";
+import { delegateNewDialog, oweNewDialog, taskHubOptions } from "../../static/js/people/topic-commands.js";
 import { Meetings } from "../../static/js/meetings/meetings-model.js";
 import { Records } from "../../static/js/records/records-model.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
@@ -736,4 +737,43 @@ test("person head: NEXT 1:1 still to come, Before that, None planned", async () 
   head.show({ ...ctx, today: new Date(2026, 11, 2) }, ctx.tree.get(10), "");
   assertEqual(root.querySelector(".dash-head__next-when").textContent, "None planned");
   assertEqual(root.querySelector(".dash-head__button--primary").textContent, "Start 1:1 notes");
+});
+
+test("person page: + Delegate and + Task offer the live hubs, the person's own first", () => {
+  const { tree, people } = ctx();
+  const jane = taskHubOptions(tree, people, tree.get(10)).map(([id]) => id);
+  assertEqual(jane.slice(0, 2).sort().join(), "1,2", "Operations and Rollout, the hubs Jane is on, come first");
+  assertEqual(jane.slice(2).join(), "3", "then Pilot; never the archived hub, the Inbox note or a person");
+  assertEqual(taskHubOptions(tree, people, tree.get(13)).map(([id]) => id).sort().join(), "1,2,3", "Cy is on no hub: all of them");
+});
+
+test("person page: + Delegate and + Task put the new task on the chosen hub, never on the person", async () => {
+  const { tree, people } = ctx();
+  const calls = [];
+  const app = {
+    tree, people,
+    tasksApi: {
+      create: async (noteId, title, options) => { calls.push(["create", noteId, title, options?.due ?? ""]); return { id: 99, title }; },
+      delegate: async (id, personId, follow) => { calls.push(["delegate", id, personId, follow]); },
+      setFor: async (id, personId) => { calls.push(["for", id, personId]); },
+    },
+    changes: { send: () => {} },
+    refreshTree: async () => {},
+    say: () => {},
+    focusNote: () => {},
+  };
+  for (const open of [delegateNewDialog, oweNewDialog]) {
+    const shut = open(app, tree.get(10));
+    await Promise.resolve();
+    const dialog = document.querySelector("dialog.dialog");
+    dialog.querySelector("input").value = "Check Northwind invoice";
+    const select = dialog.querySelector("select");
+    select.value = "3";
+    dialog.querySelector("form").requestSubmit();
+    await shut;
+  }
+  assertEqual(JSON.stringify(calls), JSON.stringify([
+    ["create", 3, "Check Northwind invoice", ""], ["delegate", 99, 10, ""],
+    ["create", 3, "Check Northwind invoice", ""], ["for", 99, 10],
+  ]));
 });

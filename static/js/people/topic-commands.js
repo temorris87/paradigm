@@ -9,10 +9,15 @@
 //                                      raise; none: New meeting "1:1 First" with them
 //   delegateNewDialog(app, person)     + Delegate (They owe me): a new task, delegated to them
 //   oweNewDialog(app, person)          + Task (I owe): a new task of mine, for them
-// The new tasks live on the person's own note, as nothing else is open there.
+//   taskHubOptions(tree, people, person)  where those new tasks can go: [[id, title]], the
+//                                      person's live hubs first (the first is the default)
+// A person's own note holds no tasks (the server refuses them), so the new task goes on a
+// hub, picked in the dialog: one they are on, else any live project or area.
 import { newMeetingDialog } from "../hubs/hub-actions.js";
+import { hubChoices } from "../notes/capture-model.js";
 import { formDialog } from "../ui/dialog.js";
 import { firstName, nextOneOnOne, nextTogether } from "./one-on-one.js";
+import { hubLinks } from "./people-model.js";
 
 function changed(app) {
   app.changes.send({ type: "changed", what: ["topics"] });
@@ -72,17 +77,32 @@ function tasksChanged(app) {
   return app.refreshTree();
 }
 
-export function delegateNewDialog(app, person) {
+export function taskHubOptions(tree, people, person) {
+  const live = hubChoices(tree).filter((hub) => hub.id !== person.id);
+  const theirs = new Set(hubLinks(tree, people, person.id).filter((link) => !link.archived).map((link) => link.hub.id));
+  const ordered = [...live.filter((hub) => theirs.has(hub.id)), ...live.filter((hub) => !theirs.has(hub.id))];
+  return ordered.map((hub) => [String(hub.id), hub.title]);
+}
+
+function hubField(app, person) {
+  const options = taskHubOptions(app.tree, app.people, person);
+  if (!options.length) throw new Error("E: no project or area to put the task on (:new adds one)");
+  return { key: "hub", label: "Goes to", type: "select", options, value: options[0][0] };
+}
+
+export async function delegateNewDialog(app, person) {
+  const hub = hubField(app, person);
   return formDialog({
     title: `Delegate to ${person.title}`,
     fields: [
       { key: "title", label: "Task", placeholder: "what they will do" },
       { key: "follow", label: "Follow up on (optional)", type: "date", optional: true },
+      hub,
     ],
     submit: "Delegate",
-    run: async ({ title, follow }) => {
+    run: async ({ title, follow, hub }) => {
       if (!title.trim()) throw new Error("A task needs some text");
-      const task = await app.tasksApi.create(person.id, title.trim());
+      const task = await app.tasksApi.create(Number(hub), title.trim());
       await app.tasksApi.delegate(task.id, person.id, follow || "");
       await tasksChanged(app);
       app.say(`"${task.title}" delegated to ${person.title}`);
@@ -91,17 +111,19 @@ export function delegateNewDialog(app, person) {
   });
 }
 
-export function oweNewDialog(app, person) {
+export async function oweNewDialog(app, person) {
+  const hub = hubField(app, person);
   return formDialog({
     title: `A task for ${person.title}`,
     fields: [
       { key: "title", label: "Task", placeholder: "what you owe them" },
       { key: "due", label: "Due (optional)", type: "date", optional: true },
+      hub,
     ],
     submit: "Add task",
-    run: async ({ title, due }) => {
+    run: async ({ title, due, hub }) => {
       if (!title.trim()) throw new Error("A task needs some text");
-      const task = await app.tasksApi.create(person.id, title.trim(), { due: due || "" });
+      const task = await app.tasksApi.create(Number(hub), title.trim(), { due: due || "" });
       await app.tasksApi.setFor(task.id, person.id);
       await tasksChanged(app);
       app.say(`"${task.title}" added: you owe it ${firstName(person)}`);

@@ -185,15 +185,15 @@ Features in build order. "build feature" takes the first unchecked item.
   table. (done 2026-11-27)
 - [x] Shared look from the redesign: status chips (state and kind tones), the key-hint bar at
   the foot of each view, one focus ring, menus and dialogs on the overlay surface. (done 2026-11-27)
-- [ ] People and the person page as in Figma (People, Person · Ada Park): Waiting on / I owe
-  aligned on the 3-column grid; "Next 1:1" counts only meetings still to come.
+- [x] People and the person page as in Figma (People, Person · Ada Park): Waiting on / I owe
+  aligned on the 3-column grid; "Next 1:1" counts only meetings still to come. (done 2026-11-27)
 - [x] Week as in Figma (Week · imported / not imported): calendar import is file-only. With no
   import this week, the calendar greys out under a centered Import panel (drop the .ics, or
   `i` to pick it; "Plan without it"). The `<data>/import/` folder scan goes. (done 2026-11-27)
 - [ ] Today as in Figma (Today): the same Import panel ("Not today"), and plain wording for
   the free time left.
-- [ ] Project page as in Figma (Project, Project history): it shows now and next (this week
-  on); each section's older entries go to the project's own History page (`g h`).
+- [x] Project page as in Figma (Project, Project history): it shows now and next (this week
+  on); each section's older entries go to the project's own History page (`g h`). (done 2026-11-27)
 - [x] Task page as in Figma (Task): Notes is the main column; Subtasks, Emails, Files, From and
   History in a side column, so it reads well shared at 1280 with the note window on the right
   third. (done 2026-11-27)
@@ -216,3 +216,5 @@ Features in build order. "build feature" takes the first unchecked item.
   sample data). The note on screen must follow what the main window shows. (done 2026-11-27)
 - [x] Week, Timesheet tab at 1400 px wide: the right-hand panel ("Check before you submit", "This
   week off", "Not counted") is drawn over the hours grid's Thu, Fri and Total columns. (done 2026-11-27)
+- [ ] Edit a task's notes in the note window: the task page's Edit opens them there, with a
+  "Live · editing in the note window" chip on the task page while they are open.
