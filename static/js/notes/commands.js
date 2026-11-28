@@ -59,6 +59,9 @@ export const NOTE_COMMANDS = [
     run: (app) => app.calendarCommand() },
   { name: "live", label: "Live note", min: 4, usage: ":live", help: "show the note window's note in the main window, rendered as it is typed",
     run: (app) => app.showView("live", "push") },
+  // Typed in full: :set is the editor's options.
+  { name: "settings", label: "Settings", min: 8, usage: ":settings", help: "open Settings: the note window, codes and hours, holidays, time off, linked folders, the data folder",
+    run: (app) => app.showView("settings", "push") },
   { name: "people", label: "People", min: 6, usage: ":people", help: "open the People page (Escape comes back to the note)",
     run: (app) => app.showView("people", "push") },
   { name: "newperson", label: "New person…", min: 9, usage: ":newperson {name}", help: "add a person to People and open their note",

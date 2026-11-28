@@ -5,6 +5,7 @@ import time
 import webbrowser
 from typing import Callable, List, Optional
 
+from paradigm.api.about import AboutApi
 from paradigm.api.calendar import CalendarApi
 from paradigm.api.capture import CaptureApi
 from paradigm.api.emails import EmailsApi
@@ -178,6 +179,7 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
 
     server.on_close.insert(0, tidy_at_stop)
     SessionApi(presence, config.keepalive_seconds, config.max_streams).register(server.router)
+    AboutApi(config.data_dir).register(server.router)
     NotesApi(notes).register(server.router)
     FoldersApi(FolderRepository(db), notes).register(server.router)
     PeopleApi(PeopleRepository(db), notes).register(server.router)

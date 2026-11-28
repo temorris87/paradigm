@@ -7,7 +7,7 @@
 //   changes.send({ type: "open", id, at })               the notes page opens the note
 //   changes.send({ type: "open", to: "note", task })     the note window opens a task's notes
 //   changes.send({ type: "place", to: "note", mode })    the note window places itself again
-//                                                         (Window > right third)
+//                                                         (Settings: Right third)
 //   changes.listen((message) => ...)
 //   await changes.ask({ type: "open", ... }, "opened")   true once a window answered in time
 const CHANNEL = "paradigm";

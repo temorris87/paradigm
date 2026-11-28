@@ -1,5 +1,6 @@
 // The Week page, in the main window (&week): the calendar, the timesheet and the on-call rota
-// as one page with Plan / Timesheet / Settings / On call. It owns the week shown (‹ This week ›,
+// as one page with Plan / Timesheet / On call (the timesheet's settings are on the Settings
+// page, settings/settings-page.js). It owns the week shown (‹ This week ›,
 // the keys [ ] t), the switch, the week's totals in its bar (focus planned, meetings, free),
 // who is on call that week (on every tab; a click opens On call), and the footer under
 // Plan: the hours so far by time code and the week projected, with Timesheet ↗. The calendar
@@ -10,7 +11,7 @@
 //     plan, time, oncall: the bodies; foot: Plan's footer; onView(view): a tab came up (the
 //     key-hint bar follows it)
 //   page.hold(calendar, timesheet, onCallPage)
-//   page.show(view?)    view: "plan" | "timesheet" | "settings" | "oncall" (the last one if none)
+//   page.show(view?)    view: "plan" | "timesheet" | "oncall" (the last one if none)
 //   page.redraw(ctx)    the app drew: its tree and rota (ctx.onCall) for the bar's On call line
 //   page.focus()
 //   page.moveWeek(days) days: -7, 7, or 0 (this week)
@@ -24,7 +25,6 @@ import { barText } from "../oncall/oncall-model.js";
 export const WEEK_VIEWS = [
   { key: "plan", label: "Plan", title: "Meetings, blocks and the tasks to plan onto them" },
   { key: "timesheet", label: "Timesheet", title: "The week's hours by time code" },
-  { key: "settings", label: "Settings", title: "Codes, working hours, holidays and time off" },
   { key: "oncall", label: "On call", title: "Who is on call each week: paste the Excel sheet here" },
 ];
 
@@ -112,10 +112,7 @@ export class WeekPage {
       this.onCall.show();
       this.onCall.focus();
     }
-    else {
-      this.timesheet.showTab(view === "settings" ? "settings" : "week");
-      this.timesheet.show();
-    }
+    else this.timesheet.show();
     this.loadFoot();
     this.onView(view);
   }

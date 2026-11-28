@@ -1,24 +1,19 @@
 // The timesheet page, in the main window (&time): the week's hours by time code (Monday to Friday, each day exactly the
-// working day), how they were made, and the settings (codes, hours, holidays, time off). The
-// sums are the server's (paradigm/timesheet/report.py); this page shows them and copies them.
+// working day) and how they were made. Its settings (codes, hours, holidays, time off) are on
+// the Settings page (timesheet/time-settings.js). The sums are the server's
+// (paradigm/timesheet/report.py); this page shows them and copies them.
 //
 //   const page = new TimePage({ root, bar, main, api: timeApi, changes, isShown(), today: () => new Date(),
 //                               onMove?(days) });
 //     onMove: the week page (week/week-page.js) holds it: the week, the tabs and Copy are its,
 //             and this page's bar keeps only the status
 //   page.show() / page.focus()      when its page comes into view (loads it the first time)
-//   page.setMonday(day) / page.showTab("week" | "settings") / page.copy()
+//   page.setMonday(day) / page.copy()
 import { addDays, dateOf, localDay } from "../meetings/meeting-days.js";
-import { confirmDialog } from "../ui/dialog.js";
 import { copyGrid, hoursText } from "./copy.js";
 import { dayText } from "../ui/dates.js";
 import { timeAction } from "./time-keys.js";
-
-const KIND_LABELS = { holiday: "Holiday", time_off: "Time off", sick: "Sick" };
-const CODE_FIELDS = [["default_code", "Default code", "the hours nothing is booked to"],
-  ["holiday_code", "Holiday code", ""], ["time_off_code", "Time off code", ""], ["sick_code", "Sick code", ""]];
-const HOUR_FIELDS = [["day_start", "Working day starts"], ["day_end", "Working day ends"],
-  ["lunch_start", "Lunch starts"], ["lunch_end", "Lunch ends"]];
+import { KIND_LABELS } from "./time-settings.js";
 
 export class TimePage {
   constructor({ root, bar, main, api, changes, isShown = () => true, today = () => new Date(), onMove = null }) {
@@ -29,13 +24,11 @@ export class TimePage {
     this.api = api;
     this.today = today;
     this.monday = mondayOf(localDay(today()));
-    this.tab = "week";
     this.report = null;
     this.main = main;
     this.bar = this.makeBar(bar);
     this.weekView = element("section", "time-week");
-    this.settingsView = element("section", "time-settings");
-    main.replaceChildren(this.weekView, this.settingsView);
+    main.replaceChildren(this.weekView);
     changes.listen((message) => {
       if (message.type === "changed" && this.started) this.run(this.load());
     });
@@ -68,29 +61,14 @@ export class TimePage {
       return node;
     };
     const week = element("h1", "time-bar__week");
-    const weekTab = make("Week", "The week's hours", () => this.showTab("week"));
-    const settingsTab = make("Settings", "Codes, working hours, holidays and time off", () => this.showTab("settings"));
-    for (const tab of [weekTab, settingsTab]) tab.classList.add("time-tab");
     const copy = make("Copy", "Copy the grid: paste it into the timesheet, Excel or an email (c)", () => this.run(this.copy()));
     const status = element("span", "time-bar__status");
     status.setAttribute("role", "status");
-    // The week's own controls (‹ This week › and its title) show on the Week tab only.
     const weekControls = [make("‹", "The week before ([)", () => this.moveWeek(-7)), make("This week", "This week (t)", () => this.thisWeek()),
       make("›", "The week after (])", () => this.moveWeek(7)), week];
     if (this.onMove) bar.replaceChildren(status);
-    else bar.replaceChildren(...weekControls, weekTab, settingsTab, copy, status);
-    return { week, weekTab, settingsTab, copy, status, weekControls };
-  }
-
-  showTab(tab) {
-    this.tab = tab;
-    this.weekView.hidden = tab !== "week";
-    this.settingsView.hidden = tab !== "settings";
-    this.bar.weekTab.setAttribute("aria-pressed", String(tab === "week"));
-    this.bar.settingsTab.setAttribute("aria-pressed", String(tab === "settings"));
-    this.bar.copy.disabled = tab !== "week";
-    for (const node of this.bar.weekControls) node.hidden = tab !== "week";
-    if (tab === "settings") this.run(this.loadSettings());
+    else bar.replaceChildren(...weekControls, copy, status);
+    return { week, copy, status };
   }
 
   moveWeek(days) {
@@ -114,7 +92,6 @@ export class TimePage {
     this.report = await this.api.week(this.monday);
     this.bar.week.textContent = `Week of ${dayText(this.monday, { today: localDay(this.today()) })}`;
     this.drawWeek();
-    this.showTab(this.tab);
   }
 
   // ---- the week ---------------------------------------------------------------------
@@ -216,105 +193,6 @@ export class TimePage {
     this.say("Copied: paste it into the timesheet, Excel or an email");
   }
 
-  // ---- settings -----------------------------------------------------------------------
-
-  async loadSettings() {
-    this.drawSettings(await this.api.settings());
-  }
-
-  drawSettings({ settings, holidays, time_off: timeOff, upcoming }) {
-    const form = element("form", "time-form");
-    form.append(element("h2", "time-heading", "Codes and hours"));
-    const inputs = {};
-    for (const [key, label, hint] of CODE_FIELDS) inputs[key] = field(form, label, "text", settings[key], hint);
-    for (const [key, label] of HOUR_FIELDS) {
-      inputs[key] = field(form, label, "time", settings[key]);
-      inputs[key].step = 900; // quarter hours, as the report counts
-    }
-    const observed = element("input", "");
-    Object.assign(observed, { type: "checkbox", checked: settings.observed === "1" });
-    const observedLabel = element("label", "time-check");
-    observedLabel.append(observed, " A holiday on a Saturday is taken on the Friday, on a Sunday on the Monday");
-    form.append(observedLabel);
-    const save = element("button", "time-button", "Save");
-    save.type = "submit";
-    form.append(save);
-    form.addEventListener("submit", (event) => {
-      event.preventDefault();
-      const values = Object.fromEntries(Object.entries(inputs).map(([key, input]) => [key, input.value.trim()]));
-      this.run(this.api.setSettings({ ...values, observed: observed.checked }).then((all) => {
-        this.drawSettings(all);
-        this.say("Settings saved");
-        return this.load();
-      }));
-    });
-
-    const holidaysPart = element("section", "time-part");
-    holidaysPart.append(element("h2", "time-heading", "Holidays"),
-      element("p", "time-note", "Rules look like: Jul 4 · 4th Thu of Nov · last Mon of May · 4th Thu of Nov + 1 · 2026-12-24 (one day only)"));
-    const holidayList = element("ul", "time-list");
-    holidayList.append(...holidays.map((holiday) => {
-      const row = element("li", holiday.ok ? "" : "time-list--bad");
-      row.append(element("span", "time-list__main", holiday.name), element("span", "time-list__meta", holiday.ok ? holiday.rule : `${holiday.rule} (can't read this rule)`),
-        removeButton(`Remove ${holiday.name}`, () => this.run(confirmDialog({ title: `Remove ${holiday.name}?`, confirm: "Remove", danger: true,
-          run: async () => this.drawSettings(await this.api.removeHoliday(holiday.id)) }))));
-      return row;
-    }));
-    const addHoliday = element("form", "time-inline");
-    const name = field(addHoliday, "Name", "text", "");
-    const rule = field(addHoliday, "Rule", "text", "", "Jul 4");
-    const add = element("button", "time-button", "Add holiday");
-    add.type = "submit";
-    addHoliday.append(add);
-    addHoliday.addEventListener("submit", (event) => {
-      event.preventDefault();
-      this.run(this.api.addHoliday(name.value, rule.value).then((all) => this.drawSettings(all)));
-    });
-    const next = element("p", "time-note", upcoming.length
-      ? `Next: ${upcoming.slice(0, 6).map((entry) => `${entry.name} ${screenDay(entry.day)}`).join(" · ")}` : "No holidays in the next year");
-    holidaysPart.append(holidayList, addHoliday, next);
-
-    const offPart = element("section", "time-part");
-    offPart.append(element("h2", "time-heading", "Time off and sick time"));
-    const offList = element("ul", "time-list");
-    offList.append(...timeOff.map((entry) => {
-      const row = element("li", "");
-      const days = entry.first === entry.last ? entry.first : `${entry.first} to ${entry.last}`;
-      row.append(element("span", "time-list__main", `${KIND_LABELS[entry.kind]}: ${days}`),
-        element("span", "time-list__meta", [entry.hours ? `${entry.hours} h a day` : "whole days", entry.note].filter(Boolean).join(" · ")),
-        removeButton("Remove it", () => this.run(this.api.removeTimeOff(entry.id).then((all) => {
-          this.drawSettings(all);
-          return this.load();
-        }))));
-      return row;
-    }));
-    if (!timeOff.length) offList.append(element("li", "time-note", "None yet"));
-    const addOff = element("form", "time-inline");
-    const kind = element("select", "time-input");
-    kind.append(option("time_off", "Time off"), option("sick", "Sick"));
-    const kindLabel = element("label", "time-field");
-    kindLabel.append(element("span", "time-field__label", "Kind"), kind);
-    addOff.append(kindLabel);
-    const first = field(addOff, "From", "date", localDay(this.today()));
-    const last = field(addOff, "To (optional)", "date", "");
-    const hours = field(addOff, "Hours a day (empty: whole day)", "number", "");
-    Object.assign(hours, { min: "0", max: "24", step: "0.25" });
-    const note = field(addOff, "Note (optional)", "text", "");
-    const addButton = element("button", "time-button", "Add");
-    addButton.type = "submit";
-    addOff.append(addButton);
-    addOff.addEventListener("submit", (event) => {
-      event.preventDefault();
-      this.run(this.api.addTimeOff(kind.value, first.value, last.value, hours.value === "" ? 0 : Number(hours.value), note.value)
-        .then((all) => {
-          this.drawSettings(all);
-          return this.load();
-        }));
-    });
-    offPart.append(offList, addOff);
-    this.settingsView.replaceChildren(form, holidaysPart, offPart);
-  }
-
   onKey(event) {
     const action = timeAction(event);
     if (!action) return;
@@ -322,7 +200,7 @@ export class TimePage {
     if (action === "previousWeek") this.moveWeek(-7);
     else if (action === "nextWeek") this.moveWeek(7);
     else if (action === "thisWeek") this.thisWeek();
-    else if (action === "copy" && this.tab === "week") this.run(this.copy());
+    else if (action === "copy") this.run(this.copy());
   }
 
   run(promise) {
@@ -365,36 +243,6 @@ function listSection(title, rows, className = "") {
   }));
   section.append(list);
   return section;
-}
-
-function field(form, label, type, value, placeholder = "") {
-  const wrap = element("label", "time-field");
-  const input = element("input", "time-input");
-  Object.assign(input, { type, value: value ?? "", placeholder });
-  wrap.append(element("span", "time-field__label", label), input);
-  form.append(wrap);
-  return input;
-}
-
-/** A quiet × at the end of a settings row: shown on hover and when it has the focus. */
-function removeButton(title, onClick) {
-  const node = smallButton("×", title, onClick);
-  node.classList.add("time-button--remove");
-  node.setAttribute("aria-label", title);
-  return node;
-}
-
-function smallButton(text, title, onClick) {
-  const node = element("button", "time-button time-button--small", text);
-  Object.assign(node, { type: "button", title });
-  node.addEventListener("click", onClick);
-  return node;
-}
-
-function option(value, text) {
-  const node = element("option", "", text);
-  node.value = value;
-  return node;
 }
 
 function element(tag, className, text) {

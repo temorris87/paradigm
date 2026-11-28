@@ -28,7 +28,7 @@ app.events.addEventListener("redraw", drawHints);
 drawHints();
 
 // Placed again once loaded (the frame can be measured now), and when the main window's
-// Window menu picks the right third.
+// Settings picks the right third.
 if (document.readyState === "complete") placeOnFirstLoad(window);
 else window.addEventListener("load", () => placeOnFirstLoad(window), { once: true });
 app.changes.listen((message) => {
