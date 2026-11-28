@@ -221,13 +221,13 @@ Features in build order. "build feature" takes the first unchecked item.
 - [x] When a note is closed, the preview should also close. (done 2026-11-28)
 - [x] Follow ups should only show up on Today if they need to be followed up on that day. They
   should appear at the top. (done 2026-11-28)
-- [ ] For pages that have multiple columns, h and l should work from vim key bindings to move
-  left and right, not having to only use j and k.
-- [ ] If the f key is free, I want to be able to use it (or another key if it's not free) to use
+- [x] For pages that have multiple columns, h and l should work from vim key bindings to move
+  left and right, not having to only use j and k. (done 2026-11-28)
+- [x] If the f key is free, I want to be able to use it (or another key if it's not free) to use
   as a find key similar to vim plugins that let you hit the f key and quickly follow links. A
-  letter or letters should pop up that I can type to select that item.
-- [ ] Shift H should take me to the previous page I was on, Shift L should take me forward to
-  the page I was last on.
+  letter or letters should pop up that I can type to select that item. (done 2026-11-28)
+- [x] Shift H should take me to the previous page I was on, Shift L should take me forward to
+  the page I was last on. (done 2026-11-28)
 - [ ] j and k should no longer move me up and down item by item with the f key implemented, j
   and k should now scroll the page up and down if it has enough content that it's scrollable.
   Shift H and L should let me move into the left and right sidebars and j and k should scroll
@@ -240,14 +240,14 @@ Features in build order. "build feature" takes the first unchecked item.
 - [x] I need a solution for mermaid diagrams on notes to insert preformatted text for all
   supported diagram types. I also need some solution for showing me possible syntax within that
   diagram type -- must be context sensitive -- to help me write diagrams quickly. (done 2026-11-28)
-- [ ] Mermaid help fixes (from the browser check of batch 2026-11-27d): a ‹blank› stays in the
+- [x] Mermaid help fixes (from the browser check of batch 2026-11-27d): a ‹blank› stays in the
   text until it is typed over, so a template left as inserted still draws (15 of 36 types broke
   after Esc); flowchart reads the target of an edge that has a shape (`B -->|yes| C[Do this]`);
   Ctrl-Space after a node written with its shape (`A[Again] `) offers edges; Insert diagram… with
-  the cursor inside a mermaid block puts the new block after that block's closing fence.
-- [ ] Small fixes from batch 2026-11-27d: Today's Import panel says "the tray still works" (Today
+  the cursor inside a mermaid block puts the new block after that block's closing fence. (done 2026-11-28)
+- [x] Small fixes from batch 2026-11-27d: Today's Import panel says "the tray still works" (Today
   has no tray); Today's "to file" rows go stale after Don't import on the Week; switching the note
   window from a task's notes to a note drops what is typed meanwhile; the follow-up route logs on a
   done task, and a failed redraw after logging can log it twice; Settings shows time-off dates raw
   and Escape does nothing on a Note window choice; hovering a changed on-call name says "Open …",
-  not "was …".
+  not "was …". (done 2026-11-28)
