@@ -28,11 +28,14 @@ export function mainAction(event) {
   return read(event);
 }
 
-/** Puts the keys on the window: handlers { palette(), today(), week(), plan(), live(), keys() }. */
-export function installMainKeys(target, handlers) {
+/** Puts the keys on the window: handlers { palette(), today(), week(), plan(), live(), keys() }.
+ * shadowed(event): the actions the scope under the focus takes over (layout/view-keys.js
+ * shadowedMainActions): their keys go on to it, as if this table didn't bind them. */
+export function installMainKeys(target, handlers, { shadowed = () => [] } = {}) {
   target.addEventListener("keydown", (event) => {
     const action = mainAction(event);
     if (!action || action === "pending") return;
+    if (shadowed(event).includes(action)) return;
     event.preventDefault();
     event.stopPropagation();
     // The scope under the focus may be waiting on this g for gg: it was ours.

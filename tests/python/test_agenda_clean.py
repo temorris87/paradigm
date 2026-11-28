@@ -103,7 +103,7 @@ class ImportedAgendaTest(unittest.TestCase):
         migrate(self.db)
         self.notes = NoteRepository(self.db)
         self.meetings = MeetingRepository(self.db)
-        self.imports = ImportRepository(self.db, Path(self.tmp.name) / "import", today=lambda: "2026-11-23",
+        self.imports = ImportRepository(self.db, today=lambda: "2026-11-23",
                                         to_local=eastern)
         self.hub = self.notes.create(None, "Budget")["id"]
         self.notes.set_kind(self.hub, "project")

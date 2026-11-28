@@ -4,8 +4,8 @@ import { CALENDAR_KEYS } from "../../static/js/calendar/calendar-keys.js";
 import { FOLDER_BROWSER_KEYS } from "../../static/js/files/folder-browser-keys.js";
 import { GANTT_KEYS } from "../../static/js/gantt/gantt-keys.js";
 import { HUB_KEYS } from "../../static/js/hubs/hub-keys.js";
-import { MAIN_KEYS, mainAction } from "../../static/js/layout/main-keys.js";
-import { noteHints, viewHints, viewKeyGroups, viewTable } from "../../static/js/layout/view-keys.js";
+import { MAIN_KEYS, installMainKeys, mainAction } from "../../static/js/layout/main-keys.js";
+import { noteHints, shadowedMainActions, viewHints, viewKeyGroups, viewTable } from "../../static/js/layout/view-keys.js";
 import { ONCALL_KEYS } from "../../static/js/oncall/oncall-keys.js";
 import { PAGE_KEYS } from "../../static/js/pages/page-keys.js";
 import { FOLDER_KEYS } from "../../static/js/resources/folder-keys.js";
@@ -84,6 +84,45 @@ test("view keys: a bar shows only keys its view's table binds", () => {
   };
   for (const view of VIEWS) check(view);
   for (const tab of WEEK_TABS) check("week", tab);
+});
+
+test("view keys: the Week Plan's bar as in Figma, g t the tray there and Today elsewhere", () => {
+  assertEqual(viewHints("week", "plan").map(({ cap, words }) => `${cap} ${words}`).join(),
+    "[ ] week,g t tray,g c calendar,j k move,s schedule,Enter block menu,? all keys");
+  assertEqual(shadowedMainActions("week", "plan").join(), "today", "the Plan tab's gt shadows the window's");
+  for (const tab of ["timesheet", "settings", "oncall"]) assertEqual(shadowedMainActions("week", tab).join(), "", tab);
+  for (const view of VIEWS) assertEqual(shadowedMainActions(view).join(), "", String(view));
+  const plan = viewKeyGroups("week", "plan");
+  const anywhere = plan.find((group) => group.name === "Anywhere in this window").rows.map((row) => row.help);
+  assertTrue(!anywhere.includes("Today"), "the ? list on Plan: g t is the tray's");
+  assertTrue(viewKeyGroups("week", "timesheet").at(-1).rows.some((row) => row.help === "Today"), "Timesheet: g t is Today");
+  assertTrue(plan[0].rows.some((row) => row.keys.join() === "i"), "i is in the Plan's ? list");
+});
+
+test("main keys: a shadowed gt goes on to the scope; elsewhere it is Today", () => {
+  const target = document.createElement("div");
+  const scope = document.createElement("div");
+  scope.tabIndex = -1;
+  const outside = document.createElement("div");
+  outside.tabIndex = -1;
+  target.append(scope, outside);
+  document.body.append(target);
+  const ran = [];
+  const reached = [];
+  installMainKeys(target, { today: () => ran.push("today") }, { shadowed: (event) => (scope.contains(event.target) ? ["today"] : []) });
+  target.addEventListener("keydown", (event) => reached.push(event.key));
+  const press = (node, key) => node.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+  try {
+    press(scope, "g");
+    press(scope, "t");
+    assertEqual(ran.join(), "", "in the scope, not Today");
+    assertEqual(reached.join(), "g,t", "the scope gets both keys");
+    press(outside, "g");
+    press(outside, "t");
+    assertEqual(ran.join(), "today", "outside it, Today");
+  } finally {
+    target.remove();
+  }
 });
 
 test("view keys: the ? list leaves out what the bar leaves out", () => {

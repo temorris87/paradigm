@@ -151,7 +151,7 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
         notes = NoteRepository(db, capture=store_captures)
         images = ImageRepository(db)
         trash = TrashRepository(db, keep_days=config.trash_days, emails_dir=config.emails_dir)
-        imports = ImportRepository(db, config.import_dir)
+        imports = ImportRepository(db)
         seed_if_empty(notes)
         empty_trash(trash)
         sweep_images(images, notes)
@@ -159,7 +159,6 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
         # doesn't vacuum, so closing the last tab stays quick), the file shrinks here.
         if db.vacuum_if_worth_it():
             log.info("Database compacted")
-        import_calendar(imports)
     except BaseException:
         # Not server.stop(): it would wait for a serve loop that never started.
         server.server_close()
@@ -194,21 +193,6 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
     StatusApi(StatusRepository(db), config.stale_days).register(server.router)
     TopicsApi(TopicRepository(db)).register(server.router)
     OnCallApi(OnCallRepository(db)).register(server.router)
-
-
-def import_calendar(imports: ImportRepository) -> None:
-    """Imports the Outlook calendar files waiting in the import folder (made if missing, so
-    Outlook's Save Calendar can be pointed at it). A failure is logged, never fatal."""
-    try:
-        imports.folder.mkdir(parents=True, exist_ok=True)
-        counts = imports.import_folder()
-    except Exception:
-        log.exception("could not import the calendar")
-        return
-    if counts["files"]:
-        log.info("Imported %d calendar file%s", counts["files"], "" if counts["files"] == 1 else "s")
-    for error in counts["errors"]:
-        log.warning("calendar import: %s", error)
 
 
 def empty_trash(trash: TrashRepository) -> int:

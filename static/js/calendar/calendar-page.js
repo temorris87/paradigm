@@ -1,7 +1,9 @@
 // The Week page's Plan (in the main window, &week; static/js/week/week-page.js holds it): a
 // week of meetings and task blocks with each day's capacity and what is due, the tray of tasks
-// to plan onto it, and the Outlook import. It loads what it shows from the server and tells
-// the other windows what it changed (connection/changes.js); a note opens in the note window
+// to plan onto it, and the Outlook import: a calendar file (.ics) picked (i) or dropped. While
+// today's calendar isn't imported, the week holding today greys out under the Import panel
+// (import-panel.js, import-state.js) until a file comes in or Plan without it is chosen. It
+// loads what it shows from the server and tells the other windows what it changed (connection/changes.js); a note opens in the note window
 // (openNote); a task's own page opens over its dashboard here (openTask, the block menu).
 //
 //   const page = new CalendarPage({ root, bar, side, week, api: { notes, meetings, tasks, calendar,
@@ -10,6 +12,7 @@
 //     onMove: the week page moves the week (days: -7, 7, or 0 for this one); without it the
 //             page has its own ‹ Today › in its bar
 //   page.show() / page.focus()      when its page comes into view (loads it the first time)
+//   page.focusTray() / page.focusCalendar()   gt / gc
 //   page.setMonday(day)             show that week
 //   page.data, page.settings, page.days()    what it shows (the week page's summary);
 //                                   settings.off: the days off (week/capacity.js timeOffDays),
@@ -27,10 +30,13 @@ import { Meetings } from "../meetings/meetings-model.js";
 import { Tasks } from "../tasks/tasks-model.js";
 import { addDays, dateOf, localDay, whenText } from "../meetings/meeting-days.js";
 import { weekRange } from "../ui/dates.js";
+import { keyCap } from "../ui/key-hints.js";
 import { groupForKind, isArchived, isHub } from "../notes/hub-groups.js";
 import { formDialog, confirmDialog } from "../ui/dialog.js";
 import { openMenu } from "../ui/menu.js";
 import { calendarAction } from "./calendar-keys.js";
+import { ImportPanel } from "./import-panel.js";
+import { PLAN_WITHOUT_STORE, hasError, lastImportedText, quietNote, showsPanel, uploadText } from "./import-state.js";
 import { trackDrag } from "./drag.js";
 import { GridView } from "./grid-view.js";
 import { TaskSidebar } from "./task-sidebar.js";
@@ -47,7 +53,7 @@ const SHORTEST = STEP;
 
 export class CalendarPage {
   constructor({ root, bar, side, week, api, changes, openNote = () => {}, openTask = null, isShown = () => true, today = () => new Date(),
-                location = window.location, onMove = null, onDrawn = () => {} }) {
+                location = window.location, onMove = null, onDrawn = () => {}, storage = window.localStorage }) {
     this.onMove = onMove;
     this.onDrawn = onDrawn;
     this.settings = {};
@@ -66,6 +72,7 @@ export class CalendarPage {
     this.blocks = [];
     this.status = null;
     this.location = location;
+    this.storage = storage;
     this.bar = this.makeBar(bar);
     this.side = new TaskSidebar(side, {
       onTaskDown: (entry, event) => this.dragTask(entry, event),
@@ -82,11 +89,11 @@ export class CalendarPage {
       onChip: (chip) => this.run(this.openNote(chip.noteId)),
       onFocusLost: () => this.focus(),
     });
+    this.weekNode = week;
+    // The panel shares the week's grid cell (css/import-panel.css), over it.
+    this.panel = new ImportPanel({ cell: week.parentElement ?? root, grid: week, onPick: () => this.pickFiles(),
+      onPlanWithout: () => this.planWithout() });
     root.addEventListener("keydown", (event) => this.onKey(event));
-    // Coming back to the window: the import folder may hold today's export by now.
-    window.addEventListener("focus", () => {
-      if (this.started && this.isShown()) this.run(this.importAndLoad({ quiet: true }));
-    });
     changes.listen((message) => {
       if (message.type === "changed" && this.started) this.run(this.load());
     });
@@ -101,18 +108,52 @@ export class CalendarPage {
 
   async start() {
     this.started = true;
-    await this.importAndLoad({ quiet: true });
+    await this.load();
     this.grid.scrollToMinute(START_HOUR * 60);
   }
 
   /** Its page came into view: loaded the first time, read again after. */
   show() {
     if (!this.started) this.run(this.start());
-    else this.run(this.importAndLoad({ quiet: true }));
+    else this.run(this.load());
   }
 
   focus() {
     this.root.focus({ preventScroll: true });
+  }
+
+  /** gt: the tray's task under the focus, else its first. */
+  focusTray() {
+    this.side.focusRow(0) || this.root.focus({ preventScroll: true });
+  }
+
+  /** gc: the chosen block, else the first shown; the panel's Import a file… while it greys the grid. */
+  focusCalendar() {
+    if (this.panel.shown) return this.panel.focus();
+    const keys = this.blockOrder();
+    const key = keys.includes(this.selected) ? this.selected : keys[0];
+    if (key === undefined) return this.focus();
+    this.select(key);
+    return this.grid.blockNodeFor(key)?.focus({ preventScroll: true });
+  }
+
+  /** j / k: the next or previous task in the tray, or block in the calendar, as the focus is. */
+  move(step) {
+    if (this.side.focusedTask() !== null) return this.side.focusRow(step);
+    if (this.panel.shown) return undefined;
+    const keys = this.blockOrder();
+    if (!keys.length) return undefined;
+    const at = keys.indexOf(this.grid.focusedKey() ?? this.selected);
+    const key = keys[at < 0 ? 0 : Math.max(0, Math.min(keys.length - 1, at + step))];
+    this.select(key);
+    return this.grid.blockNodeFor(key)?.focus({ preventScroll: true });
+  }
+
+  /** The keys of the blocks drawn, by day then time (all day first). */
+  blockOrder() {
+    return this.blocks.filter((block) => this.grid.blockNodeFor(block.key))
+      .sort((a, b) => a.day.localeCompare(b.day) || Number(a.timed) - Number(b.timed) || (a.start ?? 0) - (b.start ?? 0))
+      .map((block) => block.key);
   }
 
   // ---- loading and drawing ----------------------------------------------------------
@@ -163,8 +204,42 @@ export class CalendarPage {
     // Off, a weekend day still shows when something is on it; on, both always show.
     this.bar.weekend.textContent = this.weekend ? "Hide weekend" : "Show weekend";
     this.drawStatus();
+    this.drawImport(days);
     this.drawSide();
     this.onDrawn();
+  }
+
+  drawImport(days = weekDays(this.monday)) {
+    const today = localDay(this.today());
+    const planWithout = this.planWithoutDay();
+    const active = document.activeElement;
+    const gridHadFocus = this.weekNode.contains(active);
+    const panelHadFocus = this.panel.node.contains(active);
+    this.panel.draw({ shown: showsPanel({ days, today, status: this.status, planWithout }),
+      lastText: lastImportedText(this.status, today) });
+    this.bar.note.textContent = quietNote({ status: this.status, today, planWithout });
+    // The grid went inert under the focus, or the panel hid with the focus in it (an import
+    // from its own button): the page keeps it, so its keys (and the Plan tab's g t) still work.
+    if (this.panel.shown ? gridHadFocus : panelHadFocus) this.focus();
+  }
+
+  planWithoutDay() {
+    try {
+      return this.storage?.getItem(PLAN_WITHOUT_STORE) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Plan without it: no panel for the rest of today in this browser; tomorrow it is back. */
+  planWithout() {
+    try {
+      this.storage?.setItem(PLAN_WITHOUT_STORE, localDay(this.today()));
+    } catch {
+      // Storage refused (private mode): the panel goes for now all the same.
+    }
+    this.drawImport();
+    this.focus();
   }
 
   drawSide() {
@@ -174,10 +249,10 @@ export class CalendarPage {
 
   drawStatus(message = "") {
     const status = this.status;
-    const text = message || (!status ? "" : status.imported_today ? `Calendar imported today`
-      : `Calendar not imported today. In Outlook: File › Save Calendar, Next 7 days, Full details, into ${status.folder}`);
+    // Not imported, the panel (or the quiet note once planned without) says so.
+    const text = message || (status?.imported_today ? "Calendar imported today" : "");
     this.bar.status.textContent = text;
-    this.bar.status.classList.toggle("cal-bar__status--due", Boolean(status && !status.imported_today && !message));
+    this.bar.status.classList.toggle("cal-bar__status--due", hasError(text));
   }
 
   makeBar(bar) {
@@ -190,13 +265,17 @@ export class CalendarPage {
     const week = element("h1", "cal-bar__week");
     const weekend = make("Show weekend", "Show or hide Saturday and Sunday (w)", () => this.toggleWeekend());
     const picker = element("input", "");
-    Object.assign(picker, { type: "file", accept: ".ics,text/calendar", multiple: true, hidden: true });
+    Object.assign(picker, { type: "file", accept: ".ics", multiple: true, hidden: true });
     picker.addEventListener("change", () => {
       this.run(this.uploadFiles(picker.files));
       picker.value = "";
     });
+    this.picker = picker;
+    const importButton = make("Import ", "Import a calendar file (.ics) saved from Outlook (i)", () => this.pickFiles());
+    importButton.append(keyCap("i"));
     const status = element("span", "cal-bar__status");
     status.setAttribute("role", "status");
+    const note = element("span", "cal-bar__note");
     // Held by the week page, the week's own controls are its; alone, the page has them.
     const navigation = this.onMove ? [] : [
       make("‹", "The week before ([)", () => this.moveWeek(-7)),
@@ -204,12 +283,9 @@ export class CalendarPage {
       make("›", "The week after (])", () => this.moveWeek(7)),
       week];
     bar.replaceChildren(
-      ...navigation, weekend,
-      make("Import", "Import the calendar files in the import folder (i)", () => this.run(this.importAndLoad({ quiet: false }))),
-      make("Import a file…", "Pick a calendar file (.ics) saved from Outlook", () => picker.click()),
-      picker, status,
+      ...navigation, weekend, importButton, picker, status, note,
     );
-    return { week: this.onMove ? null : week, weekend, status };
+    return { week: this.onMove ? null : week, weekend, status, note };
   }
 
   // ---- the week ---------------------------------------------------------------------
@@ -430,28 +506,27 @@ export class CalendarPage {
 
   // ---- the import ---------------------------------------------------------------------
 
-  async importAndLoad({ quiet }) {
-    const counts = await this.api.calendar.importFolder();
-    await this.load();
-    if (counts.files || counts.errors.length || !quiet) this.drawStatus(importSummary(counts));
-    if (counts.files) this.changes.send({ type: "changed", what: ["meetings"] });
+  /** i, or Import a file…: the browser's file input, .ics only, several at once. */
+  pickFiles() {
+    this.picker.click();
   }
 
+  // Each file is its own upload. A file that fails leaves the status as it was, so the panel
+  // stays until one goes in.
   async uploadFiles(files) {
     const list = [...(files ?? [])].filter((file) => /\.ics$/i.test(file.name) || file.type === "text/calendar");
     if (!list.length) return this.say("Only calendar files (.ics) can be imported");
-    const total = { files: 0, errors: [] };
+    const results = [];
     for (const file of list) {
       try {
-        const counts = await this.api.calendar.upload(file);
-        for (const [key, value] of Object.entries(counts)) if (typeof value === "number") total[key] = (total[key] ?? 0) + value;
+        results.push({ name: file.name, counts: await this.api.calendar.upload(file) });
       } catch (error) {
-        total.errors.push(`${file.name}: ${error.message}`);
+        results.push({ name: file.name, error });
       }
     }
     await this.load();
-    this.drawStatus(importSummary(total));
-    this.changes.send({ type: "changed", what: ["meetings"] });
+    this.drawStatus(uploadText(results));
+    if (results.some((each) => !each.error)) this.changes.send({ type: "changed", what: ["meetings"] });
     return undefined;
   }
 
@@ -481,15 +556,22 @@ export class CalendarPage {
   onKey(event) {
     const action = calendarAction(event);
     if (!action) return;
-    const block = this.blocks.find((each) => each.key === this.selected) ?? null;
+    // Enter on a button (the bar's, the panel's) is the button's own.
+    if (action === "menu" && event.target?.closest?.("button")) return;
+    const block = this.blocks.find((each) => each.key === (this.grid.focusedKey() ?? this.selected)) ?? null;
     event.preventDefault();
+    if (action === "pending") return;
     switch (action) {
       case "previousWeek": return this.moveWeek(-7);
       case "nextWeek": return this.moveWeek(7);
       case "today": return this.goToday();
       case "weekend": return this.toggleWeekend();
-      case "import": return this.run(this.importAndLoad({ quiet: false }));
-      case "open": return block && block.noteId !== null ? this.run(this.openNote(block.noteId)) : undefined;
+      case "tray": return this.focusTray();
+      case "calendar": return this.focusCalendar();
+      case "next": return this.move(1);
+      case "previous": return this.move(-1);
+      case "import": return this.pickFiles();
+      case "menu": return block ? this.blockMenu(block, this.grid.blockNodeFor(block.key)) : undefined;
       case "remove": return block?.kind === "task" ? this.run(this.removeBlock(block)) : undefined;
       case "schedule": {
         const taskId = this.side.focusedTask();
@@ -516,16 +598,6 @@ function liveHubs(tree) {
 
 function weekLabel(days) {
   return weekRange(days[0]);
-}
-
-/** "Imported: 3 new, 2 to file, 1 moved" (or why nothing was). */
-export function importSummary(counts) {
-  const parts = [["new", "new"], ["to_file", "to file"], ["updated", "updated"], ["moved", "moved"],
-    ["cancelled", "cancelled"], ["back_on", "back on"], ["people", "new people"]]
-    .filter(([key]) => counts[key]).map(([key, label]) => `${counts[key]} ${label}`);
-  const errors = counts.errors?.length ? ` Could not read: ${counts.errors.join("; ")}` : "";
-  if (!counts.files) return `No calendar file waiting in the import folder.${errors}`;
-  return `Imported ${counts.files === 1 ? "1 file" : `${counts.files} files`}: ${parts.length ? parts.join(", ") : "nothing changed"}.${errors}`;
 }
 
 function element(tag, className, text) {

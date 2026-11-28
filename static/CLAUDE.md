@@ -14,7 +14,8 @@ static/
   vendor/mermaid-12.3.0/ Mermaid exactly as audited (same check, mermaid-12.3.0.sha256)
   css/                   dashboard.css (the main window's dashboard: sections flowing down
                          columns, long text folded under Show more),
-                         gantt.css, plan-template.css, folder-page.css, task-page.css (a
+                         gantt.css, plan-template.css, import-panel.css (the Week Plan's
+                         Import panel over the greyed grid), folder-page.css, task-page.css (a
                          task's page: Subtask | Notes, stacked under 1400 px), oncall.css (the
                          On call tab, the Week bar's line, Today's rows, a person's head line),
                          sheet.css (the note window's sections sheet and its bar),
@@ -242,12 +243,16 @@ static/
                          emails-model.js (an email row's chip, sender line, link; the reply
                          cycle; pure), task-emails.js (the Emails section, .msg drops on the
                          task page, :attach)
-  js/calendar/           (the Week page's Plan) api.js (the import), week-model.js (days shown, the weekend rule,
+  js/calendar/           (the Week page's Plan) api.js (the import: .ics uploads only, no
+                         folder), week-model.js (days shown, the weekend rule,
                          blocks, side-by-side layout, 15-minute snap; pure), grid-view.js
                          (the week grid), drag.js (pointer drags: drop, move, resize),
                          task-sidebar.js (Tasks and To file), calendar-page.js (the page:
-                         loading, menus, dialogs, the import), calendar-keys.js (THE
-                         calendar key table)
+                         loading, menus, dialogs, the import), import-panel.js (the Import
+                         panel greying the grid while today isn't imported), import-state.js
+                         (when it shows, Plan without it by day, its texts; pure),
+                         calendar-keys.js (THE Plan tab's key table; its gt, the tray,
+                         shadows the window's gt there)
   js/oncall/             the on-call rota: sheet.js (the Excel sheet: header dates in many
                          forms, month/day, nearest year; each column its date's Monday; pure),
                          oncall-model.js (Rota, names to people: "First Last", "Last, First", a
