@@ -91,6 +91,14 @@ None: no route is added or changed.
 - **Ending it**: a pointer press (not only a click) ends it; so does a Ctrl, Alt or Cmd shortcut,
   which is left to the browser. Modifier keys alone do nothing. Backspace with letters typed
   takes the last one back.
+- **Labels over 9**: their first letters are spread evenly over up to 19 letters (a run each,
+  in reading order) rather than filling `aa`..`al` first, so the first letter typed leaves at
+  most ceil(n / 19) labels. Reading order groups lines by their first top (within 2 px).
+- **The page drawn again while it is on** (the app's `redraw` event, passed as
+  `installFollowMode(window, { redraws: app.events })`, or a labelled target leaving the page,
+  seen by a MutationObserver or at the next key): the labels are drawn again for what is in view,
+  keeping the letters typed while they still start a label, else follow mode ends. A redraw never
+  completes a label for the user, and a label never acts on a target no longer on the page.
 - **Typed letters are marked** in each label still shown (`.follow-hints__typed`).
 - **The bar**: every view's bar ends with `f follow` then `? all keys` (`EVERY_BAR` in
   `layout/view-keys.js`). Today's "File all… F" button shows `F` in its cap and title.

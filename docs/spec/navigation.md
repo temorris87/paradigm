@@ -146,12 +146,15 @@ How the app behaves. Kept up to date by each feature that changes it.
   and tree rows, Week blocks and tray items; hidden, inert, disabled or covered ones get none,
   and a button inside a row gets its own. With 9 or fewer each label is one home-row letter
   (`asdfghjkl`); with more, two letters from `asdfghjkl` then `qwertyuiop` (at most 361), in
-  reading order, top to bottom, left to right. Each letter typed hides the labels that don't
+  reading order, top to bottom, left to right, their first letters spread evenly over up to 19
+  letters so the first one typed leaves few labels. Each letter typed hides the labels that don't
   start with it and marks the typed letters; a full label clicks its target (a list row moves
   its list's cursor there and opens it as Enter would; a Week block or tray item is pressed).
   Shift is ignored. Esc, a key that matches no label, Backspace with nothing typed (else it takes
   back a letter), a mouse press, a scroll, a resize or a Ctrl/Alt/Cmd shortcut ends it. While it
-  is on it takes every key, so no page key fires. Every bar shows `f follow` before
+  is on it takes every key, so no page key fires. If the page is drawn again while it is on, the
+  labels are drawn again for what is now in view, keeping the letters typed while they still
+  start a label (else it ends); a label never clicks something no longer on the page. Every bar shows `f follow` before
   `? all keys`, and the `?` list has it under "Anywhere in this window". No view binds `f`
   (Today's File all… is `F`). The note window has none: `f` is Vim's find-character there.
   `static/js/ui/follow-hints.js` (pure), `follow-overlay.js`, `static/css/follow-hints.css`.

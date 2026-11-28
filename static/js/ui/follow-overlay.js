@@ -3,7 +3,8 @@
 // matching are ui/follow-hints.js's; this collects the targets, draws the labels on a fixed
 // layer over the page (css/follow-hints.css) and reads the keys while it is on.
 //
-//   const follow = installFollowMode(window, { root? });
+//   const follow = installFollowMode(window, { root?, redraws? });
+//     redraws: an EventTarget whose "redraw" event (the app's) means the page was drawn again.
 //     Its keydown listener is on the window's capture phase: install it before any other key
 //     listener there (main.js puts it before installMainKeys) so that, while on, it takes every
 //     key and no page key fires.
@@ -13,6 +14,9 @@
 //
 // Ends with: a label typed (its target activated), Esc, a key that matches no label, Backspace
 // with nothing typed, a pointer press, a scroll or a resize.
+// The page drawn again while it is on (a redraw, or a labelled target leaving the page): the
+// labels are drawn again for what is on screen now, keeping the letters typed only while they
+// still start a label; else it ends. A label never acts on a target no longer on the page.
 import { MAX_HINTS, followStep, hintLabels, labelsFor, nextTyped, readingOrder } from "./follow-hints.js";
 
 // What gets a label: list rows, row buttons and spans, buttons and links, navigator pins and tree
@@ -26,23 +30,32 @@ const PRESSED = ".cal-block, .cal-task__grip";
 // Keys that only modify another: they neither type nor end follow mode.
 const MODIFIERS = new Set(["Shift", "Control", "Alt", "Meta", "CapsLock", "AltGraph"]);
 
-export function installFollowMode(target, { root = document } = {}) {
+export function installFollowMode(target, { root = document, redraws = null } = {}) {
   let session = null; // { entries: [{ node, label, cap }], typed, layer }
+  // Watches the page for a labelled target taken out of it (the page drawn again under the labels).
+  const observer = new MutationObserver(() => {
+    if (stale()) redraw();
+  });
+
+  const stale = () => Boolean(session) && session.entries.some((entry) => !entry.node.isConnected);
 
   const stop = () => {
     if (!session) return;
     session.layer.remove();
     session = null;
+    observer.disconnect();
     target.removeEventListener("pointerdown", stop, true);
     target.removeEventListener("scroll", stop, true);
     target.removeEventListener("resize", stop);
+    redraws?.removeEventListener("redraw", onRedraw);
   };
 
-  const start = () => {
-    stop();
+  /** The labels for what is on screen now, with these letters typed; false when nothing is. */
+  const draw = (typed) => {
     const entries = collectTargets(root);
     if (!entries.length) return false;
     const labels = hintLabels(entries.length);
+    if (typed && !labels.some((label) => label.startsWith(typed) && label !== typed)) return false;
     const layer = document.createElement("div");
     layer.className = "follow-hints";
     layer.setAttribute("aria-hidden", "true");
@@ -51,11 +64,30 @@ export function installFollowMode(target, { root = document } = {}) {
       entry.cap = drawCap(entry, labels[index]);
       layer.append(entry.cap);
     });
+    session?.layer.remove();
     document.body.append(layer);
-    session = { entries, typed: "", layer };
+    session = { entries, typed, layer };
+    if (typed) show();
+    return true;
+  };
+
+  // Letters typed that are now a whole label end it too: a redraw must not act for the user.
+  const redraw = () => {
+    if (!draw(session.typed)) stop();
+  };
+
+  const onRedraw = () => {
+    if (session) redraw();
+  };
+
+  const start = () => {
+    stop();
+    if (!draw("")) return false;
+    observer.observe(root === document ? document.documentElement : root, { childList: true, subtree: true });
     target.addEventListener("pointerdown", stop, true);
     target.addEventListener("scroll", stop, true);
     target.addEventListener("resize", stop);
+    redraws?.addEventListener("redraw", onRedraw);
     return true;
   };
 
@@ -74,6 +106,9 @@ export function installFollowMode(target, { root = document } = {}) {
     // A browser shortcut (Ctrl-W...) is the browser's: follow mode just ends.
     if (event.ctrlKey || event.altKey || event.metaKey) return stop();
     event.preventDefault();
+    // The page was drawn again before the observer saw it: the labels shown are for what is gone,
+    // so the key is taken and the labels drawn again.
+    if (stale()) return redraw();
     if (event.key === "Backspace") {
       if (!session.typed) return stop();
       session.typed = session.typed.slice(0, -1);

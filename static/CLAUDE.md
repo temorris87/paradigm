@@ -242,7 +242,8 @@ static/
                          follow-hints.js (f's follow mode: labels for n targets, reading
                          order, what typed letters reach; pure), follow-overlay.js (the
                          targets in view, their labels, its keys, a target clicked or
-                         pressed; installed before the window's keys),
+                         pressed, labels drawn again on a redraw; installed before the
+                         window's keys),
                          key-sequence.js
                          (two-key entries in a key table: gg, gp; pure), clipboard.js
                          (copyRich: HTML + text), dates.js (THE on-screen
