@@ -92,7 +92,7 @@ How the app behaves. Kept up to date by each feature that changes it.
     `L` became forward a page: navigation.md; Tyson, 2026-11-28), `e` on Outcome edits it,
     `g h` History (project only), `g p` Gantt, `t` a phase or milestone's date history
     ("timeline"; it was `h`, 2026-11-28; feature 039). Hint bar: `j k` move, `h l` columns, `Space` done, `n` new
-    task, `d` delegate, `S` log status, `e` edit outcome, `g p` Gantt, `?` all keys.
+    task, `d` delegate, `S` log status, `e` edit outcome, `g p` Gantt, `f` follow, `?` all keys.
 - History page (Tyson, 2026-11-27; Figma "Project history"; one per project): `&history=ID`,
   opened by `g h` on a project's page, the head's History button or a section's History ↗ (on
   that section's tab); `g h` anywhere else says `E: History is a project's`. The crumb reads
@@ -113,7 +113,7 @@ How the app behaves. Kept up to date by each feature that changes it.
     decision, question or task page (Back returns to History), `1`–`5` a tab, `/` searches
     titles and details as you type (Esc or Enter back to the list; `/` again selects the old
     query, so typing starts afresh), Esc back to the project,
-    `?` all keys.
+    `f` follow (navigation.md), `?` all keys.
 - Plan templates (kept on an area, its Plan templates section): phases and milestones in
   working days from 0, each with standard tasks and subtasks; edited on their own page in
   the main window (a chart in days: drag; + Phase, + Milestone, + Task). "Apply plan

@@ -13,8 +13,9 @@
 //   follow.active    whether it is on
 //
 // Ends with: a label typed (its target activated), Esc, a key that matches no label, Backspace
-// with nothing typed (Esc and Backspace: ui/ui-keys.js's "follow" scope), a pointer press, a
-// scroll or a resize.
+// with nothing typed, Tab (the focus still moves on; Esc, Backspace and Tab: ui/ui-keys.js's
+// "follow" scope), a Ctrl/Alt/Cmd chord or a function key F1–F24 (both still the browser's), a
+// pointer press, a scroll or a resize.
 // The page drawn again while it is on (a redraw, or a labelled target leaving the page): the
 // labels are drawn again for what is on screen now, keeping the letters typed only while they
 // still start a label; else it ends. A label never acts on a target no longer on the page.
@@ -32,8 +33,8 @@ const PRESSED = ".cal-block, .cal-task__grip";
 // What a mouse click would focus: the target or the nearest of these around it.
 const FOCUSABLE = "a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex]";
 
-// F1 to F24: the browser's own keys, never follow mode's.
-const FUNCTION_KEY = /^F\d{1,2}$/;
+// F1 to F24 (and no other F-number): the browser's own keys, never follow mode's.
+const FUNCTION_KEY = /^F([1-9]|1\d|2[0-4])$/;
 
 // Keys that only modify another: they neither type nor end follow mode.
 const MODIFIERS = new Set(["Shift", "Control", "Alt", "Meta", "CapsLock", "AltGraph"]);

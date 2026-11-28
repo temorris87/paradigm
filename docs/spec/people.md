@@ -68,7 +68,7 @@ How the app behaves. Kept up to date by each feature that changes it.
     under them (2026-11-28; feature 039, navigation.md's Columns); Space done; d delegate; a add a topic from any card; r mark the topic
     raised (on a hub row in Together, Role…); n Start 1:1 notes; o and Enter open the row's
     task page or note; ? all keys. Bar: j k move, h l columns, Space done, d delegate,
-    a add topic, r raised, n 1:1 notes, o open, ? all keys. Elsewhere a and r keep their
+    a add topic, r raised, n 1:1 notes, o open, f follow, ? all keys. Elsewhere a and r keep their
     old meanings (the section's add button, the row's other button), and n on a project is
     its new task (feature 026).
   - People page bar: "People", pills "Something open · n" (the default: anyone with
