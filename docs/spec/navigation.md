@@ -149,9 +149,13 @@ How the app behaves. Kept up to date by each feature that changes it.
   reading order, top to bottom, left to right, their first letters spread evenly over up to 19
   letters so the first one typed leaves few labels. Each letter typed hides the labels that don't
   start with it and marks the typed letters; a full label clicks its target (a list row moves
-  its list's cursor there and opens it as Enter would; a Week block or tray item is pressed).
+  its list's cursor there and opens it as Enter would; a Week block or tray item is pressed), and
+  the focus goes where a mouse click would leave it (the target, or the focusable thing around
+  it: a tree row's item), even when the click does nothing.
   Shift is ignored. Esc, a key that matches no label, Backspace with nothing typed (else it takes
-  back a letter), a mouse press, a scroll, a resize or a Ctrl/Alt/Cmd shortcut ends it. While it
+  back a letter), a mouse press, a scroll, a resize or a Ctrl/Alt/Cmd shortcut ends it. Esc and
+  Backspace are follow mode's own table (`ui/ui-keys.js`, scope `follow`), and `f`'s help in the
+  `?` list names them from it. While it
   is on it takes every key, so no page key fires. If the page is drawn again while it is on, the
   labels are drawn again for what is now in view, keeping the letters typed while they still
   start a label (else it ends); a label never clicks something no longer on the page. Every bar shows `f follow` before

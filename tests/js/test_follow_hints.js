@@ -399,3 +399,37 @@ test("follow overlay: off-screen, inert and disabled things get no label", () =>
     root.remove();
   }
 });
+
+test("follow overlay: following a target leaves the focus where a mouse click would", () => {
+  const root = document.createElement("div");
+  for (const [name, value] of [["position", "fixed"], ["left", "0"], ["top", "0"], ["z-index", "1000"], ["width", "300px"],
+    ["background", "white"]]) root.style.setProperty(name, value);
+  // A navigator tree group with nothing in it: its row's click does nothing, its item takes the focus.
+  const item = document.createElement("li");
+  item.setAttribute("role", "treeitem");
+  item.tabIndex = -1;
+  const row = document.createElement("div");
+  row.className = "tree__row";
+  row.textContent = "Projects";
+  item.append(row);
+  const tree = document.createElement("ul");
+  tree.append(item);
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = "Nothing";
+  root.append(tree, button);
+  document.body.append(root);
+  const follow = installFollowMode(root, { root });
+  try {
+    follow.start();
+    assertEqual(shownLabels().join(), "a,s");
+    press(root, "a");
+    assertTrue(document.activeElement === item, "the tree item has the focus");
+    follow.start();
+    press(root, "s");
+    assertTrue(document.activeElement === button, "the button has the focus");
+  } finally {
+    follow.stop();
+    root.remove();
+  }
+});

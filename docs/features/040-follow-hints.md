@@ -99,8 +99,15 @@ None: no route is added or changed.
   seen by a MutationObserver or at the next key): the labels are drawn again for what is in view,
   keeping the letters typed while they still start a label, else follow mode ends. A redraw never
   completes a label for the user, and a label never acts on a target no longer on the page.
+- **Follow mode's own keys are a table**: `UI_KEYS` scope `follow` in `ui/ui-keys.js` (Backspace
+  `back`, Esc `close`); the overlay reads it, a label's letters are `HINT_LETTERS`, and any other
+  key ends it. `f`'s help in `MAIN_KEYS` is written from that table (`uiKeysText`), so the `?`
+  list names Backspace and Esc.
+- **The focus follows**: before the click, a target that isn't a list row (or the nearest
+  focusable thing around it, a tree row's item) is focused (`preventScroll`), as a mouse click
+  would, so following a row whose click does nothing (an empty tree group) still moves the focus.
 - **Typed letters are marked** in each label still shown (`.follow-hints__typed`).
 - **The bar**: every view's bar ends with `f follow` then `? all keys` (`EVERY_BAR` in
   `layout/view-keys.js`). Today's "File all… F" button shows `F` in its cap and title.
 - Tests: `tests/js/test_follow_hints.js`; `test_key_hints.js`, `test_today.js` and
-  `test_follow_ups.js` updated for `f follow` and `F`.
+  `test_follow_ups.js` updated for `f follow` and `F`; `test_ui.js` covers the `follow` scope.

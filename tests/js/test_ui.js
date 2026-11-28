@@ -20,13 +20,22 @@ function withAnchor(body) {
 }
 
 test("ui keys: every key is in one scope's table once", () => {
-  for (const scope of ["menu", "picker", "dialog"]) {
+  for (const scope of new Set(UI_KEYS.map((each) => each.scope))) {
     const keys = UI_KEYS.filter((each) => each.scope === scope).flatMap((each) => each.keys);
     assertEqual(new Set(keys).size, keys.length, scope);
   }
   assertEqual(uiAction({ key: "j" }, "menu"), "next");
   assertEqual(uiAction({ key: "j" }, "picker"), null, "j types in a picker");
   assertEqual(uiAction({ key: "j", ctrlKey: true }, "menu"), null);
+});
+
+test("ui keys: follow mode's own keys are its table's: Backspace takes back, Esc ends it", () => {
+  const follow = UI_KEYS.filter((each) => each.scope === "follow");
+  assertEqual(follow.map((each) => `${each.keys.join()} ${each.action}`).join("|"), "Backspace back|Escape close");
+  assertTrue(follow.every((each) => each.help), "each has its help");
+  assertEqual(uiAction({ key: "Backspace" }, "follow"), "back");
+  assertEqual(uiAction({ key: "Escape" }, "follow"), "close");
+  assertEqual(uiAction({ key: "a" }, "follow"), null, "a label's letters are the labels', not bound keys");
 });
 
 test("menu: keys move over enabled items, Enter runs one and closes", () => withAnchor((anchor) => {

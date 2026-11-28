@@ -13,11 +13,13 @@
 //   follow.active    whether it is on
 //
 // Ends with: a label typed (its target activated), Esc, a key that matches no label, Backspace
-// with nothing typed, a pointer press, a scroll or a resize.
+// with nothing typed (Esc and Backspace: ui/ui-keys.js's "follow" scope), a pointer press, a
+// scroll or a resize.
 // The page drawn again while it is on (a redraw, or a labelled target leaving the page): the
 // labels are drawn again for what is on screen now, keeping the letters typed only while they
 // still start a label; else it ends. A label never acts on a target no longer on the page.
 import { MAX_HINTS, followStep, hintLabels, labelsFor, nextTyped, readingOrder } from "./follow-hints.js";
+import { uiAction } from "./ui-keys.js";
 
 // What gets a label: list rows, row buttons and spans, buttons and links, navigator pins and tree
 // rows, the Week grid's blocks and the tray's items (their grip takes the press).
@@ -26,6 +28,9 @@ const TARGETS = ["[role=option]", "[data-action]", "button", "a[href]", "[role=b
 
 // Targets a press drives (pointer down and up: Week blocks, tray items), not a click alone.
 const PRESSED = ".cal-block, .cal-task__grip";
+
+// What a mouse click would focus: the target or the nearest of these around it.
+const FOCUSABLE = "a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex]";
 
 // Keys that only modify another: they neither type nor end follow mode.
 const MODIFIERS = new Set(["Shift", "Control", "Alt", "Meta", "CapsLock", "AltGraph"]);
@@ -109,7 +114,11 @@ export function installFollowMode(target, { root = document, redraws = null } = 
     // The page was drawn again before the observer saw it: the labels shown are for what is gone,
     // so the key is taken and the labels drawn again.
     if (stale()) return redraw();
-    if (event.key === "Backspace") {
+    // Its own keys are ui/ui-keys.js's "follow" scope (Shift ignored, as for a label's letters);
+    // a label's letters type it; any other key ends it.
+    const action = uiAction({ key: event.key }, "follow");
+    if (action === "close") return stop();
+    if (action === "back") {
       if (!session.typed) return stop();
       session.typed = session.typed.slice(0, -1);
       return show();
@@ -197,6 +206,9 @@ function markTyped(cap, label, typed) {
  *  sent Enter after. Week blocks and tray items act on a press (calendar/drag.js). */
 export function activate(node) {
   if (!node?.isConnected) return;
+  // A click focuses what it lands on, or the nearest focusable thing around it (a tree row: its
+  // item), even when the click itself does nothing; a list row's listbox takes the focus itself.
+  if (!node.matches("[role=option]")) node.closest(FOCUSABLE)?.focus({ preventScroll: true });
   if (node.matches(PRESSED)) press(node);
   node.click();
   const listbox = node.matches("[role=option]") ? node.closest("[role=listbox]") : null;

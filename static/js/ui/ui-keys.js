@@ -3,8 +3,10 @@
 // in a popup menu, "picker" keys in a picker's text box (every other key types), "dialog"
 // keys in a form dialog, "choices" keys on a dialog's stacked choices (Followed up…'s),
 // "diagram" keys in the Insert diagram picker (diagrams/insert-diagram.js; j and k move only
-// while nothing is typed, else they type). Keys with Ctrl, Alt or Cmd held are left to the
-// browser, and Tab moves the focus on, as everywhere.
+// while nothing is typed, else they type), "follow" keys in follow mode (ui/follow-overlay.js;
+// a label's letters type it, ui/follow-hints.js HINT_LETTERS, and any other key ends it; f's
+// help in layout/main-keys.js is written from these). Keys with Ctrl, Alt or Cmd held are left
+// to the browser, and Tab moves the focus on, as everywhere.
 export const UI_KEYS = [
   { scope: "menu", keys: ["j", "ArrowDown"], action: "next", help: "next item" },
   { scope: "menu", keys: ["k", "ArrowUp"], action: "previous", help: "previous item" },
@@ -31,6 +33,8 @@ export const UI_KEYS = [
   { scope: "choices", keys: ["j", "ArrowDown"], action: "next", help: "the next choice" },
   { scope: "choices", keys: ["k", "ArrowUp"], action: "previous", help: "the choice before" },
   { scope: "choices", keys: ["Enter"], action: "submit", help: "do it with the choice made" },
+  { scope: "follow", keys: ["Backspace"], action: "back", help: "take back the last letter (none typed: end it)" },
+  { scope: "follow", keys: ["Escape"], action: "close", help: "end it, clicking nothing" },
 ];
 
 const BY_SCOPE = new Map();
@@ -39,7 +43,7 @@ for (const { scope, keys, action } of UI_KEYS) {
   for (const key of keys) BY_SCOPE.get(scope).set(key, action);
 }
 
-/** The action a keydown means in a scope ("menu", "picker", "dialog", "choices", "diagram" or "palette"), or null.
+/** The action a keydown means in a scope ("menu", "picker", "dialog", "choices", "diagram", "palette" or "follow"), or null.
  * Enter in a form dialog submits it as any web form does. Ctrl is "C-" in the table, Shift on
  * a named key "S-"; other chords are the browser's. */
 export function uiAction(event, scope) {
@@ -51,4 +55,9 @@ export function uiAction(event, scope) {
 /** [[key, words]] of a scope's hint line, from the table. */
 export function uiHints(scope) {
   return UI_KEYS.filter((entry) => entry.scope === scope && entry.hint).map((entry) => [entry.label ?? entry.keys[0], entry.hint]);
+}
+
+/** "Backspace: take back…; Esc: end it…": a scope's keys and their help, in one line of text. */
+export function uiKeysText(scope, keyName) {
+  return UI_KEYS.filter((entry) => entry.scope === scope).map((entry) => `${keyName(entry.keys[0])}: ${entry.help}`).join("; ");
 }
