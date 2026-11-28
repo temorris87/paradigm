@@ -94,7 +94,8 @@ export class NotesApp {
                 today = () => new Date(), changes = new Changes() }) {
     this.role = role;
     // "redraw" after every redraw, "trashed" (detail.id; detail.next, the note opened next or
-    // null) as the open note goes to the Trash: for the Live page's sender (live/live-sender.js).
+    // null) as the open note goes to the Trash: for the Live page's sender (live/live-sender.js);
+    // "cursor" as Today's cursor moves (its key-hint bar follows the row's kind).
     this.events = new EventTarget();
     this.status = status;
     this.dashboard = dashboard;
@@ -219,7 +220,8 @@ export class NotesApp {
     const onPage = { onOpen: (id) => this.guard(this.open(id)), onLeave: () => this.leaveView() };
     // The pages drawn in place of a dashboard live in the main window only.
     const pages = role === "main" ? {
-      home: new TodayPage(home.section, { ...onPage, today, actions: todayActions(this) }),
+      home: new TodayPage(home.section, { ...onPage, today, actions: todayActions(this),
+        onCursor: () => this.events.dispatchEvent(new Event("cursor")) }),
       people: peoplePage(people.section, { ...onPage, today, onAdd: () => this.guard(newPersonDialog(this)) }),
       meetings: meetingsPage(meetings.section, { ...onPage, today, onAdd: () => this.guard(newMeetingDialog(this)) }),
       trash: trashPage(trash.section, { onRestore: (id) => this.restoreFromTrash(id), onLeave: onPage.onLeave }),

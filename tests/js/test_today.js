@@ -50,13 +50,14 @@ const ctx = (more = {}) => ({ tree: new NoteTree(NOTES), tasks: new Tasks(TASKS)
     { id: 1, note_id: 1, day: "2026-11-20", health: "at_risk", text: "Design slipped. ADR waits.", created_at: T },
     { id: 2, note_id: 2, day: "2026-11-01", health: "on_track", text: "Fine.", created_at: T }]), ...more });
 
-test("today: Up next ranks overdue, follow-ups, due today, due soon, old questions; no next actions", () => {
+test("today: Up next: today's follow-ups first, then overdue, due today, due soon, old questions; no next actions", () => {
   const items = upNext(ctx(), NOW);
   assertEqual(items.map((item) => `${item.reason}:${item.title}`).join(" | "),
-    "Overdue 3 d:Draft ADR | Follow up 4 d:Load-test numbers | Due today:Rate-limit review | Due WED:Retry semantics"
+    "from Thu:Load-test numbers | Overdue 3 d:Draft ADR | Due today:Rate-limit review | Due WED:Retry semantics"
     + " | Asked 21 d:Exactly-once?");
-  assertEqual(items[0].place, "in calendar".replace("in calendar", "09:30"), "a block today shows its time");
-  assertEqual(items[1].glyph + items[1].place, "→nudge");
+  assertEqual(items.map((item) => item.group).join(), "followup,ranked,ranked,ranked,ranked");
+  assertEqual(items[1].place, "in calendar".replace("in calendar", "09:30"), "a block today shows its time");
+  assertEqual(items[0].glyph + items[0].place, "→nudge");
   assertEqual(items[3].place, "s schedule");
   assertEqual(items[4].glyph + items[4].place, "?answer");
   assertTrue(!items.some((item) => ["Cache thing", "Snoozed", "Done one", "Sunset plan", "Pick token store"].includes(item.title)),
@@ -117,18 +118,21 @@ test("today: keys from the table; the page starts on Up next and runs its action
     const calls = [];
     const page = new TodayPage(section, { onOpen: (id) => calls.push(`open ${id}`), onLeave: () => calls.push("leave"), today: () => NOW,
       actions: { done: (id, done) => calls.push(`done ${id} ${done}`), schedule: (id) => calls.push(`schedule ${id}`),
-        snooze: (id) => calls.push(`snooze ${id}`), answer: (id) => calls.push(`answer ${id}`), extend: (id) => calls.push(`extend ${id}`) } });
+        snooze: (id) => calls.push(`snooze ${id}`), answer: (id) => calls.push(`answer ${id}`), extend: (id) => calls.push(`extend ${id}`),
+        followedUp: (id) => calls.push(`followed ${id}`) } });
     page.show(ctx());
     const key = (k) => page.list.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true }));
     const active = () => document.getElementById(page.list.getAttribute("aria-activedescendant")).textContent;
-    assertTrue(active().startsWith("OVERDUE 3 D"), active());
+    assertTrue(active().startsWith("FROM THU"), active());
+    key("s");
+    key("z");
+    key(" ");
+    key("j");
     key(" ");
     key("j");
     key("s");
-    key("z");
-    key("j");
-    key("s");
-    assertEqual(calls.join("|"), "done 10 true|snooze 11|schedule 12", "s never places a follow-up: it is someone else's");
+    assertEqual(calls.join("|"), "snooze 11|followed 11|done 10 true|schedule 12",
+      "s never places a follow-up (it is someone else's); Space logs it");
     key("g");
     key("g");
     key("o");

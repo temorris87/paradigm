@@ -30,6 +30,7 @@ from paradigm.config import Config, parse_args
 from paradigm.db.connection import Database
 from paradigm.db.emails_repo import EmailRepository
 from paradigm.db.files_repo import FileRepository
+from paradigm.db.follow_ups_repo import FollowUpRepository
 from paradigm.db.images_repo import ImageRepository
 from paradigm.db.import_repo import ImportRepository
 from paradigm.db.links_repo import LinkRepository
@@ -186,7 +187,7 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
     LinksApi(LinkRepository(db)).register(server.router)
     TrashApi(trash, notes).register(server.router)
     tasks = TaskRepository(db, emails_dir=config.emails_dir)
-    TasksApi(tasks, TaskHistory(db)).register(server.router)
+    TasksApi(tasks, TaskHistory(db), FollowUpRepository(db)).register(server.router)
     CaptureApi(CaptureRepository(db, tasks, notes)).register(server.router)
     EmailsApi(EmailRepository(db, config.emails_dir)).register(server.router)
     PlansApi(PlanRepository(db), PlanTemplateRepository(db, tasks), notes).register(server.router)

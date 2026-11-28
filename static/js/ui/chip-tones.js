@@ -6,8 +6,8 @@
 //                  "question" | "meeting"; anything unknown is "neutral"
 //   CHIP_TONES     every tone, in the order chip.css lists them
 //
-// A follow-up stays info even once its day has passed (its text says how late it is): only a
-// missed due date is danger.
+// A follow-up is never late: due today it is info; carried on from a day past ("from Wed",
+// Today's carried) it is warning. Only a missed due date is danger.
 export const CHIP_TONES = ["danger", "warning", "caution", "success", "info", "neutral", "task", "decision", "question", "meeting"];
 
 const TONE_OF = new Map([
@@ -19,6 +19,7 @@ const TONE_OF = new Map([
   ["due", "caution"],
   ["follow up", "info"],
   ["followup", "info"],
+  ["carried", "warning"],
   ["waiting on", "info"],
   ["at risk", "warning"],
   ["on track", "success"],

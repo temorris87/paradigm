@@ -50,7 +50,8 @@ paradigm/                Python package
                          remove: Outlook .msg files on tasks; the upload's own 30 MB cap);
                          task_files.py (/api/task/files, /api/task/file/attach|attach_path|
                          detach: OneDrive files linked to a task); tasks.py also has
-                         /api/task/history (derived, db/task_history.py);
+                         /api/task/history (derived, db/task_history.py) and
+                         /api/task/followed_up (db/follow_ups_repo.py);
                          answers.py (result or expected error -> response)
   db/                    (migrations: 001 notes, 002 images, 003 notes.kind for PARA hubs,
                          004 notes.area_id: a project's area, 005 notes.archived_at:
@@ -85,7 +86,8 @@ paradigm/                Python package
                          the next 1:1), 028 on_call (week's Monday, role, name as pasted),
                          029 drops tasks.is_next: the next action is gone, 030 task_emails:
                          a task's .msg files, their reply state, 031 task_files: OneDrive
-                         files linked to a task)
+                         files linked to a task, 032 follow_up_logs: each follow-up of a
+                         delegated task, again with a new day or closed)
                          connection.py (one locked connection, transactions, VACUUM at start
                          when worth it), migrate.py
                          (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py,
@@ -115,7 +117,9 @@ paradigm/                Python package
                          files_repo.py (linked folders, their files, attachments to notes
                          and to tasks; scan; drop_task_files: task remove and trash purge),
                          task_history.py (a task's History events, derived from what is
-                         stored; build_events is pure),
+                         stored, the follow-up logs included; build_events is pure),
+                         follow_ups_repo.py (log a follow-up: again moves tasks.follow_up,
+                         closed closes the task on the browser's day; the logs' count and list),
                          folders_repo.py (folders in Resources: nest, unique names per
                          parent, trash with their notes, back with a restored note),
                          status_repo.py (status logs on projects and areas),
@@ -160,7 +164,8 @@ paradigm/                Python package
                          fields, roles, first/last name), seed.py + welcome.md (first-run
                          note), meetings.py (day, time), records.py (decision/question
                          kinds), links.py (a save's list of link texts), mentions.py (a
-                         save's list of @mentions), tasks.py (a task's fields), plans.py (a
+                         save's list of @mentions), tasks.py (a task's fields), follow_ups.py
+                         (a logged follow-up's outcome, note and next day), plans.py (a
                          phase's dates, a move's reason), days.py (working days),
                          sessions.py (a block's day, start, end)
 ```

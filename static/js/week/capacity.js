@@ -17,6 +17,7 @@
 //                                          long on a working day (not a weekend, not one of
 //                                          the timesheet's holidays), on or before until; null
 //   isWorkingDay(day, settings)            not a weekend, a holiday or a whole day off
+//   addWorkingDays(day, n, settings)       the day n working days after a day
 //   timeOffDays(timeSettings, pto, days)   { day: { kind, name, hours, note } }: the days off,
 //                                          for settings.off. pto (/api/time/week's) is the truth
 //                                          for the days shown; past them, the upcoming holidays
@@ -112,6 +113,16 @@ export function isWorkingDay(day, settings = {}) {
   if (weekday === 0 || weekday === 6) return false;
   if ((settings.holidays ?? []).includes(day)) return false;
   return !dayOff(day, settings)?.whole;
+}
+
+export function addWorkingDays(day, n, settings = {}) {
+  let date = dateOf(day);
+  let left = n;
+  while (left > 0) {
+    date = addDays(date, 1);
+    if (isWorkingDay(localDay(date), settings)) left -= 1;
+  }
+  return localDay(date);
 }
 
 const OFF_LABELS = { time_off: "Time off", sick: "Sick" };

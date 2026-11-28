@@ -155,12 +155,14 @@ static/
   js/today/              the Today page (the start page, &home): today-facts.js (today's
                          meetings, open questions, live projects by area, the Inbox; pure),
                          today-model.js (the Now block, the day's timeline with free gaps,
-                         the ranked Up next, projects' status; pure), today-page.js (three
-                         columns, one listbox), today-actions.js (what its keys run),
+                         Up next: today's follow-ups first, then ranked; projects' status;
+                         pure), today-page.js (three columns, one listbox; the key-hint bar
+                         follows its cursor), today-actions.js (what its keys run),
                          today-keys.js (THE Today key table), context-strip.js (the note
                          window's NOW strip)
   js/week/               capacity.js (working hours, a day's meetings / focus / free,
-                         free gaps, the first free slot, days off and their chips; pure),
+                         free gaps, the first free slot, working days on, days off and
+                         their chips; pure),
                          tray-model.js (the tray's groups, the "due" strip, the week's
                          totals; pure), week-page.js
                          (&week: the bar, Plan | Timesheet | Settings, time so far)
@@ -284,7 +286,9 @@ static/
                          task-history.js (the From and History cards), task-page-model.js
                          (chips, facts, Next block, s's slot and words, the cards' lines;
                          pure), task-page-keys.js (THE task page key table),
-                         emails-api.js,
+                         follow-up-model.js (Followed up…'s words, days and the carried
+                         chip; pure), follow-up-dialog.js (Followed up…, c, r: a follow-up
+                         logged, closed or followed up again), emails-api.js,
                          emails-model.js (an email row's chip, sender line, link; the reply
                          cycle; pure), task-emails.js (the Emails card, .msg drops on the
                          task page, :attach)

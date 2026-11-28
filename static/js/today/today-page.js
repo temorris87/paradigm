@@ -1,18 +1,21 @@
 // The Today page (the start page, &home), in place of a dashboard: three columns.
 //   1. Now: the task block on now (time left, a bar, Done / Open note / +15 min), or the next
 //      one; then the day: meetings, blocks, free gaps, and a Log status reminder.
-//   2. Up next: one list ranked across every project (today-model.js upNext); its keys are in
-//      the window's key-hint bar (layout/view-keys.js).
+//   2. Up next: first "Follow up today · n" (the follow-ups due today or carried from a day
+//      past), then "Then · ranked": one list ranked across every project (today-model.js
+//      upNext); its keys are in the window's key-hint bar (layout/view-keys.js), which follows
+//      the cursor (onCursor: a follow-up row has keys of its own).
 //   3. Who is on call this week (the rota, oncall/), Projects with their latest status, the
 //      Inbox, and whether today's calendar is in.
 // It draws what today-model.js works out and reports what was asked (actions); the app runs
 // it. The whole page is one focus stop: a listbox over Up next, the day, On call, Projects and
 // the Inbox, in that order (} and { jump between them), starting on Up next.
 //
-//   const page = new TodayPage(section, { onOpen(id), onLeave(), today(), actions });
+//   const page = new TodayPage(section, { onOpen(id), onLeave(), today(), actions, onCursor() });
 //     actions: { done(taskId, done), schedule(taskId), delegate(taskId), snooze(taskId),
-//                answer(questionId), extend(sessionId), log(), fileAll(), onCall() }
-//   page.show(ctx); page.focus();
+//                answer(questionId), extend(sessionId), log(), fileAll(), onCall(),
+//                followedUp(taskId), closeFollowUp(taskId), followUpAgain(taskId) }
+//   page.show(ctx); page.focus(); page.activeItem() (the cursor's row's item, or null)
 // The Now card's bar moves on once a minute while the page shows.
 import { localDay } from "../meetings/meeting-days.js";
 import { nextMeeting, inboxNotes } from "./today-facts.js";
@@ -29,8 +32,9 @@ import { toneOf } from "../ui/chip-tones.js";
 const MINUTE_MS = 60 * 1000;
 
 export class TodayPage {
-  constructor(section, { onOpen, onLeave, today = () => new Date(), actions = {} }) {
+  constructor(section, { onOpen, onLeave, today = () => new Date(), actions = {}, onCursor = () => {} }) {
     this.section = section;
+    this.onCursor = onCursor;
     this.onOpen = onOpen;
     this.onLeave = onLeave;
     this.today = today;
@@ -178,21 +182,36 @@ export class TodayPage {
     const heading = element("h2", "today-next__heading", "Up next");
     heading.id = "today-heading-next";
     part.setAttribute("aria-labelledby", heading.id);
-    heading.append(element("span", "today__detail", `ranked across every project · ${items.length}`));
+    const follow = items.filter((item) => item.group === "followup");
+    const ranked = items.filter((item) => item.group !== "followup");
+    heading.append(element("span", "today__detail", `ranked across every project · ${ranked.length}`));
     part.append(heading);
     const rows = element("div", "today-next__rows");
     if (!items.length) rows.append(element("p", "today__empty", "Nothing urgent: nothing overdue, due soon or waiting on you."));
-    for (const item of items) {
-      const node = element("div", `today-next__row today-next__row--${item.reasonKind}`);
-      const title = element("span", "today-next__title", item.title);
-      if (item.detail) title.append(element("span", "today-next__detail", ` · ${item.detail}`));
-      node.append(chip(item.reason.toUpperCase(), toneOf(item.reasonKind)), element("span", "today-next__glyph", item.glyph),
-        title, element("span", "today-next__estimate", item.estimate || (item.kind === "task" ? "" : "")),
-        element("span", `today-next__place${item.placed ? " today-next__place--placed" : ""}`, item.place));
-      rows.append(this.option(node, register("next", item.key, item), "next"));
-    }
+    // With no follow-up due, neither label shows: Up next is the ranked list alone.
+    if (follow.length) rows.append(element("h3", "today-next__group", `Follow up today · ${follow.length}`));
+    for (const item of follow) rows.append(this.upNextRow(item, register));
+    if (follow.length && ranked.length) rows.append(element("h3", "today-next__group", "Then · ranked"));
+    for (const item of ranked) rows.append(this.upNextRow(item, register));
     part.append(rows);
     return part;
+  }
+
+  upNextRow(item, register) {
+    const node = element("div", `today-next__row today-next__row--${item.reasonKind}`);
+    const title = element("span", "today-next__title", item.title);
+    if (item.detail) title.append(element("span", "today-next__detail", ` · ${item.detail}`));
+    const glyph = element("span", "today-next__glyph", item.glyph);
+    // A follow-up's → opens Followed up… (onClick reads data-action).
+    if (item.kind === "followup") {
+      glyph.classList.add("today-next__glyph--action");
+      glyph.dataset.action = "done";
+      glyph.title = "Followed up… (Space)";
+    }
+    node.append(chip(item.reason.toUpperCase(), toneOf(item.reasonKind)), glyph,
+      title, element("span", "today-next__estimate", item.estimate || ""),
+      element("span", `today-next__place${item.placed ? " today-next__place--placed" : ""}`, item.place));
+    return this.option(node, register("next", item.key, item), "next");
   }
 
   // ---- column 3 ----
@@ -300,7 +319,7 @@ export class TodayPage {
     if (!node) return;
     this.moveTo(Number(node.dataset.index));
     this.focus();
-    this.run("open");
+    this.run(event.target.closest?.("[data-action]")?.dataset.action ?? "open");
   }
 
   onKey(event) {
@@ -336,7 +355,11 @@ export class TodayPage {
         return item.id !== null && item.id !== undefined ? this.onOpen(item.id) : undefined;
       case "done":
         if (item.questionId) return this.actions.answer?.(item.questionId);
+        // A follow-up isn't ticked: it is logged (closed, or followed up again).
+        if (item.kind === "followup") return this.actions.followedUp?.(taskId);
         return taskId ? this.actions.done?.(taskId, !(item.done ?? false)) : undefined;
+      case "closeFollowUp": return item.kind === "followup" ? this.actions.closeFollowUp?.(taskId) : undefined;
+      case "followUpAgain": return item.kind === "followup" ? this.actions.followUpAgain?.(taskId) : undefined;
       // A follow-up is someone else's work: nothing of mine to place.
       case "schedule": return taskId && item.kind !== "followup" ? this.actions.schedule?.(taskId) : undefined;
       case "delegate": return taskId ? this.actions.delegate?.(taskId) : undefined;
@@ -360,6 +383,10 @@ export class TodayPage {
     this.markActive();
   }
 
+  activeItem() {
+    return this.options[this.active]?.item ?? null;
+  }
+
   markActive() {
     const nodes = [...this.list.querySelectorAll("[role=option]")];
     for (const node of nodes) node.setAttribute("aria-selected", String(Number(node.dataset.index) === this.active));
@@ -370,6 +397,7 @@ export class TodayPage {
     } else {
       this.list.removeAttribute("aria-activedescendant");
     }
+    this.onCursor();
   }
 
   focus() {

@@ -10,21 +10,25 @@
 //                                    suggest, title, detail, id, taskId?, sessionId?, past, done,
 //                                    current, minutes? }] } by time; free: a gap of 30 min or
 //                                    more in the working hours not yet over
-//   upNext(ctx, now)                 [item], ranked: overdue (oldest due first), follow-ups past
-//                                    due, due today, due within 5 working days, questions
-//                                    waiting over 7 days (oldest first). Never done tasks,
-//                                    tasks of on-hold or archived hubs, or snoozed ones.
-//                                    item: { key, kind: task | followup | question, reason,
-//                                    reasonKind (overdue | followup | due | asked), glyph,
-//                                    title, detail, estimate, place, placed, id, taskId?,
-//                                    questionId? }
+//   upNext(ctx, now)                 [item]: first the follow-ups due today or earlier, oldest
+//                                    first (group "followup": a day past is carried, never
+//                                    late), then the rest ranked (group "ranked"): overdue
+//                                    (oldest due first), due today, due within 5 working days,
+//                                    questions waiting over 7 days (oldest first). Never done
+//                                    tasks, tasks of on-hold or archived hubs, or snoozed ones;
+//                                    never a follow-up due later.
+//                                    item: { key, group, kind: task | followup | question,
+//                                    reason, reasonKind (overdue | followup | carried | due |
+//                                    asked), glyph, title, detail, estimate, place, placed, id,
+//                                    taskId?, questionId? }
 //   projectRows(ctx, now)            live projects (on hold last) with their latest status:
 //                                    { id, title, health, line, day, stale, age }
 //   staleCount(ctx, now)             live projects whose status is stale or never logged
 //   contextOf(ctx, now)              the note window's strip: { block, next } (block: the task
 //                                    block on now, as nowBlock; next: { note, meeting, start }
 //                                    the next meeting starting within 2 h), or null with neither
-//   navCounts(ctx, now)              { overdue, freeMin }: overdue items in Up next, and the free
+//   navCounts(ctx, now)              { overdue, freeMin }: overdue items in Up next (never a
+//                                    follow-up), and the free
 //                                    working time left this week from now (the navigator's pins)
 import { areaOf } from "../hubs/hub-areas.js";
 import { addDays, dateOf, localDay } from "../meetings/meeting-days.js";
@@ -33,8 +37,9 @@ import { prepFor, prepText } from "../meetings/prep-model.js";
 import { isArchived } from "../notes/hub-groups.js";
 import { DEFAULT_LENGTH, clock, minutes } from "../calendar/week-model.js";
 import { StatusLogs, firstSentence, healthOf } from "../status/status-model.js";
+import { carriedReason } from "../tasks/follow-up-model.js";
 import { estimateText, taskEntries } from "../tasks/tasks-model.js";
-import { dayCapacity, freeGaps, isWorkingDay } from "../week/capacity.js";
+import { addWorkingDays, dayCapacity, freeGaps, isWorkingDay } from "../week/capacity.js";
 import { dayText } from "../ui/dates.js";
 import { openQuestions } from "./today-facts.js";
 
@@ -129,17 +134,6 @@ function gapText(total) {
   return `${Number.isInteger(hours) ? hours : hours.toFixed(1)} h`;
 }
 
-/** n working days after a day. */
-function addWorkingDays(day, n, settings) {
-  let date = dateOf(day);
-  let left = n;
-  while (left > 0) {
-    date = addDays(date, 1);
-    if (isWorkingDay(localDay(date), settings)) left -= 1;
-  }
-  return localDay(date);
-}
-
 /** Whether a task's hub is on hold or archived (it drops out of Up next). */
 function resting(ctx, entry) {
   const hub = entry.hub;
@@ -160,17 +154,18 @@ export function upNext(ctx, now) {
   const add = (entry, reason, reasonKind, kind = "task") => {
     if (taken.has(entry.task.id)) return;
     taken.add(entry.task.id);
-    items.push(taskItem(ctx, entry, reason, reasonKind, kind, now));
+    items.push({ ...taskItem(ctx, entry, reason, reasonKind, kind, now), group: kind === "followup" ? "followup" : "ranked" });
   };
-  const byDue = (a, b) => a.task.due.localeCompare(b.task.due);
-  for (const entry of mine.filter((each) => each.task.due && each.task.due < day).sort(byDue)) {
-    add(entry, `Overdue ${daysBetween(entry.task.due, day)} d`, "overdue");
-  }
+  // Today's follow-ups first: one not dealt with carries to the next day (Tyson, 2026-11-27).
   const follow = open.filter((entry) => entry.task.delegate_id !== null && entry.task.follow_up && entry.task.follow_up <= day)
     .sort((a, b) => a.task.follow_up.localeCompare(b.task.follow_up));
   for (const entry of follow) {
-    const late = daysBetween(entry.task.follow_up, day);
-    add(entry, late ? `Follow up ${late} d` : "Follow up", "followup", "followup");
+    const { reason, reasonKind } = carriedReason(entry.task.follow_up, day);
+    add(entry, reason, reasonKind, "followup");
+  }
+  const byDue = (a, b) => a.task.due.localeCompare(b.task.due);
+  for (const entry of mine.filter((each) => each.task.due && each.task.due < day).sort(byDue)) {
+    add(entry, `Overdue ${daysBetween(entry.task.due, day)} d`, "overdue");
   }
   for (const entry of mine.filter((each) => each.task.due === day)) add(entry, "Due today", "due");
   for (const entry of mine.filter((each) => each.task.due > day && each.task.due <= soon).sort(byDue)) {
@@ -181,7 +176,7 @@ export function upNext(ctx, now) {
     for (const { note, record, hub, archived } of openQuestions(ctx.tree, ctx.records)) {
       const age = daysBetween(record.day, day);
       if (archived || age <= ASKED_DAYS || hub.status === "on_hold") continue;
-      items.push({ key: `question:${note.id}`, kind: "question", reason: `Asked ${age} d`, reasonKind: "asked", glyph: "?",
+      items.push({ key: `question:${note.id}`, group: "ranked", kind: "question", reason: `Asked ${age} d`, reasonKind: "asked", glyph: "?",
         title: note.title, detail: hub.title, estimate: "", place: "answer", placed: false, id: note.id, questionId: note.id,
         hubId: hub.id });
     }

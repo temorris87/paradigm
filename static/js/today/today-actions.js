@@ -2,9 +2,11 @@
 // commands as the dashboards and the calendar). Each wraps its work in app.guard, so errors
 // show in the status line.
 //
-//   const actions = todayActions(app);    { done, schedule, delegate, snooze, answer, extend, fileAll, log, onCall }
+//   const actions = todayActions(app);    { done, schedule, delegate, snooze, answer, extend, fileAll, log, onCall,
+//                                           followedUp, closeFollowUp, followUpAgain }
 import { answerDialog } from "../hubs/hub-actions.js";
 import { logStatusDialog } from "../status/status-commands.js";
+import { closeFollowUp, followUpDialog } from "../tasks/follow-up-dialog.js";
 import { delegateDialog, extendBlock, scheduleTask, setTaskDone, snoozeTask } from "../tasks/task-commands.js";
 import { projectRows } from "./today-model.js";
 import { triageInbox } from "../triage/triage.js";
@@ -20,6 +22,10 @@ export function todayActions(app) {
     extend: (sessionId) => run(() => extendBlock(app, sessionId)),
     fileAll: () => run(() => triageInbox(app)),
     onCall: () => app.onCallCommand(),
+    // A follow-up row: Space logs it (the dialog), c closes it, r asks only the next day.
+    followedUp: (taskId) => run(() => followUpDialog(app, taskId)),
+    closeFollowUp: (taskId) => run(() => closeFollowUp(app, taskId)),
+    followUpAgain: (taskId) => run(() => followUpDialog(app, taskId, { dateOnly: true })),
     // The day's "Log status" line: the stalest project first.
     log: () => run(() => {
       const stale = projectRows({ tree: app.tree, statusLogs: app.statusLogs }, app.today())

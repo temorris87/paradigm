@@ -311,6 +311,147 @@
   color: var(--state-success-fg);
 }
 
+/* Up next's two groups: "Follow up today · 2", then "Then · ranked" (the section-heading style). */
+.today-next__group {
+  margin: var(--sp-2) var(--sp-2) var(--sp-1);
+  color: var(--text-heading);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.today-next__group:first-child {
+  margin-top: var(--sp-1);
+}
+
+/* A follow-up's →: a click logs it (Followed up…). */
+.today-next__glyph--action {
+  color: var(--link-secondary);
+}
+
+.today-next__glyph--action:hover {
+  color: var(--link);
+}
+
+/* ---- Followed up… (static/js/tasks/follow-up-dialog.js): on ui.css's .dialog ---- */
+.follow-up-dialog__line {
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.follow-up-dialog__hint {
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+}
+
+.follow-up-dialog__choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.follow-up-dialog__choice {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  column-gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  background: var(--surface-input);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-md);
+  text-align: left;
+  cursor: pointer;
+}
+
+.follow-up-dialog__choice:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+.follow-up-dialog__choice[aria-checked="true"] {
+  border-color: var(--border-selected);
+  color: var(--text-strong);
+}
+
+/* The radio's dot: a ring, filled when chosen. */
+.follow-up-dialog__mark {
+  width: 0.7em;
+  height: 0.7em;
+  border: 1px solid var(--border-control);
+  border-radius: 50%;
+}
+
+.follow-up-dialog__choice[aria-checked="true"] .follow-up-dialog__mark {
+  border-color: var(--border-selected);
+  background: var(--border-selected);
+}
+
+.follow-up-dialog__title {
+  font-weight: 600;
+}
+
+.follow-up-dialog__what {
+  grid-column: 2;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.follow-up-dialog__date {
+  padding: 0 0 var(--sp-1) var(--sp-5);
+}
+
+.follow-up-dialog__date-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+
+.follow-up-dialog__date-input {
+  width: 12rem;
+}
+
+.follow-up-dialog__reads {
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+
+.follow-up-dialog__picks {
+  color: var(--text-faint);
+  font-size: var(--fs-sm);
+}
+
+.follow-up-dialog__pick {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--link-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.follow-up-dialog__pick:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.follow-up-dialog__pick:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+.follow-up-dialog__date--off .follow-up-dialog__pick,
+.follow-up-dialog__date--off .follow-up-dialog__reads {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+/* The Log button's key cap reads on the accent. */
+.follow-up-dialog__key {
+  color: inherit;
+}
+
 /* ---- Projects, Inbox, the import ---- */
 .today-projects,
 .today-inbox {

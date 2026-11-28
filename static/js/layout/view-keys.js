@@ -2,7 +2,7 @@
 // tables stay the only source of keys: this only points at them), and the note window's
 // short fixed list, which has no table of its own. Pure.
 //
-//   viewTable(view, weekTab, { logStatus, project, person })  { name, table, without?, words?,
+//   viewTable(view, weekTab, { logStatus, project, person, followUp })  { name, table, without?, words?,
 //                              field?, barWithout?, bar? } of a view: view is the PageViews key
 //                              ("home", "week"...) or null for the dashboard; weekTab the Week
 //                              page's "plan" | "timesheet" | "settings" | "oncall"; logStatus
@@ -10,7 +10,8 @@
 //                              keep a status log: L is left out elsewhere); project whether it
 //                              is a project's (its own bar, and the rows only: "project" keeps);
 //                              person whether it is a person's page: rows of a table can be
-//                              page-specific (page: / notOn:)
+//                              page-specific (page: / notOn:); followUp whether Today's
+//                              cursor is on a follow-up row (its bar reads followHint:)
 //                              barWithout: left out of the bar only (still in the ? list);
 //                              bar: { action: words }: the bar shows just these, in this order
 //   viewHints(view, weekTab, options)  [{ cap, words }] for the bar: the table's hints, then
@@ -43,6 +44,9 @@ const WEEK_TABLES = {
   settings: { name: "Week: Settings", table: TIME_KEYS, without: ["copy"] },
   oncall: { name: "Week: On call", table: ONCALL_KEYS },
 };
+
+// Today with the cursor on a follow-up: Space is Followed up…, c and r show (Figma 54:953).
+const TODAY_FOLLOW_UP = { name: "Today", table: TODAY_KEYS, field: "followHint" };
 
 const VIEW_TABLES = {
   home: { name: "Today", table: TODAY_KEYS },
@@ -80,8 +84,9 @@ const barScope = (table) => (table.some((entry) => entry.scope) ? "list" : undef
 
 const SCOPE_NAMES = { list: "The list", search: "The search box" };
 
-export function viewTable(view, weekTab = "plan", { logStatus = false, project = false, person = false } = {}) {
+export function viewTable(view, weekTab = "plan", { logStatus = false, project = false, person = false, followUp = false } = {}) {
   if (view === "week") return WEEK_TABLES[weekTab] ?? WEEK_TABLES.plan;
+  if (view === "home" && followUp) return TODAY_FOLLOW_UP;
   if (VIEW_TABLES[view]) return VIEW_TABLES[view];
   if (project) return PROJECT_DASHBOARD;
   if (person) return PERSON;
