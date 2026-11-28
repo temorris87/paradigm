@@ -8,12 +8,14 @@ import { noteMenuItems } from "../../static/js/notes/note-menu.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
 import { Plan, addDays, changeText, dayNumber, dayString, milestonesOf, nextMilestone, phasesOf, projectSpan,
   shortDay, slipOf, slipText } from "../../static/js/plan/plan-model.js";
-import { areaRows, projectRows, templateRows } from "../../static/js/plan/plan-rows.js";
+import { areaRows, projectChartRows, projectRows, templateRows } from "../../static/js/plan/plan-rows.js";
 import { Records, recordsOn } from "../../static/js/records/records-model.js";
 import { fillTemplate } from "../../static/js/templates/template-text.js";
 import { assertEqual as same, assertTrue, test } from "./harness.js";
 // Loaded so a slip in them fails here: they need a page to run, not to load.
-import "../../static/js/hubs/hub-actions.js";
+import { hubTabActions } from "../../static/js/hubs/hub-actions.js";
+import { HubPage } from "../../static/js/hubs/hub-page.js";
+import { Tasks } from "../../static/js/tasks/tasks-model.js";
 import "../../static/js/hubs/dashboard.js";
 import "../../static/js/plan/template-page.js";
 import { searchFilesDialog, unlinkFolderDialog } from "../../static/js/files/file-commands.js";
@@ -98,6 +100,76 @@ test("gantt: the axis, bars, drags", () => {
   const key = (k) => ganttAction({ key: k, ctrlKey: false, altKey: false, metaKey: false });
   assertEqual([key("j"), key("e"), key(" "), key("p"), key("q")], ["next", "edit", "done", "newPhase", null]);
   assertEqual([key("t"), key("h")], ["history", null], "t is the date history (timeline); h no longer");
+});
+
+test("gantt: a moved phase says its slip once under its label, as slipText words it", () => {
+  const rows = projectChartRows(tree(), plan(), tree().get(2), "2026-11-10");
+  const design = rows.find((row) => row.key === "phase:3");
+  const lines = [design.badge, design.note].filter(Boolean);
+  assertEqual(lines, ["+7 d, moved 3× · keeps slipping"]);
+  assertEqual(lines.join(" ").split("moved").length - 1, 1);
+  const done = projectChartRows(tree(), plan(), tree().get(2), "2026-11-24").find((row) => row.key === "phase:3");
+  assertEqual([done.badge, done.note], ["+7 d, moved 3× · keeps slipping", "done"]);
+});
+
+// A hub's page with the real row actions (hub-actions.js), so t goes as far as the dialog.
+function withPlanPage(noteId, { dashboard, style = () => {} }, body) {
+  const moved = new Plan({ ...PLAN, changes: [...PLAN.changes,
+    { id: 5, note_id: 5, field: "day", old: "2026-11-13", new: "2026-11-20", changed_at: "2026-11-16T10:00:00Z", reason: "vendor" }] });
+  const ctx = { tree: tree(), plan: moved, today: new Date(2026, 10, 10), tasks: new Tasks([
+    { id: 1, note_id: 3, parent_id: null, title: "Draw it", notes: "", due: "", delegate_id: null, follow_up: "", done: false, done_day: "",
+      position: 1, snoozed_until: "", estimate_min: null }]) };
+  const app = { tree: ctx.tree, plan: moved, today: () => ctx.today, guard: (promise) => promise, focusNote() {}, say() {} };
+  const page = document.createElement("main");
+  const section = document.createElement("section");
+  page.append(section);
+  document.body.append(page);
+  try {
+    const hub = new HubPage({ page, line: document.createElement("div"), section, onOpen: () => {}, onLeave: () => {}, dashboard,
+      tabActions: hubTabActions(app) });
+    hub.show(ctx, noteId);
+    style(section);
+    hub.focus();
+    const press = (key) => document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    const active = () => section.querySelector("[aria-selected=true] .hub__title")?.textContent ?? "";
+    const dialog = () => document.querySelector("dialog.dialog");
+    body({ press, active, dialog });
+  } finally {
+    document.querySelectorAll("dialog.dialog").forEach((node) => node.remove());
+    page.remove();
+  }
+}
+
+test("phase page: t on a moved milestone opens its date history; h there moves to the Tasks column", () => {
+  // hub.css: [data-page="phase"] .hub__lane--page, Tasks and Milestones side by side.
+  const style = (section) => Object.assign(section.querySelector(".hub__lane--page").style,
+    { display: "grid", gridTemplateColumns: "300px 300px", alignItems: "start" });
+  withPlanPage(3, { dashboard: true, style }, ({ press, active, dialog }) => {
+    assertEqual(active(), "Draw it", "it starts on the phase's task");
+    press("l");
+    assertEqual(active(), "◆ Sign-off", "l: the milestone beside");
+    press("h");
+    assertEqual(active(), "Draw it", "h moves column; it opens nothing");
+    assertTrue(!dialog(), "no date history on h");
+    press("l");
+    press("t");
+    assertEqual(dialog()?.querySelector("h2, .dialog__title")?.textContent, 'Date history of "Sign-off"');
+    assertTrue(dialog().textContent.includes("+7 d, moved 1×"), dialog().textContent);
+  });
+});
+
+test("project page: t on a moved phase row opens its date history; h does not", () => {
+  withPlanPage(2, { dashboard: false }, ({ press, active, dialog }) => {
+    press("g");
+    press("g");
+    press("j");
+    assertEqual(active(), "Design", "the Plan section's first phase, moved 3 times");
+    press("h");
+    assertTrue(!dialog(), "h is no longer the date history");
+    assertEqual(active(), "Design", "one lane: h has no column to go to");
+    press("t");
+    assertEqual(dialog()?.querySelector("h2, .dialog__title")?.textContent, 'Date history of "Design"');
+  });
 });
 
 test("gantt: an area's bar per project, a template's rows", () => {

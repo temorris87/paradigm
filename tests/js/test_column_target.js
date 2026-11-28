@@ -1,6 +1,6 @@
 // h and l across a page's columns (ui/column-target.js): the nearest column that way with rows,
 // its row nearest in height; nothing past the first or last.
-import { columnTarget, laneColumns } from "../../static/js/ui/column-target.js";
+import { columnTarget, laneColumns, sideBySide } from "../../static/js/ui/column-target.js";
 import { HubPanel } from "../../static/js/hubs/hub-panel.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
@@ -42,9 +42,17 @@ test("lane columns: only the lanes beside on screen, by their left edge", () => 
   assertEqual(shown(laneColumns(PERSON, 4)), "-,-,-,0,220");
 });
 
-test("lane columns: lanes stacked in one column keep their order", () => {
-  assertEqual(laneColumns([box(0, 300, 0, 50), box(0, 300, 60, 90)], 0).join(), "0,1");
+test("lane columns: lanes stacked in one column (under 1400 px) reach nothing, so h and l never go up or down", () => {
+  assertEqual(shown(laneColumns([box(0, 300, 0, 50), box(0, 300, 60, 90)], 0)), "0,-");
+  assertEqual(shown(laneColumns([box(0, 300, 0, 50), box(0, 300, 60, 90)], 1)), "-,0");
   assertEqual(laneColumns([], 0).join(), "");
+});
+
+test("side by side: two boxes sharing some height, one fully left of the other; a box with no size never is", () => {
+  assertTrue(sideBySide(PERSON), "a person's cards");
+  assertTrue(!sideBySide([box(0, 300, 0, 50), box(0, 300, 60, 90)]), "stacked");
+  assertTrue(!sideBySide([box(0, 0, 0, 0), box(0, 0, 0, 0)]), "display: contents has no box");
+  assertTrue(!sideBySide([box(0, 300, 0, 50)]) && !sideBySide([]));
 });
 
 test("column target: on a person's page l stops at the last card; h and l cross between Notes and Together", () => {
@@ -77,4 +85,138 @@ test("column target: on a person's page l stops at the last card; h and l cross 
   } finally {
     root.remove();
   }
+});
+
+// The panel without the app's CSS (the test page loads none): each test lays its lanes out
+// as dashboard.css, person-cards.css or hub.css does at that width.
+const card = (key, ...titles) => ({ key, label: key, detail: "", folded: false, rows: titles.map((title) => ({ id: `${key}-${title}`, title, actions: [] })),
+  empty: "", add: null, addPlain: false, menu: null, more: 0, footer: null, history: null });
+
+function withPanel(layout, style, body) {
+  const root = document.createElement("section");
+  document.body.append(root);
+  try {
+    const panel = new HubPanel(root, { onRow() {}, onToggle() {}, onMore() {}, onAdd() {}, onRowAction() {} });
+    panel.draw(layout);
+    style(root);
+    const title = () => {
+      const node = root.querySelector("[aria-selected=true]");
+      return node?.querySelector(".hub__title, .hub__label, .hub__empty-label")?.textContent ?? "";
+    };
+    const at = (text) => panel.options.findIndex((option) => option.row?.title === text);
+    body({ panel, root, title, at });
+  } finally {
+    root.remove();
+  }
+}
+
+const lanesGrid = (columns) => (root) => Object.assign(root.querySelector(".hub__list").style,
+  { display: "grid", gridTemplateColumns: columns, alignItems: "start", width: "500px" });
+
+test("column target: an area page's full-width top lane has nothing beside it; l there does nothing", () => {
+  const layout = { wide: [card("projects", "Pilot", "Rollout")], act: [card("tasks", "A1", "A2")], know: [card("notes", "K1")], page: "area" };
+  withPanel(layout, (root) => {
+    lanesGrid("300px 200px")(root);
+    root.querySelector(".hub__lane--wide").style.gridColumn = "1 / -1";
+  }, ({ panel, title, at }) => {
+    panel.moveTo(at("Rollout"));
+    panel.perform("nextLane");
+    assertEqual(title(), "Rollout", "l on the Projects table: the lanes are below it, not beside");
+    panel.perform("previousLane");
+    assertEqual(title(), "Rollout", "h there neither");
+    panel.moveTo(at("A1"));
+    panel.perform("nextLane");
+    assertEqual(title(), "K1", "l between the lanes under it");
+    panel.perform("previousLane");
+    assertEqual(title(), "A1", "h back, not up into the table");
+    panel.perform("previousLane");
+    assertEqual(title(), "A1");
+  });
+});
+
+test("column target: under 1400 px the lanes stack in one column; h and l do nothing there", () => {
+  for (const page of ["project", "area", null]) {
+    const layout = { act: [card("tasks", "A1", "A2")], know: [card("notes", "K1")], page };
+    withPanel(layout, lanesGrid("minmax(0, 1fr)"), ({ panel, title, at }) => {
+      panel.moveTo(at("A2"));
+      panel.perform("nextLane");
+      assertEqual(title(), "A2", `${page}: l does not drop to the lane below`);
+      panel.moveTo(at("K1"));
+      panel.perform("previousLane");
+      assertEqual(title(), "K1", `${page}: h does not climb to the lane above`);
+    });
+  }
+  const person = { wide: [], cards: [card("waiting", "W"), card("owe", "O"), card("raise", "R")], act: [card("personNotes", "N")],
+    know: [card("together", "T")], page: "person" };
+  withPanel(person, lanesGrid("minmax(0, 1fr)"), ({ panel, title, at }) => {
+    panel.moveTo(at("O"));
+    panel.perform("nextLane");
+    assertEqual(title(), "O", "a person's cards stacked: l does nothing");
+    panel.perform("previousLane");
+    assertEqual(title(), "O");
+  });
+});
+
+test("column target: a project's shared Nothing yet line under both lanes is not a lane beside", () => {
+  const empty = (key) => ({ ...card(key), rows: [], empty: `No ${key}` });
+  const layout = { act: [card("openTasks", "T1", "T2", "T3", "T4", "T5", "T6")], know: [card("notes", "K1"), empty("files")],
+    emptyLine: "foot", page: "project" };
+  withPanel(layout, lanesGrid("300px 200px"), ({ panel, root, title, at }) => {
+    assertTrue(root.querySelector(".hub__empties--foot"), "the foot line is drawn");
+    panel.moveTo(at("T6"));
+    panel.perform("nextLane");
+    assertEqual(title(), "K1", "l from the last task: the other lane's row, not the line under both");
+    panel.moveTo(panel.options.findIndex((option) => option.type === "empty"));
+    panel.perform("previousLane");
+    assertEqual(title(), "files", "h on the foot line does nothing");
+    panel.perform("nextLane");
+    assertEqual(title(), "files", "l neither");
+  });
+});
+
+test("column target: a phase's page draws Tasks and Milestones side by side; h l (← →) cross them, nothing else", () => {
+  const sections = [card("tasks", "Draft", "Review", "Ship"), card("milestones", "◆ Sign-off"), card("files", "spec.pdf"), card("notes", "Kickoff")];
+  // hub.css: [data-page="phase"] .hub__lane--page, two columns.
+  const phaseGrid = (root) => Object.assign(root.querySelector(".hub__lane--page").style,
+    { display: "grid", gridTemplateColumns: "250px 250px", alignItems: "start" });
+  withPanel(sections, phaseGrid, ({ panel, title, at }) => {
+    panel.moveTo(at("Review"));
+    panel.perform("nextLane");
+    assertEqual(title(), "◆ Sign-off", "l from a task: the milestone beside it");
+    panel.perform("nextLane");
+    assertEqual(title(), "◆ Sign-off", "no wrap past Milestones");
+    panel.perform("previousLane");
+    assertEqual(title(), "Draft", "h back to Tasks, the row nearest in height");
+    panel.perform("previousLane");
+    assertEqual(title(), "Draft", "no wrap past Tasks");
+    panel.moveTo(at("spec.pdf"));
+    panel.perform("nextLane");
+    assertEqual(title(), "Kickoff", "the row under them: Files and Notes side by side too");
+    panel.moveTo(at("Ship"));
+    panel.perform("nextLane");
+    assertEqual(title(), "◆ Sign-off", "never down to Notes");
+  });
+  // A meeting's (or any note's) sections stack: h and l do nothing.
+  withPanel(sections, () => {}, ({ panel, title, at }) => {
+    panel.moveTo(at("Ship"));
+    panel.perform("nextLane");
+    assertEqual(title(), "Ship", "stacked sections: l stays");
+  });
+});
+
+test("column target: in the note window's panel, h l and ← → are the keys that cross the columns", () => {
+  const sections = [card("tasks", "Draft"), card("milestones", "◆ Sign-off")];
+  withPanel(sections, (root) => Object.assign(root.querySelector(".hub__lane--page").style,
+    { display: "grid", gridTemplateColumns: "250px 250px", alignItems: "start" }), ({ panel, title, at }) => {
+    const key = (k) => panel.list.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true }));
+    panel.moveTo(at("Draft"));
+    key("l");
+    assertEqual(title(), "◆ Sign-off");
+    key("h");
+    assertEqual(title(), "Draft");
+    key("ArrowRight");
+    assertEqual(title(), "◆ Sign-off", "→ as l");
+    key("ArrowLeft");
+    assertEqual(title(), "Draft", "← as h");
+  });
 });

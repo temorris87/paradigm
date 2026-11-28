@@ -431,6 +431,8 @@ test("dashboard: two lanes; arrows cross between them; split sections act as the
     const hub = new HubPage({ page, line: document.createElement("div"), section, onOpen: () => {}, onLeave: () => {},
       dashboard: true, tabActions });
     hub.show({ tree: tree(), today: TODAY, tasks: new Tasks([hubTask(1, 2, "Draft the plan")]) }, 2);
+    // dashboard.css's two lanes at 1400 px and wider (the test page loads no CSS).
+    Object.assign(section.querySelector(".hub__list").style, { display: "grid", gridTemplateColumns: "300px 200px", alignItems: "start" });
     const lanes = [...section.querySelectorAll(".hub__lane")];
     assertEqual(lanes.length, 2);
     assertEqual(headings(lanes[0]), "Tasks");
@@ -441,13 +443,13 @@ test("dashboard: two lanes; arrows cross between them; split sections act as the
     hub.focus();
     assertEqual(active(section), "Draft the plan");
     press("ArrowRight");
-    assertEqual(active(section), "Notes");
+    assertEqual(active(section), "Budget", "Notes' row nearest in height");
     press("ArrowLeft");
     assertTrue(lanes[0].contains(section.querySelector("[aria-selected=true]")), "back in the left lane");
     press("l");
-    assertEqual(active(section), "Notes", "l as →");
+    assertEqual(active(section), "Budget", "l as →");
     press("l");
-    assertEqual(active(section), "Notes", "no wrap past the last lane");
+    assertEqual(active(section), "Budget", "no wrap past the last lane");
     press("h");
     assertTrue(lanes[0].contains(section.querySelector("[aria-selected=true]")), "h as ←");
     press("h");

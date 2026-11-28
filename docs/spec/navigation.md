@@ -157,7 +157,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   a dashboard "left" and "right" are where the lanes sit on screen: only lanes beside the
   current one (sharing some of its height) count, so on a person's page `l` on To raise does
   nothing, and `h`/`l` go between Notes and Together; on an area page `l` from the full-width
-  top lane does nothing. When the lanes stack (under 1400 px) they keep their order. The bar
+  top lane does nothing. When the columns stack into one (Today and dashboards under 1400 px,
+  the task page under 1000 px), nothing is beside: `h` and `l` stay put. The bar
   shows `h l` columns on these pages; `?` lists them with the movement keys. The Week's tabs
   keep `h` `l` as the week and the tree as fold and unfold; one-column pages (People, Meetings,
   Trash, History) don't bind them (Tyson, 2026-11-28). A phase or milestone's date history,

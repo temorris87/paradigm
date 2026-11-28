@@ -11,8 +11,8 @@ import { valueOf } from "../gantt/gantt-model.js";
 import { localDay } from "../meetings/meeting-days.js";
 import { applyTemplateDialog, dropDates, editDatesDialog, historyDialog, newMilestoneDialog, newPhaseDialog,
   saveTemplateDialog, setMilestoneDone } from "./plan-commands.js";
-import { areaRows, projectRows } from "./plan-rows.js";
-import { dayNumber, daysBetween, shortDay, slipOf } from "./plan-model.js";
+import { areaRows, projectChartRows } from "./plan-rows.js";
+import { daysBetween, shortDay } from "./plan-model.js";
 
 export class PlanPage {
   constructor(section, { app, onLeave }) {
@@ -85,7 +85,7 @@ export class PlanPage {
     const applied = ctx.plan.appliedTo(note.id);
     if (applied) tools.push(element("span", "gantt__note", `from “${applied.title}”`));
     this.ctx = ctx;
-    this.chart.draw({ rows: notedRows(ctx, note, today, archived), today, tools,
+    this.chart.draw({ rows: projectChartRows(ctx.tree, ctx.plan, note, today, { archived }), today, tools,
       empty: "No phases yet: + Phase, or Apply plan template…" });
     this.legend.replaceChildren(...[["bar", "a phase"], ["baseline", "where it was first planned"], ["today", "today"],
       ["due", note.due ? `due ${note.due}` : ""]].filter(([, words]) => words).map(([kind, words]) => {
@@ -162,32 +162,6 @@ export class PlanPage {
   focus() {
     this.chart.focus();
   }
-}
-
-/** The chart's rows with a second line under each label: done, its slip, or the slack left
- * before the project's due date (the last phase); the due date as a mark on the Milestones row. */
-function notedRows(ctx, note, today, archived) {
-  const rows = projectRows(ctx.tree, ctx.plan, note.id, today, { draggable: !archived });
-  const phases = rows.filter((row) => row.kind === "phase");
-  const lastPhase = phases[phases.length - 1];
-  for (const row of phases) {
-    const phase = ctx.plan.phase(row.id);
-    const slip = slipOf(ctx.plan, row.id);
-    if (phase.end < today) Object.assign(row, { note: "done", noteTone: "done" });
-    else if (slip.days > 0) Object.assign(row, { note: `+${slip.days} d · moved ${slip.moves}×`, noteTone: "late" });
-    if (row === lastPhase && note.due && phase.end <= note.due && phase.end >= today) {
-      const slack = daysBetween(phase.end, note.due);
-      Object.assign(row, { note: `${slack} d of slack left`, noteTone: slack <= 3 ? "warn" : "dim" });
-    }
-  }
-  if (note.due) {
-    const due = { key: `due:${note.id}`, id: note.id, label: "Due", at: dayNumber(note.due), done: false, draggable: false, late: note.due < today,
-      detail: `due ${shortDay(note.due, today)}` };
-    const own = rows.find((row) => row.kind === "milestone");
-    if (own) own.marks = [...own.marks, due];
-    else rows.push({ key: `milestones:${note.id}`, id: note.id, kind: "milestone", label: "Milestones", start: NaN, end: NaN, marks: [due] });
-  }
-  return rows;
 }
 
 function tool(text, title, run) {

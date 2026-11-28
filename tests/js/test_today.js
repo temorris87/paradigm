@@ -153,6 +153,8 @@ test("today: h and l cross the columns (Now, Next, the side), ← → too; no wr
   try {
     const page = new TodayPage(section, { onOpen: () => {}, onLeave: () => {}, today: () => NOW, actions: {} });
     page.show(ctx());
+    // today.css's three columns (the test page loads no CSS).
+    Object.assign(page.list.style, { display: "grid", gridTemplateColumns: "300px 400px 250px", alignItems: "start" });
     const key = (k) => page.list.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true }));
     const column = () => {
       const node = document.getElementById(page.list.getAttribute("aria-activedescendant"));
@@ -195,6 +197,29 @@ test("today: File all… is F (f is the window's follow mode); the Inbox's butto
     assertEqual(calls.join(), "", "f does nothing on Today itself");
     key("F", true);
     assertEqual(calls.join(), "file all");
+  } finally {
+    section.remove();
+  }
+});
+
+test("today: under 1400 px the columns stack in one; h and l do nothing rather than go up or down", () => {
+  const section = document.createElement("section");
+  document.body.append(section);
+  try {
+    const page = new TodayPage(section, { onOpen: () => {}, onLeave: () => {}, today: () => NOW, actions: {} });
+    page.show(ctx());
+    // today.css under 1400 px: one column, each column's parts laid out in it (display: contents).
+    Object.assign(page.list.style, { display: "grid", gridTemplateColumns: "minmax(0, 1fr)", width: "600px" });
+    for (const column of page.list.querySelectorAll(".today__col")) column.style.display = "contents";
+    const key = (k) => page.list.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true }));
+    const at = () => page.list.getAttribute("aria-activedescendant");
+    const start = at();
+    for (const k of ["h", "l", "ArrowLeft", "ArrowRight"]) {
+      key(k);
+      assertEqual(at(), start, `${k} stays on Up next's row`);
+    }
+    key("j");
+    assertTrue(at() !== start, "j still moves");
   } finally {
     section.remove();
   }

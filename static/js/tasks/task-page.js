@@ -21,7 +21,7 @@
 import { renderMarkdown } from "../markdown/index.js";
 import { hubOf, isArchived } from "../notes/hub-groups.js";
 import { chip } from "../ui/chip.js";
-import { columnTarget } from "../ui/column-target.js";
+import { columnTarget, sideBySide } from "../ui/column-target.js";
 import { keyCap } from "../ui/key-hints.js";
 import { openMenu } from "../ui/menu.js";
 import { drawRendered, followNoteLinks } from "../ui/rendered-text.js";
@@ -261,8 +261,11 @@ export class TaskPage {
   }
 
   /** h l: the head is the left column (it sits over the Notes, which have no rows), the side
-   * column's rows the right; the row nearest in height (ui/column-target.js). */
+   * column's rows the right; the row nearest in height (ui/column-target.js). Under 1000 px
+   * the side column stacks under the Notes: h l stay put rather than go up or down. */
   columnStep(direction) {
+    const columns = [...(this.body.querySelector(".task-page__columns")?.children ?? [])].map((node) => node.getBoundingClientRect());
+    if (!sideBySide(columns)) return this.active;
     const rows = this.rows.map((row, index) => ({ column: row.head ? 0 : 1,
       top: this.body.querySelector(`#task-page-option-${index}`)?.getBoundingClientRect().top ?? 0 }));
     return columnTarget(rows, this.active, direction);

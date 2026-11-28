@@ -213,7 +213,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   question becomes a decision, same note: `/api/record/convert`), Make a task to find out. A
   phase's card says its slip in words with a mini bar over its baseline, and where it last
   moved and why; its page has Tasks and Milestones side by side. The full plan: a second line
-  under each label (done, "+9 d · moved 3×", the slack left before due), the due date as a
+  under each label (done, or the slack left before due; a moved phase's slip is its badge only,
+  "+7 d, moved 3×", never said twice, 2026-11-28), the due date as a
   mark, a legend, and the chosen phase's date history beside it. A plan template's page: its
   counts and how many projects use it, Apply to a project…, item cards in two columns. A
   folder's page: its name large, what it holds, New note (`a`, `folder-keys.js`), New folder,

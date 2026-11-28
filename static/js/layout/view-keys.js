@@ -71,12 +71,13 @@ const PROJECT_DASHBOARD = { name: "Project", table: keysFor("project"), field: "
 const DASHBOARD = { name: "Dashboard", table: keysFor(null), without: PROJECT_ONLY };
 // A dashboard that isn't a project's or an area's has no status to log.
 const PLAIN_DASHBOARD = { ...DASHBOARD, without: ["logStatus", ...PROJECT_ONLY] };
-// A person's page: its own keys (Tab, a, r, n, o) and its own bar.
+// A person's page: its own keys (Tab, a, r, n, o) and its own bar; h l after j k, as on the
+// other dashboards.
 const PERSON = {
   name: "Person",
   table: keysFor("person"),
   without: ["logStatus", ...PROJECT_ONLY],
-  bar: { next: "move", nextColumn: "next column", toggle: "done", delegate: "delegate", addTopic: "add topic",
+  bar: { next: "move", previousLane: "columns", nextColumn: "next column", toggle: "done", delegate: "delegate", addTopic: "add topic",
     raised: "raised", oneOnOne: "1:1 notes", openRow: "open" },
 };
 

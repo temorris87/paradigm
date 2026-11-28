@@ -244,7 +244,8 @@ test("note keys: the note window's bar, as Figma has it: the capture leader, the
 test("view keys: a person's page has its own bar; People shows n, not a", () => {
   const bar = (view, options) => viewHints(view, "plan", options).map(({ cap, words }) => `${cap} ${words}`).join(",");
   assertEqual(bar(null, { person: true }),
-    "j k move,Tab next column,Space done,d delegate,a add topic,r raised,n 1:1 notes,o open,f follow,? all keys");
+    "j k move,h l columns,Tab next column,Space done,d delegate,a add topic,r raised,n 1:1 notes,o open,f follow,? all keys",
+    "h l columns after move, as on every other dashboard; Tab still the next card");
   assertEqual(bar("people"), "j k move,Enter open,/ filter by name,o open items / everyone,n new person,f follow,? all keys");
   assertEqual(bar("meetings"), "j k move,Enter open,/ search,a new,f follow,? all keys", "Meetings has no o or n");
   const helps = (...args) => viewKeyGroups(...args).flatMap((group) => group.rows.map((row) => row.keys.join()));

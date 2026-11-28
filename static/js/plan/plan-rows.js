@@ -3,12 +3,16 @@
 //
 //   projectRows(tree, plan, projectId, today)   a bar per phase (its milestones on it), then a
 //                                               "Milestones" row for the project's own
+//   projectChartRows(tree, plan, note, today, { archived })  projectRows for the Plan page,
+//                                               with a second line under a phase's label
+//                                               (done, or the slack before the due date) and
+//                                               the due date on the Milestones row
 //   areaRows(tree, plan, areaId, today)         a bar per live project: the span of its plan
 //   templateRows(template)                      a template's phases and milestones, in working
 //                                               days from 0 (the chart's "offsets" mode)
 // Row keys: "phase:ID", "milestones:ID", "project:ID", "item:ID", "items:ID".
 import { projectsIn } from "../hubs/hub-areas.js";
-import { dayNumber, milestonesOf, phasesOf, projectSpan, projectSlipping, shortDay, slipOf, slipText } from "./plan-model.js";
+import { dayNumber, daysBetween, milestonesOf, phasesOf, projectSpan, projectSlipping, shortDay, slipOf, slipText } from "./plan-model.js";
 
 function mark(plan, { note, milestone }, today, draggable) {
   const slip = slipOf(plan, note.id);
@@ -38,6 +42,30 @@ export function projectRows(tree, plan, projectId, today, { draggable = true } =
   if (own.length) {
     rows.push({ key: `milestones:${projectId}`, id: projectId, kind: "milestone", label: "Milestones", start: NaN, end: NaN,
       marks: own.map((entry) => mark(plan, entry, today, draggable)) });
+  }
+  return rows;
+}
+
+/** The Plan page's rows. A phase's slip is its badge (slipText, as everywhere): the second
+ * line says only what the badge doesn't, so a moved phase never shows its slip twice. */
+export function projectChartRows(tree, plan, note, today, { archived = false } = {}) {
+  const rows = projectRows(tree, plan, note.id, today, { draggable: !archived });
+  const phases = rows.filter((row) => row.kind === "phase");
+  const lastPhase = phases[phases.length - 1];
+  for (const row of phases) {
+    const phase = plan.phase(row.id);
+    if (phase.end < today) Object.assign(row, { note: "done", noteTone: "done" });
+    if (row === lastPhase && note.due && phase.end <= note.due && phase.end >= today) {
+      const slack = daysBetween(phase.end, note.due);
+      Object.assign(row, { note: `${slack} d of slack left`, noteTone: slack <= 3 ? "warn" : "dim" });
+    }
+  }
+  if (note.due) {
+    const due = { key: `due:${note.id}`, id: note.id, label: "Due", at: dayNumber(note.due), done: false, draggable: false, late: note.due < today,
+      detail: `due ${shortDay(note.due, today)}` };
+    const own = rows.find((row) => row.kind === "milestone");
+    if (own) own.marks = [...own.marks, due];
+    else rows.push({ key: `milestones:${note.id}`, id: note.id, kind: "milestone", label: "Milestones", start: NaN, end: NaN, marks: [due] });
   }
   return rows;
 }

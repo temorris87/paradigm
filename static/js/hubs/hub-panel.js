@@ -8,7 +8,8 @@
 //     onRowAction(section, row, key), onHistory(tab),
 //     onCommand(action), onLeave(), renderSnippet(markdown) -> html });
 //     onExpand: z (or a click on its ▸) on a row that opens in place (row.expanded set)
-//   panel.draw(sections)            one lane (the note window)
+//   panel.draw(sections)            one lane (the note window); h l cross its sections where
+//                                   they sit side by side (a phase's Tasks and Milestones)
 //   panel.draw({ wide, cards, act, know, emptyLine, page })  two lanes side by side (the main
 //                                   window's dashboard), under the wide sections (full width)
 //                                   and the cards (a row of equal columns, each a lane of its
@@ -387,13 +388,21 @@ export class HubPanel {
   /** h l, ← →: the option in the lane beside on screen, right (1) or left (-1), with any,
    * nearest the active one's height. */
   laneTarget(direction) {
-    const from = this.options[this.active];
-    if (!from) return this.active;
     const nodes = [...this.list.querySelectorAll("[role=option]")];
-    const lanes = [...this.list.querySelectorAll(":scope > .hub__lane")].map((lane) => lane.getBoundingClientRect());
-    const columns = laneColumns(lanes, from.lane);
-    const rows = this.options.map((option, index) => ({ column: columns[option.lane] ?? NaN, top: nodes[index]?.getBoundingClientRect().top ?? 0 }));
+    if (!nodes[this.active]) return this.active;
+    const boxOf = this.boxOf();
+    const boxes = [...new Set(nodes.map(boxOf))];
+    const columns = laneColumns(boxes.map((box) => box.getBoundingClientRect()), boxes.indexOf(boxOf(nodes[this.active])));
+    const rows = nodes.map((node) => ({ column: columns[boxes.indexOf(boxOf(node))], top: node.getBoundingClientRect().top }));
     return columnTarget(rows, this.active, direction);
+  }
+
+  /** What h and l cross: a dashboard's lanes; in one lane (the note window, a phase's page:
+   * Tasks and Milestones side by side), its sections. A Nothing yet line outside them (a
+   * project's, under both lanes) is a box of its own, beside nothing. */
+  boxOf() {
+    const lanes = this.list.querySelectorAll(":scope > .hub__lane").length > 1;
+    return (node) => node.closest(lanes ? ".hub__lane" : ".hub__section") ?? node.closest(".hub__empties") ?? node;
   }
 
   moveTo(index) {
