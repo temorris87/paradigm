@@ -1,7 +1,8 @@
 // THE key table of a task's page (task-page.js). Its key handling, its hint bar and its ? list
 // read it; nothing else binds keys there. The head is the first row, then the side column's
 // rows top to bottom (subtasks, emails, files, From, History): j/k move through them as one
-// list. Space, E, d and s act on the selected subtask, else on the page's task; e writes the
+// list, h/l across: the head (over the Notes) is the left column's one row, the side column's
+// rows the right's. Space, E, d and s act on the selected subtask, else on the page's task; e writes the
 // page's task's notes in the note window. The hint bar
 // shows the entries with hint:, in this order. Keys with Ctrl, Alt or Cmd held are left to the
 // browser; text boxes and dialogs keep theirs.
@@ -18,6 +19,9 @@ export const TASK_PAGE_KEYS = [
   { keys: ["k", "ArrowUp"], action: "previous", help: "previous row" },
   { keys: ["gg"], action: "first", help: "first row (the task itself)" },
   { keys: ["G"], action: "last", help: "last row" },
+  { keys: ["h", "ArrowLeft"], action: "previousColumn", help: "the column on the left: from the side column, back to the task (over its Notes)",
+    hint: "columns", label: "h l" },
+  { keys: ["l", "ArrowRight"], action: "nextColumn", help: "the column on the right: from the task, the side column's row nearest in height" },
   { keys: ["Enter"], action: "open", help: "open the row: a subtask's page, the email in Outlook, the file, the meeting or note" },
   { keys: ["o"], action: "openEmail", help: "open the email or the file (Reply ↗, Open ↗ and the file's name do the same)" },
   { keys: ["r"], action: "reply", help: "the email's reply: Reply needed → Replied (today) → No reply" },

@@ -239,7 +239,11 @@ static/
                          key-hints.js (the key-hint bar from a table's hint:/label:; key
                          caps; pure apart from drawing), keys-dialog.js (the ? list),
                          key-sequence.js
-                         (two-key entries in a key table: gg, gp; pure), clipboard.js
+                         (two-key entries in a key table: gg, gp; pure), column-target.js
+                         (h l on a page of columns: the nearest column that way with rows,
+                         its row nearest in height; on a dashboard, only the lanes beside on
+                         screen; Today, dashboards, the task page; pure),
+                         clipboard.js
                          (copyRich: HTML + text), dates.js (THE on-screen
                          day and time format: "Wed 25 Nov", "Thu 26" (dayText, month: false),
                          "23–29 Nov" (weekRange), 24-hour, the year only when not this year;

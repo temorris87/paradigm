@@ -138,7 +138,7 @@ function planDetails(ctx, note, onOpen, controls) {
     // A phase says it in words (the design's "9 days later than planned, moved 3 times").
     const words = plan.phase(note.id) ? slipWords(slip) : `${slipText(slip)}${slip.keepsSlipping ? " · keeps slipping" : ""}`;
     parts.push(separator(), factButton(`hub-line__slip${slip.keepsSlipping || slip.days > 0 ? " hub-line__slip--late" : ""}`,
-      words, "Its date history (h)", () => controls.history(note)));
+      words, "Its date history (t)", () => controls.history(note)));
   } else {
     parts.push(separator(), span("hub-line__text hub-line__text--none", "on its first dates"));
   }

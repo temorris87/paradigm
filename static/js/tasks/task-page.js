@@ -5,7 +5,7 @@
 // Files (task-files.js), From and History (task-history.js). Side by side down to 1000 px.
 // The page takes .msg files dropped on it.
 // One focus stop: a listbox whose first row is the head, then the side column's rows, top to
-// bottom. Its keys: task-page-keys.js. The notes are written in the note window (the Notes
+// bottom; h l (and ← →) cross between the head and the side column. Its keys: task-page-keys.js. The notes are written in the note window (the Notes
 // card's Edit, e): while they are open there, the card shows them as typed (task-notes-live.js).
 // An archived note's task is read-only.
 //
@@ -21,6 +21,7 @@
 import { renderMarkdown } from "../markdown/index.js";
 import { hubOf, isArchived } from "../notes/hub-groups.js";
 import { chip } from "../ui/chip.js";
+import { columnTarget } from "../ui/column-target.js";
 import { keyCap } from "../ui/key-hints.js";
 import { openMenu } from "../ui/menu.js";
 import { drawRendered, followNoteLinks } from "../ui/rendered-text.js";
@@ -257,6 +258,14 @@ export class TaskPage {
     node.scrollIntoView?.({ block: "nearest" });
   }
 
+  /** h l: the head is the left column (it sits over the Notes, which have no rows), the side
+   * column's rows the right; the row nearest in height (ui/column-target.js). */
+  columnStep(direction) {
+    const rows = this.rows.map((row, index) => ({ column: row.head ? 0 : 1,
+      top: this.body.querySelector(`#task-page-option-${index}`)?.getBoundingClientRect().top ?? 0 }));
+    return columnTarget(rows, this.active, direction);
+  }
+
   select(index) {
     if (!this.rows.length) return;
     this.active = Math.max(0, Math.min(index, this.rows.length - 1));
@@ -295,6 +304,8 @@ export class TaskPage {
       case "previous": return this.select(this.active - 1);
       case "first": return this.select(0);
       case "last": return this.select(this.rows.length - 1);
+      case "nextColumn": return this.select(this.columnStep(1));
+      case "previousColumn": return this.select(this.columnStep(-1));
       default: break;
     }
     const row = this.rows[this.active];

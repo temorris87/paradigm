@@ -11,7 +11,7 @@ export const GANTT_KEYS = [
   { keys: ["Enter"], action: "open", help: "open the row: a phase or milestone's note, a project's dashboard", hint: "open" },
   { keys: ["e"], action: "edit", help: "Edit dates… (asks why when an end moves later)", hint: "edit dates" },
   { keys: [" "], action: "done", help: "mark a milestone done, or not done", hint: "done" },
-  { keys: ["h"], action: "history", help: "the row's date history" },
+  { keys: ["t"], action: "history", help: "the row's date history (timeline)" },
   { keys: ["p"], action: "newPhase", help: "+ Phase", hint: "phase" },
   { keys: ["m"], action: "newMilestone", help: "+ Milestone (in the chosen phase, if one is)", hint: "milestone" },
 ];

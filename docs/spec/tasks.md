@@ -72,14 +72,16 @@ How the app behaves. Kept up to date by each feature that changes it.
     10:00–10:30`, or `E: No free 30 min before it is due` (`… in the next two weeks` with no due
     day); Next block then shows it.
   - Keys (`task-page-keys.js`), one listbox: the head is the first row, then the side column's
-    rows top to bottom (subtasks, emails, files, From, History). `j`/`k`/arrows, `gg`/`G`;
+    rows top to bottom (subtasks, emails, files, From, History). `j`/`k`/↑↓, `gg`/`G`; `h`/`l`
+    and ←/→ across: the head (over the Notes) is the left column, the side column's rows the
+    right, landing on the row nearest in height (2026-11-28; feature 039);
     Space done or reopen, `E` Edit…, `d` delegate or take back, `s` schedule (each on the
     selected subtask, else the page's task); `e` the page's task's notes in the note window;
     `a` adds a subtask under the row (elsewhere: a
     direct one); Enter opens the row (a subtask's page, the email, the file, the meeting or
     note); `o`, `r` and `x`/Delete on emails and files (below); `x`/Delete on a subtask deletes
     it; `J`/`K` move a subtask among its siblings; Escape back to the dashboard. The hint bar:
-    `Space` done, `e` edit notes, `d` delegate, `s` schedule, `a` add subtask, `j k` move, `Esc` back,
+    `Space` done, `e` edit notes, `d` delegate, `s` schedule, `a` add subtask, `j k` move, `h l` columns, `Esc` back,
     `?` all keys; the rest are in `?`.
   - Notes are written in the note window, never on the page (the main window never edits
     text). The chip "Live · editing in the note window" was first dropped, as the note window
@@ -158,7 +160,7 @@ How the app behaves. Kept up to date by each feature that changes it.
   once moved later 3 times; History lists the moves. The main window's Plan page (`&plan`,
   `gp`) draws a project's plan as a Gantt chart (weeks, today, the baseline dashed under a bar): drag a bar, either
   end, or a diamond; click opens it in the note window; its keys are in
-  `static/js/gantt/gantt-keys.js` (`e` Edit dates…, `h` history, Space a milestone done,
+  `static/js/gantt/gantt-keys.js` (`e` Edit dates…, `t` date history (it was `h`, 2026-11-28), Space a milestone done,
   `p` / `m` new). An area's chart has a bar per project. The note window lists the same as
   the project's Plan section; a phase's page has Tasks, Milestones, Files, Notes.
 - Status log (Tyson, 2026-11-22): a project or area keeps dated entries with a health (on

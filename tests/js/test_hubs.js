@@ -111,6 +111,11 @@ test("hub keys: one table, Tab bound only on a person, modifiers left to the bro
   assertEqual(hubAction({ key: "n" }, "project"), "newTask", "n on a project: a new task");
   assertEqual(hubAction({ key: "o" }, "person"), "openRow");
   assertEqual(hubAction({ key: "j" }), "next");
+  for (const page of [null, "project", "person"]) {
+    assertEqual(hubAction({ key: "h" }, page), "previousLane", `h on ${page}: the column on the left`);
+    assertEqual(hubAction({ key: "l" }, page), "nextLane", `l on ${page}`);
+    assertEqual(hubAction({ key: "t" }, page), "history", `t on ${page}: a phase's date history`);
+  }
   assertEqual(hubAction({ key: "}" }), "nextSection");
   assertEqual(hubAction({ key: "z" }), "fold");
   assertEqual(hubAction({ key: "j", ctrlKey: true }), null);
@@ -439,6 +444,14 @@ test("dashboard: two lanes; arrows cross between them; split sections act as the
     assertEqual(active(section), "Notes");
     press("ArrowLeft");
     assertTrue(lanes[0].contains(section.querySelector("[aria-selected=true]")), "back in the left lane");
+    press("l");
+    assertEqual(active(section), "Notes", "l as →");
+    press("l");
+    assertEqual(active(section), "Notes", "no wrap past the last lane");
+    press("h");
+    assertTrue(lanes[0].contains(section.querySelector("[aria-selected=true]")), "h as ←");
+    press("h");
+    assertTrue(lanes[0].contains(section.querySelector("[aria-selected=true]")), "no wrap past the first lane");
     press("g");
     press("g");
     press("j");

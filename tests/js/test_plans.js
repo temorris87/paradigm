@@ -97,6 +97,7 @@ test("gantt: the axis, bars, drags", () => {
   assertEqual([offsets.first, offsets.ticks[1].label], [0, "Day 5"]);
   const key = (k) => ganttAction({ key: k, ctrlKey: false, altKey: false, metaKey: false });
   assertEqual([key("j"), key("e"), key(" "), key("p"), key("q")], ["next", "edit", "done", "newPhase", null]);
+  assertEqual([key("t"), key("h")], ["history", null], "t is the date history (timeline); h no longer");
 });
 
 test("gantt: an area's bar per project, a template's rows", () => {

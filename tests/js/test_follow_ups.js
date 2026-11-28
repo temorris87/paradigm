@@ -126,7 +126,7 @@ test("follow-ups: Space, c and r on a follow-up row; Space elsewhere still ticks
     section.remove();
   }
   const bar = (followUp) => viewHints("home", "plan", { followUp }).map(({ cap, words }) => `${cap} ${words}`).join(", ");
-  assertEqual(bar(true), "j k move, Space followed up…, c close it, r follow up again on…, o open, ? all keys");
+  assertEqual(bar(true), "j k move, h l columns, Space followed up…, c close it, r follow up again on…, o open, ? all keys");
   assertTrue(bar(false).includes("Space done"), bar(false));
   assertTrue(TODAY_KEYS.every((entry) => entry.help));
 });

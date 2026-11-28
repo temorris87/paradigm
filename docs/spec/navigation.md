@@ -30,7 +30,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   you."); Projects with their latest status and the Inbox. One focus stop, starting on Up next; `j k gg G`, `}` `{`, Space done (a
   question: Answer…), `s` into the first free slot before it is due (its estimate or 30 min,
   working days only, the timesheet's holidays skipped), `d` delegate, `z` snooze to tomorrow,
-  `i` import today's calendar, `o`/Enter open (`static/js/today/today-keys.js`, also the
+  `i` import today's calendar, `o`/Enter open, `h`/`l` and ←/→ across Now, Next and the side
+  column (below: Columns) (`static/js/today/today-keys.js`, also the
   key-hint bar at the foot; `i` has no hint there, the panel shows it).
 - Today's Import panel (Figma Today 15:105, Tyson, 2026-11-27; feature 030): while nothing was
   imported today and Not today (or the Week's Plan without it) wasn't chosen today, the Week's
@@ -140,6 +141,20 @@ How the app behaves. Kept up to date by each feature that changes it.
   shown (2026-11-27). `g` waits for a second key everywhere (as in Vim): `gg` is the
   first row in every list (`static/js/ui/key-sequence.js` reads two-key entries; a page-wide
   key clears a list's waiting `g`).
+- Columns: `h` and `l` (Tyson, 2026-11-28; feature 039; `static/js/ui/column-target.js`). On
+  Today (Now, Next, the side column), every dashboard (its lanes, a person's cards, Notes and
+  Together included) and the task page (the task over its Notes, the side column), `h` moves the
+  cursor to the column on the left and `l` to the one on the right; ←/→ do the same. It lands on
+  the row in that column nearest in height to the one it left (a tie: the first). No wrap: `h` in
+  the first column and `l` in the last do nothing, and a column with no rows is passed over. On
+  a dashboard "left" and "right" are where the lanes sit on screen: only lanes beside the
+  current one (sharing some of its height) count, so on a person's page `l` on To raise does
+  nothing, and `h`/`l` go between Notes and Together; on an area page `l` from the full-width
+  top lane does nothing. When the lanes stack (under 1400 px) they keep their order. The bar
+  shows `h l` columns on these pages; `?` lists them with the movement keys. The Week's tabs
+  keep `h` `l` as the week and the tree as fold and unfold; one-column pages (People, Meetings,
+  Trash, History) don't bind them (Tyson, 2026-11-28). A phase or milestone's date history,
+  on a dashboard and the Plan, moved from `h` to `t` (Tyson, 2026-11-28).
 - Look (Tyson, 2026-11-26): both windows open in Nord Light, the default and only theme
   (Snow Storm backgrounds, Frost accents, dark text; native scrollbars and checkboxes light),
   and Mermaid diagrams and `:export` follow it. Every text colour reaches 4.5:1 on the
@@ -203,7 +218,7 @@ How the app behaves. Kept up to date by each feature that changes it.
   am) and Know on the right (Meetings, Decisions, Answered questions, Notes, Files, People; an
   area: Weekly digest first, Plan templates); an area's Projects table spans both. No boxes: a heading with a rule; each row's date in a right-aligned column;
   empty sections share one "Nothing yet:" line at the foot of their lane (in the note window
-  too). ←/→ cross between the lanes. Under 1400 px the lanes stack. A hub's linked folders
+  too). `h`/`l` (and ←/→) cross between the lanes (below: Columns). Under 1400 px the lanes stack. A hub's linked folders
   are read again when its dashboard opens.
 - A plain note's URL in the main window (Tyson, 2026-11-27; `mainFromUrl` in
   `static/js/notes/app.js`): `/?note=<id>` of a note that is neither a hub nor a person (a
