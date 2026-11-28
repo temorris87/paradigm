@@ -1,6 +1,7 @@
 /* The Today page (static/js/today/today-page.js), drawn in place of the dashboard while
    .app__note carries data-view="home" (list-page.css hides the dashboard). Three columns:
-   Now and the day, Up next, Projects and the Inbox; one column under 1400 px (Now, Up next,
+   Now and the day (greyed under the Import panel while today isn't imported), Up next,
+   Projects and the Inbox; one column under 1400 px (Now, Up next,
    the day, Projects, Inbox). The whole grid is one listbox. */
 .today {
   display: flex;
@@ -375,25 +376,22 @@
   padding: var(--sp-1) var(--sp-2);
 }
 
-.today-import {
-  margin: 0;
-  padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--border-divider);
-  border-radius: 4px;
-  color: var(--text-dim);
-  font-size: var(--fs-sm);
+/* ---- the Import panel over the day (css/import-panel.css draws the panel itself) ----
+   The day and the panel share one grid cell, the panel on top; the cell grows to the taller. */
+.today-daycell {
+  display: grid;
+  min-width: 0;
 }
 
-.today-import[hidden] {
-  display: none;
+.today-daycell > .today-day,
+.today-daycell > .import-panel {
+  grid-area: 1 / 1;
+  min-width: 0;
 }
 
-.today-import__dot {
-  color: var(--state-caution-fg);
-}
-
-.today-import__dot--done {
-  color: var(--state-success-fg);
+.today-daycell > .import-panel {
+  align-items: flex-start;
+  padding: var(--sp-4) var(--sp-2);
 }
 
 /* One column: Now, Up next, the day, Projects, Inbox. */
@@ -408,8 +406,7 @@
 
   .today-now { order: 1; }
   .today-next { order: 2; }
-  .today-day { order: 3; }
+  .today-daycell { order: 3; }
   .today-projects { order: 4; }
   .today-inbox { order: 5; }
-  .today-import { order: 6; }
 }

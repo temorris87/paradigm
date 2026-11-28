@@ -22,15 +22,32 @@ How the app behaves. Kept up to date by each feature that changes it.
   (`static/js/today/`): the Now card (the task block on now: time left, a bar moving each
   minute, Done / Open note / +15 min; else the next block; else "<Day> is clear.") over the
   day (meetings with their prep, blocks, free gaps of 30 min or more in the working hours,
-  "Log status" when projects are stale); Up next, one list ranked across every project
+  "Log status" when projects are stale; imported events still in the Week's To file show
+  muted, "to file on the Week (g w)", and open the Week); Up next, one list ranked across every project
   (overdue, follow-ups past due, due today, due within 5 working days, questions waiting over
   7 days; never done, on-hold, archived or snoozed; next actions left it with the flag,
   2026-11-26, and an empty list reads "Nothing urgent: nothing overdue, due soon or waiting on
-  you."); Projects with their latest status, the Inbox, and whether today's
-  calendar is in. One focus stop, starting on Up next; `j k gg G`, `}` `{`, Space done (a
+  you."); Projects with their latest status and the Inbox. One focus stop, starting on Up next; `j k gg G`, `}` `{`, Space done (a
   question: Answer…), `s` into the first free slot before it is due (its estimate or 30 min,
   working days only, the timesheet's holidays skipped), `d` delegate, `z` snooze to tomorrow,
-  `o`/Enter open (`static/js/today/today-keys.js`, also the key-hint bar at the foot).
+  `i` import today's calendar, `o`/Enter open (`static/js/today/today-keys.js`, also the
+  key-hint bar at the foot; `i` has no hint there, the panel shows it).
+- Today's Import panel (Figma Today 15:105, Tyson, 2026-11-27; feature 030): while nothing was
+  imported today and Not today (or the Week's Plan without it) wasn't chosen today, the Week's
+  Import panel sits centred over the day column, which greys out and takes no clicks; the Now
+  card, Up next and the side column stay live. "Today's calendar isn't imported", the Outlook
+  steps, the drop zone ("Drop the .ics here" / "or press i to pick it"), Import a file… `i` and
+  Not today, and the "Last imported" line. `i`, Import a file… or a drop of `.ics` files
+  anywhere on Today uploads them as the Week does (`calendar/import-upload.js`): the panel goes,
+  Today redraws, the status line says "Imported n meetings from {file}"; a file that won't
+  parse says `E: not a calendar file: {name}` and the panel stays. Not today sets the Week's
+  `paradigm.planWithout` day, so it hides both pages' panels until tomorrow. Once imported,
+  nothing is said (the side column's import chip is gone).
+- Today's free time left (Tyson, 2026-11-27): the day column's head says what is left from
+  now, not the day's sum: "2.5 h free left today · 1.5 h meetings · 1 h focus" (free working
+  time from now on, outside meetings, placed blocks and events still to file), "No free time
+  left today", "Working day over" after its end, "Day off". Gap rows keep "1.5 h free"; the Now
+  card says "The rest of today is free" when nothing else is on.
 - Note menu: clicking the open note's name (the last crumb, with ▾) opens its menu: rename,
   move (a picker), new note beside / under, file as, archive or restore, export, move to
   trash (with a confirm); a project's or area's starts with Log status…; a person's has Edit

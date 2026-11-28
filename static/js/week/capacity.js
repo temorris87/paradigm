@@ -6,7 +6,8 @@
 //                                          (08:00–17:00, lunch 12:00–13:00 by default)
 //   busyOn(ctx, day)                       { meetings: [[s, e]], focus: [[s, e]] }: the day's
 //                                          timed meetings (not cancelled; no end: 30 min) and
-//                                          task blocks
+//                                          task blocks; ctx.held: more events counted as
+//                                          meetings ([{ day, time, end_time }]: Today's To file)
 //   dayCapacity(ctx, day, settings)        { workMin, meetingMin, focusMin, freeMin }: inside
 //                                          the working hours; overlaps counted once (a
 //                                          meeting wins over a block under it)
@@ -48,13 +49,15 @@ export function workingSpans(settings = {}) {
   return [[start, lunchStart], [lunchEnd, end]].filter(([s, e]) => s < e);
 }
 
-export function busyOn({ tree, meetings, tasks, sessions = [] }, day) {
-  const meetingSpans = meetings ? allMeetings(tree, meetings)
-    .filter(({ meeting, archived }) => !archived && !meeting.cancelled && meeting.day === day && meeting.time)
-    .map(({ meeting }) => {
-      const start = minutes(meeting.time);
-      return [start, minutes(meeting.end_time) ?? start + DEFAULT_LENGTH];
-    }) : [];
+export function busyOn({ tree, meetings, tasks, sessions = [], held = [] }, day) {
+  const timed = meetings ? allMeetings(tree, meetings)
+    .filter(({ meeting, archived }) => !archived && !meeting.cancelled)
+    .map(({ meeting }) => meeting) : [];
+  const meetingSpans = [...timed, ...held].filter((event) => event.day === day && event.time)
+    .map((event) => {
+      const start = minutes(event.time);
+      return [start, minutes(event.end_time) ?? start + DEFAULT_LENGTH];
+    });
   const live = tasks ? new Set(tasks.all().map((task) => task.id)) : null;
   const focus = sessions.filter((session) => session.day === day && (!live || live.has(session.task_id)))
     .map((session) => [minutes(session.start), minutes(session.end)]);
