@@ -241,7 +241,7 @@ static/
                          caps; pure apart from drawing), keys-dialog.js (the ? list),
                          follow-hints.js (f's follow mode: labels for n targets, reading
                          order, what typed letters reach; pure), follow-overlay.js (the
-                         targets in view, their labels, its keys, a target clicked or
+                         targets in view, cut to the boxes that clip them, their labels, its keys, a target clicked or
                          pressed and focused as a click would, labels drawn again on a
                          redraw; its keys: ui-keys.js's follow scope; installed before the
                          window's keys),

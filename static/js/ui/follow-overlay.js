@@ -158,17 +158,13 @@ export function collectTargets(root = document) {
   return readingOrder(boxes).slice(0, MAX_HINTS).map((index) => boxes[index]);
 }
 
-/** Where a target's label goes (its top-left, inside the window), or null when it can't be
- *  clicked now: hidden, inert, disabled, out of view, or under something else. */
+/** Where a target's label goes (the top-left of the part of it in view), or null when it can't
+ *  be clicked now: hidden, inert, disabled, out of view, or under something else. */
 function visibleBox(node, view) {
   if (node.closest("[hidden], [inert], [aria-hidden=true], .follow-hints")) return null;
   if (node.matches(":disabled, [aria-disabled=true]")) return null;
   if (!shown(node)) return null;
-  const rect = node.getBoundingClientRect();
-  const left = Math.max(rect.left, 0);
-  const top = Math.max(rect.top, 0);
-  const right = Math.min(rect.right, view.width);
-  const bottom = Math.min(rect.bottom, view.height);
+  const { left, top, right, bottom } = inView(node, view);
   if (right - left < 1 || bottom - top < 1) return null;
   // A point of it that a click would reach: its middle, or just inside its top-left corner.
   const points = [[(left + right) / 2, (top + bottom) / 2], [left + 1, top + 1]];
@@ -176,8 +172,32 @@ function visibleBox(node, view) {
   return { node, top, left };
 }
 
+/** The part of a target's box in view: inside the window and inside every box around it that
+ *  clips what scrolls (a list scrolled part way shows only part of a row, and its label goes on
+ *  that part, not over the bar above the list). */
+function inView(node, view) {
+  const rect = node.getBoundingClientRect();
+  let box = { left: Math.max(rect.left, 0), top: Math.max(rect.top, 0),
+    right: Math.min(rect.right, view.width), bottom: Math.min(rect.bottom, view.height) };
+  for (let around = node.parentElement; around && around !== document.body; around = around.parentElement) {
+    const style = getComputedStyle(around);
+    if (style.overflowX === "visible" && style.overflowY === "visible") continue;
+    const clip = around.getBoundingClientRect();
+    box = { left: Math.max(box.left, clip.left), top: Math.max(box.top, clip.top),
+      right: Math.min(box.right, clip.right), bottom: Math.min(box.bottom, clip.bottom) };
+  }
+  return box;
+}
+
+/** Drawn, and not transparent; a button that is itself transparent in a box that isn't (a row's
+ *  Remove or Change, shown on hover or focus) still counts: it can be clicked, and following it
+ *  focuses it, which shows it. */
 function shown(node) {
-  if (typeof node.checkVisibility === "function") return node.checkVisibility({ opacityProperty: true, visibilityProperty: true });
+  if (typeof node.checkVisibility === "function") {
+    if (!node.checkVisibility({ visibilityProperty: true })) return false;
+    const around = node.parentElement;
+    return !around || around.checkVisibility({ opacityProperty: true });
+  }
   const style = getComputedStyle(node);
   return style.visibility !== "hidden" && style.display !== "none";
 }

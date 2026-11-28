@@ -81,6 +81,12 @@ None: no route is added or changed.
 - **The overlay module is `static/js/ui/follow-overlay.js`** (`installFollowMode(window)`, `start()`,
   `stop()`, `active`). `main.js` installs it before `installMainKeys`, so its capture-phase
   keydown listener runs first. `start()` does nothing when nothing is in view to label.
+- **What is in view** (`visibleBox`): the target's box cut to the window and to every box around
+  it that clips (overflow not visible), so a row half scrolled out of its list is labelled on
+  the part in the list. `shown()` leaves out what is `visibility: hidden` or inside a
+  transparent box, but not a button that is itself transparent in a box that isn't: the rows'
+  hover-only buttons (Timesheet's remove, On call's change) can be followed, and focusing them
+  shows them.
 - **More targets** than listed: `[role=button]`, `[role=tab]` and `summary` too. A target also
   needs a point a click would reach (`elementFromPoint` at its middle or its top-left), so
   things under a dialog or another layer get no label. At most 361 targets, in reading order.
@@ -111,5 +117,6 @@ None: no route is added or changed.
 - **Typed letters are marked** in each label still shown (`.follow-hints__typed`).
 - **The bar**: every view's bar ends with `f follow` then `? all keys` (`EVERY_BAR` in
   `layout/view-keys.js`). Today's "File all… F" button shows `F` in its cap and title.
-- Tests: `tests/js/test_follow_hints.js`; `test_key_hints.js`, `test_today.js` and
+- Tests: `tests/js/test_follow_hints.js` (a half-scrolled row and a hover-only button
+  included); `test_key_hints.js`, `test_today.js` and
   `test_follow_ups.js` updated for `f follow` and `F`; `test_ui.js` covers the `follow` scope.

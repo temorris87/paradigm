@@ -1,7 +1,7 @@
 // Follow mode (f in the main window): the labels and matching (ui/follow-hints.js), and the
 // overlay on a small fixture (ui/follow-overlay.js): labels drawn, typing activates, Esc clears.
 import { HINT_LETTERS, MAX_HINTS, followStep, hintLabels, labelsFor, nextTyped, readingOrder } from "../../static/js/ui/follow-hints.js";
-import { installFollowMode } from "../../static/js/ui/follow-overlay.js";
+import { collectTargets, installFollowMode } from "../../static/js/ui/follow-overlay.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
 test("follow hints: one home-row letter for 9 or fewer, else two letters; none starts another", () => {
@@ -452,5 +452,65 @@ test("follow overlay: following a target leaves the focus where a mouse click wo
   } finally {
     follow.stop();
     root.remove();
+  }
+});
+
+/** A fixed box over the test page, styled through CSSOM (the CSP forbids style attributes). */
+function fixedBox(styles) {
+  const box = document.createElement("div");
+  for (const [name, value] of Object.entries({ position: "fixed", left: "0", top: "0", "z-index": "1000", background: "white", ...styles })) {
+    box.style.setProperty(name, value);
+  }
+  document.body.append(box);
+  return box;
+}
+
+function rowButton(text, height = "30px") {
+  const button = Object.assign(document.createElement("button"), { type: "button", textContent: text });
+  button.style.setProperty("display", "block");
+  button.style.setProperty("height", height);
+  button.style.setProperty("width", "200px");
+  return button;
+}
+
+test("follow overlay: a row half scrolled out of its list gets its label inside the list, not over what sits above", () => {
+  const box = fixedBox({ width: "300px" });
+  const bar = rowButton("Bar");
+  const list = document.createElement("div");
+  list.style.setProperty("height", "60px");
+  list.style.setProperty("overflow", "auto");
+  const rows = ["R0", "R1", "R2", "R3"].map((text) => rowButton(text));
+  list.append(...rows);
+  box.append(bar, list);
+  try {
+    list.scrollTop = 45; // R1's top 15 px sit above the list's top edge, under the bar
+    const listTop = list.getBoundingClientRect().top;
+    const found = collectTargets(box);
+    const r1 = found.find((each) => each.node === rows[1]);
+    assertTrue(r1, "the half-shown row still gets a label");
+    assertTrue(r1.top >= listTop, `its label sits inside the list (${r1.top} >= ${listTop})`);
+    assertTrue(!found.some((each) => each.node === rows[0]), "a row scrolled out of the list gets none");
+  } finally {
+    box.remove();
+  }
+});
+
+test("follow overlay: a row button shown only on hover (opacity 0) gets a label; one inside a hidden-by-opacity box does not", () => {
+  const box = fixedBox({ width: "300px" });
+  const row = document.createElement("div");
+  const reveal = rowButton("Remove");
+  reveal.style.setProperty("opacity", "0");
+  row.append(reveal);
+  const faded = document.createElement("div");
+  faded.style.setProperty("opacity", "0");
+  const ghost = rowButton("Ghost");
+  faded.append(ghost);
+  box.append(row, faded);
+  try {
+    const found = collectTargets(box).map((each) => each.node);
+    assertTrue(found.includes(reveal), "the hover-only button can be followed");
+    assertTrue(!found.includes(ghost), "a button in a box that is itself transparent cannot");
+  } finally {
+    box.remove();
   }
 });
