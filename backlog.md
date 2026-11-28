@@ -218,3 +218,25 @@ Features in build order. "build feature" takes the first unchecked item.
   week off", "Not counted") is drawn over the hours grid's Thu, Fri and Total columns. (done 2026-11-27)
 - [ ] Edit a task's notes in the note window: the task page's Edit opens them there, with a
   "Live · editing in the note window" chip on the task page while they are open.
+- [ ] When a note is closed, the preview should also close.
+- [ ] Follow ups should only show up on Today if they need to be followed up on that day. They
+  should appear at the top.
+- [ ] For pages that have multiple columns, h and l should work from vim key bindings to move
+  left and right, not having to only use j and k.
+- [ ] If the f key is free, I want to be able to use it (or another key if it's not free) to use
+  as a find key similar to vim plugins that let you hit the f key and quickly follow links. A
+  letter or letters should pop up that I can type to select that item.
+- [ ] Shift H should take me to the previous page I was on, Shift L should take me forward to
+  the page I was last on.
+- [ ] j and k should no longer move me up and down item by item with the f key implemented, j
+  and k should now scroll the page up and down if it has enough content that it's scrollable.
+  Shift H and L should let me move into the left and right sidebars and j and k should scroll
+  there as well, with the f key targeting the panel I'm in, sidebar, middle.
+- [ ] Move all settings into a gear icon setting.
+- [ ] Previous, This Week, and Next Week buttons shouldn't move as the width of the date's text
+  adjusts. I should be able to keep clicking the same location to move forward or backward with
+  ease.
+- [ ] On call entries should be editable in case someone ends up with a replacement.
+- [ ] I need a solution for mermaid diagrams on notes to insert preformatted text for all
+  supported diagram types. I also need some solution for showing me possible syntax within that
+  diagram type -- must be context sensitive -- to help me write diagrams quickly.
