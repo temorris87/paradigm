@@ -17,6 +17,9 @@ const tree = new NoteTree([
   { id: 5, parent_id: null, title: "Ben Ortiz", kind: "person", updated_at: T },
 ]);
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+// Two frames: the editor re-measures (ResizeObserver) in a frame's rendering steps, after its
+// rAF callbacks, so by the second rAF a closed sheet's room is back in the view.
+const frames = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
 function press(key, mods = {}) {
   const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...mods });
@@ -288,6 +291,9 @@ test("note captures: \\t opens the sheet; Enter saves, marks the line and says w
     assertEqual(said.at(-1), "fail E: already captured", "a known capture is refused before the POST");
     assertEqual(made.length, 1, "no second POST, so no 409 in the console");
     assertTrue(sent.includes("changed"));
+    // While the sheet was open the view had one row (line 0 only); line 1 renders once the
+    // editor has re-measured, which a busy machine may not have done after a few ticks.
+    await frames();
     const mark = editor.shadowRoot.querySelector('.pd-line[data-line="1"] .pd-mark');
     assertEqual(mark?.textContent, "Task → Grace · follow up Mon");
     assertEqual(strip.textContent, "From this meeting:Tasks 1Questions 0Decisions 0they live in Team · Tab opens");
