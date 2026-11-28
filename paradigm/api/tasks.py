@@ -21,7 +21,8 @@ POST /api/task/remove          {id}                                        -> {r
                                (the task and all its descendants; its follow-up logs go too)
 POST /api/task/followed_up     {id, note?, outcome: again|closed, next?, today} -> task
                                (logs a follow-up of a delegated task with a follow-up day, else
-                               409; today: the browser's day; again: follow_up = next, after
+                               409; a done task: 409 {error: "task is done"}, nothing logged;
+                               today: the browser's day; again: follow_up = next, after
                                today; closed: done as /api/task/done, follow_up kept)
 GET  /api/task/history?task=N  -> {events: [{day, time, kind, text, note_id}]}  newest first;
                                kind: created, captured, placed, delegated, followed_up, done;
@@ -40,7 +41,7 @@ from typing import Dict, Optional
 
 from paradigm.api.answers import answering
 from paradigm.api.task_files import task_param
-from paradigm.db.follow_ups_repo import BadFollowUp, FollowUpRepository, NotAFollowUp
+from paradigm.db.follow_ups_repo import BadFollowUp, FollowUpRepository, NotAFollowUp, TaskIsDone
 from paradigm.db.task_history import TaskHistory
 from paradigm.db.tasks_repo import BadTask, BadWhen, NoTasksHere, NotAPerson, NotFound, TaskRepository
 from paradigm.notes.meetings import clean_day
@@ -48,7 +49,7 @@ from paradigm.web.requests import BadRequest, int_field, optional_int_field, rea
 from paradigm.web.router import Router
 
 _answer = answering({NotFound: 404, BadWhen: 400, BadTask: 400, NoTasksHere: 400, NotAPerson: 400, BadRequest: 400,
-                     BadFollowUp: 400, NotAFollowUp: 409})
+                     BadFollowUp: 400, NotAFollowUp: 409, TaskIsDone: 409})
 
 
 class TasksApi:

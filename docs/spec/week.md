@@ -87,7 +87,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   known ones follow Outlook (time, end, place, Join link; a moved day; cancelled, declined or
   gone from an export that covers it: cancelled; back on), new ones of a series with meetings
   go into that hub, the rest wait in the sidebar's To file tab (hub guessed from the newest
-  meeting of that name; File, File all, Don't import) and show muted on the week. Skipped:
+  meeting of that name; File, File all, Don't import; each tells Today, whose "to file" rows
+  follow without a reload) and show muted on the week. Skipped:
   all-day, free, tentative, out of office, working elsewhere. Attendees are matched by email,
   then name, else made as people (rooms, groups and you left out; none past 20). A trashed
   imported meeting is never made again. Today shows the same Import panel until today's import
@@ -98,7 +99,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   isn't imported", "In Outlook: File › Save Calendar › Next 7 days, Full details. Then import
   that file.", a dashed drop zone ("Drop the .ics here" / "or press i to pick it"), Import a
   file… `i` and Plan without it, and "Last imported: Wed 25 Nov 08:12 · the tray still works"
-  ("Never imported yet · the tray still works"). Past and future weeks never grey (`]` hides
+  ("Never imported yet · the tray still works"; only the Week's panel names the tray, Today's
+  leaves it out, 2026-11-28). Past and future weeks never grey (`]` hides
   it, `[` brings it back). The tray stays live; `g c` goes to the panel's Import a file…, and
   `j` `k` do nothing in the grid while it shows. Once a file goes in, the panel goes, the grid
   redraws and the focus stays on the page; a failed file leaves it up. Plan without it hides it
@@ -143,7 +145,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   sheet: {name}" (or "no one"), a name box suggesting People (any text allowed), "Only this week
   and role change. Empty puts the sheet's name back.", Save Enter and Cancel Esc. A changed
   cell shows the new name with a "changed" chip, its tooltip "was {sheet's name}" ("was no
-  one" for a cell the sheet left empty); changing it again keeps the sheet's name. The Week
+  one" for a cell the sheet left empty), on the person link in it too (a click still opens the
+  person; an unchanged name's link says "Open {name}", 2026-11-28); changing it again keeps the sheet's name. The Week
   bar, Today and a person's head use the new name. Saving an empty name or the sheet's own puts
   the sheet's back, without the chip. A paste over a week holding a change says so in its
   preview, on a line of its own: "Replaces 1 changed name: Primary 30 Nov (Farid Haddad → Hugo

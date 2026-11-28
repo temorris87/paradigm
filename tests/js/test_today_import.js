@@ -147,7 +147,7 @@ test("today import: the panel greys the day, its rows leave the listbox; the res
     assertEqual(day.querySelectorAll("[role=option]").length, 0, "no day row is an option");
     assertEqual([...panel.querySelectorAll("button")].map((button) => button.textContent).join("|"), "Import a file… i|Not today");
     assertEqual(panel.querySelector(".import-panel__title").textContent, "Today's calendar isn't imported");
-    assertEqual(panel.querySelector(".import-panel__last").textContent, "Last imported: Fri 20 Nov 08:12 · the tray still works");
+    assertEqual(panel.querySelector(".import-panel__last").textContent, "Last imported: Fri 20 Nov 08:12", "Today has no tray");
     assertTrue(!section.querySelector(".today-import"), "no import chip");
     assertEqual(section.querySelector(".today-day .today__detail").textContent, "2.5 h free left today · 1 h meetings · 3 h focus");
     section.querySelector(".today-now__button--done").click();

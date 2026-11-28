@@ -5,7 +5,9 @@
 //     today: "YYYY-MM-DD"; status: /api/calendar/status (null before it loads); planWithout:
 //     the day Plan without it was chosen (localStorage PLAN_WITHOUT_STORE) or null
 //   quietNote({ status, today, planWithout })  "Not imported today · i" once planned without, or ""
-//   lastImportedText(status, today)   "Last imported: Wed 25 Nov 08:12 · the tray still works"
+//   lastImportedText(status, today, page = "week")   "Last imported: Wed 25 Nov 08:12 · the tray
+//                                     still works"; page "today" leaves the tray clause out (Today
+//                                     has no tray)
 //   meetingCount(counts)              the meetings an upload brought in or changed
 //   uploadText(results)               the status line after an upload: results [{ name, counts } |
 //                                     { name, error }]
@@ -31,11 +33,15 @@ export function quietNote({ status, today, planWithout = null }) {
   return status && !status.imported_today && planWithout === today ? "Not imported today · i" : "";
 }
 
-export function lastImportedText(status, today) {
-  if (!status?.last_day) return `Never imported yet · ${TRAY_STILL_WORKS}`;
+export function lastImportedText(status, today, page = "week") {
+  return [importedWhen(status, today), page === "week" ? TRAY_STILL_WORKS : ""].filter(Boolean).join(" · ");
+}
+
+function importedWhen(status, today) {
+  if (!status?.last_day) return "Never imported yet";
   const time = /T(\d{2}:\d{2})/.exec(status.last_at ?? "")?.[1] ?? "";
   const day = (status.last_at ?? "").slice(0, 10) || status.last_day;
-  return `Last imported: ${[dayText(day, { today }), time].filter(Boolean).join(" ")} · ${TRAY_STILL_WORKS}`;
+  return `Last imported: ${[dayText(day, { today }), time].filter(Boolean).join(" ")}`;
 }
 
 export function meetingCount(counts) {

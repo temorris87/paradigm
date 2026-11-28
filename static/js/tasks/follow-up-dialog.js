@@ -8,7 +8,9 @@
 //   followUpDialog(app, taskId, { dateOnly: true })   r: only the date box, logged with no note
 //   closeFollowUp(app, taskId)         c: closed, logged with no note, no dialog
 // Each resolves with the task the server returns, or null when the dialog was cancelled;
-// errors from the server show inside the dialog, which stays open.
+// errors from the server (a 409 "task is done" among them) show inside the dialog, which stays
+// open. Once the log is stored the dialog closes; a redraw that fails after it rejects (the
+// status line shows it) and the log is not sent again.
 import { localDay } from "../meetings/meeting-days.js";
 import { hubOf } from "../notes/hub-groups.js";
 import { dayText } from "../ui/dates.js";
@@ -30,19 +32,27 @@ function followUpTask(app, taskId) {
   return task;
 }
 
-async function logFollowUp(app, task, { note = "", outcome, next = "" }) {
+/** The POST alone: what it refuses (a 409 on a done task among them) is thrown as it is. */
+async function postFollowUp(app, task, { note = "", outcome, next = "" }) {
   const today = localDay(app.today());
   if (note.length > NOTE_MAX) throw new Error(`What happened is ${note.length} characters: ${NOTE_MAX} at most`);
-  const saved = await app.tasksApi.followedUp(task.id, { note, outcome, next, today });
+  return app.tasksApi.followedUp(task.id, { note, outcome, next, today });
+}
+
+/** After the log is stored: the other windows hear of it, then the redraw. A redraw that
+ * fails only shows its error (the caller's guard): the log is in and is never sent again. */
+async function afterLogged(app, task, { outcome, next = "" }) {
+  const today = localDay(app.today());
   app.changes.send({ type: "changed", what: ["tasks"] });
   await app.refreshTree();
   app.say(loggedText(outcome, next, task.title, today));
-  return saved;
 }
 
 export async function closeFollowUp(app, taskId) {
   const task = followUpTask(app, taskId);
-  return logFollowUp(app, task, { outcome: "closed" });
+  const saved = await postFollowUp(app, task, { outcome: "closed" });
+  await afterLogged(app, task, { outcome: "closed" });
+  return saved;
 }
 
 export function followUpDialog(app, taskId, { dateOnly = false } = {}) {
@@ -85,6 +95,7 @@ export function followUpDialog(app, taskId, { dateOnly = false } = {}) {
     document.body.append(dialog);
 
     let done = false;
+    // result may be a promise (the redraw after a log): the dialog is gone before it settles.
     const finish = (result) => {
       if (done) return;
       done = true;
@@ -116,15 +127,20 @@ export function followUpDialog(app, taskId, { dateOnly = false } = {}) {
       event.preventDefault();
       if (ok.disabled) return;
       ok.disabled = true;
+      let logged;
+      const outcome = choices ? choices.value() : "again";
+      let next = "";
       try {
-        const outcome = choices ? choices.value() : "again";
-        const next = outcome === "again" ? parseNextDay(date.input.value, today) : "";
-        finish(await logFollowUp(app, task, { note: note ? note.input.value.trim() : "", outcome, next }) ?? true);
+        next = outcome === "again" ? parseNextDay(date.input.value, today) : "";
+        logged = await postFollowUp(app, task, { note: note ? note.input.value.trim() : "", outcome, next });
       } catch (failure) {
         error.textContent = failure?.message ?? String(failure);
         error.hidden = false;
         ok.disabled = false;
+        return;
       }
+      // Stored: the dialog closes now, so nothing after this can log it a second time.
+      finish(afterLogged(app, task, { outcome, next }).then(() => logged ?? true));
     });
     choices?.onSubmit(() => form.requestSubmit());
     const first = note ? note.input : date.input;

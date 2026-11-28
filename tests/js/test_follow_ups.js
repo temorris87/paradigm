@@ -240,3 +240,48 @@ test("follow-ups: Close it logs and closes; r asks only the date; c closes with 
     dialog.remove();
   }
 });
+
+test("follow-ups: a redraw that fails after the log only shows its error; the log went once", async () => {
+  const posted = [];
+  const app = fakeApp(posted);
+  app.refreshTree = async () => { throw new Error("Paradigm is not answering"); };
+  const done = followUpDialog(app, 12);
+  const dialog = document.querySelector(".follow-up-dialog");
+  try {
+    const form = dialog.querySelector("form");
+    form.requestSubmit();
+    form.requestSubmit();
+    let failed = null;
+    await done.catch((error) => { failed = error; });
+    assertEqual(failed?.message, "Paradigm is not answering", "the error goes to the status line");
+    assertEqual(posted.length, 1, "logged once");
+    assertTrue(!dialog.isConnected, "the dialog closed once the log was in");
+  } finally {
+    dialog.remove();
+  }
+
+  {
+    const closing = fakeApp(posted);
+    closing.refreshTree = app.refreshTree;
+    let error = null;
+    await closeFollowUp(closing, 12).catch((each) => { error = each; });
+    assertEqual(error?.message, "Paradigm is not answering");
+    assertEqual(posted.length, 2, "c: logged once too");
+  }
+});
+
+test("follow-ups: a done task's 409 shows its message inside the dialog, which stays", async () => {
+  const app = fakeApp([], { fail: "task is done" });
+  const done = followUpDialog(app, 12);
+  const dialog = document.querySelector(".follow-up-dialog");
+  try {
+    dialog.querySelector("form").requestSubmit();
+    await tick();
+    assertEqual(dialog.querySelector(".dialog__error").textContent, "task is done");
+    assertTrue(dialog.isConnected);
+    key(document.activeElement, "Escape");
+    assertEqual(await done, null);
+  } finally {
+    dialog.remove();
+  }
+});

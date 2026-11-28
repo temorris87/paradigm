@@ -10,6 +10,7 @@ import { Files } from "../../static/js/files/files-model.js";
 import { NO_FOLDERS, SETTINGS_SECTIONS, linkedFolderRows, litSection, windowChoices } from "../../static/js/settings/settings-model.js";
 import { settingsAction } from "../../static/js/settings/settings-keys.js";
 import { SettingsPage } from "../../static/js/settings/settings-page.js";
+import { TimeSettings } from "../../static/js/timesheet/time-settings.js";
 import { WEEK_VIEWS } from "../../static/js/week/week-page.js";
 import { WINDOW_MODES } from "../../static/js/windows/note-window.js";
 import { resetSequences } from "../../static/js/ui/key-sequence.js";
@@ -86,6 +87,10 @@ test("settings: Escape on the page is back; in a field it is the field's", () =>
   const button = document.createElement("button");
   assertEqual(settingsAction({ key: "Escape", target: button }), "leave");
   assertEqual(settingsAction({ key: "Escape", target: input }), null);
+  const radio = Object.assign(document.createElement("input"), { type: "radio" });
+  const box = Object.assign(document.createElement("input"), { type: "checkbox" });
+  assertEqual(settingsAction({ key: "Escape", target: radio }), "leave", "a Note window choice is not a text field");
+  assertEqual(settingsAction({ key: "Escape", target: box }), "leave");
 });
 
 function fakeTimeApi() {
@@ -223,4 +228,15 @@ test("settings page: the focus stays put when a card draws itself again", async 
     document.querySelectorAll("dialog").forEach((dialog) => dialog.remove());
     section.remove();
   }
+});
+
+test("settings: time-off dates show in words, as the holidays do", () => {
+  const parts = new TimeSettings({ api: {}, today: () => new Date(2026, 10, 28, 10, 0), run: () => {} });
+  parts.draw({ settings: { observed: "1" }, holidays: [], upcoming: [], time_off: [
+    { id: 1, kind: "time_off", first: "2026-12-01", last: "2026-12-05", hours: 0, note: "" },
+    { id: 2, kind: "sick", first: "2026-12-07", last: "2026-12-07", hours: 4, note: "" },
+    { id: 3, kind: "time_off", first: "2027-01-04", last: "2027-01-04", hours: 0, note: "" },
+  ] });
+  assertEqual([...parts.nodes.timeOff.querySelectorAll(".time-list__main")].map((node) => node.textContent).join(" | "),
+    "Time off: Tue 1 Dec to Sat 5 Dec | Sick: Mon 7 Dec | Time off: Mon 4 Jan 2027");
 });

@@ -9,8 +9,12 @@ export const SETTINGS_KEYS = [
 
 const read = keyReader(SETTINGS_KEYS);
 
+// Radios and checkboxes (the Note window choice, Observed) are not text fields: Escape on them
+// is the page's.
+const FIELDS = 'input:not([type="radio"]):not([type="checkbox"]), select, textarea, dialog, .menu';
+
 /** The action a keydown means on the page, or null (a key typed in a field is the field's). */
 export function settingsAction(event) {
-  if (event.target?.closest?.("input, select, textarea, dialog, .menu")) return null;
+  if (event.target?.closest?.(FIELDS)) return null;
   return read(event);
 }

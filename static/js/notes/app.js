@@ -620,6 +620,8 @@ export class NotesApp {
       // A task's notes are saved even when the note's own edits are dropped (:e!).
       if (discard && this.taskNotes?.dirty && !(await this.saveBeforeSwitching())) return false;
       const note = await this.api.get(id);
+      // Typed into the task's notes while the note loaded: saved now, or the switch stops.
+      if (!(await this.saveTaskNotesBeforeClosing())) return false;
       this.taskNotes?.close();
       this.session.open(note);
       this.editor.readOnly = false;
@@ -630,6 +632,18 @@ export class NotesApp {
       this.redraw();
     }
     if (heading) this.goToHeading(heading);
+    return true;
+  }
+
+  /** Saves a task's notes until nothing typed is left, so close() drops no text; a failure
+   * shows its error and keeps the task's notes open. */
+  async saveTaskNotesBeforeClosing() {
+    try {
+      while (this.taskNotes?.dirty) await this.taskNotes.save();
+    } catch (error) {
+      this.fail(error);
+      return false;
+    }
     return true;
   }
 

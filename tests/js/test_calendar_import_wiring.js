@@ -45,6 +45,7 @@ async function planPage({ status = NOT_IMPORTED, stored = {}, upload } = {}) {
     calendar: {
       pending: async () => [],
       status: async () => state.status,
+      ignore: async (ids) => { state.ignored = ids; },
       upload: upload ?? (async (file) => {
         state.uploads.push(file.name);
         state.status = IMPORTED;
@@ -204,4 +205,15 @@ test("import wiring: hasError finds an E: part alone or after an import", () => 
   assertTrue(hasError("Imported 2 meetings from a.ics. E: not a calendar file: b.ics"));
   assertTrue(!hasError("Imported 2 meetings from a.ics"));
   assertTrue(!hasError(""));
+});
+
+test("import wiring: Don't import tells the other windows, so Today's to file rows drop it", async () => {
+  const { page, root, state } = await planPage({ status: IMPORTED });
+  try {
+    await page.ignore([7]);
+    assertEqual(state.ignored.join(), "7");
+    assertEqual(state.sent.map((each) => `${each.type} ${each.what.join("+")}`).join(), "changed meetings");
+  } finally {
+    root.remove();
+  }
 });

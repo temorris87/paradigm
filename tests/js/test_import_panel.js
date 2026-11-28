@@ -35,6 +35,12 @@ test("import panel: the Last imported line, or never", () => {
     "Last imported: Wed 25 Nov · the tray still works", "no time recorded: the day alone");
 });
 
+test("import panel: Today's line has no tray clause (Today has no tray)", () => {
+  assertEqual(lastImportedText(NOT_TODAY, TODAY, "today"), "Last imported: Wed 25 Nov 08:12");
+  assertEqual(lastImportedText({ imported_today: false, last_day: null, last_at: null }, TODAY, "today"), "Never imported yet");
+  assertEqual(lastImportedText(NOT_TODAY, TODAY, "week"), "Last imported: Wed 25 Nov 08:12 · the tray still works");
+});
+
 test("import panel: an upload's status line", () => {
   assertEqual(meetingCount({ new: 2, to_file: 1, updated: 1, skipped: 4, people: 3, files: 1 }), 4, "skipped and people aren't meetings");
   assertEqual(uploadText([{ name: "week.ics", counts: { new: 3, to_file: 1, files: 1 } }]), "Imported 4 meetings from week.ics");

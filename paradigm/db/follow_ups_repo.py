@@ -12,7 +12,7 @@ from paradigm.db.notes_repo import NoteError, NotFound, utc_now
 from paradigm.db.tasks_repo import close_task, live_task
 from paradigm.notes.follow_ups import BadFollowUp, clean_follow_up
 
-__all__ = ["FollowUpRepository", "NotAFollowUp", "BadFollowUp", "NotFound", "follow_up_logs"]
+__all__ = ["FollowUpRepository", "NotAFollowUp", "TaskIsDone", "BadFollowUp", "NotFound", "follow_up_logs"]
 
 Clock = Callable[[], str]
 
@@ -21,17 +21,26 @@ class NotAFollowUp(NoteError):
     """The task is not delegated, or has no follow-up day."""
 
 
+class TaskIsDone(NoteError):
+    """The task is done already: a log on it would close it a second time."""
+
+    def __init__(self) -> None:
+        super().__init__("task is done")
+
+
 class FollowUpRepository:
     def __init__(self, db: Database, clock: Clock = utc_now):
         self._db = db
         self._clock = clock
 
     def log(self, task_id: int, outcome: object, note: object, next_day: object, today: object) -> Dict:
-        """Logs a follow-up of a live task and applies its outcome. Returns the task, with its
+        """Logs a follow-up of a live, open task and applies its outcome. Returns the task, with its
         follow_up_count."""
         outcome, note, next_day, today = clean_follow_up(outcome, note, next_day, today)
         with self._db.transaction() as conn:
             task = live_task(conn, task_id)
+            if task["done"]:
+                raise TaskIsDone()
             if task["delegate_id"] is None or not task["follow_up"]:
                 raise NotAFollowUp("This task is not delegated with a follow-up day")
             conn.execute("INSERT INTO follow_up_logs (task_id, day, note, outcome, next_day, created_at) "

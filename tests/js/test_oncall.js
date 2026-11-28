@@ -199,6 +199,7 @@ test("oncall page: Enter on a cell opens its dialog under it; Esc saves nothing;
     page.show();
     const cellAt = () => root.querySelector('.oncall__cell[data-week="2026-11-30"][data-role="Primary"]');
     assertEqual(cellAt().querySelector(".oncall__change").getAttribute("aria-label"), "Change Primary, week of 30 Nov");
+    assertEqual(cellAt().querySelector(".oncall__person")?.title, "Open Ana Kim", "an unchanged name keeps Open …");
     cellAt().focus();
     press(cellAt(), "Enter");
     let dialog = document.querySelector("dialog.dialog");
@@ -221,6 +222,7 @@ test("oncall page: Enter on a cell opens its dialog under it; Esc saves nothing;
     assertEqual(cellAt().querySelector(".chip")?.textContent, "changed");
     assertEqual(cellAt().title, "was Ana Kim");
     assertEqual(cellAt().querySelector(".oncall__person").textContent, "Tom Reyes");
+    assertEqual(cellAt().querySelector(".oncall__person").title, "was Ana Kim", "hovering the changed name says who it was");
     assertEqual(document.activeElement, cellAt(), "the focus is back on the cell");
     // The app redraws the tab again after a save: the focus stays on the (new) cell.
     page.draw();

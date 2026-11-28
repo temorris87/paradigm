@@ -518,7 +518,8 @@ export class CalendarPage {
 
   async ignore(ids) {
     await this.api.calendar.ignore(ids);
-    await this.load();
+    // As file() does: Today's "to file" rows drop the event without a reload.
+    await this.changed(["meetings"]);
   }
 
   // ---- notes, keys, errors ----------------------------------------------------------------

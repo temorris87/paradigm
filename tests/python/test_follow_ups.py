@@ -7,7 +7,7 @@ from pathlib import Path
 
 from helpers import RunningServer
 from paradigm.db.connection import Database
-from paradigm.db.follow_ups_repo import BadFollowUp, FollowUpRepository, NotAFollowUp, NotFound
+from paradigm.db.follow_ups_repo import BadFollowUp, FollowUpRepository, NotAFollowUp, NotFound, TaskIsDone
 from paradigm.db.migrate import migrate
 from paradigm.db.notes_repo import NoteRepository
 from paradigm.db.people_repo import PeopleRepository
@@ -107,6 +107,14 @@ class FollowUpRepositoryTest(unittest.TestCase):
             self.follow_ups.log(999, "closed", "", "", TODAY)
         self.assertEqual(self.count(mine), 0)
 
+    def test_a_done_task_is_refused_and_logs_nothing(self) -> None:
+        self.follow_ups.log(self.task, "closed", "", "", TODAY)
+        with self.assertRaises(TaskIsDone):
+            self.follow_ups.log(self.task, "closed", "", "", TODAY)
+        with self.assertRaises(TaskIsDone):
+            self.follow_ups.log(self.task, "again", "", "2026-12-01", TODAY)
+        self.assertEqual(self.count(self.task), 1)
+
     def test_history_lists_the_logs_newest_first(self) -> None:
         self.follow_ups.log(self.task, "again", "Pinged on Teams", "2026-12-01", TODAY)
         self.clock.now = "2026-12-01T09:00:00.000Z"
@@ -198,6 +206,16 @@ class FollowedUpApiTest(unittest.TestCase):
         self.assertEqual(self.post(id=self.mine, outcome="closed", today=TODAY)[0], 409)
         _, listing = self.running.get_json("/api/tasks")
         self.assertEqual({each["follow_up_count"] for each in listing["tasks"]}, {0})
+
+    def test_a_done_task_gets_409_and_no_log(self) -> None:
+        status, body = self.running.post_json("/api/task/done", {"id": self.task, "done": True, "today": TODAY})
+        self.assertEqual(status, 200, body)
+        self.assertEqual(self.post(id=self.task, outcome="closed", today=TODAY), (409, {"error": "task is done"}))
+        status, body = self.post(id=self.task, outcome="again", next="2026-12-01", today=TODAY)
+        self.assertEqual((status, body), (409, {"error": "task is done"}))
+        _, listing = self.running.get_json("/api/tasks")
+        listed = next(each for each in listing["tasks"] if each["id"] == self.task)
+        self.assertEqual(listed["follow_up_count"], 0)
 
 
 if __name__ == "__main__":
