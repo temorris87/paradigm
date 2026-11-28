@@ -106,6 +106,12 @@ function addTo(number, delta) {
   return (value < 0n ? "-" : "") + padded;
 }
 
+// The leader's keys only tell the host (pd-editor turns them into "capture" / "uncapture"
+// events): the line's number and text; nothing in the text changes.
+function captureLine(kind) {
+  return (vim) => vim.emit("capture", { kind, line: vim.cursor.line, text: vim.buf.line(vim.cursor.line) });
+}
+
 /** Action functions by name; keys.js says which keys reach them. */
 export const ACTIONS = {
   putAfter: (vim, ctx) => put(vim, { register: ctx.register, count: ctx.count }),
@@ -156,6 +162,10 @@ export const ACTIONS = {
   setMark,
   writeQuit: (vim) => vim.runEx("x"),
   quitForce: (vim) => vim.runEx("q!"),
+  captureTask: captureLine("task"),
+  captureQuestion: captureLine("question"),
+  captureDecision: captureLine("decision"),
+  uncapture: (vim) => vim.emit("uncapture", { line: vim.cursor.line, text: vim.buf.line(vim.cursor.line) }),
   ...SCROLL_ACTIONS,
 };
 

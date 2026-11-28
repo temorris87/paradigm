@@ -23,6 +23,7 @@
 // the headings, the rows and the "Show all" lines, the active one shown with
 // aria-activedescendant. The buttons are for the mouse (tabIndex -1); the keys do the same
 // (hub-keys.js).
+import { chip } from "../ui/chip.js";
 import { hubAction } from "./hub-keys.js";
 
 const MAX_DEPTH = 6;
@@ -169,6 +170,7 @@ export class HubPanel {
       node.append(element("pre", "hub__pre", row.pre));
       return node;
     }
+    if (row.chip) line.append(chip(row.chip.label, row.chip.tone));
     line.append(element("span", "hub__title", row.title));
     if (row.bar) line.append(barOf(row.bar));
     if (section.columns && row.cells) {

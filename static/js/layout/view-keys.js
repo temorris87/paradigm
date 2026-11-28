@@ -72,13 +72,17 @@ export function viewKeyGroups(view, weekTab, options) {
   return [...own, ...keyGroups(MAIN_KEYS).map((group) => ({ ...group, name: "Anywhere in this window" }))];
 }
 
-// The note window's keys are the editor's (Vim's) and the sheet's Tab: no table to read hints
-// from, so a short list of the ones that matter most.
+// The note window's keys are the editor's (Vim's, static/js/editor/keys.js) and the sheet's
+// Tab: no table to read hints from, so a short list of the ones that matter most there, as
+// Figma's "Note window · capture by key" has it: the capture leader first.
 const NOTE_HINTS = [
-  { cap: "i", words: "insert" },
-  { cap: "Esc", words: "normal" },
+  { cap: "\\ t", words: "line → task" },
+  { cap: "\\ q", words: "→ question" },
+  { cap: "\\ d", words: "→ decision" },
+  { cap: "v … \\ t", words: "from a selection" },
+  { cap: "\\ u", words: "uncapture" },
+  { cap: "@", words: "person" },
   { cap: ":w", words: "save" },
-  { cap: "/", words: "search" },
 ];
 
 const SHEET_HINT = { cap: "Tab", words: "sheet" };

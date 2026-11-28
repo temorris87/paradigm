@@ -26,11 +26,22 @@
 //                                     // resolve to the text to put there
 //   <pd-editor compact>               // the status line shows only while it has the focus
 //   editor.hints = { status(text), line(lineText), cmdline(text) }   // the host's words: status
-//                                     // at the status line's right ("3 captured"); line under
-//                                     // the cursor's line in insert mode; cmdline over the
-//                                     // command line while typing one. Each returns "" for none
+//                                     // at the status line's right; line under the cursor's
+//                                     // line in insert mode; cmdline over the command line
+//                                     // while typing one. Each returns "" for none
+//   editor.setLineMarks([{ line, glyph, label, tone }])   // marks the host puts on lines: glyph
+//                                     // in the gutter, label as a chip (ui/chip.js, in tone) at
+//                                     // the line's right; [] for none. Lines are 0-based; the
+//                                     // host sets them again after a change (they don't move)
+//   <pd-editor><div slot="dock">      // a panel the host docks at the foot of the text, over
+//                                     // the status line: it pushes the text up, never covers it
 //
 // The text is always raw Markdown, its syntax coloured: no block is ever drawn rendered.
+//
+// The leader: \t \q \d in normal mode send "capture" (detail { kind: "task" | "question" |
+// "decision", line, text: the line's }); in visual mode the same with the selection's text
+// joined to one line (detail.selection true; line: where it starts); \u sends "uncapture"
+// (detail { line, text }). After \, any other key, or none within a second, cancels quietly.
 //
 // Events: "change" (the text changed, on every edit), "save" (:w, :x, ZZ; detail.force for
 // :w!), "quit" (:q, :x, ZZ, ZQ; detail.force for :q!), "mode" (detail.mode) and "ex" (a
@@ -58,13 +69,14 @@
 // taken, so they move the focus on, like on any page.
 import { copyRich } from "../ui/clipboard.js";
 import { isTextKey, keyName } from "./key-names.js";
-import { BOUND_KEYS, INSERT_ONLY_KEYS } from "./keys.js";
+import { BOUND_KEYS, INSERT_ONLY_KEYS, LEADER_TIMEOUT_MS } from "./keys.js";
 import { Completion } from "./completion.js";
 import { tableInfo } from "./table-edit.js";
 import { EditorView } from "./render.js";
 import { Vim } from "./vim.js";
 
-const STYLESHEETS = [new URL("../../css/editor.css", import.meta.url).href];
+// chip.css: the line marks' chips are the shared status chip.
+const STYLESHEETS = [new URL("../../css/chip.css", import.meta.url).href, new URL("../../css/editor.css", import.meta.url).href];
 const PASTE_KEYS = new Set(["<C-v>", "<C-S-v>", "<S-Insert>"]);
 const WHEEL_LINES = 3;
 
@@ -87,7 +99,10 @@ export class PdEditor extends HTMLElement {
     this.input.setAttribute("autocomplete", "off");
     this.input.setAttribute("spellcheck", "false");
     this.input.setAttribute("aria-label", this.getAttribute("aria-label") || "Text editor");
-    this.frame.append(this.textArea, this.statusLine, this.input);
+    // The host's docked panel (a capture sheet): between the text and the status line.
+    this.dock = document.createElement("slot");
+    this.dock.name = "dock";
+    this.frame.append(this.textArea, this.dock, this.statusLine, this.input);
     root.append(...links, this.frame);
     // The row height and character width are only right once the stylesheet is in.
     for (const link of links) link.addEventListener("load", () => this.measure());
@@ -102,6 +117,8 @@ export class PdEditor extends HTMLElement {
     this.hintBox.hidden = true;
     this.frame.append(this.hintBox);
     this.hints = {};
+    this.lineMarks = [];
+    this.leaderTimer = null;
     this.queue = [];
     this.busy = false;
     this.composing = false;
@@ -223,6 +240,11 @@ export class PdEditor extends HTMLElement {
     this.input.focus(options);
   }
 
+  setLineMarks(marks) {
+    this.lineMarks = Array.isArray(marks) ? marks : [];
+    this.render();
+  }
+
   showMessage(text, { error = false } = {}) {
     this.vim.message = { text, error };
     this.render();
@@ -337,6 +359,8 @@ export class PdEditor extends HTMLElement {
   }
 
   onContextMenu(event) {
+    // The docked panel is the host's: its own menu, if any.
+    if (event.composedPath().includes(this.dock)) return;
     const fromKey = event.button !== 2 || (event.clientX === 0 && event.clientY === 0);
     // A right-click on the text puts the cursor there (a selection stays as it is), so what the
     // menu offers is about the place clicked: a table's column, say.
@@ -427,7 +451,16 @@ export class PdEditor extends HTMLElement {
     }
     this.render();
     this.reportCursor();
+    this.timeLeader();
     this.completion.update(vim, () => this.view.cursorBox(), this.frame.getBoundingClientRect());
+  }
+
+  // The leader waits a second for its key, then goes quietly.
+  timeLeader() {
+    clearTimeout(this.leaderTimer);
+    this.leaderTimer = null;
+    if (!this.vim.leaderPending()) return;
+    this.leaderTimer = setTimeout(() => this.enqueue(() => this.vim.cancelLeader()), LEADER_TIMEOUT_MS);
   }
 
   /** "cursor" when the cursor or the mode moved since the last one. */
@@ -465,7 +498,7 @@ export class PdEditor extends HTMLElement {
   render() {
     this.frame.classList.toggle("pd-editor--focused", this.shadowRoot.activeElement === this.input);
     const note = this.hints?.status?.(this.vim.text) ?? "";
-    this.view.render(this.vim, { syntax: this.getAttribute("syntax") !== "plain", modified: this.modified, note });
+    this.view.render(this.vim, { syntax: this.getAttribute("syntax") !== "plain", modified: this.modified, note, marks: this.lineMarks });
     this.placeInput();
     this.showHint();
   }

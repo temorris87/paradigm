@@ -1,4 +1,5 @@
-// The notes, images and links endpoints (paradigm/api/notes.py, images.py, links.py). Every
+// The notes, images, links and capture endpoints (paradigm/api/notes.py, images.py, links.py,
+// capture.py). Every
 // call resolves to the JSON answer or throws an ApiError carrying the server's message.
 
 export class ApiError extends Error {
@@ -34,8 +35,8 @@ export const notesApi = {
   // keepalive: a save sent as the tab closes still arrives (bodies up to 64 KB). links: the
   // [[wiki link]] texts in body (links.js wikiTargets), mentions its @mentions (mentions.js);
   // links left out, the server marks the note stale.
-  // captures: a meeting's T:/D:/Q: lines (capture.js toPayload); the answer's captured says
-  // how many became tasks or records.
+  // captures: the note's "@Name ?" topic lines (capture.js toPayload; topics only: T:/Q:/D:
+  // lines are no longer captured on save); the answer's captured says how many were new.
   save: ({ id, body, version, force = false, links, mentions, captures }, { keepalive = false } = {}) =>
     call("/api/note/save", { payload: { id, body, version, force, links, mentions, captures }, keepalive }),
   rename: (id, title) => call("/api/note/rename", { payload: { id, title } }),
@@ -65,4 +66,15 @@ export const linksApi = {
   list: () => call("/api/links"),
   // entries: [{ id, version, links, mentions, tasks }] -> { stored: [ids] }
   catchUp: (entries) => call("/api/links/index", { payload: { entries } }),
+};
+
+// A task, question or decision made from a line of a note (capture-sheet.js). Capture:
+// { kind, id, title, quote, hub_id, hub_title, person_id, person_name, role, follow_up, due, open }
+export const capturesApi = {
+  // -> [Capture] from a note, in the order made
+  list: async (sourceId) => (await call(`/api/captures?source=${encodeURIComponent(sourceId)}`)).captures,
+  // payload: { source_id, kind, title, quote, hub_id, person_id?, role?, follow_up?, due? } -> Capture
+  make: async (payload) => (await call("/api/capture", { payload })).capture,
+  // kind "task": the task is deleted; a question or decision goes to the Trash
+  remove: (kind, id) => call("/api/capture/remove", { payload: { kind, id } }),
 };

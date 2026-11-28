@@ -4,7 +4,8 @@
 //   startLiveSender(app, { changes, window })   app: the note window's NotesApp
 //
 // Sends { type: "live", id, title, kind, crumbs, fields: [{ name, label, text, highlights }],
-// active, line, col, mode, trashed } after an edit, a cursor move, a mode change or a redraw
+// active, line, col, mode, trashed, captures } (captures: what was captured from the note,
+// for the meeting's "Agreed in this meeting") after an edit, a cursor move, a mode change or a redraw
 // (a note opened, renamed, reloaded); answers "live-ask" at once, with reply: true so the main
 // window doesn't take the answer for a newly opened note (and so the first one after a
 // trash's hold ends); "live-closed" on pagehide. From a trash until the next note has gone out
@@ -185,6 +186,6 @@ export class LiveSender {
     const cursor = this.cursors[active];
     const crumbs = [groupOf(app.tree, id).heading, ...app.tree.path(id).filter((each) => each.id !== id).map((each) => each.title)];
     return { type: "live", id, title: note.title, kind: note.kind ?? "", crumbs, fields, active,
-      line: cursor.line, col: cursor.col, mode: cursor.mode, trashed: false };
+      line: cursor.line, col: cursor.col, mode: cursor.mode, trashed: false, captures: app.captures?.of(id) ?? [] };
   }
 }

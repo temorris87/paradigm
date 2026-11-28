@@ -2,8 +2,10 @@
 // dashboard while it is typed, with a caret where the cursor is, so a screen share of this
 // window shows where the typing is. The note window sends what it shows (live-sender.js) on
 // the windows' channel: { type: "live", id, title, kind, crumbs, fields: [{ name, label,
-// text, highlights }], active, line, col, mode, trashed, reply? } (reply: the answer to
-// "live-ask"), and "live-closed" when it goes.
+// text, highlights }], active, line, col, mode, trashed, captures, reply? } (reply: the
+// answer to "live-ask"; captures: what was captured from it, notes/capture-model.js), and
+// "live-closed" when it goes. A meeting gets the card "Agreed in this meeting" beside its
+// Agenda and Notes (agreed-card.js).
 //
 //   const live = new LivePage(section, { changes, app, viewer, onNewNote, ready })
 //     app()            the NotesApp (its tree, renderer options, open)
@@ -21,6 +23,7 @@ import { parseMarkdown, renderBlocks } from "../markdown/index.js";
 import { recentIds } from "../palette/recent.js";
 import { drawRendered, followNoteLinks } from "../ui/rendered-text.js";
 import { CARET, placeCaret } from "./caret.js";
+import { AgreedCard } from "./agreed-card.js";
 import { markHighlights } from "./highlights.js";
 
 // Ids on this page start so, then the field's name ("live-agenda-", "live-body-"), apart
@@ -54,6 +57,12 @@ export class LivePage {
     this.stateLine = element("p", "live__state", "The note window is closed");
     this.head.append(this.crumbs, this.title, this.stateLine);
     this.body = element("div", "live__body");
+    this.fieldsBox = element("div", "live__fields");
+    this.agreed = new AgreedCard({
+      onOpenTask: (id) => this.app().guard(this.app().showTask(id)),
+      onOpenNote: (id) => this.openNote(id),
+    });
+    this.body.append(this.fieldsBox, this.agreed.root);
     this.note = element("p", "live__note");
     this.empty = element("div", "live__empty");
     const open = element("button", "live__open", "Open note window");
@@ -122,9 +131,18 @@ export class LivePage {
     }
     this.dropFields(new Set(fields.map((field) => field.name)));
     const views = fields.map((field) => this.drawField(field, state));
-    this.body.replaceChildren(...views.map((view) => view.root));
+    this.fieldsBox.replaceChildren(...views.map((view) => view.root));
+    this.drawAgreed(state);
     syncDiagramSheets(document); // sheets of diagrams gone with their blocks go too
     this.scrollToCaret();
+  }
+
+  /** A meeting's card of what was agreed: right of its Agenda and Notes (stacked when narrow). */
+  drawAgreed(state) {
+    const meeting = state.kind === "meeting";
+    this.body.classList.toggle("live__body--meeting", meeting);
+    this.agreed.root.hidden = !meeting;
+    if (meeting) this.agreed.show(state.captures ?? [], this.app().today?.() ?? new Date());
   }
 
   dropFields(keep) {
@@ -153,7 +171,7 @@ export class LivePage {
     const active = field.name === state.active;
     const caret = active ? placeCaret(field.text ?? "", state.line ?? 0, state.col ?? 0, state.mode) : null;
     const { blocks, footnotes } = renderBlocks(parseMarkdown(caret ? caret.text : field.text ?? ""), this.options(state.id, field.name));
-    const marks = JSON.stringify(view.highlights.map(({ text, label, title, capture, meta }) => [text, label, title, capture, meta]));
+    const marks = JSON.stringify(view.highlights.map(({ text, label, title, capture }) => [text, label, title, capture]));
     const pieces = blocks.filter((block) => block.html).map((block) => ({ ...block, key: blockKey(block.html, marks, caret) }));
     if (footnotes) pieces.push({ html: footnotes, key: blockKey(footnotes, marks, caret), footnotes: true });
     // Blocks whose HTML did not change keep their node; maths drawn in the others is reused.
@@ -304,20 +322,13 @@ function blankLineGap(pieces, caret) {
 
 /**
  * Normal mode's block caret covers the character it is on: the next one in the text.
- * Highlights split the text around the caret: they leave empty text nodes beside it, wrap
- * the character in a span, and put a capture's badge (which stands for the "D: ") right
- * after it. So empty nodes are skipped, the caret moves past such a badge, and a character
- * at the start of the element beside it counts as beside it.
+ * Highlights split the text around the caret: they leave empty text nodes beside it and wrap
+ * the character in a span. So empty nodes are skipped, and a character at the start of the
+ * element beside it counts as beside it.
  */
 function coverNextCharacter(caret) {
   let next = caret.nextSibling;
-  while (next) {
-    if (next.nodeType === Node.TEXT_NODE && !next.data) next = next.nextSibling;
-    else if (next.matches?.("[data-badge=\"capture\"]")) {
-      next.after(caret);
-      next = caret.nextSibling;
-    } else break;
-  }
+  while (next && next.nodeType === Node.TEXT_NODE && !next.data) next = next.nextSibling;
   const text = next ? leadingText(next) : null;
   // Only a character right beside the caret: one in a later line or block is not under it.
   if (!text || text.data[0] === "\n") {

@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="/css/ui.css">
   <link rel="stylesheet" href="/css/chip.css">
   <link rel="stylesheet" href="/css/key-hints.css">
+  <link rel="stylesheet" href="/css/capture-sheet.css">
   <script type="module" src="/js/note-main.js"></script>
 </head>
 <body>
@@ -43,7 +44,13 @@
         <pd-editor class="app__agenda-editor" compact aria-labelledby="agenda-label" aria-label="Agenda"></pd-editor>
       </div>
       <div class="field-label field-label--main" id="note-label"></div>
-      <pd-editor class="app__editor" aria-label="Note"></pd-editor>
+      <pd-editor class="app__editor" aria-label="Note">
+        <!-- The capture sheet (\t \q \d on a line), docked at the foot of the text, over the
+             status line (notes/capture-sheet.js). -->
+        <section class="capture-sheet" slot="dock" hidden></section>
+      </pd-editor>
+      <!-- What this note's captures made: "From this meeting: Tasks 2 ..." (notes/capture-actions.js). -->
+      <div class="capture-strip" role="status" hidden></div>
       <!-- The sections slide up over the text from a bar of counts (hubs/section-sheet.js). -->
       <section class="sheet" aria-label="Sections" hidden>
         <section class="hub" aria-label="Sections" hidden></section>

@@ -275,6 +275,20 @@ function swapCorners(vim) {
   vim.setCursor(pos(vim.cursor.line, anchorCol));
 }
 
+// \t \q \d on a selection: its text joined to one line goes to the host, from the line the
+// selection starts on; visual mode ends.
+function captureSelection(kind) {
+  return (vim) => {
+    const region = visualRegion(vim);
+    const start = region.kind === "line" ? pos(region.first, 0) : region.kind === "block" ? pos(region.top, region.left) : region.start;
+    const text = (vim.selectedText() ?? "").split("\n").map((part) => part.trim()).filter(Boolean).join(" ");
+    exitVisual(vim);
+    vim.setCursor(start);
+    vim.clampCursor();
+    vim.emit("capture", { kind, line: start.line, text, selection: true });
+  };
+}
+
 export const VISUAL_ACTIONS = {
   exitVisual,
   visualChar: switchVisual("char"),
@@ -298,5 +312,8 @@ export const VISUAL_ACTIONS = {
     exitVisual(vim);
     vim.startCmdline(":", "'<,'>");
   },
+  captureTask: captureSelection("task"),
+  captureQuestion: captureSelection("question"),
+  captureDecision: captureSelection("decision"),
   ...SCROLL_ACTIONS,
 };

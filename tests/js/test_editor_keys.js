@@ -4,6 +4,7 @@ import {
 } from "../../static/js/editor/keys.js";
 import { parse } from "../../static/js/editor/parser.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
+import { type, vimAt } from "./editor-helpers.js";
 
 function event(key, mods = {}) {
   return { key, code: mods.code ?? "", ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, ...mods };
@@ -127,4 +128,43 @@ test("parser: visual operators act at once, text objects are targets", () => {
   assertEqual(parsed("iw", "visual").cmd.entry.name, "word");
   assertEqual(parsed("i", "visual").status, "incomplete");
   assertEqual(parsed("diw").cmd.target.entry.name, "word");
+});
+
+test("leader: \\t \\q \\d on a line tell the host the kind, the line and its text; \\u uncaptures", () => {
+  const vim = vimAt("intro\nGrace will |share it");
+  type(vim, "\\t");
+  type(vim, "\\q");
+  type(vim, "\\d");
+  type(vim, "\\u");
+  const events = vim.takeEvents();
+  assertEqual(events.map((event) => `${event.type}:${event.kind ?? ""}:${event.line}:${event.text}`).join(" | "),
+    "capture:task:1:Grace will share it | capture:question:1:Grace will share it | capture:decision:1:Grace will share it | uncapture::1:Grace will share it");
+  assertEqual(vim.text, "intro\nGrace will share it", "the text stays");
+  assertEqual(vim.bellCount, 0);
+  assertTrue(NORMAL_KEYS.some((entry) => entry.keys === "\\u") && !VISUAL_KEYS.some((entry) => entry.keys === "\\u"));
+});
+
+test("leader: in visual mode the selection, joined to one line, from where it starts", () => {
+  const vim = vimAt("Ask |Ben to check\n  the numbers today");
+  type(vim, "vj$\\t");
+  const [event] = vim.takeEvents();
+  assertEqual(`${event.type}:${event.kind}:${event.line}:${event.text}:${event.selection}`, "capture:task:0:Ben to check the numbers today:true");
+  assertEqual(vim.mode, "normal");
+  assertEqual(vim.cursor.line, 0);
+});
+
+test("leader: any other key cancels quietly; insert mode types \\", () => {
+  const vim = vimAt("|abc");
+  type(vim, "\\x");
+  assertEqual(vim.bellCount, 0, "no bell");
+  assertEqual(vim.text, "abc", "x did not delete");
+  assertEqual(vim.takeEvents().length, 0);
+  assertEqual(vim.pending.length, 0);
+  type(vim, "\\");
+  assertTrue(vim.leaderPending());
+  vim.cancelLeader();
+  assertTrue(!vim.leaderPending() && vim.pending.length === 0, "the element's timeout cancels it");
+  type(vim, "i\\t<Esc>");
+  assertEqual(vim.text, "\\tabc");
+  assertEqual(vim.takeEvents().filter((event) => event.type === "capture").length, 0);
 });

@@ -33,12 +33,12 @@ import { showBreadcrumb } from "./breadcrumb.js";
 import { registerNoteCommands, runNoteCommand } from "./commands.js";
 import { NO_NOTE, liveBodyOf, screenNoteId } from "./screen-note.js";
 import { headingLine } from "./headings.js";
-import { groupOf, hubOf, isArchived, isHub, isMeeting, isPerson, topNoteOf } from "./hub-groups.js";
-import { captureLines, captureText, parseTaskText, toPayload, topicLines } from "./capture.js";
+import { groupOf, hubOf, isArchived, isHub, isPerson, topNoteOf } from "./hub-groups.js";
+import { captureText, parseTaskText, toPayload, topicLines } from "./capture.js";
+import { NoteCaptures } from "./capture-actions.js";
 import { PrepBox } from "../hubs/prep.js";
 import { triageInbox } from "../triage/triage.js";
 import { ContextStrip } from "../today/context-strip.js";
-import { dayText } from "../ui/dates.js";
 import { AgendaField } from "./agenda.js";
 import { mentionCompletions, rewriteMentionsOf } from "./mention-actions.js";
 import { personForMention } from "./mentions.js";
@@ -88,7 +88,7 @@ export class NotesApp {
   constructor({ role = "note", editor, tree, crumbs, navigator, hub, agenda = {}, home, people, meetings, trash, goTo, api, trashApi,
                 imagesApi, peopleApi, meetingsApi, recordsApi, linksApi, tasksApi = null, calendarApi = null,
                 planApi = null, planTemplatesApi = null, filesApi = null, templatesApi = null, foldersApi = null, statusApi = null,
-                timeApi = null, onCallApi = null, extraPages = {}, pins = null, saveState = null, connection = null, prep = null, contextStrip = null,
+                timeApi = null, onCallApi = null, capturesApi = null, capture = {}, extraPages = {}, pins = null, saveState = null, connection = null, prep = null, contextStrip = null,
                 buttons = {}, status = null, dashboard = null, location = window.location, history = window.history,
                 today = () => new Date(), changes = new Changes() }) {
     this.role = role;
@@ -242,6 +242,9 @@ export class NotesApp {
     buttons.palette?.addEventListener("click", () => this.guard(openPalette(this)));
     buttons.dashboard?.addEventListener("click", () => this.dashboardCommand());
     this.images = new NoteImages({ editor, api: imagesApi, currentId: () => this.currentId });
+    // \t \q \d \u in the note window's editor, the captured lines' marks, the strip under it.
+    this.captures = role === "note" && capturesApi && capture.sheet
+      ? new NoteCaptures(this, { api: capturesApi, sheet: capture.sheet, strip: capture.strip ?? null }) : null;
     registerNoteCommands(editor);
     if (this.agendaEditor) registerNoteCommands(this.agendaEditor);
     editor.completions = mentionCompletions(this);
@@ -273,7 +276,11 @@ export class NotesApp {
 
   listen() {
     const editor = this.editor;
-    editor.addEventListener("change", (event) => this.session.edited(event.detail.value));
+    editor.addEventListener("change", (event) => {
+      // Only the editor's own change: a docked panel's input (the capture sheet) is a child of
+      // <pd-editor>, so its native change bubbles here too, with no detail.
+      if (event.target === editor && event.detail) this.session.edited(event.detail.value);
+    });
     editor.addEventListener("save", (event) => this.saveCommand(Boolean(event.detail.force)));
     editor.addEventListener("files", (event) => this.guard(this.images.add(event.detail)));
     for (const box of [editor, this.agendaEditor].filter(Boolean)) {
@@ -380,15 +387,15 @@ export class NotesApp {
     this.say(`"${gone?.title ?? "The note"}" was moved to the Trash`);
   }
 
-  /** A meeting's save sends its T:/D:/Q: lines (capture.js); what they made shows at once. */
+  /** A save sends the note's "@Name ?" topic lines (capture.js); T:/D:/Q: lines are plain
+   * text now (a capture is made by key: capture-actions.js). */
   capturing(save) {
     return async (note, options) => {
-      const meeting = isMeeting(this.tree, note.id);
-      const found = [...(meeting ? captureLines(note.body, this.tree, this.today()) : []), ...topicLines(note.body, this.tree)];
+      const found = topicLines(note.body, this.tree);
       const captures = found.length ? found.map(toPayload) : undefined;
       const result = await save({ ...note, captures }, options);
       if (result?.captured) {
-        this.changes.send({ type: "changed", what: ["tasks", "records", "topics"] });
+        this.changes.send({ type: "changed", what: ["topics"] });
         await this.refreshTree();
         this.say(`${result.captured} captured`);
       }
@@ -483,6 +490,7 @@ export class NotesApp {
 
   async refreshTree() {
     const today = this.today();
+    this.captures?.invalidate();
     const [notes, people, meetings, records, trash, , tasks, sessions, importStatus, plan, planTemplates, files, folders, status, timeSettings, topics, onCall] = await Promise.all([
       this.api.list(), this.peopleApi.list(), this.meetingsApi.list(), this.recordsApi.list(),
       this.trashApi.list(), this.linkIndex.refresh(), this.tasksApi?.list() ?? [],
@@ -578,6 +586,7 @@ export class NotesApp {
 
   redraw() {
     const id = this.currentId;
+    this.captures?.sync(id);
     // While a page (Home, Calendar...) is shown, no tree row is the current one.
     const now = this.today();
     const health = new Map(this.tree.children(null).filter((note) => note.kind === "project" && !note.archived_at)
@@ -593,7 +602,8 @@ export class NotesApp {
       links: this.linkIndex.links, mentions: this.linkIndex.mentions, trash: this.trash, tasks: this.tasks,
       sessions: this.sessions, importStatus: this.importStatus, plan: this.plan, planTemplates: this.planTemplates,
       files: this.files, templateId: this.templateId, folders: this.folders, folderId: this.folderId, taskId: this.taskId, taskNoteId: this.taskNoteId, statusLogs: this.statusLogs,
-      timeSettings: this.timeSettings, topics: this.topics ?? [], onCall: this.onCall, today: this.today() };
+      timeSettings: this.timeSettings, topics: this.topics ?? [], onCall: this.onCall, today: this.today(),
+      captures: { source: id, list: this.captures?.of(id) ?? [] } };
     const trashed = this.trash.entries.length;
     if (this.trashButton) this.trashButton.textContent = trashed ? `Trash · ${trashed}` : "Trash";
     this.hubPage.show(ctx, id);
@@ -602,7 +612,7 @@ export class NotesApp {
     // A page shown over the note names the tab, not the note under it.
     const title = this.views.shown ? viewLabel(this.views.shown) : this.tree.get(id)?.title ?? this.session.note?.title;
     document.title = title ? `${title} - Paradigm` : "Paradigm";
-    this.editor.hints = { ...this.captureHints(id), cmdline: (text) => this.cmdlineHint(text) };
+    this.editor.hints = { cmdline: (text) => this.cmdlineHint(text) };
     this.prep?.show(ctx, this.tree.get(id) ?? null);
     this.drawContext();
     this.markEmptyFields();
@@ -653,37 +663,22 @@ export class NotesApp {
     };
   }
 
-  /** The text the open note's decisions and questions were made from, for its badges on the
-   * Live page; on a meeting, its captured T:/D:/Q: lines get theirs before the text, with
-   * what they made. */
+  /** The open note's captures, for the Live page: a chip after each captured line (from the
+   * captures, capture-model.js); a decision or question made from its text otherwise (the
+   * right-click menu's) gets its badge after the text it was made from. */
   highlightsOf(id) {
     if (id === null) return [];
     const labels = { decision: "Decision", question: "Question" };
-    const today = this.today();
-    const lines = isMeeting(this.tree, id) ? captureLines(this.editor.value, this.tree, today) : [];
-    const captured = new Map(lines.map((line) => [line.quote, line]));
-    const records = recordsFrom(this.tree, this.records, id).filter((record) => record.quote).map((record) => {
-      const line = captured.get(record.quote);
-      return {
-        text: record.quote,
-        label: record.kind === "question" && record.answered ? "Answered" : labels[record.kind],
-        title: `${labels[record.kind]}: ${this.tree.get(record.id).title} (click to open)`,
-        data: record.id,
-        kind: record.kind,
-        ...(line ? { capture: record.kind, meta: line.people.length ? `with ${line.people.map((person) => person.title).join(", ")}` : "" } : {}),
-      };
-    });
-    const tasks = this.tasks.all().filter((task) => task.source_id === id && captured.has(task.quote)).map((task) => {
-      const delegate = this.tree.get(task.delegate_id);
-      const owed = this.tree.get(task.for_person_id);
-      return {
-        text: task.quote, label: "Task", kind: "task", capture: "task", data: null,
-        title: `Task on ${this.tree.get(task.note_id)?.title ?? "the hub"}: ${task.title}`,
-        meta: [delegate ? `→ ${delegate.title}` : owed ? `for ${owed.title}` : "", task.due ? `due ${dayText(task.due, { today })}` : ""]
-          .filter(Boolean).join(" · "),
-      };
-    });
-    return [...records, ...tasks];
+    const captures = this.captures?.of(id) ?? [];
+    const captured = new Set(captures.filter((capture) => capture.kind !== "task").map((capture) => capture.id));
+    const records = recordsFrom(this.tree, this.records, id).filter((record) => record.quote && !captured.has(record.id)).map((record) => ({
+      text: record.quote,
+      label: record.kind === "question" && record.answered ? "Answered" : labels[record.kind],
+      title: `${labels[record.kind]}: ${this.tree.get(record.id).title} (click to open)`,
+      data: record.id,
+      kind: record.kind,
+    }));
+    return [...(this.captures?.highlights(id) ?? []), ...records];
   }
 
   drawContext() {
@@ -711,28 +706,6 @@ export class NotesApp {
     if (!parsed.title) return "";
     const owner = hubOf(this.tree, this.currentId) ?? this.tree.get(this.currentId);
     return `${captureText({ kind: "task", ...parsed }, this.today())} · on ${owner?.title ?? "this note"}: “${parsed.title}”`;
-  }
-
-  /** On a meeting: what its capture lines made ("3 captured · 1 pending") and, while one is
-   * typed, what it will make. */
-  captureHints(id) {
-    if (id === null || !isMeeting(this.tree, id)) return {};
-    const today = this.today();
-    const hub = hubOf(this.tree, id);
-    const made = new Set([...recordsFrom(this.tree, this.records, id).map((record) => record.quote),
-      ...this.tasks.all().filter((task) => task.source_id === id).map((task) => task.quote)]);
-    return {
-      status: (text) => {
-        const lines = captureLines(text, this.tree, today);
-        if (!lines.length) return "";
-        const done = lines.filter((line) => made.has(line.quote)).length;
-        return [`${done} captured`, lines.length > done ? `${lines.length - done} pending` : ""].filter(Boolean).join(" · ");
-      },
-      line: (text) => {
-        const [line] = captureLines(text, this.tree, today);
-        return line ? `${captureText(line, today)}${hub ? ` · on ${hub.title}` : ""}` : "";
-      },
-    };
   }
 
   /** The labels over the text boxes show their hint while the box is empty. */

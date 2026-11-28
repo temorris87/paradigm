@@ -84,6 +84,15 @@ export function ensureCursorVisible(vim) {
 }
 
 /**
+ * The screen grew (a docked panel closed, the window got taller): lines scrolled off the top
+ * come back rather than leave empty rows below the end of the text.
+ */
+export function fillScreen(vim) {
+  normalizeTop(vim);
+  vim.view.top = Math.min(vim.view.top, topShowingDownTo(vim, vim.buf.lastLine));
+}
+
+/**
  * Scroll by `steps` lines (negative = up) and keep the cursor on screen. With stopAtEnd,
  * scrolling down stops once the end of the text shows (Ctrl-D). Returns false if nothing moved.
  */

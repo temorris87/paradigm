@@ -756,3 +756,9 @@
 .hub-line__action--answer {
   margin-left: var(--sp-3);
 }
+
+/* A row's kind chip before its title (a meeting's Agreed in this meeting). */
+.hub__line > .chip {
+  flex: none;
+  align-self: center;
+}

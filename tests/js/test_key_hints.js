@@ -1,6 +1,8 @@
 // The key-hint bar (static/js/ui/key-hints.js), each view's table (layout/view-keys.js) and
 // the ? list (ui/keys-dialog.js).
 import { CALENDAR_KEYS } from "../../static/js/calendar/calendar-keys.js";
+import { NORMAL_KEYS, VISUAL_KEYS } from "../../static/js/editor/keys.js";
+import { CAPTURE_SHEET_KEYS } from "../../static/js/notes/capture-sheet-keys.js";
 import { FOLDER_BROWSER_KEYS } from "../../static/js/files/folder-browser-keys.js";
 import { GANTT_KEYS } from "../../static/js/gantt/gantt-keys.js";
 import { HUB_KEYS } from "../../static/js/hubs/hub-keys.js";
@@ -19,7 +21,7 @@ import { openKeysDialog } from "../../static/js/ui/keys-dialog.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
 const TABLES = { MAIN_KEYS, TODAY_KEYS, HUB_KEYS, CALENDAR_KEYS, TIME_KEYS, ONCALL_KEYS, PAGE_KEYS, TASK_PAGE_KEYS, GANTT_KEYS,
-  FOLDER_KEYS, UI_KEYS, TRIAGE_KEYS, FOLDER_BROWSER_KEYS };
+  FOLDER_KEYS, UI_KEYS, TRIAGE_KEYS, FOLDER_BROWSER_KEYS, CAPTURE_SHEET_KEYS };
 const VIEWS = [null, "home", "people", "meetings", "trash", "template", "folder", "task", "plan", "live"];
 const WEEK_TABS = ["plan", "timesheet", "settings", "oncall"];
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -132,4 +134,13 @@ test("keys dialog: lists a table as it groups its keys; Escape closes it, the fo
   } finally {
     row.remove();
   }
+});
+
+test("note keys: the note window's bar, as Figma has it: the capture leader, then @, :w and Tab", () => {
+  assertEqual(noteHints({ sheet: true }).map(({ cap, words }) => `${cap} ${words}`).join(" | "),
+    "\\ t line → task | \\ q → question | \\ d → decision | v … \\ t from a selection | \\ u uncapture | @ person | :w save | Tab sheet");
+  // Each leader cap is bound in the editor's own table: \t \q \d \u in normal mode, \t on a selection.
+  const bound = (table, keys) => table.some((entry) => entry.keys === keys);
+  for (const keys of ["\\t", "\\q", "\\d", "\\u"]) assertTrue(bound(NORMAL_KEYS, keys), keys);
+  assertTrue(bound(VISUAL_KEYS, "\\t") && bound(NORMAL_KEYS, "v"));
 });

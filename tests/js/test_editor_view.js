@@ -124,3 +124,13 @@ test("view: a click moves the cursor and ends visual mode", () => {
   assertEqual(vim.mode, "normal");
   assertEqual(`${vim.cursor.line}:${vim.cursor.col}`, "3:1");
 });
+
+test("view: a screen that grows brings back lines above rather than leave rows empty below", () => {
+  const vim = type(screen(8), "5j"); // a docked panel takes rows: line 5 pushes the top down
+  assertEqual(where(vim), "top 3 line 5");
+  vim.resize(20, 10); // the panel closes: all 8 lines fit again
+  assertEqual(where(vim), "top 0 line 5");
+  const long = type(screen(30), "15j");
+  long.resize(8, 10); // text still below: only the scrolloff margin above moves the top
+  assertEqual(where(long), "top 12 line 15");
+});

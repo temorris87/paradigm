@@ -12,8 +12,9 @@
 //   section.rows(ctx, note)    [{ id, title, depth, detail, date?, cells?, muted?, late?, actions?,
 //                              snippet?, at?, task?, file?, template?, addSubtask?, next?,
 //                              health?, statusEntry?, statusHistory?, box?, bar?, pre?,
-//                              cellClasses?, folder?, tip? }]
+//                              cellClasses?, folder?, tip?, chip? }]
 //                              folder: a linked folder's id (the Files section's folder rows);
+//                              chip: { label, tone } a kind chip before the title (Agreed)
 //                              tip: the row's hover text
 //                              box: drawn boxed (the newest status); bar: { left, width,
 //                              today } in parts of one (Portfolio); pre: text kept as written
@@ -22,7 +23,8 @@
 //                              cells: a table row's columns (an area's Projects)
 //                              ctx: { tree, people, meetings, records, links, mentions, tasks,
 //                              sessions, plan, files, planTemplates, expanded: Set of task ids
-//                              shown in place with their subtasks, today }
+//                              shown in place with their subtasks, today, captures: { source,
+//                              list }: the open note's captures (notes/capture-actions.js) }
 //                              task: a task's id (Tasks, Waiting on, I owe): Enter opens its
 //                              page; expanded (Tasks' top rows): whether it is open in place
 //                              (static/js/people/people-model.js, static/js/meetings/
@@ -60,6 +62,7 @@ import { dayText, daysAgo } from "../ui/dates.js";
 import { StatusLogs, digest, firstSentence, healthLabel, healthOf } from "../status/status-model.js";
 import { portfolioBars } from "../plan/plan-rows.js";
 import { firstName, owedTo, toRaise } from "../people/one-on-one.js";
+import { agreedRows } from "../notes/capture-model.js";
 
 const REMOVE = Object.freeze({ key: "remove", label: "Remove" });
 const ROLE = Object.freeze({ key: "role", label: "Role…" });
@@ -80,7 +83,9 @@ export const SECTION_ORDER = {
   area: ["projects", "tasks", "questions", "decisions", "meetings", "files", "templates", "notes", "people"],
   // A resource is a plain note (in a folder): its tasks and files, as any note.
   resource: ["tasks", "files"],
-  meeting: ["tasks", "questions", "decisions", "files"],
+  // Agreed: what was captured from it (028), in place of its Questions and Decisions; its
+  // Tasks are those on the meeting itself, not the ones captured from it.
+  meeting: ["agreed", "tasks", "files"],
   phase: ["tasks", "milestones", "files", "notes"],
   milestone: ["tasks", "files"],
   note: ["tasks", "files"],
@@ -218,12 +223,22 @@ export const HUB_SECTIONS = [
     add: { label: "New milestone" },
   },
   {
+    key: "agreed",
+    label: "Agreed in this meeting",
+    // The tasks, questions and decisions captured from it (\t \q \d), in the order made.
+    rows: (ctx, owner) => agreedRows(ctx.captures?.source === owner.id ? ctx.captures.list : [], ctx.today ?? new Date()),
+    detail: (rows) => String(rows.length),
+    empty: () => "Nothing captured yet: \\t \\q \\d on a line of the notes",
+    add: null,
+  },
+  {
     key: "tasks",
     label: "Tasks",
     // Its tasks and those of the notes inside it (never a project's on its area); subtasks
     // show as a count until the row is opened in place (z), then every level under it with
     // + Add subtask. Enter on a task opens its own page (the main window).
-    rows: (ctx, owner) => tasksOn(ctx.tree, ctx.tasks, owner).flatMap((entry) => taskRows(ctx, owner, entry)),
+    rows: (ctx, owner) => tasksOn(ctx.tree, ctx.tasks, owner).filter((entry) => owner.kind !== "meeting" || entry.task.source_id !== owner.id)
+      .flatMap((entry) => taskRows(ctx, owner, entry)),
     detail: (rows) => counted(rows.filter((row) => row.depth === 0 && row.task && !row.done).length, "open"),
     empty: (owner) => owner.kind === "meeting" ? "No action items from this meeting yet" : "No tasks yet",
     add: { label: "New task" },

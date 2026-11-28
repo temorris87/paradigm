@@ -1,7 +1,9 @@
 // Draws the engine's state: the lines on screen, the cursor, the selection, search matches
-// and the status line. Only the visible lines are built, so long notes stay fast.
+// and the status line, and the host's line marks (a glyph in the gutter, a chip at the line's
+// right). Only the visible lines are built, so long notes stay fast.
 // Long lines are cut into rows of exactly view.width characters, the same rule the layout
 // uses, so what the engine thinks is on screen is what is on screen.
+import { chip } from "../ui/chip.js";
 import { fenceStateAt, tokenizeLine } from "./markdown-tokens.js";
 import { compilePattern, lineMatches } from "./search.js";
 import { bottomLine, rowsOf } from "./view.js";
@@ -23,6 +25,7 @@ export class EditorView {
     this.status = status;
     this.rowHeight = 16;
     this.patternCache = { key: null, regex: null };
+    this.marks = new Map();
   }
 
   /** How many rows and columns of text fit. */
@@ -38,14 +41,20 @@ export class EditorView {
     probe.remove();
     this.charWidth = charWidth;
     this.rowHeight = rowHeight;
+    // The gutter (while a line has a mark) is padding: not room for text.
+    const style = getComputedStyle(this.text);
+    const inner = this.text.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
     return {
-      width: Math.max(1, Math.floor(this.text.clientWidth / charWidth)),
+      width: Math.max(1, Math.floor(inner / charWidth)),
       height: Math.max(1, Math.floor(this.text.clientHeight / rowHeight)),
     };
   }
 
-  render(vim, { syntax = true, modified = false, note = "" } = {}) {
+  render(vim, { syntax = true, modified = false, note = "", marks = [] } = {}) {
+    this.marks = new Map(marks.map((mark) => [mark.line, mark]));
     this.text.classList.toggle("pd-text--nowrap", !vim.options.wrap);
+    // The gutter's room is taken only while some line has a mark.
+    this.text.classList.toggle("pd-text--marked", marks.length > 0);
     this.text.replaceChildren(...this.lineNodes(vim, syntax));
     this.renderStatus(vim, modified, note);
   }
@@ -112,6 +121,17 @@ export class EditorView {
       row.dataset.start = String(start);
       row.append(...spans(text, decorations, start, end));
       node.append(row);
+    }
+    const mark = this.marks.get(line);
+    if (mark) {
+      node.classList.add("pd-line--marked");
+      const glyph = document.createElement("span");
+      glyph.className = "pd-gutter";
+      glyph.setAttribute("aria-hidden", "true");
+      glyph.textContent = mark.glyph ?? "";
+      const label = chip(mark.label, mark.tone, { title: mark.label });
+      label.classList.add("pd-mark");
+      node.append(glyph, label);
     }
     return node;
   }

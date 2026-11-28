@@ -6,6 +6,7 @@ import webbrowser
 from typing import Callable, List, Optional
 
 from paradigm.api.calendar import CalendarApi
+from paradigm.api.capture import CaptureApi
 from paradigm.api.emails import EmailsApi
 from paradigm.api.files import FilesApi
 from paradigm.api.images import ImagesApi
@@ -42,7 +43,7 @@ from paradigm.db.tasks_repo import TaskRepository
 from paradigm.db.templates_repo import TemplateRepository
 from paradigm.db.time_repo import TimeRepository
 from paradigm.db.status_repo import StatusRepository
-from paradigm.db.capture_repo import store_captures
+from paradigm.db.capture_repo import CaptureRepository, store_captures
 from paradigm.db.topics_repo import TopicRepository
 from paradigm.db.oncall_repo import OnCallRepository
 from paradigm.db.folders_repo import FolderRepository
@@ -185,6 +186,7 @@ def install_apis(server: ParadigmServer, config: Config, presence: Presence) -> 
     TrashApi(trash, notes).register(server.router)
     tasks = TaskRepository(db, emails_dir=config.emails_dir)
     TasksApi(tasks).register(server.router)
+    CaptureApi(CaptureRepository(db, tasks, notes)).register(server.router)
     EmailsApi(EmailRepository(db, config.emails_dir)).register(server.router)
     PlansApi(PlanRepository(db), PlanTemplateRepository(db, tasks), notes).register(server.router)
     TemplatesApi(TemplateRepository(db), notes).register(server.router)
