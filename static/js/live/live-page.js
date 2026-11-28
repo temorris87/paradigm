@@ -4,13 +4,16 @@
 // the windows' channel: { type: "live", id, title, kind, crumbs, fields: [{ name, label,
 // text, highlights }], active, line, col, mode, trashed, captures, reply? } (reply: the
 // answer to "live-ask"; captures: what was captured from it, notes/capture-model.js), and
-// "live-closed" when it goes. A meeting gets the card "Agreed in this meeting" beside its
+// "live-closed" when it goes: unless a new "live" comes within RELOAD_GRACE_MS (a reload), the
+// page asks to leave (onClosed; the app shows the page under Live again). A meeting gets the card "Agreed in this meeting" beside its
 // Agenda and Notes (agreed-card.js).
 //
-//   const live = new LivePage(section, { changes, app, viewer, onNewNote, ready })
+//   const live = new LivePage(section, { changes, app, viewer, onNewNote, onClosed, ready, timers })
 //     app()            the NotesApp (its tree, renderer options, open)
 //     viewer           <pd-image-viewer>: a click on an image opens it
 //     onNewNote(id)    the note window opened another note: the main window switches here
+//     onClosed()       the note window closed (and did not come back): leave Live if shown
+//     timers           { setTimeout, clearTimeout }: the reload's grace (tests pass fakes)
 //     ready()          a promise for the app's start, or null: a new note waits for it, or
 //                      the start's own page (from the URL) would replace the Live page
 //   live.show() / live.focus()     a page of PageViews (notes/page-views.js)
@@ -25,6 +28,7 @@ import { drawRendered, followNoteLinks } from "../ui/rendered-text.js";
 import { CARET, placeCaret } from "./caret.js";
 import { AgreedCard } from "./agreed-card.js";
 import { markHighlights } from "./highlights.js";
+import { RELOAD_GRACE_MS } from "./live-return.js";
 
 // Ids on this page start so, then the field's name ("live-agenda-", "live-body-"), apart
 // from the dashboard's text under it and from each other: a meeting's Agenda and Notes may
@@ -34,11 +38,15 @@ const ID_PREFIX = "live-";
 const ENCODED_CARET = /%EE%80%80/i;
 
 export class LivePage {
-  constructor(section, { changes = null, app, viewer = null, onNewNote = () => {}, ready = () => null }) {
+  constructor(section, { changes = null, app, viewer = null, onNewNote = () => {}, onClosed = () => {}, ready = () => null,
+    timers = globalThis }) {
     this.section = section;
     this.app = app;
     this.viewer = viewer;
     this.onNewNote = onNewNote;
+    this.onClosed = onClosed;
+    this.timers = timers;
+    this.closing = null; // the grace timer after "live-closed"
     this.ready = ready;
     this.state = null;
     this.closed = false;
@@ -80,12 +88,24 @@ export class LivePage {
       const fresh = !message.reply && !message.trashed && message.id !== this.state?.id;
       this.state = message;
       this.closed = false;
+      this.cancelClosing();
       if (fresh) this.announce(message.id);
       this.draw();
     } else if (message.type === "live-closed") {
       this.closed = true;
       this.draw();
+      this.cancelClosing();
+      this.closing = this.timers.setTimeout(() => {
+        this.closing = null;
+        if (this.closed) this.onClosed();
+      }, RELOAD_GRACE_MS);
     }
+  }
+
+  cancelClosing() {
+    if (this.closing === null) return;
+    this.timers.clearTimeout(this.closing);
+    this.closing = null;
   }
 
   show() {
