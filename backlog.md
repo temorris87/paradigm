@@ -187,20 +187,20 @@ Features in build order. "build feature" takes the first unchecked item.
   the foot of each view, one focus ring, menus and dialogs on the overlay surface. (done 2026-11-27)
 - [ ] People and the person page as in Figma (People, Person · Ada Park): Waiting on / I owe
   aligned on the 3-column grid; "Next 1:1" counts only meetings still to come.
-- [ ] Week as in Figma (Week · imported / not imported): calendar import is file-only. With no
+- [x] Week as in Figma (Week · imported / not imported): calendar import is file-only. With no
   import this week, the calendar greys out under a centered Import panel (drop the .ics, or
-  `i` to pick it; "Plan without it"). The `<data>/import/` folder scan goes.
+  `i` to pick it; "Plan without it"). The `<data>/import/` folder scan goes. (done 2026-11-27)
 - [ ] Today as in Figma (Today): the same Import panel ("Not today"), and plain wording for
   the free time left.
 - [ ] Project page as in Figma (Project, Project history): it shows now and next (this week
   on); each section's older entries go to the project's own History page (`g h`).
-- [ ] Task page as in Figma (Task): Notes is the main column; Subtasks, Emails, Files, From and
+- [x] Task page as in Figma (Task): Notes is the main column; Subtasks, Emails, Files, From and
   History in a side column, so it reads well shared at 1280 with the note window on the right
-  third.
-- [ ] Capture by key (Figma: Note window · capture by key, Share · meeting capture): `\t` `\q`
+  third. (done 2026-11-27)
+- [x] Capture by key (Figma: Note window · capture by key, Share · meeting capture): `\t` `\q`
   `\d` on a line open a capture sheet docked at the foot of the editor (who, I owe / they owe,
   follow-up day; Enter / Tab / Esc) and replace the `T:` `Q:` `D:` syntax; the meeting page shows
-  "Agreed in this meeting". Old `T:` lines stay plain text.
+  "Agreed in this meeting". Old `T:` lines stay plain text. (done 2026-11-27)
 - [x] Files: "Add file…" opens the Windows file picker (tkinter's dialog in its own process,
   starting in the hub's linked OneDrive folder) in place of the text-search picker; a file from
   a folder not linked yet offers to link it. If tkinter is missing, a folder browser inside
@@ -214,5 +214,5 @@ Features in build order. "build feature" takes the first unchecked item.
 - [x] A plain note's URL opened straight in the main window (`/?note=16`) leaves the note before
   it as the note on screen, so `:trash` there trashed that one (Ada Park, in a browser check on
   sample data). The note on screen must follow what the main window shows. (done 2026-11-27)
-- [ ] Week, Timesheet tab at 1400 px wide: the right-hand panel ("Check before you submit", "This
-  week off", "Not counted") is drawn over the hours grid's Thu, Fri and Total columns.
+- [x] Week, Timesheet tab at 1400 px wide: the right-hand panel ("Check before you submit", "This
+  week off", "Not counted") is drawn over the hours grid's Thu, Fri and Total columns. (done 2026-11-27)
