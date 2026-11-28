@@ -1,8 +1,10 @@
 // THE key table for the shared menus, pickers and dialogs (static/js/ui/). Their key
 // handling and any help listing both read it; nothing else binds keys there. "menu" keys work
 // in a popup menu, "picker" keys in a picker's text box (every other key types), "dialog"
-// keys in a form dialog, "choices" keys on a dialog's stacked choices (Followed up…'s). Keys with Ctrl, Alt or Cmd held are left to the browser, and Tab
-// moves the focus on, as everywhere.
+// keys in a form dialog, "choices" keys on a dialog's stacked choices (Followed up…'s),
+// "diagram" keys in the Insert diagram picker (diagrams/insert-diagram.js; j and k move only
+// while nothing is typed, else they type). Keys with Ctrl, Alt or Cmd held are left to the
+// browser, and Tab moves the focus on, as everywhere.
 export const UI_KEYS = [
   { scope: "menu", keys: ["j", "ArrowDown"], action: "next", help: "next item" },
   { scope: "menu", keys: ["k", "ArrowUp"], action: "previous", help: "previous item" },
@@ -15,6 +17,10 @@ export const UI_KEYS = [
   { scope: "picker", keys: ["Enter"], action: "choose", help: "take the match" },
   { scope: "picker", keys: ["Escape"], action: "close", help: "close without choosing" },
   { scope: "dialog", keys: ["Escape"], action: "close", help: "close without changing anything" },
+  { scope: "diagram", keys: ["j", "ArrowDown"], action: "next", help: "next type (j: while nothing is typed)" },
+  { scope: "diagram", keys: ["k", "ArrowUp"], action: "previous", help: "previous type (k: while nothing is typed)" },
+  { scope: "diagram", keys: ["Enter"], action: "choose", help: "insert its block below the cursor" },
+  { scope: "diagram", keys: ["Escape"], action: "close", help: "close without inserting" },
   { scope: "palette", keys: ["ArrowDown", "C-n"], action: "next", help: "next row", hint: "move", label: "↑↓" },
   { scope: "palette", keys: ["ArrowUp", "C-p"], action: "previous", help: "previous row" },
   { scope: "palette", keys: ["Enter"], action: "choose", help: "open the note or page, run the command", hint: "open / run" },
@@ -33,7 +39,7 @@ for (const { scope, keys, action } of UI_KEYS) {
   for (const key of keys) BY_SCOPE.get(scope).set(key, action);
 }
 
-/** The action a keydown means in a scope ("menu", "picker", "dialog", "choices" or "palette"), or null.
+/** The action a keydown means in a scope ("menu", "picker", "dialog", "choices", "diagram" or "palette"), or null.
  * Enter in a form dialog submits it as any web form does. Ctrl is "C-" in the table, Shift on
  * a named key "S-"; other chords are the browser's. */
 export function uiAction(event, scope) {

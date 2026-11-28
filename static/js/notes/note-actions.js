@@ -18,6 +18,7 @@ import { moveToFolderDialog } from "../resources/folder-commands.js";
 import { logStatusDialog } from "../status/status-commands.js";
 import { hubLineControls } from "../hubs/hub-actions.js";
 import { insertTableDialog } from "./selection-menu.js";
+import { insertDiagramDialog } from "../diagrams/insert-diagram.js";
 
 export function openNoteMenu(app, anchor, { back = null } = {}) {
   const id = app.currentId;
@@ -53,6 +54,7 @@ function runItem(app, id, item) {
     case "trash": return trashDialog(app, note, item.inside);
     case "insertTemplate": return insertTemplateDialog(app);
     case "insertTable": return insertTableDialog(app.editor, () => app.focusNote());
+    case "insertDiagram": return insertDiagramDialog(app.editor, () => app.focusNote());
     case "makePhase": return makePhaseDialog(app, note);
     case "unmakePhase": return unmakePhase(app, note);
     case "dashboard": return app.dashboardCommand();

@@ -24,6 +24,7 @@ static/
                          On call tab, the Week bar's line, Today's rows, a person's head line),
                          sheet.css (the note window's sections sheet and its bar),
                          capture-sheet.css (the capture sheet and the strip under the editor),
+                         diagram-picker.css (Insert diagram…: the types beside the block),
                          live.css (the Live page: its head, the caret, the cursor's band),
                          settings.css (the Settings page: its index and cards),
                          chip.css (THE status chip: .chip and its tones), key-hints.css
@@ -101,7 +102,7 @@ static/
                          :resource :inbox :inarea :archive :restore :people :newperson
                          :addperson :dropperson :org :job :email :phone :meetings :meeting :date
                          :attendee :dropattendee :decision :question :answered :reopen :with
-                         :dropwith :task :attach :template :dashboard :plan :timecode :calendar :time :oncall :hub
+                         :dropwith :task :attach :template :diagram :dashboard :plan :timecode :calendar :time :oncall :hub
                          :home :live :export :trash :trashed :find),
                          screen-note.js (the note on screen, which every "this note" command
                          acts on: a main-window page hides the dashboard; Live is the note
@@ -210,7 +211,15 @@ static/
                          our origin); work-area.js: the off-screen element in the frame that
                          Mermaid lays out in; insert-svg.js: puts SVG in
                          under the CSP (constructed sheets + CSSOM styles, links allowlisted),
-                         syncDiagramSheets keeps a root's sheets in step with its diagrams
+                         syncDiagramSheets keeps a root's sheets in step with its diagrams;
+                         mermaid-types.js (every type the vendored Mermaid draws: keyword,
+                         name, line, a template with ‹blanks›; how Mermaid detects the type;
+                         the picker's groups; pure), mermaid-syntax.js (what can be typed in
+                         a mermaid block by type and place, mermaidContext, the status line's
+                         words; pure), mermaid-syntax-tables.js (its rows, one table per
+                         type, and the names a block uses; pure), mermaid-help.js (wires
+                         both into the note window's editor), insert-diagram.js (the
+                         Insert diagram picker, :diagram)
   js/theme/themes.js     THE theme table (id, label, file, colorScheme), DEFAULT_THEME,
                          themeOf, currentTheme (<html data-theme>), applyTheme; no switcher yet
   js/export/             :export, one self-contained .html file: scope.js (which linked notes

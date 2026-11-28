@@ -29,6 +29,7 @@ export function keyName(event) {
   if (special) return specialName(special, event);
   if ([...event.key].length !== 1) return null; // Shift, Control, F5, Dead, Process, ...
   if (event.metaKey) return null; // Cmd shortcuts belong to the browser and the OS
+  if (event.key === " " && event.ctrlKey && !event.altKey) return "<C-Space>";
   // AltGr arrives as Ctrl+Alt on Windows; those keys type characters.
   if (event.ctrlKey && !event.altKey) return controlName(event);
   return event.key;

@@ -6,7 +6,7 @@ import { cmdlineKey, startCmdline } from "./cmdline.js";
 import { commandKey, repeatLastChange } from "./command.js";
 import { EditorError } from "./errors.js";
 import { runEx } from "./ex.js";
-import { insertKey } from "./insert.js";
+import { insertKey, takeBlankIn } from "./insert.js";
 import { LEADER } from "./keys.js";
 import { Marks } from "./marks.js";
 import { defaultOptions } from "./options.js";
@@ -30,6 +30,9 @@ export class Vim {
     this.events = [];
     // Ex commands the host adds (name -> shortest abbreviation); running one emits "ex".
     this.exCommands = new Map();
+    // The host's blanks (blanks.js): (lines, line) -> { first, last }, the lines Tab looks for
+    // a ‹blank› in from that line, or null where Tab is just Tab. Null: no blanks at all.
+    this.blankScope = null;
     this.bellCount = 0;
     this.lastFind = null;
     this.lastChange = null;
@@ -109,6 +112,37 @@ export class Vim {
       if (!(error instanceof EditorError)) throw error;
       this.fail(error.message);
     }
+    this.afterKey();
+  }
+
+  /**
+   * Whole lines from the host below `line` (the cursor's by default), then insert mode in them:
+   * at their first ‹blank›, taken out so typing replaces it, else at the end of their line
+   * cursorAt (0-based in the text) when given, else at their start. The lines and what is typed
+   * after them are one undo step, as with "o".
+   */
+  insertLinesFromOutside(text, line = null, { cursorAt = null } = {}) {
+    if (this.mode !== "normal" || this.pending.length > 0) this.feed("<Esc>");
+    if (this.mode !== "normal") this.feed("<Esc>");
+    this.commandStart = { ...this.cursor };
+    try {
+      const at = clamp(line ?? this.cursor.line, 0, this.buf.lastLine);
+      this.putLinesBelow(text, at);
+      const last = this.cursor.line;
+      const fallback = cursorAt === null ? null : clamp(at + 1 + cursorAt, at + 1, last);
+      this.startInsert(fallback === null ? pos(at + 1, 0) : pos(fallback, this.buf.lineLength(fallback)));
+      takeBlankIn(this, pos(at + 1, 0), pos(last, this.buf.lineLength(last)));
+    } catch (error) {
+      if (!(error instanceof EditorError)) throw error;
+      this.fail(error.message);
+    }
+    this.afterKey();
+  }
+
+  /** Text pasted in insert mode from from to the cursor: its first ‹blank› is taken (a
+   * completion's row). */
+  takeBlankBefore(from) {
+    if (this.isInsertLike()) takeBlankIn(this, from);
     this.afterKey();
   }
 

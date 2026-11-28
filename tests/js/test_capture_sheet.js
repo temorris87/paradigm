@@ -27,6 +27,14 @@ async function lineDrawn(editor, line) {
   return editor.shadowRoot.querySelector(selector);
 }
 
+// The editor's rows are measured from its stylesheets, which load after it is connected.
+const styled = (editor) => Promise.all([...editor.shadowRoot.querySelectorAll('link[rel="stylesheet"]')]
+  .filter((link) => !link.sheet)
+  .map((link) => new Promise((resolve) => {
+    link.addEventListener("load", resolve, { once: true });
+    link.addEventListener("error", resolve, { once: true });
+  })));
+
 function press(key, mods = {}) {
   const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...mods });
   document.activeElement.dispatchEvent(event);
@@ -259,6 +267,7 @@ test("note captures: \\t opens the sheet; Enter saves, marks the line and says w
   editor.append(dock);
   const strip = document.createElement("div");
   document.body.append(editor, strip);
+  await styled(editor);
   const said = [];
   const sent = [];
   const made = [];

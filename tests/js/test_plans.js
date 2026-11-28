@@ -133,7 +133,7 @@ test("note menu: insert a template, make a phase", () => {
   assertTrue(keys(8).includes("makePhase") && keys(8).includes("insertTemplate") && keys(8).includes("dashboard"));
   assertTrue(keys(3).includes("unmakePhase") && !keys(3).includes("file"));
   assertTrue(!keys(8, "main").includes("insertTemplate"));
-  assertEqual(keys(11), ["rename", "insertTable", "export", "trash"]);
+  assertEqual(keys(11), ["rename", "insertTable", "insertDiagram", "export", "trash"]);
 });
 
 test("templates: placeholders, the cursor, boxes become tasks", () => {
