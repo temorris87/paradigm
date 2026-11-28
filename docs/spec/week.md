@@ -107,8 +107,13 @@ How the app behaves. Kept up to date by each feature that changes it.
   day exactly the working day (8.00 h) in quarter hours: holidays, time off and sick time first,
   then meetings and task blocks inside the working hours (not lunch), overlaps shared evenly,
   largest-remainder rounding, the rest to the Default code (its total orange past 30% of the
-  week). Days after today are projected (italic). Beside it: Check before you submit, This
-  week off, how it counts; under it, what made the chosen code (click a row). Copy for
-  timesheet puts it on the clipboard as HTML and tab-separated text. Settings: the codes, the
+  week). Days after today are projected (italic). Beside it (1600 px wide or more, the panel
+  at most 20rem) or under it at full width with its blocks in a row that wraps (below 1600 px):
+  Check before you submit, This week off, Not counted, how it counts; under the grid, what made
+  the chosen code (click a row). The whole grid (Code, Mon-Fri, Total) fits with no sideways
+  scroll at 1280 px and wider: number cells about 4.5rem with tabular figures, codes never
+  wrap, a very long one cut with "…" and its full code as its title (2026-11-27). Clicking a
+  tab or a row leaves the focus on the Timesheet, where `[` `]` `t` and `c` are heard. Copy for
+  timesheet (`c`) puts it on the clipboard as HTML and tab-separated text. Settings: the codes, the
   working day and lunch, holiday rules (US federal ones seeded; observed Sat->Fri, Sun->Mon),
   time off and sick days. Its keys live in `js/timesheet/time-keys.js`.

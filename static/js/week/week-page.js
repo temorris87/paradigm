@@ -75,7 +75,11 @@ export class WeekPage {
     const switcher = element("div", "segmented week-bar__views");
     switcher.setAttribute("role", "tablist");
     const tabs = WEEK_VIEWS.map((view) => {
-      const tab = make(view.label, view.title, () => this.show(view.key), "segmented__item");
+      // A tab's keys listen on its body, so a click on the tab moves the focus there.
+      const tab = make(view.label, view.title, () => {
+        this.show(view.key);
+        this.focus();
+      }, "segmented__item");
       tab.setAttribute("role", "tab");
       tab.dataset.view = view.key;
       return tab;
@@ -192,6 +196,8 @@ export class WeekPage {
     if (this.view === "oncall") this.onCall.focus();
     // The calendar's keys ([ ] t, s) listen on its own body, so Plan starts there.
     else if (this.view === "plan") this.calendar.focus();
+    // So do the timesheet's ([ ] t, c): on .week-time, inside this page's root.
+    else if (this.timesheet) this.timesheet.focus();
     else this.root.focus({ preventScroll: true });
   }
 }

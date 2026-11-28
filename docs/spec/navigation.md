@@ -48,7 +48,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   a text box, which opens it on ":") lists Recent (the last 8 opened) and Pages with nothing
   typed; notes and pages as you type (each word in the title or path); after ":", every note
   command by its label with its usage and key (`label` in `commands.js`; keys from the key
-  tables' `command` fields), then notes. Enter opens or runs, Shift-Enter opens in the note
+  tables' `command` fields), then notes; the command the typed name means comes first, so
+  `:time` Enter opens the Timesheet, never `:timecode` (2026-11-27). Enter opens or runs, Shift-Enter opens in the note
   window, Tab completes a command. Buttons never show `:command` names; the palette's command
   mode is the one place they appear.
 - Note commands act on the note on screen (Tyson, 2026-11-27). In the main window a page is

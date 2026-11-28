@@ -135,7 +135,9 @@ export class TimePage {
     const body = report.rows.map((row) => {
       const line = element("tr", row.code === report.default_code ? "time-grid__default" : "");
       const code = element("th", "time-grid__code");
-      code.append(element("span", "time-grid__code-name", row.code));
+      const name = element("span", "time-grid__code-name", row.code);
+      name.title = row.code; // the full code when a long one is cut with "…"
+      code.append(name);
       if (hubs[row.code]) code.append(element("span", "time-grid__hub", hubs[row.code]));
       const total = element("td", `time-grid__num time-grid__total${heavy && row.code === report.default_code ? " time-grid__total--heavy" : ""}`,
         row.total.toFixed(2));
@@ -202,7 +204,10 @@ export class TimePage {
 
   pickCode(code) {
     this.code = code;
+    // The clicked row is drawn again; the focus stays on the page, where its keys listen.
+    const inside = this.root.contains(document.activeElement);
     this.drawWeek();
+    if (inside && !this.root.contains(document.activeElement)) this.focus();
   }
 
   async copy() {
