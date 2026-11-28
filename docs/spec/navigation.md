@@ -156,8 +156,13 @@ How the app behaves. Kept up to date by each feature that changes it.
   the tab is where it counts from. A reload keeps the entry's step, and the furthest step reached
   is kept in the tab's `sessionStorage` (`paradigm.lastPageStep`), so after a reload `H` and `L`
   still reach the earlier and later pages, as the browser's Back and Forward would (in a window
-  that refuses storage, the page loaded counts as the last). `H H H` typed quickly counts each
-  press from where the one before will land, so it never steps out of Paradigm. Live keeps its
+  that refuses storage, the page loaded counts as the last). `H H H` typed quickly runs each
+  press once the page the one before went to is drawn, and the ends count from where pending
+  moves will land, so it never steps out of Paradigm; Escape pressed right after `H` or `L` also
+  waits, and leaves from the page landed on (a Back that has not landed within a second counts
+  as skipped, and the keys that waited on it are dropped). A same-page `#` link (a footnote on Live, a
+  `[x](#heading)` link) is a step of its own, one on from the page it was clicked on: `H` goes
+  back from it to that page and on through the ones before. Live keeps its
   own history rules; `H` on Live goes back to the page before it, and a page that comes back
   when Live closes keeps Live's way back for Escape. The `?` list shows both under "Anywhere in
   this window"; the bar shows `H L back / forward` only on Live (the one bar with the window's

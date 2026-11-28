@@ -6,6 +6,7 @@ import { PageHistory, stepOf } from "../../static/js/layout/page-history.js";
 import { viewKeyGroups } from "../../static/js/layout/view-keys.js";
 import { hubAction } from "../../static/js/hubs/hub-keys.js";
 import { PageViews } from "../../static/js/notes/page-views.js";
+import { NotesApp } from "../../static/js/notes/app.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
 // A tab's history as a browser keeps it: entries, the one shown, popstate on Back and Forward.
@@ -40,6 +41,11 @@ function browserHistory(first = { state: null, url: "/" }, { later = false } = {
     },
     settle() { if (tab.waiting.length) tab.traverse(tab.waiting.shift()); },
     settleAll() { while (tab.waiting.length) tab.settle(); },
+    // A "#" link clicked (a footnote on Live): a new entry with no state, and popstate at once.
+    fragment(hash) {
+      tab.pushState(null, "", `${tab.url.split("#")[0]}${hash}`);
+      tab.onPop();
+    },
   };
   return tab;
 }
@@ -242,13 +248,15 @@ function pagesOver(tab) {
   const history = new PageHistory(tab);
   const main = document.createElement("main");
   const page = () => ({ section: document.createElement("section"), focus() {}, show() {} });
-  const pages = { home: page(), people: page(), meetings: page(), task: page(), settings: page(), history: page() };
+  const pages = { home: page(), people: page(), meetings: page(), task: page(), settings: page(), history: page(),
+    live: page() };
   const views = new PageViews({ main, pages, history, noteUrl: () => "/?note=1" });
   tab.onPop = () => {
     history.popped();
-    const key = views.fromUrl(new URLSearchParams(tab.url.split("?")[1]));
+    const key = views.fromUrl(new URL(tab.url, "http://x").searchParams);
     if (key) views.show(key, "none");
     else views.hide();
+    history.landed();
   };
   return { history, views };
 }
@@ -297,4 +305,87 @@ test("page views: Escape from a page opened from History returns to History", ()
   assertEqual(tab.url, "/?note=1&history=1", "History is kept under");
   views.leave();
   assertEqual(tab.url, "/?note=1", "and History itself, opened from Today, goes to the dashboard");
+});
+
+test("page history: a footnote link on Live is a step of its own: H goes back from it, then on through the pages", () => {
+  const tab = browserHistory({ state: null, url: "/?note=1" });
+  const { history, views } = pagesOver(tab);
+  views.show("home", "push");
+  views.show("people", "push");
+  views.show("live", "push");
+  tab.fragment("#fn1");
+  assertEqual(history.step, 4, "one on from Live, not the first page");
+  assertEqual(tab.state.step, 4, "and the entry says so, for the pops that reach it later");
+  assertTrue(history.goBack());
+  assertEqual(tab.url, "/?note=1&live");
+  assertTrue(history.goBack());
+  assertEqual(views.shown, "people");
+  assertTrue(history.goForward() && history.goForward());
+  assertEqual(tab.url, "/?note=1&live#fn1", "Forward reaches the footnote again");
+  assertEqual(history.goForward(), false);
+  assertEqual(views.shown, "live");
+});
+
+test("page views: Escape pressed right after H waits for Back to land, then leaves from there", () => {
+  const tab = browserHistory({ state: null, url: "/?note=1" }, { later: true });
+  const { history, views } = pagesOver(tab);
+  views.show("home", "push");
+  views.show("people", "push");
+  views.show("settings", "push");
+  const app = { role: "main", currentId: 1, isDashboard: () => true, views, history, redraw() {}, focusNote() {} };
+  for (const name of ["leaveView", "leaveViewNow"]) app[name] = NotesApp.prototype[name];
+  assertTrue(history.goBack(), "H from Settings");
+  app.leaveView(); // Escape, before Back has landed
+  assertEqual(tab.waiting.length, 1, "nothing asked of the browser yet");
+  tab.settle(); // Back lands on People; Escape runs from there
+  tab.settleAll();
+  assertEqual(tab.url, "/?note=1", "People's Escape: the dashboard under Today and People");
+  assertEqual(tab.index, 0, "no step pushed while Back was on its way");
+  assertEqual(views.shown, null);
+});
+
+test("page history: H and L pressed while Back is on its way run once its page is drawn", () => {
+  const tab = browserHistory({ state: null, url: "/?note=1" }, { later: true });
+  const { history, views } = pagesOver(tab);
+  views.show("home", "push");
+  views.show("people", "push");
+  const ran = [];
+  // As main.js binds them: each key waits for the page before it to land.
+  const press = (name, move) => history.whenSettled(() => ran.push(`${name} ${move()}`));
+  press("H", () => history.goBack());
+  press("H", () => history.goBack());
+  press("L", () => history.goForward());
+  assertEqual(ran.join(), "H true", "the first at once; the others wait");
+  tab.settle();
+  assertEqual(ran.join(), "H true,H true");
+  tab.settle();
+  assertEqual(ran.join(), "H true,H true,L true");
+  tab.settleAll();
+  assertEqual(tab.url, "/?note=1&home");
+  assertEqual(views.shown, "home");
+});
+
+test("page history: a move whose popstate never comes is given up after a second; the keys waiting on it are dropped", () => {
+  const tab = browserHistory({ state: null, url: "/?note=1" }, { later: true });
+  const timers = { queue: new Map(), next: 1,
+    setTimeout(fn, ms) { const id = timers.next++; timers.queue.set(id, { fn, ms }); return id; },
+    clearTimeout(id) { timers.queue.delete(id); },
+    runAll() { for (const [id, { fn }] of [...timers.queue]) { timers.queue.delete(id); fn(); } } };
+  const history = new PageHistory(tab, null, { timers });
+  tab.onPop = () => { history.popped(); history.landed(); };
+  history.pushState({ view: "home" }, "", "/?note=1&home");
+  history.pushState({ view: "people" }, "", "/?note=1&people");
+  assertTrue(history.goBack());
+  assertEqual([...timers.queue.values()][0]?.ms, 1000, "a second to land");
+  const ran = [];
+  history.whenSettled(() => ran.push("Escape"));
+  tab.waiting.length = 0; // the browser skipped it: no popstate, the tab did not move
+  timers.runAll();
+  assertEqual(ran.length, 0, "dropped: it would act from a place not known");
+  assertEqual(history.position, 2, "the step the entry shown carries");
+  assertTrue(history.settled);
+  assertTrue(history.goBack(), "H works again");
+  tab.settle();
+  assertEqual(tab.url, "/?note=1&home");
+  assertEqual(timers.queue.size, 0, "a move that landed stops its timer");
 });

@@ -334,7 +334,8 @@ export class NotesApp {
       this.history.popped();
       // A message about the page left behind (an error on it) would read as about this one.
       this.clearStatus();
-      this.guard(this.openFromUrl("none"));
+      // Escape, H or L pressed while Back was on its way run once this page is drawn.
+      this.guard(this.openFromUrl("none").finally(() => this.history.landed()));
     });
     window.addEventListener("pagehide", () => {
       this.taskNotes?.saveBeforeLeaving();
@@ -1220,7 +1221,12 @@ export class NotesApp {
     if (this.views.shown) this.history.replaceState(state, "", this.location.href);
   }
 
+  /** Escape on a page. After H or L it waits for that page to land: the way back is its own. */
   leaveView() {
+    this.history.whenSettled(() => this.leaveViewNow());
+  }
+
+  leaveViewNow() {
     // A main window with no dashboard to go back to stays on Home.
     if (this.role === "main" && !this.isDashboard(this.currentId)) {
       if (this.views.shown !== "home") this.showView("home", "push");

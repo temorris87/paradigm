@@ -72,8 +72,17 @@ None: no route is added or changed.
   replace keeps it), `popped()` reads it again on `popstate`, and `go(by)` (with `goBack()` /
   `goForward()`) returns false past the ends. Moves asked of the browser whose `popstate` has not
   come yet are counted (`position`), so a quick `H H` is checked from where the first lands and
-  cannot step out of Paradigm; a Back pressed by hand in between resets the count. The entry
-  loaded with no step is marked step 0, so a reload on it later keeps its step. An entry with no step counts as 0. The furthest step reached is kept
+  cannot step out of Paradigm; a Back pressed by hand in between resets the count.
+  `whenSettled(fn)` runs fn at once, or once every pending move has landed and the app has drawn
+  it (`landed()`, called after `openFromUrl` on `popstate`): `H`, `L` (`static/js/main.js`) and
+  Escape (`NotesApp.leaveView`, Settings' leave) go through it, so Escape right after `H` leaves
+  from the page landed on, with its own `leave`, and never pushes while Back is on its way. A
+  move whose `popstate` has not come within a second counts as skipped: the pending moves are
+  cleared, the step is read again from the entry shown, and the keys that waited on it are
+  dropped rather than run (a late `popstate` would move the tab after them). The
+  entry loaded with no step is marked step 0, so a reload on it later keeps its step. An entry
+  reached by `popstate` with no step is a same-page `#` link's (a footnote on Live): it counts one
+  on from the entry before and is marked so, so `H` goes back from it. The furthest step reached is kept
   in the tab's `sessionStorage`, so after a reload `L` still goes forward to a later page, as the
   browser's Forward would; only a window that refuses storage falls back to the page loaded as
   the last step. `NotesApp.history` is now this wrapper, and `PageViews` gets it.
@@ -92,5 +101,5 @@ None: no route is added or changed.
   yet · S to log", the empty status-log line, the status-history dialog's text, the note menu's
   hint and the palette's `:log[!] S`.
 - Tests: `tests/js/test_page_history.js` (new: steps, the ends, quick `H H H`, reloads, Escape's
-  runs); `test_history.js`, `test_live_return.js`, `test_meetings.js`, `test_key_hints.js`,
+  runs, a footnote link's step, Escape and `H` / `L` waiting for a pending Back); `test_history.js`, `test_live_return.js`, `test_meetings.js`, `test_key_hints.js`,
   `test_palette.js`, `test_status.js`, `test_task_page.js` updated.
