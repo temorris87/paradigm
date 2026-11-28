@@ -2,11 +2,13 @@
 // tables stay the only source of keys: this only points at them), and the note window's
 // short fixed list, which has no table of its own. Pure.
 //
-//   viewTable(view, weekTab, { logStatus })  { name, table, without?, words? } of a view: view
-//                              is the PageViews key ("home", "week"...) or null for the dashboard;
-//                              weekTab the Week page's "plan" | "timesheet" | "settings" | "oncall";
-//                              logStatus whether the dashboard's note is a project or an area
-//                              (only they keep a status log: L is left out elsewhere)
+//   viewTable(view, weekTab, { logStatus, project })  { name, table, without?, words?, field? } of
+//                              a view: view is the PageViews key ("home", "week"...) or null for
+//                              the dashboard; weekTab the Week page's "plan" | "timesheet" |
+//                              "settings" | "oncall"; logStatus whether the dashboard's note is a
+//                              project or an area (only they keep a status log: L is left out
+//                              elsewhere); project whether it is a project's (its own bar, and
+//                              the rows only: "project" keeps)
 //   viewHints(view, weekTab, options)  [{ cap, words }] for the bar: the table's hints, then
 //                              "? all keys" (Live has no table: the main window's own hints)
 //   viewKeyGroups(view, weekTab, options)  [{ name, rows }] for the ? list: the view's table as
@@ -14,6 +16,7 @@
 //   noteHints({ sheet })       the note window's bar (no ?: there it is the editor's search back)
 import { CALENDAR_KEYS } from "../calendar/calendar-keys.js";
 import { GANTT_KEYS } from "../gantt/gantt-keys.js";
+import { HISTORY_KEYS } from "../history/history-keys.js";
 import { HUB_KEYS } from "../hubs/hub-keys.js";
 import { ONCALL_KEYS } from "../oncall/oncall-keys.js";
 import { PAGE_KEYS } from "../pages/page-keys.js";
@@ -43,25 +46,30 @@ const VIEW_TABLES = {
   task: { name: "Task", table: TASK_PAGE_KEYS },
   plan: { name: "Plan", table: GANTT_KEYS },
   live: { name: "Live note", table: [] },
+  history: { name: "History", table: HISTORY_KEYS },
 };
 
-const DASHBOARD = { name: "Dashboard", table: HUB_KEYS };
+// Keys only a project's page has (hub-keys.js only: "project").
+const PROJECT_ONLY = HUB_KEYS.filter((entry) => entry.only === "project").map((entry) => entry.action);
+// A project's page: its bar as Figma draws it (projectHint:).
+const PROJECT_DASHBOARD = { name: "Project", table: HUB_KEYS, field: "projectHint" };
+const DASHBOARD = { name: "Dashboard", table: HUB_KEYS, without: PROJECT_ONLY };
 // A person's dashboard (or any other that isn't a project's or an area's) has no status to log.
-const PLAIN_DASHBOARD = { ...DASHBOARD, without: ["logStatus"] };
+const PLAIN_DASHBOARD = { ...DASHBOARD, without: ["logStatus", ...PROJECT_ONLY] };
 
 // Entries of a scoped table the bar shows: the list's, not the search box's.
-const BAR_SCOPE = new Map([[PAGE_KEYS, "list"]]);
+const BAR_SCOPE = new Map([[PAGE_KEYS, "list"], [HISTORY_KEYS, "list"]]);
 
 const SCOPE_NAMES = { list: "The list", search: "The search box" };
 
-export function viewTable(view, weekTab = "plan", { logStatus = false } = {}) {
+export function viewTable(view, weekTab = "plan", { logStatus = false, project = false } = {}) {
   if (view === "week") return WEEK_TABLES[weekTab] ?? WEEK_TABLES.plan;
-  return VIEW_TABLES[view] ?? (logStatus ? DASHBOARD : PLAIN_DASHBOARD);
+  return VIEW_TABLES[view] ?? (project ? PROJECT_DASHBOARD : logStatus ? DASHBOARD : PLAIN_DASHBOARD);
 }
 
 export function viewHints(view, weekTab, options) {
-  const { table, without, words } = viewTable(view, weekTab, options);
-  const own = hintsOf(table, { scope: BAR_SCOPE.get(table), without, words });
+  const { table, without, words, field } = viewTable(view, weekTab, options);
+  const own = hintsOf(table, { scope: BAR_SCOPE.get(table), without, words, field });
   const main = table.length ? MAIN_KEYS.filter((entry) => entry.action === "keys") : MAIN_KEYS;
   return [...own, ...hintsOf(main)];
 }

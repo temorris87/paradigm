@@ -7,9 +7,15 @@
 //   parseTime(word)              "9:30" / "09:30" -> "09:30"; anything else -> null
 //   whenText(meeting, today?)    "Tue 24 Nov 14:00" ("14:00–15:00" with an end_time), from ui/dates.js
 //   PERIODS, periodRange(key, today)   the Meetings page's Period filter
+//   meetingEnded(meeting, now)   whether a meeting is over (its end, else its start + 30 min,
+//                                else its whole day); now: a Date, or a day string
+//   splitMeetings(entries, now)  { coming: soonest first, ended: latest first } of meeting
+//                                entries (meetings-model.js), none archived or cancelled
 import { whenText } from "../ui/dates.js";
 
 const RELATIVE = { yesterday: -1, today: 0, tomorrow: 1 };
+// A meeting without an end time lasts this long (as on the Week's grid).
+const MEETING_MINUTES = 30;
 
 export function localDay(date) {
   const pad = (n) => String(n).padStart(2, "0");
@@ -80,4 +86,29 @@ export function inRange(day, range) {
 
 export function addDays(date, days) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+}
+
+export function meetingEnded(meeting, now = new Date()) {
+  if (!meeting.day) return false;
+  const today = typeof now === "string" ? now : localDay(now);
+  if (meeting.day !== today) return meeting.day < today;
+  if (typeof now === "string") return false;
+  const start = minutesOf(meeting.time);
+  if (start === null) return false;
+  const end = minutesOf(meeting.end_time) ?? start + MEETING_MINUTES;
+  return now.getHours() * 60 + now.getMinutes() >= end;
+}
+
+export function splitMeetings(entries, now = new Date()) {
+  const when = (entry) => `${entry.meeting.day} ${entry.meeting.time}`;
+  const live = entries.filter((entry) => !entry.archived && !entry.meeting.cancelled && entry.meeting.day);
+  return {
+    coming: live.filter((entry) => !meetingEnded(entry.meeting, now)).sort((a, b) => when(a).localeCompare(when(b))),
+    ended: live.filter((entry) => meetingEnded(entry.meeting, now)).sort((a, b) => when(b).localeCompare(when(a))),
+  };
+}
+
+function minutesOf(time) {
+  const match = /^(\d{2}):(\d{2})$/.exec(String(time ?? ""));
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
 }

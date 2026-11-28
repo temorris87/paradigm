@@ -14,7 +14,8 @@ static/
   vendor/mermaid-12.3.0/ Mermaid exactly as audited (same check, mermaid-12.3.0.sha256)
   css/                   dashboard.css (the main window's dashboard: sections flowing down
                          columns, long text folded under Show more),
-                         gantt.css, plan-template.css, folder-page.css, task-page.css (a
+                         gantt.css, history.css (a project's History page: its bar, tabs, week
+                         groups), plan-template.css, folder-page.css, task-page.css (a
                          task's page: Subtask | Notes, stacked under 1400 px), oncall.css (the
                          On call tab, the Week bar's line, Today's rows, a person's head line),
                          sheet.css (the note window's sections sheet and its bar),
@@ -36,7 +37,7 @@ static/
   js/boot.js             what both windows start with (connection, navigator, NotesApp)
   js/main.js             the main window: its pages, the dashboard, the Window menu
   js/note-main.js        the note window
-  js/layout/main-keys.js THE main window's own key table (: gt gw gp gn ?)
+  js/layout/main-keys.js THE main window's own key table (: gt gw gp gh gn ?)
   js/layout/view-keys.js which key table each main-window view reads (its hint bar, its ?
                          list) and the note window's short fixed hints; pure
   js/layout/navigator-parts.js  the navigator's pinned Today / Week and its save state
@@ -99,10 +100,14 @@ static/
                          labels and sections; a decision or question the card and label; any
                          other note its label): hub-page.js (wiring; data-page on .app__note),
                          hub-line.js (the card: "Project ▾ · Active ▾ · due ... · Area: X",
-                         People, Next meeting; a meeting's Attendees; a person's details; a
-                         record's state, people and From), hub-line-controls.js (the card's
-                         buttons: ▾ ✎ + ×, they only report), dash-head.js (a project's or
-                         area's dashboard head: name, health badge, Outcome, Log status),
+                         People, Next meeting, not on a project's main-window dashboard; a
+                         meeting's Attendees; a person's details; a record's state, people
+                         and From), hub-line-controls.js (the card's buttons: ▾ ✎ + ×, they
+                         only report), dash-head.js (the dashboard head: an area's name,
+                         health badge, Outcome, Log status; a project's name, health chip,
+                         last status and its age, Log status L, Open in note window ↗,
+                         History g h, ···, then its facts row: Due, Next milestone, Area,
+                         People, Time code),
                          plan-strip.js (a project's phases in one strip, Gantt gp), hub-actions.js (what the card's
                          and the sections' buttons do: menus, pickers, dialogs, then the same
                          code as the ex commands; personDialog, personDetailsDialog,
@@ -118,9 +123,15 @@ static/
                          from; a phase's Milestones; a plain note's Tasks and Files; a
                          person's Waiting on, Active, Archived, Backlinks; pure), dashboard.js (the main window: a hub's text
                          rendered with Edit ↗, a project's or an area's Gantt chart),
-                         project-facts.js (status, due, next meeting texts;
-                         pure), hub-areas.js (project <-> area; pure), hub-folds.js (folded
+                         project-facts.js (status, due, next meeting texts; a project's
+                         head: due in n days, next milestone, its chip, initials; pure),
+                         hub-areas.js (project <-> area; pure), hub-folds.js (folded
                          sections, remembered per kind), hub-keys.js (THE sections key table)
+  js/history/            a project's History page (&history=ID, g h): history-model.js (every
+                         dated thing it has as rows by week, tabs, counts, search, pages of 4
+                         weeks, historyCounts: the counts a project page's footers say; pure),
+                         history-page.js (the bar, the weeks, more drawn near the foot),
+                         history-keys.js (THE History key table)
   js/today/              the Today page (the start page, &home): today-facts.js (today's
                          meetings, open questions, live projects by area, the Inbox; pure),
                          today-model.js (the Now block, the day's timeline with free gaps,
@@ -142,7 +153,8 @@ static/
                          a ListPage), people-commands.js
   js/meetings/           api.js, prep-model.js (a meeting's prep: open questions with its
                          attendees, what they owe, last time; pure), meeting-days.js (local days, today/tomorrow, times, the
-                         Period filter; pure), meetings-model.js (a hub's meetings, an area
+                         Period filter, meetingEnded, splitMeetings: coming and ended; pure),
+                         meetings-model.js (a hub's meetings, an area
                          with its projects', a person's; the page filters; pure),
                          meetings-page.js (a ListPage), meetings-commands.js
   js/records/            decisions and questions: api.js, records-model.js (a hub's, an
@@ -175,7 +187,8 @@ static/
                          images as data: URLs, in an inert document), download.js, export.js
                          (inlines tokens.css, the current theme's file, markdown.css and
                          export.css; the file's <html> carries the same data-theme)
-  js/status/             api.js, status-model.js (health, stale, since last log, the weekly
+  js/status/             api.js, status-model.js (health and its labels: On track,
+                         At risk, Off track (stored blocked), stale, since last log, the weekly
                          digest; pure), status-commands.js (Log status…, history, :log,
                          Copy weekly digest)
   js/ui/                 shared pieces that know nothing about notes: chip.js (THE status
@@ -185,8 +198,9 @@ static/
                          key-sequence.js
                          (two-key entries in a key table: gg, gp; pure), clipboard.js
                          (copyRich: HTML + text), dates.js (THE on-screen
-                         day and time format: "Wed 25 Nov", 24-hour, the year only when not
-                         this year; pure), menu.js (a popup menu
+                         day and time format: "Wed 25 Nov", "Thu 26" (dayText, month: false),
+                         "23–29 Nov" (weekRange), 24-hour, the year only when not this year;
+                         pure), menu.js (a popup menu
                          under a button), dialog.js (formDialog, confirmDialog on <dialog>:
                          errors show inside and keep it open; a blocked submit), picker.js (a text box over a
                          filtered list; filterItems is pure), ui-keys.js (THE key table of

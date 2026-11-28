@@ -1,6 +1,7 @@
-// A project's Plan strip on its dashboard (the main window): its phases side by side, each as
-// wide as its working days (done, the current one, those to come; a late one underlined in
-// red with its slip), today's line, and Gantt ↗ (gp) for the full chart. A click on a phase
+// A project's Plan strip on its dashboard (the main window), in a card of its own: a head
+// ("Plan", the phases in one line, Gantt g p on the right) over the strip: its phases side by
+// side, each as wide as its working days (done, the current one, those to come; a late one
+// underlined in red with its slip) and today's line. A click on a phase
 // opens it in the note window. A project with no phases yet still gets the strip, with what
 // starts a plan: + Phase and Apply plan template… (not on an archived project).
 //
@@ -23,14 +24,16 @@ export class PlanStrip {
     this.root.hidden = !project;
     if (!project) return;
     const strip = planStrip(ctx.tree, ctx.plan, note.id, localDay(ctx.today ?? new Date()));
+    const head = element("div", "plan-strip__head");
     const label = element("span", "plan-strip__label", "Plan");
     const track = strip ? this.track(strip) : this.empty(note);
     const gantt = element("button", "plan-strip__gantt", "Gantt ");
     gantt.type = "button";
-    gantt.title = "The full plan: drag phases and milestones (gp)";
-    gantt.append(element("kbd", "plan-strip__key", "gp"));
+    gantt.title = "The full plan: drag phases and milestones (g p)";
+    gantt.append(element("kbd", "plan-strip__key", "g p"));
     gantt.addEventListener("click", () => this.onPlan());
-    this.root.replaceChildren(label, track, gantt);
+    head.append(label, element("span", "plan-strip__summary", strip ? stripSummary(strip) : ""), gantt);
+    this.root.replaceChildren(head, track);
   }
 
   /** No phases yet: say so, and offer what starts a plan. */
@@ -70,6 +73,14 @@ export class PlanStrip {
     }
     return track;
   }
+}
+
+/** "4 phases · now Build · 1 done": the phases in one line. */
+export function stripSummary(strip) {
+  const n = strip.segments.length;
+  const current = strip.segments.find((segment) => segment.state === "current");
+  const done = strip.segments.filter((segment) => segment.state === "done").length;
+  return [`${n} phase${n === 1 ? "" : "s"}`, current ? `now ${current.title}` : "", done ? `${done} done` : ""].filter(Boolean).join(" · ");
 }
 
 function element(tag, className, text) {

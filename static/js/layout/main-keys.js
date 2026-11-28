@@ -11,6 +11,7 @@ export const MAIN_KEYS = [
   { keys: ["gw"], action: "week", help: "the Week", command: "calendar", hint: "Week" },
   { keys: [":"], action: "palette", help: "the palette: go to a note or a page, or run a command", hint: "command" },
   { keys: ["gp"], action: "plan", help: "the full plan (its Gantt chart) of the project or area on the dashboard", command: "plan" },
+  { keys: ["gh"], action: "history", help: "the History of the project on the dashboard (done tasks, earlier meetings, decisions, answers)" },
   { keys: ["gn"], action: "live", help: "the Live note: the note window's note as it is typed", command: "live" },
   { keys: ["?"], action: "keys", help: "every key of the page shown, in a list", hint: "all keys" },
 ];
@@ -28,7 +29,7 @@ export function mainAction(event) {
   return read(event);
 }
 
-/** Puts the keys on the window: handlers { palette(), today(), week(), plan(), live(), keys() }. */
+/** Puts the keys on the window: handlers { palette(), today(), week(), plan(), history(), live(), keys() }. */
 export function installMainKeys(target, handlers) {
   target.addEventListener("keydown", (event) => {
     const action = mainAction(event);

@@ -445,6 +445,7 @@ export class NotesApp {
     if (id === undefined) return;
     if (params.has("template")) this.templateId = Number(params.get("template"));
     if (params.has("folder")) this.folderId = Number(params.get("folder"));
+    if (params.has("history")) this.setHistory(Number(params.get("history")), this.historyRequest?.tab);
     if (params.has("task")) {
       this.taskId = Number(params.get("task"));
       this.taskNoteId = Number.isInteger(wanted) && wanted > 0 ? wanted : null;
@@ -592,6 +593,7 @@ export class NotesApp {
     const ctx = { tree: this.tree, people: this.people, meetings: this.meetings, records: this.records,
       links: this.linkIndex.links, mentions: this.linkIndex.mentions, trash: this.trash, tasks: this.tasks,
       sessions: this.sessions, importStatus: this.importStatus, plan: this.plan, planTemplates: this.planTemplates,
+      body: { id, text: this.session.note?.id === id ? this.session.note.body ?? "" : "" },
       files: this.files, templateId: this.templateId, folders: this.folders, folderId: this.folderId, taskId: this.taskId, taskNoteId: this.taskNoteId, statusLogs: this.statusLogs,
       timeSettings: this.timeSettings, topics: this.topics ?? [], onCall: this.onCall, today: this.today() };
     const trashed = this.trash.entries.length;
@@ -984,12 +986,40 @@ export class NotesApp {
     if (!task) throw new Error("E: that task is gone (deleted in another window?)");
     const under = this.isDashboard(task.note_id) ? task.note_id : hubOf(this.tree, task.note_id)?.id ?? null;
     const fromTaskPage = this.views.shown === "task";
-    const needsOpen = under !== null && (under !== this.currentId || (!fromTaskPage && this.views.shown));
+    // From the History page over the same dashboard, the task page steps over it: Back returns there.
+    const overHistory = this.views.shown === "history" && under === this.currentId;
+    const needsOpen = under !== null && (under !== this.currentId || (!fromTaskPage && !overHistory && this.views.shown));
     if (needsOpen && !(await this.open(under, { history: fromTaskPage ? "none" : "push" }))) return;
     this.taskId = taskId;
     this.taskNoteId = task.note_id;
     this.views.show("task", "push", `task=${taskId}`);
     this.redraw();
+  }
+
+  /** g h, History ↗: a project's History page (the main window), over its dashboard; tab: the
+   * one it opens on (a section's link), else Everything. */
+  async showHistory(id = this.currentId, tab = "everything") {
+    const project = id === null || id === undefined ? null : this.tree.get(id);
+    if (!project || project.kind !== "project" || this.tree.parentId(project.id) !== null) throw new Error("E: History is a project's");
+    if (this.role !== "main") throw new Error("E: History shows in the main window");
+    if (this.currentId !== project.id && !(await this.open(project.id))) return;
+    this.setHistory(project.id, tab, { fresh: true });
+    this.views.show("history", "push", `history=${project.id}`);
+    this.redraw();
+  }
+
+  /** Which project's History shows, and on which tab; fresh: asked again (a key, a link), so the
+   * page starts over on that tab rather than where it was left (Back from a task's page). */
+  setHistory(id, tab = "everything", { fresh = false } = {}) {
+    if (!fresh && this.historyRequest?.id === id) return;
+    this.historyRequest = { id, tab: tab ?? "everything" };
+  }
+
+  /** g h in the main window: the History of the project on the dashboard shown. */
+  async historyKey() {
+    if (this.views.shown === "history") return;
+    if (this.views.shown) throw new Error("E: History is a project's");
+    await this.showHistory();
   }
 
   /** A plan template's page (the main window). */
@@ -1094,6 +1124,7 @@ export class NotesApp {
     }
     // A page about one thing keeps which one in its URL flag.
     const flag = key === "folder" ? `folder=${this.folderId}` : key === "template" ? `template=${this.templateId}`
+      : key === "history" ? `history=${this.historyRequest?.id ?? this.currentId}`
       : key === "task" ? `task=${this.taskId}` : key === "week" && this.weekView !== "plan" ? `week=${this.weekView}` : key;
     this.views.show(key, history, flag);
     this.redraw();

@@ -98,7 +98,7 @@ test("plan strip: a project with no phases offers + Phase and Apply plan templat
   assertTrue(!root.hidden, "a project always has its strip");
   assertEqual(root.querySelector(".plan-strip__empty").textContent, "No phases yet");
   for (const button of root.querySelectorAll("button")) button.click();
-  assertEqual(ran.join(), "phase,template,plan");
+  assertEqual(ran.join(), "plan,phase,template", "Gantt in the card's head, over the strip");
   strip.show(ctx, { ...ctx.tree.get(3), archived_at: T });
   assertEqual(root.querySelectorAll(".plan-strip__add").length, 0, "nothing is added to an archived project");
   strip.show(ctx, ctx.tree.get(1));

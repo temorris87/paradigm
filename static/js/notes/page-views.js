@@ -17,7 +17,8 @@
 //   views.draw(ctx, crumbs)        after every redraw of the notes page
 //
 // Each page has section, show(ctx) and focus(), and may have enter() (called when it comes
-// into view: the calendar loads then, not on every redraw): a ListPage
+// into view: the calendar loads then, not on every redraw) and crumbs(ctx) -> [{ label, open? }]
+// (its own crumb trail, "Projects › Acme › History"; else its label alone): a ListPage
 // (static/js/pages/list-page.js), the Today page (static/js/today/today-page.js)...; main carries
 // data-view while one shows, for the CSS that hides the dashboard.
 export const PAGE_VIEWS = [
@@ -31,10 +32,14 @@ export const PAGE_VIEWS = [
   { key: "task", label: "Task" },
   { key: "plan", label: "Plan" },
   { key: "live", label: "Live note" },
+  { key: "history", label: "History" },
 ];
 
 // Pages that push their own history step even when another page is shown.
 const STEPS_OVER_PAGES = new Set(["task"]);
+// Pages whose step stays under whatever opens from them: a note opened from a project's History
+// goes Back to History, not to the project.
+const STEPS_KEPT_UNDER = new Set(["history"]);
 
 /** A page's name ("Home"), for the tab's title. */
 export function viewLabel(key) {
@@ -63,7 +68,8 @@ export class PageViews {
       // From one page to the other: one step, so Escape and Back both reach the note. A task
       // page is a step of its own even over another page (showTask puts its dashboard under
       // it first, so this only happens for a task with no dashboard to open).
-      if (this.history.state?.view && !STEPS_OVER_PAGES.has(key)) this.history.replaceState({ view: key }, "", url);
+      const ownStep = STEPS_OVER_PAGES.has(key) || STEPS_KEPT_UNDER.has(this.shown);
+      if (this.history.state?.view && !ownStep) this.history.replaceState({ view: key }, "", url);
       else this.history.pushState({ view: key }, "", url);
     } else if (history === "push" && flag !== key) this.history.replaceState(this.history.state, "", url);
     // Only a push is marked: leaving a page that was loaded with the flag must not go Back
@@ -102,15 +108,33 @@ export class PageViews {
 
   draw(ctx, crumbs) {
     if (!this.shown) return;
-    this.pages[this.shown].show(ctx);
-    showViewCrumb(crumbs, PAGE_VIEWS.find(({ key }) => key === this.shown).label);
+    const page = this.pages[this.shown];
+    page.show(ctx);
+    showViewCrumb(crumbs, page.crumbs?.(ctx) ?? [{ label: PAGE_VIEWS.find(({ key }) => key === this.shown).label }]);
   }
 }
 
-function showViewCrumb(nav, label) {
-  const here = document.createElement("span");
-  here.className = "crumbs__here";
-  here.textContent = label;
-  here.setAttribute("aria-current", "page");
-  nav.replaceChildren(here);
+/** The crumbs of a page: each but the last a group's name or a link (open), the last the page. */
+function showViewCrumb(nav, parts) {
+  const nodes = [];
+  parts.forEach(({ label, open }, index) => {
+    if (index) {
+      const separator = document.createElement("span");
+      separator.className = "crumbs__separator";
+      separator.textContent = "›";
+      separator.setAttribute("aria-hidden", "true");
+      nodes.push(separator);
+    }
+    const last = index === parts.length - 1;
+    const node = document.createElement(open && !last ? "button" : "span");
+    node.className = last ? "crumbs__here" : open ? "crumbs__link" : "crumbs__group";
+    node.textContent = label;
+    if (last) node.setAttribute("aria-current", "page");
+    if (open && !last) {
+      node.type = "button";
+      node.addEventListener("click", open);
+    }
+    nodes.push(node);
+  });
+  nav.replaceChildren(...nodes);
 }

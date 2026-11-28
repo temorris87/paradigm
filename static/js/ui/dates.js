@@ -1,12 +1,14 @@
 // THE way days and times read on screen (pure). Days are "YYYY-MM-DD" strings in local time;
 // `today` is a Date or a day string, passed in for tests (else the clock is read).
 //
-//   dayText(day, { today?, weekday?, relative? })   "Wed 25 Nov", "Wed 25 Nov 2027" (not this
-//                                     year), "25 Nov" (weekday false), "today" / "tomorrow" /
+//   dayText(day, { today?, weekday?, month?, relative? })   "Wed 25 Nov", "Wed 25 Nov 2027" (not
+//                                     this year), "25 Nov" (weekday false), "Wed 25" (month false:
+//                                     a row under its week's heading), "today" / "tomorrow" /
 //                                     "yesterday" (relative true)
 //   timeSpan(time, end?)              "14:00", "14:00–15:00"
 //   whenText({ day, time?, end_time? }, today?)   "Wed 25 Nov 14:00–15:00"
-//   weekRange(monday, today?)         "16–22 Nov 2026", "30 Nov – 6 Dec 2026"
+//   weekRange(monday, today?, { year? })   "16–22 Nov 2026", "30 Nov – 6 Dec 2026"; year false:
+//                                     "16–22 Nov", the year only when it isn't this year's
 //   daysAgo(day, today?)              "today", "1 d ago", "12 d ago"
 // Ex commands and the API still use "YYYY-MM-DD"; only what is read on screen goes through here.
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -29,7 +31,7 @@ function serial([year, month, date]) {
   return Date.UTC(year, month - 1, date) / 86400000;
 }
 
-export function dayText(day, { today = null, weekday = true, relative = false } = {}) {
+export function dayText(day, { today = null, weekday = true, month = true, relative = false } = {}) {
   const p = parts(day);
   if (!p) return String(day ?? "");
   const now = parts(todayString(today));
@@ -37,9 +39,10 @@ export function dayText(day, { today = null, weekday = true, relative = false } 
     const word = RELATIVE[serial(p) - serial(now)];
     if (word) return word;
   }
-  const [year, month, date] = p;
-  const name = weekday ? `${WEEKDAYS[new Date(Date.UTC(year, month - 1, date)).getUTCDay()]} ` : "";
-  return `${name}${date} ${MONTHS[month - 1]}${year === now[0] ? "" : ` ${year}`}`;
+  const [year, monthOf, date] = p;
+  const name = weekday ? `${WEEKDAYS[new Date(Date.UTC(year, monthOf - 1, date)).getUTCDay()]} ` : "";
+  if (!month) return `${name}${date}`;
+  return `${name}${date} ${MONTHS[monthOf - 1]}${year === now[0] ? "" : ` ${year}`}`;
 }
 
 export function timeSpan(time, end = "") {
@@ -50,14 +53,15 @@ export function whenText({ day, time = "", end_time: end = "" }, today = null) {
   return [dayText(day, { today }), timeSpan(time, end)].filter(Boolean).join(" ");
 }
 
-export function weekRange(monday, today = null) {
+export function weekRange(monday, today = null, { year = true } = {}) {
   const first = parts(monday);
   if (!first) return "";
   const last = new Date(Date.UTC(first[0], first[1] - 1, first[2] + 6));
   const [ly, lm, ld] = [last.getUTCFullYear(), last.getUTCMonth() + 1, last.getUTCDate()];
   const start = first[1] === lm ? `${first[2]}` : `${first[2]} ${MONTHS[first[1] - 1]}${first[0] === ly ? "" : ` ${first[0]}`}`;
   const sep = first[1] === lm ? "–" : " – ";
-  return `${start}${sep}${ld} ${MONTHS[lm - 1]} ${ly}`;
+  const shown = year || ly !== parts(todayString(today))[0];
+  return `${start}${sep}${ld} ${MONTHS[lm - 1]}${shown ? ` ${ly}` : ""}`;
 }
 
 export function daysAgo(day, today = null) {

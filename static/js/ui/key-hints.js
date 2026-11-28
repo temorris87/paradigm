@@ -8,10 +8,11 @@
 //
 //   keyName(key)              " " -> "Space", "gt" -> "g t", "S-Enter" -> "Shift-Enter"... (pure)
 //   capOf(entry)              the key cap an entry shows in a bar (pure)
-//   capKeys(entry)            the keys a cap stands for, as the table writes them (pure)
-//   hintsOf(table, { scope, without, words }) -> [{ cap, words }] (pure)
+//   capKeys(entry)            the keys a cap stands for, as the table writes them ("1-5": each digit) (pure)
+//   hintsOf(table, { scope, without, words, field }) -> [{ cap, words }] (pure)
 //     scope: only that scope's entries (a table with scope: rows); without: actions left out;
-//     words: { action: "words" } a view's own words for an entry's hint
+//     words: { action: "words" } a view's own words for an entry's hint; field: the entries'
+//     field to read the words from ("hint"; a project's page reads "projectHint")
 //   keyGroups(table)          [{ name, rows: [{ keys: ["j", "↓"], help }] }] for a keys list,
 //                             grouped by scope: as the table groups them (pure)
 //   keyCap(text)              a <kbd class="key">
@@ -50,15 +51,18 @@ export function capKeys(entry) {
     if (GLYPHS.has(part)) return [GLYPHS.get(part)];
     if (/^Shift-./.test(part)) return [`S-${GLYPHS.get(part.slice(6)) ?? part.slice(6)}`];
     if (/^Ctrl-./.test(part)) return [`C-${GLYPHS.get(part.slice(5)) ?? part.slice(5)}`];
+    // A run of digits ("1-5"): each one.
+    const run = /^(\d)-(\d)$/.exec(part);
+    if (run) return Array.from({ length: Number(run[2]) - Number(run[1]) + 1 }, (_, index) => String(Number(run[1]) + index));
     // Arrows run together ("↑↓"): one key each.
     if ([...part].every((char) => GLYPHS.has(char))) return [...part].map((char) => GLYPHS.get(char));
     return [part];
   });
 }
 
-export function hintsOf(table, { scope, without = [], words = {} } = {}) {
-  return table.filter((entry) => entry.hint && (scope === undefined || entry.scope === scope) && !without.includes(entry.action))
-    .map((entry) => ({ cap: capOf(entry), words: words[entry.action] ?? entry.hint }));
+export function hintsOf(table, { scope, without = [], words = {}, field = "hint" } = {}) {
+  return table.filter((entry) => entry[field] && (scope === undefined || entry.scope === scope) && !without.includes(entry.action))
+    .map((entry) => ({ cap: capOf(entry), words: words[entry.action] ?? entry[field] }));
 }
 
 export function keyGroups(table) {

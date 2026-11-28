@@ -5,7 +5,8 @@
 //   const logs = new StatusLogs(list, staleDays);
 //   logs.of(noteId)                    its entries, newest first
 //   logs.latest(noteId)                the newest, or null
-//   HEALTHS                            [{ key, label, word }]: on track, at risk, blocked
+//   HEALTHS                            [{ key, label, word }]: on track, at risk, off track (key
+//                                      blocked: Figma's word, the same on every page)
 //   healthOf(logs, note, today)        { key, label, entry, stale, age }: key on_track |
 //                                      at_risk | blocked | on_hold (a project on hold, whatever
 //                                      its log says) | none (nothing logged yet); age: days
@@ -25,9 +26,9 @@ import { dayText } from "../ui/dates.js";
 export const HEALTHS = [
   { key: "on_track", label: "On track", word: "on track" },
   { key: "at_risk", label: "At risk", word: "at risk" },
-  { key: "blocked", label: "Blocked", word: "blocked" },
+  { key: "blocked", label: "Off track", word: "off track" },
 ];
-const LABELS = { on_track: "On track", at_risk: "At risk", blocked: "Blocked", on_hold: "On hold", none: "—" };
+const LABELS = { on_track: "On track", at_risk: "At risk", blocked: "Off track", on_hold: "On hold", none: "—" };
 export const DEFAULT_STALE_DAYS = 14;
 
 export class StatusLogs {
