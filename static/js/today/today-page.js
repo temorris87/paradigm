@@ -41,7 +41,7 @@ import { shortTitle } from "../meetings/meetings-model.js";
 import { cellPeople } from "../oncall/oncall-model.js";
 import { chip } from "../ui/chip.js";
 import { toneOf } from "../ui/chip-tones.js";
-import { columnTarget } from "../ui/column-target.js";
+import { columnTarget, sideBySide } from "../ui/column-target.js";
 
 const MINUTE_MS = 60 * 1000;
 // Which column each part's rows sit in, left to right: h l move across them.
@@ -432,8 +432,12 @@ export class TodayPage {
     return starts.filter((index) => index < this.active).pop() ?? this.active;
   }
 
-  /** h l: the row beside in the next (1) or previous (-1) column, nearest in height. */
+  /** h l: the row beside in the next (1) or previous (-1) column, nearest in height. Under
+   * 1400 px the columns stack (today.css draws them display: contents, so they have no box):
+   * nothing is beside, and h l stay put rather than go up or down. */
   columnStep(direction) {
+    const columns = [...this.list.querySelectorAll(":scope > .today__col")].map((node) => node.getBoundingClientRect());
+    if (!sideBySide(columns)) return this.active;
     const nodes = new Map([...this.list.querySelectorAll("[role=option]")].map((node) => [Number(node.dataset.index), node]));
     const rows = this.options.map((option, index) => ({ column: PART_COLUMNS[option.part] ?? 0,
       top: nodes.get(index)?.getBoundingClientRect().top ?? 0 }));

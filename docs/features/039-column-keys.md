@@ -73,12 +73,22 @@ None: no route is added or changed.
   the lanes sit on screen, not the order they were built in. `laneTarget` measures each
   `.hub__lane` and `laneColumns` counts only the lanes beside the current one (sharing some of
   its height, fully to its left or right), by their left edge; the rest are out of reach. When
-  no two lanes sit side by side (stacked under 1400 px, or no CSS), the old lane order holds.
+  the lanes stack into one column (under 1400 px), none is beside: h/l stay put (a later
+  fix; at first the old lane order held, which took h/l up and down).
   On a person's page this means `l` on To raise does nothing (it used to drop to Notes), `h`
   on To raise goes to I owe, `h`/`l` go between Notes and Together, and `h` on Notes does
   nothing. On an area page `l` from the full-width top lane now does nothing (it used to go to
   the lane below). ←/→ on dashboards changed with it, as they share the action. Tab and S-Tab
   on a person's page are unchanged.
+- Stacked, h/l stay put everywhere: `sideBySide(rects)` (in `column-target.js`) tells Today
+  (its `.today__col`s, `display: contents` under 1400 px, so no box) and the task page (its
+  `.task-page__columns` children, stacked under 1000 px) whether any two columns sit side by
+  side; if not, `columnStep` keeps the cursor where it is.
+- A person's bar shows `h l columns` after `j k move` (`view-keys.js`), as on the other
+  dashboards; Tab is still "next column".
+- The Plan page's rows moved into `projectChartRows` (`plan/plan-rows.js`, out of
+  `plan-page.js`), and a moved phase no longer says its slip twice: the "+N d · moved N×"
+  second line is gone, the badge (`slipText`) says it; done and the slack before due stay.
 - `t` for the date history also renamed the slip button's title on a dashboard row to "Its
   date history (t)" (`hub-line.js`).
 - The task page's head counts as the left column's one row (it sits over the Notes); `l`

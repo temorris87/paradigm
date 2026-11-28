@@ -9,9 +9,11 @@
 //                              reach); top: the row's top in px
 //   laneColumns(rects, active)   each lane's column as seen from lanes[active], from where the
 //                                lanes sit on screen: the lanes beside it (sharing some of its
-//                                height) by their left edge, the rest NaN; when no two lanes
-//                                sit side by side (one column, or no layout), their order
+//                                height) by their left edge, the rest NaN; stacked in one
+//                                column (under 1400 px), none is beside it, so h/l stay put
 //     rects: [{ top, bottom, left, right }]  each lane's box (getBoundingClientRect())
+//   sideBySide(rects)            whether any two of the boxes sit side by side: a page with
+//                                fixed columns checks it, so stacked they don't go up or down
 
 export function columnTarget(rows, active, direction) {
   const from = rows[active];
@@ -32,12 +34,20 @@ export function columnTarget(rows, active, direction) {
 }
 
 // A person's page puts its cards in a row and Notes and Together in a second row under them,
-// so lane order alone would take l from the right-most card down to Notes.
+// so lane order alone would take l from the right-most card down to Notes; stacked under
+// 1400 px, it would take l from any lane down to the next.
 export function laneColumns(rects, active) {
-  const besides = (a, b) => a.top < b.bottom && b.top < a.bottom && (a.right <= b.left || b.right <= a.left);
-  const sideBySide = rects.some((a, i) => rects.some((b, j) => i < j && besides(a, b)));
-  if (!sideBySide) return rects.map((_, index) => index);
   const from = rects[active];
   if (!from) return rects.map(() => NaN);
   return rects.map((rect, index) => (index === active || besides(rect, from) ? rect.left : NaN));
+}
+
+export function sideBySide(rects) {
+  return rects.some((a, i) => rects.some((b, j) => i < j && besides(a, b)));
+}
+
+// Sharing some height, one fully to the left of the other. A box with no height (a column
+// drawn display: contents) shares none.
+function besides(a, b) {
+  return a.top < b.bottom && b.top < a.bottom && (a.right <= b.left || b.right <= a.left);
 }

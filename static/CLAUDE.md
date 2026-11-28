@@ -242,7 +242,8 @@ static/
                          (two-key entries in a key table: gg, gp; pure), column-target.js
                          (h l on a page of columns: the nearest column that way with rows,
                          its row nearest in height; on a dashboard, only the lanes beside on
-                         screen; Today, dashboards, the task page; pure),
+                         screen; sideBySide: stacked, h l stay put; Today, dashboards,
+                         the task page; pure),
                          clipboard.js
                          (copyRich: HTML + text), dates.js (THE on-screen
                          day and time format: "Wed 25 Nov", "Thu 26" (dayText, month: false),
@@ -276,7 +277,7 @@ static/
                          rounding when the page is zoomed)
   js/plan/               api.js, plan-model.js (phases, milestones, slip against the
                          baseline, history; pure), plan-rows.js (a chart's rows: project,
-                         area, template; the Plan strip and Portfolio bars; pure),
+                         the Plan page's (projectChartRows), area, template; the Plan strip and Portfolio bars; pure),
                          plan-page.js (&plan: the full Gantt over a dashboard, gp), plan-commands.js (dialogs: new phase /
                          milestone, edit dates + why, history, apply / save templates),
                          template-page.js (a plan template's page in the main window)

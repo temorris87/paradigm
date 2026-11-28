@@ -174,7 +174,12 @@ test("task page: j/k/G/gg move, Enter opens a subtask's page, J moves it, Escape
   assertEqual(left(), 1);
 }));
 
+// task-page.css's two columns, which the test page does not load.
+const sideBySide = (section) => Object.assign(section.querySelector(".task-page__columns").style,
+  { display: "grid", gridTemplateColumns: "400px 250px", alignItems: "start" });
+
 test("task page: l from the task (over its Notes) to the side column, h back; no wrap", () => withPage(({ section }) => {
+  sideBySide(section);
   assertEqual(selected(section), "Book van");
   press(section, "h");
   assertEqual(selected(section), "Book van", "h in the left column does nothing");
@@ -189,6 +194,19 @@ test("task page: l from the task (over its Notes) to the side column, h back; no
   assertEqual(selected(section), "Get quotes", "→ as l");
   press(section, "ArrowLeft");
   assertEqual(selected(section), "Book van", "← as h");
+}));
+
+test("task page: under 1000 px the side column stacks under the Notes; h and l do nothing there", () => withPage(({ section }) => {
+  Object.assign(section.querySelector(".task-page__columns").style, { display: "grid", gridTemplateColumns: "minmax(0, 1fr)" });
+  assertEqual(selected(section), "Book van");
+  press(section, "l");
+  assertEqual(selected(section), "Book van", "l does not drop to the side column's cards below");
+  press(section, "G");
+  const last = selected(section);
+  press(section, "h");
+  assertEqual(selected(section), last, "h does not climb back to the head");
+  press(section, "ArrowLeft");
+  assertEqual(selected(section), last, "← neither");
 }));
 
 test("task page: another task's page starts on its head", () => withPage(({ page, section, ctx }) => {
