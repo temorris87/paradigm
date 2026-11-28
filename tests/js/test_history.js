@@ -6,6 +6,7 @@ import { HISTORY_KEYS } from "../../static/js/history/history-keys.js";
 import { HISTORY_TABS, answerLine, filterRows, historyRows, pageOf, tabCounts, weekGroups } from "../../static/js/history/history-model.js";
 import { meetingEnded, splitMeetings } from "../../static/js/meetings/meeting-days.js";
 import { DashHead } from "../../static/js/hubs/dash-head.js";
+import { focusFirst } from "../../static/js/hubs/dashboard.js";
 import { HubPanel } from "../../static/js/hubs/hub-panel.js";
 import { DASHBOARD_LAYOUT, HUB_SECTIONS } from "../../static/js/hubs/hub-sections.js";
 import { dueFact, headStatus, initials, milestoneFact } from "../../static/js/hubs/project-facts.js";
@@ -17,8 +18,9 @@ import { PageViews } from "../../static/js/notes/page-views.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
 import { People } from "../../static/js/people/people-model.js";
 import { Plan } from "../../static/js/plan/plan-model.js";
-import { Records } from "../../static/js/records/records-model.js";
+import { Records, decisionOrder } from "../../static/js/records/records-model.js";
 import { HEALTHS, StatusLogs } from "../../static/js/status/status-model.js";
+import { formDialog } from "../../static/js/ui/dialog.js";
 import { Tasks } from "../../static/js/tasks/tasks-model.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
@@ -101,6 +103,8 @@ test("project facts: due in n days, the next milestone, the head's status, initi
   assertEqual(dueFact({ due: "2026-11-26" }, NOW), "Thu 26 Nov · 1 day late");
   assertEqual(dueFact({ due: "" }, NOW), "");
   assertEqual(milestoneFact(c.tree, c.plan, project(c), NOW), "Go-live · Mon 7 Dec");
+  assertEqual(milestoneFact(c.tree, c.plan, project(c), new Date(2026, 11, 9, 12)), "Go-live · Mon 7 Dec · 2 days late",
+    "a past milestone not done says it is late");
   const status = headStatus(c.statusLogs, project(c), NOW);
   assertEqual(`${status.label}|${status.tone}|${status.text}|${status.age}`, "At risk|caution|Vendor late.|7 d ago");
   assertEqual(headStatus(new StatusLogs([{ id: 3, note_id: 9, day: "2026-11-27", health: "blocked", text: "Stuck" }]), { id: 9 }, NOW).label,
@@ -131,6 +135,40 @@ test("project head: name, status line, Log status L, Open in note window ↗, Hi
   head.show({ ...c, statusLogs: new StatusLogs() }, c.tree.get(9), "");
   assertEqual(root.querySelector(".dash-head__status").textContent, "No status yet · L to log");
   assertEqual([...root.querySelectorAll(".dash-facts__value")].map((node) => node.textContent).join("|"), "—|—|—|+ Add|—", "empty: —");
+});
+
+test("facts row: a button hands the focus to the page before its dialog opens, so Esc returns to the list", () => {
+  const ran = [];
+  const app = { focusNote: () => ran.push("focus"), guard: () => ran.push("guard"), fail: (error) => ran.push(`fail ${error.message}`) };
+  const controls = focusFirst(app, { due: (note) => ran.push(`due ${note.id}`), area: () => { throw new Error("no"); } });
+  controls.due({ id: 2 });
+  assertEqual(ran.splice(0).join(), "focus,due 2,guard");
+  controls.area({ id: 2 });
+  assertEqual(ran.join(), "focus,fail no", "a refusal goes to the status line");
+});
+
+test("facts row: Cancel or Escape on its dialog puts the focus on the list, not the button", async () => {
+  const list = document.createElement("div");
+  list.tabIndex = 0;
+  const button = document.createElement("button");
+  document.body.append(list, button);
+  try {
+    const app = { focusNote: () => list.focus(), guard: (promise) => promise, fail: (error) => { throw error; } };
+    let shut = null;
+    const controls = focusFirst(app, { due: () => { shut = formDialog({ title: "Due", fields: [{ key: "due", label: "Due", optional: true }] }); } });
+    for (const close of ["cancel", "escape"]) {
+      button.focus();
+      controls.due({ id: 2 });
+      const dialog = document.querySelector("dialog.dialog");
+      if (close === "cancel") [...dialog.querySelectorAll("button")].find((each) => each.textContent === "Cancel").click();
+      else dialog.querySelector("input").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+      assertEqual(await shut, null, close);
+      assertEqual(document.activeElement, list, `${close}: back on the list`);
+    }
+  } finally {
+    list.remove();
+    button.remove();
+  }
 });
 
 test("project menu: in the main window, ··· also holds the area and the status the card had", () => {
@@ -247,6 +285,22 @@ test("history: every dated thing, newest first, each with its day, kind chip and
   assertEqual(delegated.find((row) => row.kind === "task").detail, "delegated to Cara Diaz");
 });
 
+test("history: two decisions on one day read in one order on the project page and in History (the later note first)", () => {
+  // By title "Add a gate" would come first: the order is the day, then the note id, descending.
+  const notes = [...NOTES, { id: 34, parent_id: 2, title: "Add a gate", kind: "decision", updated_at: T },
+    { id: 35, parent_id: 2, title: "Zulu call", kind: "decision", updated_at: T }];
+  const records = [...RECORDS, { id: 34, kind: "decision", day: "2026-11-26", people: [] },
+    { id: 35, kind: "decision", day: "2026-11-26", people: [] }];
+  const c = { ...ctx(), tree: new NoteTree(notes), records: new Records(records) };
+  const expected = "Zulu call,Add a gate,Weekly demos,One vendor,Ship in March,Use Postgres";
+  assertEqual(section("decisions").rows(c, project(c)).map((row) => row.title).join(), expected, "the project's Decisions");
+  assertEqual(section("latestDecisions").rows(c, project(c)).map((row) => row.title).join(), "Zulu call,Add a gate,Weekly demos",
+    "the project page's latest");
+  assertEqual(filterRows(historyRows(c, project(c)), "decisions").map((row) => row.title).join(), expected, "History's Decisions");
+  assertEqual(decisionOrder({ day: "2026-11-26", id: 34 }, { day: "2026-11-26", id: 35 }) > 0, true);
+  assertEqual(decisionOrder({ day: "2026-11-27", id: 1 }, { day: "2026-11-26", id: 35 }) < 0, true, "the day first");
+});
+
 test("history: two status logs on one day, the later one first, as Off track where it says blocked", () => {
   const c = ctx();
   const logs = new StatusLogs([...LOGS,
@@ -340,6 +394,9 @@ test("history page: the bar, 4 weeks, tabs by number, search as you type, Enter 
     assertEqual(titles(section), "Vendor late.,One vendor");
     press("Escape");
     assertTrue(document.activeElement === section.querySelector(".history__list"), "Esc in the box: back to the list");
+    press("/");
+    assertEqual(`${search.selectionStart}-${search.selectionEnd}`, "0-6", "/ again selects the old query, so typing replaces it");
+    press("Escape");
     search.value = "";
     search.dispatchEvent(new Event("input"));
     await tick();

@@ -212,4 +212,29 @@ answered questions and status logs:
   still `blocked`.
 - Within one day and kind, History lists the later row first (status logs and done tasks by id,
   meetings by time, records and milestones by their note's id), then by title.
+- Fix rounds (2026-11-27):
+  - NEXT MILESTONE adds " · n days late" when the milestone's planned day has passed and it is
+    not done (`milestoneFact()`, `project-facts.js`). `nextMilestone()` in `plan-model.js` is
+    unchanged, so the Gantt and the hub line are as before.
+  - History dates a milestone row by the day it was ticked done, not its planned day; one with
+    no phase has no detail. Left for Tyson: "planned 6 Nov" as the detail would be a small change.
+  - Decisions share one order, `decisionOrder()` in `records-model.js` (day, then note id, both
+    descending), used by the project page's Decisions and History's Decision rows.
+  - `?` on a project dashboard lists `g h` once: `viewKeyGroups()` leaves out of "Anywhere in this
+    window" any key the view's table lists.
+  - The head's and the facts row's buttons hand the focus to the page first (`focusFirst()` in
+    `dashboard.js`; the ··· menu gets `openNoteMenu(app, button, { back })`), so Esc or Cancel in
+    the dialog returns to the list. The list's focus no longer scrolls the head away.
+  - On History, `/` selects the old query, so typing starts afresh.
+  - Left as is: in the Nord Light theme `--kind-decision` equals the info tones, so the Decision
+    chip looks like Meeting and Milestone (the theme is the shared look's: Tyson's call); a change
+    made straight through the API does not refresh an open History page until reload (changes
+    made in the app do).
 - No API, route or migration changed.
+
+## Decisions after the merge (Tyson, 2026-11-27)
+- **One order for decisions.** The project page's Decisions and History's Decisions list
+  same-day decisions in the same order: day descending, then note id descending (the later note
+  first).
+- **`?` lists `g h` once** on a project dashboard: the HUB_KEYS entry. The duplicate from the
+  view's keys goes.

@@ -109,8 +109,9 @@ How the app behaves. Kept up to date by each feature that changes it.
   `L`; the Trash leaves out New and calls Enter "restore". Live has no keys of its own, so it
   shows `g t` Today, `g w` Week, `:` command, `? all keys`. `?` (outside text boxes, the editor
   and dialogs) opens a read-only list of every key of the view, grouped as its table groups
-  them, then "Anywhere in this window"; Esc or Close shuts it and the focus goes back where it
-  was. The note window's bar has no `?` (there it is the editor's search backwards): `i`
+  them, then "Anywhere in this window" (less any key the view already lists, so each key shows
+  once, in the view's words: a project's `g h`, Tyson, 2026-11-27); Esc or Close shuts it and
+  the focus goes back where it was. The note window's bar has no `?` (there it is the editor's search backwards): `i`
   insert, `Esc` normal, `:w` save, `/` search, and `Tab` sheet when the note has its sections
   sheet. The status line sits just above the bar. `static/js/ui/key-hints.js`,
   `static/js/layout/view-keys.js`.

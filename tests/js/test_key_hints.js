@@ -62,6 +62,19 @@ test("view keys: n and g h are a project's only: another dashboard's bar and ? l
   assertEqual(viewTable("history").name, "History");
 });
 
+test("view keys: a project's ? list names each key once; g h is HUB_KEYS' and still works", () => {
+  const keys = viewKeyGroups(null, "plan", { logStatus: true, project: true }).flatMap((group) => group.rows.flatMap((row) => row.keys));
+  const twice = keys.filter((key, i) => keys.indexOf(key) !== i);
+  assertEqual(twice.join(), "", "no key twice");
+  const gh = viewKeyGroups(null, "plan", { logStatus: true, project: true })
+    .flatMap((group) => group.rows.map((row) => ({ group: group.name, ...row }))).filter((row) => row.keys.join() === "g h");
+  assertEqual(gh.length, 1);
+  assertEqual(gh[0].help, HUB_KEYS.find((entry) => entry.action === "projectHistory").help, "the HUB_KEYS entry");
+  // The key itself is the main window's still: it reads g h wherever the focus is.
+  assertEqual(mainAction({ key: "g", target: document.body }), "pending");
+  assertEqual(mainAction({ key: "h", target: document.body }), "history");
+});
+
 test("key hints: a bar from a table: a cap and its words per hint, in table order", () => {
   assertEqual(hintsOf(TODAY_KEYS).map(({ cap, words }) => `${cap}=${words}`).join(),
     "j k=move,Space=done,s=schedule into next free slot,d=delegate,z=snooze to tomorrow,o=open");

@@ -8,6 +8,7 @@
 //   const dashboard = new Dashboard({ head, strip, text });   text: { box, label, body, edit, more }
 //   dashboard.attach(app)      the NotesApp it works for (its plan, commands, renderer)
 //   dashboard.show(ctx, note, body, pageShown)    after every redraw
+//   focusFirst(app, controls)  the facts row's controls: focus back on the page, then the dialog
 //   dashboard.hasChart / dashboard.focus()        never a chart here now (kept for the app)
 import { renderMarkdown } from "../markdown/index.js";
 import { drawRendered, followNoteLinks } from "../ui/rendered-text.js";
@@ -38,14 +39,20 @@ export class Dashboard {
         this.app.fail(error);
       }
     };
+    // A head button hands the focus back to the page first, so a dialog it opens returns
+    // there on Esc and the list keys work again (not stuck on the button).
+    const fromHead = (work) => {
+      this.app.focusNote();
+      run(work);
+    };
     this.head = new DashHead(head, {
-      onLog: (note) => run(() => logStatusDialog(this.app, note)),
-      onDigest: (note) => run(() => copyDigest(this.app, note)),
+      onLog: (note) => fromHead(() => logStatusDialog(this.app, note)),
+      onDigest: (note) => fromHead(() => copyDigest(this.app, note)),
       onEdit: (note) => run(() => this.app.openInNoteWindow(note.id)),
-      onOneOnOne: (person) => run(() => startOneOnOne(this.app, person)),
+      onOneOnOne: (person) => fromHead(() => startOneOnOne(this.app, person)),
       onHistory: (project) => run(() => this.app.showHistory(project.id)),
-      onMenu: (button) => run(() => openNoteMenu(this.app, button)),
-      controls: () => this.controls,
+      onMenu: (button) => run(() => openNoteMenu(this.app, button, { back: () => this.app.focusNote() })),
+      controls: () => this.headControls,
     });
     this.strip = new PlanStrip(strip, {
       onOpen: (id) => run(() => this.app.open(id)),
@@ -69,6 +76,9 @@ export class Dashboard {
     this.app = app;
     // The facts row's buttons do what the card's do.
     this.controls = hubLineControls(app);
+    // The facts row's buttons hand the focus back to the page first too (fromHead above):
+    // a dialog they open returns to the list on Esc or Cancel, not to the button.
+    this.headControls = focusFirst(app, this.controls);
   }
 
   show(ctx, note, body, pageShown) {
@@ -101,6 +111,18 @@ export class Dashboard {
   }
 
   focus() {}
+}
+
+/** The same controls, each handing the focus to the page (app.focusNote) before it runs. */
+export function focusFirst(app, controls) {
+  return Object.fromEntries(Object.entries(controls).map(([name, control]) => [name, (...args) => {
+    app.focusNote();
+    try {
+      app.guard(control(...args));
+    } catch (error) {
+      app.fail(error);
+    }
+  }]));
 }
 
 function escapeHtml(text) {

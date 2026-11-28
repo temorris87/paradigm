@@ -2,7 +2,7 @@
 // the dialogs and pickers it opens (static/js/ui/). Each one ends in a NotesApp method, the same
 // one the matching ex command runs (commands.js), so both ways behave alike.
 //
-//   openNoteMenu(app, anchorButton)
+//   openNoteMenu(app, anchorButton, { back? })   back(): where the focus goes on Esc or a choice
 //   goToNote(app, query?)            the Go to picker (top bar, :find)
 //   newNoteDialog(app, parentId, { heading?, kind? })   a title, then the new note opens
 //   moveTargets(tree, id) / goToItems(tree, meetings?)  what the pickers list (pure)
@@ -19,13 +19,13 @@ import { logStatusDialog } from "../status/status-commands.js";
 import { hubLineControls } from "../hubs/hub-actions.js";
 import { insertTableDialog } from "./selection-menu.js";
 
-export function openNoteMenu(app, anchor) {
+export function openNoteMenu(app, anchor, { back = null } = {}) {
   const id = app.currentId;
   const entries = noteMenuItems(app.tree, id, { window: app.role }).map((item) => {
     if (item === "separator" || item.group && !item.key) return item;
     return { ...item, run: () => app.guard(runItem(app, id, item)) };
   });
-  openMenu(anchor, entries, { label: "Note actions" });
+  openMenu(anchor, entries, { label: "Note actions", back });
 }
 
 function runItem(app, id, item) {

@@ -64,9 +64,11 @@ How the app behaves. Kept up to date by each feature that changes it.
     caution, "Off track" danger), the last status log's text and "· 7 d ago" (none: "No status
     yet · L to log"); on the right Log status `L`, Open in note window ↗, History `g h` and
     ··· (the note menu, which on a project in the main window also has Area… and Put on hold /
-    Make it active, since the card is gone).
+    Make it active, since the card is gone). A dialog or menu opened from the head or the facts
+    row gives the focus back to the page's list on Esc or Cancel, not to the button.
   - Facts row (small caps labels over values; empty "—"): DUE "Fri 11 Dec · in 15 days", NEXT
-    MILESTONE "Pilot go-live · Mon 7 Dec", AREA, PEOPLE (initials avatars, + Add: the person
+    MILESTONE "Pilot go-live · Mon 7 Dec" (a milestone past its day and not ticked done stays
+    next, with "· 2 days late", as Due says it), AREA, PEOPLE (initials avatars, + Add: the person
     picker), TIME CODE. The card ("Project ▾ · Active ▾ · due … · Area") is not drawn here.
   - The Plan strip in its own card ("Plan", the phases' summary, Gantt `g p`).
   - Two columns, about 3fr / 2fr, stacked under 1400 px. Left: Tasks ("n open", + Task; open
@@ -75,7 +77,8 @@ How the app behaves. Kept up to date by each feature that changes it.
     questions ("asked 22 Nov · 4 d"). Right: Outcome (the text's first line, the rest under it;
     `e` or Edit edits it in the note window; the text box is not drawn), Meetings (two rows:
     Next, the next still to come, and Last, the last that has ended; each a day chip, the title
-    and "n attending"), Decisions (the latest 3, each a day chip and its title), People (role ·
+    and "n attending"), Decisions (the latest 3, each a day chip and its title; same-day ones
+    the later note first, the order History uses, Tyson, 2026-11-27), People (role ·
     n waiting / n owed), then Notes and Files when they have items. "Where I am" folds into the
     head; its entries are History's Status rows.
   - Footers, each with History ↗ opening History on that section's tab: Tasks "Open and
@@ -99,13 +102,15 @@ How the app behaves. Kept up to date by each feature that changes it.
     done (success: "subtask of {parent}" or who it was delegated to), Meeting (info: "n
     attending · n tasks, n question captured"; still to come: left out), Decision ("from
     {meeting}"), Answered (the answer's first line), Status (the health's tone: "status log"),
-    Milestone (info: its phase). Within a day and kind the later one comes first.
+    Milestone (info: its phase; dated by the day it was ticked done). Within a day and kind
+    the later one comes first.
   - The latest 4 weeks with rows are drawn first; the next 4 as the list nears its foot, by
     scrolling or `j` past the last row, and again while the foot stays in view. Everything is
     already loaded: only the drawing is paged.
   - Keys (`static/js/history/history-keys.js`): `j` `k` move, Enter opens the row's meeting,
     decision, question or task page (Back returns to History), `1`–`5` a tab, `/` searches
-    titles and details as you type (Esc or Enter back to the list), Esc back to the project,
+    titles and details as you type (Esc or Enter back to the list; `/` again selects the old
+    query, so typing starts afresh), Esc back to the project,
     `?` all keys.
 - Plan templates (kept on an area, its Plan templates section): phases and milestones in
   working days from 0, each with standard tasks and subtasks; edited on their own page in

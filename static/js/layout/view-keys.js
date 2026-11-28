@@ -13,6 +13,7 @@
 //                              "? all keys" (Live has no table: the main window's own hints)
 //   viewKeyGroups(view, weekTab, options)  [{ name, rows }] for the ? list: the view's table as
 //                              it groups its keys (less the ones it is without), then the window's
+//                              (less the keys the view's table already lists: each key once)
 //   noteHints({ sheet })       the note window's bar (no ?: there it is the editor's search back)
 import { CALENDAR_KEYS } from "../calendar/calendar-keys.js";
 import { GANTT_KEYS } from "../gantt/gantt-keys.js";
@@ -76,8 +77,13 @@ export function viewHints(view, weekTab, options) {
 
 export function viewKeyGroups(view, weekTab, options) {
   const { name, table, without = [] } = viewTable(view, weekTab, options);
-  const own = keyGroups(table.filter((entry) => !without.includes(entry.action))).map((group) => ({ ...group, name: group.name ? `${name}: ${SCOPE_NAMES[group.name] ?? group.name}` : name }));
-  return [...own, ...keyGroups(MAIN_KEYS).map((group) => ({ ...group, name: "Anywhere in this window" }))];
+  const kept = table.filter((entry) => !without.includes(entry.action));
+  const own = keyGroups(kept).map((group) => ({ ...group, name: group.name ? `${name}: ${SCOPE_NAMES[group.name] ?? group.name}` : name }));
+  // A key the view lists (a project's g h, a dashboard's g p) isn't listed twice: the view's
+  // words say what it does there. The main window's key still works (main-keys.js).
+  const listed = new Set(kept.flatMap((entry) => entry.keys));
+  const main = MAIN_KEYS.filter((entry) => !entry.keys.some((key) => listed.has(key)));
+  return [...own, ...keyGroups(main).map((group) => ({ ...group, name: "Anywhere in this window" }))];
 }
 
 // The note window's keys are the editor's (Vim's) and the sheet's Tab: no table to read hints
