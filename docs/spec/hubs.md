@@ -208,7 +208,7 @@ How the app behaves. Kept up to date by each feature that changes it.
   from the link index), Edited. Edit dates shows what the move does ("+4 d · 4th move later ·
   pushes Cutover; 2 d slack left before due"; formDialog's `live`). Delegate: To, then Follow
   up: Tomorrow / At our next meeting (also on their To raise) / Pick… / none. Inbox triage
-  (File all… under the Inbox, on Today, or `f` there): one note at a time with its start and
+  (File all… under the Inbox, on Today, or `F` there: it was `f` until follow mode took `f`, Tyson, 2026-11-28): one note at a time with its start and
   the suggested hub; `1` under it, `r` a Resources folder, `m` under another note, `p` / `a`
   a project or area, `t` a task (and the note to the Trash), `x` Trash; Space skips, `o`
   opens it, `u` undoes the last, Escape stops. The Trash page: "Kept for 7 days…", columns

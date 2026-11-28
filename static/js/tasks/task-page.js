@@ -69,6 +69,8 @@ export class TaskPage {
     this.crumbs.setAttribute("aria-label", "Where this task is");
     this.body = element("div", "task-page__body");
     this.body.setAttribute("role", "listbox");
+    // A click on a row only moves the cursor: follow mode (ui/follow-overlay.js) presses Enter after.
+    this.body.dataset.follow = "enter";
     this.body.setAttribute("aria-label", "The task, its subtasks, emails, files and history");
     this.body.tabIndex = 0;
     section.replaceChildren(this.crumbs, this.body);

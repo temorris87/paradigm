@@ -3,6 +3,7 @@
 // and the Live page here shows it as it is typed there (live/live-page.js).
 import { boot } from "./boot.js";
 import { installMainKeys } from "./layout/main-keys.js";
+import { installFollowMode } from "./ui/follow-overlay.js";
 import { openPalette } from "./palette/palette.js";
 import { CalendarPage } from "./calendar/calendar-page.js";
 import { Changes } from "./connection/changes.js";
@@ -164,8 +165,12 @@ function showKeys() {
     groups: viewKeyGroups(view, weekTab(), hintOptions(app)) });
 }
 
+// f's follow mode (ui/follow-overlay.js) reads keys on the window's capture phase before the
+// window's own keys, so while it is on no other key fires: installed first.
+const follow = installFollowMode(window);
+
 // Keys of the whole main window (layout/main-keys.js): the palette, Today, the Week, the plan,
-// a project's History, the Live note, Settings, the ? list.
+// a project's History, the Live note, Settings, follow mode, the ? list.
 // The Week Plan's own gt (the tray) is read first while that tab is shown and the focus is on
 // the Week page: the calendar takes the keys typed outside .week-plan too (above). With the focus
 // in the navigator, gt is Today again.
@@ -184,5 +189,6 @@ installMainKeys(window, {
   history: () => app.guard(app.historyKey()),
   live: () => app.showView("live", "push"),
   settings: () => app.showView("settings", "push"),
+  follow: () => follow.start(),
   keys: () => app.guard(showKeys()),
 }, { shadowed });

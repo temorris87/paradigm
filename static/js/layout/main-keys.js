@@ -15,6 +15,9 @@ export const MAIN_KEYS = [
   { keys: ["gn"], action: "live", help: "the Live note: the note window's note as it is typed", command: "live" },
   { keys: ["g,"], action: "settings", help: "Settings: the note window, codes and hours, holidays, time off, linked folders, the data folder",
     command: "settings" },
+  // Every bar shows it (layout/view-keys.js EVERY_BAR); no view binds f (Today's File all… is F).
+  { keys: ["f"], action: "follow", help: "follow: a letter or two on everything you can click in view; type one to click it (Esc: none)",
+    hint: "follow" },
   { keys: ["?"], action: "keys", help: "every key of the page shown, in a list", hint: "all keys" },
 ];
 
@@ -32,7 +35,7 @@ export function mainAction(event) {
 }
 
 /** Puts the keys on the window: handlers { palette(), today(), week(), plan(), history(), live(), settings(),
- * keys() }.
+ * follow(), keys() }.
  * shadowed(event): the actions the scope under the focus takes over (layout/view-keys.js
  * shadowedMainActions): their keys go on to it, as if this table didn't bind them. */
 export function installMainKeys(target, handlers, { shadowed = () => [] } = {}) {
