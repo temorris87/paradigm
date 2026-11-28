@@ -40,7 +40,7 @@ export const HUB_KEYS = [
   { keys: ["n"], action: "oneOnOne", page: "person", help: "person: Start 1:1 notes" },
   { keys: ["d"], action: "delegate", help: "Delegate… a task to someone, or take it back", projectHint: "delegate" },
   { keys: ["t"], action: "history", help: "the date history (timeline) of a phase or milestone" },
-  { keys: ["L"], action: "logStatus", help: "Log status… of the project or area: its health and where it is", command: "log", hint: "log status",
+  { keys: ["S"], action: "logStatus", help: "Log status… of the project or area: its health and where it is", command: "log", hint: "log status",
     projectHint: "log status" },
   { keys: ["e"], action: "edit", help: "Edit… a task: its text, notes and due date; on a project's Outcome, its text (in the note window)",
     hint: "edit", projectHint: "edit outcome" },

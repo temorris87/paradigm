@@ -22,7 +22,9 @@ tests/js/                index.html runner, harness.js, fakes.js, editor-helpers
                          free time left, To file events on the day;
                          test_focus_ring.js: every :focus-visible rule one of the two rings;
                          test_settings.js: the Settings page, and the focus kept after
-                         Save, Add holiday, a holiday's Remove and an Unlink)
+                         Save, Add holiday, a holiday's Remove and an Unlink;
+                         test_page_history.js: H and L over a fake tab history, a step
+                         per page, the ends' messages, S for Log status)
                          markdown-sample.html: dev-only page rendering every Markdown construct
 ```
 

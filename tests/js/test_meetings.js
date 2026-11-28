@@ -262,7 +262,7 @@ test("meeting commands: :date, :attendee and :dropattendee on a meeting", async 
     "E: on a meeting, :attendee {name} says who attended");
 });
 
-test("page views: one step from the note, also when switching pages", () => {
+test("page views: a step from the note, and one more for each page switched to", () => {
   const main = document.createElement("main");
   const states = [];
   const history = {
@@ -277,7 +277,7 @@ test("page views: one step from the note, also when switching pages", () => {
   assertEqual(views.fromUrl(new URLSearchParams("note=2&meetings")), "meetings");
   views.show("people", "push");
   views.show("meetings", "push");
-  assertEqual(states.join(";"), "push /?note=2&people;replace /?note=2&meetings");
+  assertEqual(states.join(";"), "push /?note=2&people;push /?note=2&meetings");
   assertEqual(main.dataset.view, "meetings");
   assertTrue(pages.people.section.hidden && !pages.meetings.section.hidden);
   assertTrue(views.leave(), "went Back");

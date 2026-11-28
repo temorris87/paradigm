@@ -84,6 +84,7 @@ import { navCounts } from "../today/today-model.js";
 import { Rota } from "../oncall/oncall-model.js";
 import { drawPins, drawSaveState, saveStateOf } from "../layout/navigator-parts.js";
 import { returnTo, viewUnderLive } from "../live/live-return.js";
+import { PageHistory } from "../layout/page-history.js";
 
 // The blocks of time loaded for the pages (a task's next block, Home's Today).
 const SESSIONS_BACK_DAYS = 7;
@@ -159,7 +160,8 @@ export class NotesApp {
     this.navigator = navigator;
     this.api = api;
     this.location = location;
-    this.history = history;
+    // Every entry the app makes carries its step, for H and L at the ends (layout/page-history.js).
+    this.history = new PageHistory(history);
     this.tree = new NoteTree();
     // Each save sends the note's [[wiki links]] along, for the Linked from tabs.
     this.linkIndex = new LinkIndex({ api: linksApi, onChange: () => this.redraw() });
@@ -235,7 +237,7 @@ export class NotesApp {
       trash: trashPage(trash.section, { onRestore: (id) => this.restoreFromTrash(id), onLeave: onPage.onLeave }),
       ...extraPages,
     } : {};
-    this.views = new PageViews({ main: hub.page, pages, history, noteUrl: () => noteUrl(this.currentId) });
+    this.views = new PageViews({ main: hub.page, pages, history: this.history, noteUrl: () => noteUrl(this.currentId) });
     for (const [key, button] of Object.entries({ home: home?.button, people: people?.button, meetings: meetings?.button,
       trash: trash?.button })) {
       button?.addEventListener("click", () => {
@@ -319,6 +321,7 @@ export class NotesApp {
       });
     }
     window.addEventListener("popstate", () => {
+      this.history.popped();
       // A message about the page left behind (an error on it) would read as about this one.
       this.clearStatus();
       this.guard(this.openFromUrl("none"));

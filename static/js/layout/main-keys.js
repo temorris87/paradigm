@@ -15,6 +15,10 @@ export const MAIN_KEYS = [
   { keys: ["gn"], action: "live", help: "the Live note: the note window's note as it is typed", command: "live" },
   { keys: ["g,"], action: "settings", help: "Settings: the note window, codes and hours, holidays, time off, linked folders, the data folder",
     command: "settings" },
+  // As the browser's Back and Forward: one page each (layout/page-history.js). One cap for both.
+  // Before f, so every bar (Live's too) ends with f follow, ? all keys.
+  { keys: ["H"], action: "back", help: "back a page", hint: "back / forward", label: "H L" },
+  { keys: ["L"], action: "forward", help: "forward a page" },
   // Every bar shows it (layout/view-keys.js EVERY_BAR); no view binds f (Today's File all… is F).
   { keys: ["f"], action: "follow", help: "follow: a letter or two on everything you can click in view; type one to click it (Esc: none)",
     hint: "follow" },
@@ -35,7 +39,7 @@ export function mainAction(event) {
 }
 
 /** Puts the keys on the window: handlers { palette(), today(), week(), plan(), history(), live(), settings(),
- * follow(), keys() }.
+ * follow(), back(), forward(), keys() }.
  * shadowed(event): the actions the scope under the focus takes over (layout/view-keys.js
  * shadowedMainActions): their keys go on to it, as if this table didn't bind them. */
 export function installMainKeys(target, handlers, { shadowed = () => [] } = {}) {

@@ -152,7 +152,7 @@ export const HUB_SECTIONS = [
     // Its status log: the newest entry in full, two older ones on a line each, then History.
     rows: (ctx, hub) => statusRows(ctx, hub),
     detail: () => "status log",
-    empty: () => "Nothing logged yet: Log status (L) says where it stands",
+    empty: () => "Nothing logged yet: Log status (S) says where it stands",
     add: { label: "Log status" },
   },
   {

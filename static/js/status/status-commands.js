@@ -1,4 +1,4 @@
-// What Log status…, its key (L), :log and the digest do. Each takes the NotesApp
+// What Log status…, its key (S), :log and the digest do. Each takes the NotesApp
 // (static/js/notes/app.js); errors are thrown for the app (or the dialog) to show.
 //
 //   statusHubOf(app, id?)          the project or area a note belongs to (its top note), or null
@@ -27,7 +27,7 @@ export function statusHubOf(app, id = app.currentId) {
 }
 
 // Opened from a menu (the crumb's ▾), the dialog's opener is gone when it closes: the focus
-// goes back to the page, or L and the other page keys do nothing until a click.
+// goes back to the page, or S and the other page keys do nothing until a click.
 function backToPage(app) {
   return { fallbackFocus: () => app.focusNote?.() };
 }
@@ -66,7 +66,7 @@ export function statusHistoryDialog(app, hub) {
   const entries = app.statusLogs.of(hub.id);
   return formDialog({
     title: `Status history · ${hub.title}`,
-    text: entries.length ? "" : "Nothing logged yet: Log status… (L) makes the first entry.",
+    text: entries.length ? "" : "Nothing logged yet: Log status… (S) makes the first entry.",
     lines: entries.map((entry) => `${dayText(entry.day, { today })} · ${healthLabel(entry.health)} — ${entry.text}`),
     submit: "Close",
     run: async () => true,

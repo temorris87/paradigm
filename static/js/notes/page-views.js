@@ -36,13 +36,6 @@ export const PAGE_VIEWS = [
   { key: "settings", label: "Settings" },
 ];
 
-// Pages that push their own history step even when another page is shown: Back from Settings
-// returns to the page it was opened from.
-const STEPS_OVER_PAGES = new Set(["task", "settings"]);
-// Pages whose step stays under whatever opens from them: a note opened from a project's History
-// goes Back to History, not to the project.
-const STEPS_KEPT_UNDER = new Set(["history"]);
-
 /** A page's name ("Home"), for the tab's title. */
 export function viewLabel(key) {
   return PAGE_VIEWS.find((view) => view.key === key)?.label ?? "";
@@ -68,14 +61,10 @@ export class PageViews {
   show(key, history, flag = key) {
     const base = this.noteUrl();
     const url = `${base}${base.includes("?") ? "&" : "?"}${flag}`;
-    if (history === "push" && this.shown !== key) {
-      // From one page to the other: one step, so Escape and Back both reach the note. A task
-      // page is a step of its own even over another page (showTask puts its dashboard under
-      // it first, so this only happens for a task with no dashboard to open).
-      const ownStep = STEPS_OVER_PAGES.has(key) || STEPS_KEPT_UNDER.has(this.shown);
-      if (this.history.state?.view && !ownStep) this.history.replaceState({ view: key }, "", url);
-      else this.history.pushState({ view: key }, "", url);
-    } else if (history === "push" && flag !== key) this.history.replaceState(this.history.state, "", url);
+    // Every page is a step of its own, from a note or from another page: H, Escape and Back
+    // walk back through each (Tyson, 2026-11-28).
+    if (history === "push" && this.shown !== key) this.history.pushState({ view: key }, "", url);
+    else if (history === "push" && flag !== key) this.history.replaceState(this.history.state, "", url);
     // Only a push is marked: leaving a page that was loaded with the flag must not go Back
     // out of Paradigm.
     if (history === "replace") this.history.replaceState({}, "", url);

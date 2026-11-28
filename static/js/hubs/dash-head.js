@@ -1,6 +1,6 @@
 // The head of a dashboard (the main window). A project (Figma's): its name; under it the
-// health chip, the last status log's text and its age ("No status yet · L to log" with none);
-// the buttons Log status L, Open in note window ↗, History g h and ··· (the note menu); then
+// health chip, the last status log's text and its age ("No status yet · S to log" with none);
+// the buttons Log status S, Open in note window ↗, History g h and ··· (the note menu); then
 // the facts row: Due, Next milestone, Area, People, Time code ("—" when empty; each opens what
 // changes it). An area: its name, its health from the status log (a badge, "No update for
 // 16 d" once stale), its Purpose on one line, Copy weekly digest / Log area status. A person:
@@ -67,7 +67,7 @@ export class DashHead {
     main.append(meta);
     const actions = element("div", "dash-head__actions");
     const project = note.kind === "project";
-    const log = button(project ? "Log status" : "Log area status", "L", "Say where it stands: health and a few words (L in the sections)",
+    const log = button(project ? "Log status" : "Log area status", "S", "Say where it stands: health and a few words (S in the sections)",
       () => this.handlers.onLog(note));
     if (project) {
       log.classList.add("dash-head__button--primary");
@@ -137,11 +137,11 @@ DashHead.prototype.showProject = function showProject(ctx, project) {
       element("span", "dash-head__status-text", status.text), element("span", "dash-head__age", `· ${status.age}`));
   } else {
     if (held) meta.append(chip(held.label, held.tone, { dot: true }));
-    meta.append(element("span", "dash-head__stale dash-head__stale--never", "No status yet · L to log"));
+    meta.append(element("span", "dash-head__stale dash-head__stale--never", "No status yet · S to log"));
   }
   main.append(meta);
   const actions = element("div", "dash-head__actions");
-  const log = button("Log status", "L", "Say where it stands: health and a few words", () => this.handlers.onLog(project));
+  const log = button("Log status", "S", "Say where it stands: health and a few words", () => this.handlers.onLog(project));
   log.classList.add("dash-head__button--primary");
   if (project.archived_at) log.disabled = true;
   const menu = button("···", "", "What you can do with this project", (event) => this.handlers.onMenu(event.currentTarget));
