@@ -72,7 +72,8 @@ How the app behaves. Kept up to date by each feature that changes it.
   unchanged. Afterwards a plain note opens in the note window and a hub opens its dashboard.
 - Main-window keys (`static/js/layout/main-keys.js`, read in the capture phase): `:` the palette,
   `gt` Today (on the Week page's Plan tab, the tray: week.md), `gw` the Week, `gn` the Live page, `gp` the plan of the project or area on the dashboard (anywhere on
-  it; on another page it says to open one; `:plan` in the palette), `?` every key of the view
+  it; on another page it says to open one; `:plan` in the palette), `gh` the History of the
+  project on the dashboard (2026-11-27; else `E: History is a project's`), `?` every key of the view
   shown (2026-11-27). `g` waits for a second key everywhere (as in Vim): `gg` is the
   first row in every list (`static/js/ui/key-sequence.js` reads two-key entries; a page-wide
   key clears a list's waiting `g`).

@@ -2,7 +2,8 @@
 // it says which items show and how they read; note-actions.js runs them.
 //
 //   noteMenuItems(tree, id, { window }) -> [{ key, label, ... } | { group } | "separator"]
-//     keys: logStatus (a project or area, first, under the hub's name as a group label), rename, move, moveToFolder (a resource), newBeside, newUnder, file (with filing: a
+//     keys: logStatus (a project or area, first, under the hub's name as a group label), area and
+//           status (a project in the main window, after it: its dashboard has no card), rename, move, moveToFolder (a resource), newBeside, newUnder, file (with filing: a
 //           HUB_GROUPS entry, checked),
 //           insertTemplate (the note window: a template's text at the cursor), insertTable (the
 //           note window: an empty Markdown table at the cursor), makePhase (a plain
@@ -20,8 +21,13 @@ export function noteMenuItems(tree, id, { window = "note" } = {}) {
   const nested = tree.parentId(id) !== null;
   const items = [];
   if (!nested && (note.kind === "project" || note.kind === "area") && !note.archived_at) {
-    items.push({ group: note.title }, { key: "logStatus", label: note.kind === "area" ? "Log area status…" : "Log status…", hint: "L" },
-      "separator");
+    items.push({ group: note.title }, { key: "logStatus", label: note.kind === "area" ? "Log area status…" : "Log status…", hint: "L" });
+    // A project's page in the main window has its facts row instead of the card: what only
+    // the card changed stays here.
+    if (note.kind === "project" && window === "main") {
+      items.push({ key: "area", label: "Area…" }, { key: "status", label: note.status === "on_hold" ? "Make it active" : "Put on hold" });
+    }
+    items.push("separator");
   }
   items.push({ key: "rename", label: "Rename…", hint: ":rename" });
   if (!person && !template) items.push({ key: "move", label: "Move…" });

@@ -106,21 +106,39 @@
   font-size: var(--fs-sm);
 }
 
-/* The Plan strip: label, the phases as wide as their working days, Gantt ↗. */
+/* The Plan strip, a card of its own: "Plan", the phases in one line, Gantt g p on the right;
+   the phases below, as wide as their working days. */
 .plan-strip {
-  display: grid;
-  grid-template-columns: 7.5rem minmax(0, 1fr) 6rem;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-2) var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
   border: 1px solid var(--border-divider);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+
+.plan-strip__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  min-width: 0;
 }
 
 .plan-strip__label {
   color: var(--text-strong);
   font-size: var(--fs-sm);
   font-weight: 600;
+}
+
+.plan-strip__summary {
+  flex: 0 100 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
 }
 
 .plan-strip__track {
@@ -183,7 +201,8 @@
 }
 
 .plan-strip__gantt {
-  justify-self: end;
+  margin-left: auto;
+  white-space: nowrap;
   padding: 0;
   border: none;
   background: none;
@@ -394,4 +413,114 @@
   .plan-page__body {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* A project's head (Figma): name, the status line, the buttons, then the facts row. */
+.dash-head--project {
+  flex-wrap: wrap;
+  row-gap: var(--sp-3);
+}
+
+.dash-head--project .dash-head__title {
+  font-size: var(--fs-xl);
+}
+
+.dash-head__status-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 100;
+  color: var(--text);
+}
+
+.dash-head__age {
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* The facts row: small caps labels over their values. */
+.dash-facts {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: var(--sp-3) var(--sp-6);
+  margin: 0;
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-divider);
+}
+
+.dash-facts__fact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-0);
+  min-width: 0;
+}
+
+.dash-facts__label {
+  color: var(--text-label);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dash-facts__value {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  margin: 0;
+  color: var(--text-strong);
+  font-size: var(--fs-sm);
+}
+
+.dash-facts__button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dash-facts__button:hover {
+  color: var(--link);
+}
+
+.dash-facts__button:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+.dash-facts__people .dash-facts__button {
+  margin-left: var(--sp-1);
+  color: var(--link-secondary);
+}
+
+/* THE initials avatar (the facts row, a project's People). */
+.dash-facts__avatar,
+.hub__avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.dash-facts__avatar + .dash-facts__avatar {
+  margin-left: calc(-1 * var(--sp-1));
+  box-shadow: 0 0 0 2px var(--surface-page);
+}
+
+.dash-facts__more {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
 }

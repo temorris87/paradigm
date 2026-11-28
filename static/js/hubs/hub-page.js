@@ -15,14 +15,15 @@
 //     controls: the card's buttons (hub-actions.js hubLineControls)
 //     tabActions: { add(sectionKey, owner), menu(sectionKey, owner, anchorButton, back),
 //             row(key, sectionKey, owner, row), command(action, owner) }
-//             (hub-actions.js); menu: a heading's "···" button (back() refocuses the list); command: "logStatus", "plan";
+//             (hub-actions.js); menu: a heading's "···" button (back() refocuses the list); command: "logStatus", "plan",
+//             "newTask", "editOutcome", "projectHistory" (with the History tab to open on);
 //             row keys besides the row's buttons: "addSubtask", "openFile", "openFolder",
 //             "openTemplate", "openTask"
 //     at: { field, line } when a row points into the text (a mention)
 //     sheet: the note window's .sheet around the sections (section-sheet.js): they slide up
 //             over the text from a bar of counts; closed whenever another note opens
 //   hub.show(ctx, currentId)    after every redraw; ctx: { tree, people, meetings, records, tasks, sessions,
-//                               links, mentions, today }
+//                               links, mentions, today, body: { id, text } (the open note's text) }
 //   hub.focus()                 :hub: the sections (the sheet opened first)
 //   hub.hub                     the open hub, person, meeting, decision or question, or null
 //   hub.hasPanel                it has sections
@@ -78,8 +79,11 @@ export class HubPage {
       onMenu: (sectionDef, anchor) => this.tabActions.menu?.(sectionDef.base ?? sectionDef.key, this.hub, anchor,
         () => this.panel.focus()),
       onRowAction: (sectionDef, row, key) => this.tabActions.row(key, sectionDef.base ?? sectionDef.key, this.hub, row),
-      // Keys about the page's owner, not a row: L (Log status…), gp (the full plan).
+      // Keys about the page's owner, not a row: L (Log status…), gp (the full plan), n (a new
+      // task), gh (its History), e on the Outcome.
       onCommand: (action) => this.tabActions.command?.(action, this.hub),
+      // A section's History ↗: the project's History page, on that section's tab.
+      onHistory: (tab) => this.tabActions.command?.("projectHistory", this.hub, tab),
       onLeave: () => this.leave(),
       renderSnippet,
     });
@@ -116,11 +120,13 @@ export class HubPage {
     this.hub = note && note.kind !== "template" ? note : null;
     const shown = (sections) => sections.filter((section) => section && !this.hideSections.has(section.key));
     const lanes = this.dashboard ? dashboardFor(this.hub) : null;
-    this.lanes = lanes && { wide: shown(lanes.wide), act: shown(lanes.act), know: shown(lanes.know) };
+    this.lanes = lanes && { wide: shown(lanes.wide), act: shown(lanes.act), know: shown(lanes.know), emptyLine: lanes.emptyLine };
     this.sections = this.lanes ? [...this.lanes.wide, ...this.lanes.act, ...this.lanes.know] : shown(sectionsFor(this.hub));
     this.page.dataset.page = this.hub?.kind ?? "note";
     this.showLabels(note);
-    showHubLine(this.line, this.ctx, carded ? note : null, (id) => this.onOpen(id), this.controls);
+    // A project's dashboard has its head's facts row instead of the card (dash-head.js).
+    const headed = this.dashboard && note?.kind === "project" && tree.parentId(note.id) === null;
+    showHubLine(this.line, this.ctx, carded && !headed ? note : null, (id) => this.onOpen(id), this.controls);
     this.section.hidden = !this.hasPanel;
     this.redraw();
   }
@@ -144,7 +150,9 @@ export class HubPage {
       base: section.base ?? null,
       label: typeof section.label === "function" ? section.label(hub) : section.label,
       columns: section.columns ?? null,
-      detail: section.detail ? section.detail(rows) : String(rows.length),
+      detail: section.detail ? section.detail(rows, this.ctx, hub) : String(rows.length),
+      footer: footerOf(section, rows, this.ctx, hub),
+      history: section.history ?? null,
       folded: isFolded(this.folds, hub.kind, section),
       rows: [...pinned, ...counted.slice(0, limit)],
       more: Math.max(0, counted.length - limit),
@@ -160,8 +168,8 @@ export class HubPage {
     if (!this.hasPanel) return this.sheet?.setSummary([]);
     const rows = new Map(this.sections.map((section) => [section, section.rows(this.ctx, this.hub)]));
     const drawn = (sections) => sections.map((section) => this.drawn(section, rows.get(section)));
-    this.panel.draw(this.lanes ? { wide: drawn(this.lanes.wide), act: drawn(this.lanes.act), know: drawn(this.lanes.know) }
-      : drawn(this.sections));
+    this.panel.draw(this.lanes ? { wide: drawn(this.lanes.wide), act: drawn(this.lanes.act), know: drawn(this.lanes.know),
+      emptyLine: this.lanes.emptyLine } : drawn(this.sections));
     this.sheet?.setSummary(sectionSummary(this.sections.map((section) => ({
       key: section.key, label: typeof section.label === "function" ? section.label(this.hub) : section.label,
       rows: rows.get(section) }))));
@@ -174,6 +182,7 @@ export class HubPage {
     if (row.template !== undefined) return this.tabActions.row("openTemplate", sectionDef.key, this.hub, row);
     if (row.statusEntry !== undefined || row.statusHistory) return this.tabActions.row("statusHistory", sectionDef.key, this.hub, row);
     if (row.digest) return this.tabActions.add("digest", this.hub);
+    if (row.outcome) return this.tabActions.command?.("editOutcome", this.hub);
     // A task (Tasks, Waiting on, I owe, a subtask opened in place) opens its own page.
     if (row.task !== undefined) return this.tabActions.row("openTask", sectionDef.key, this.hub, row);
     return this.onOpen(row.id, row.at);
@@ -209,6 +218,12 @@ export class HubPage {
     this.sheet?.open();
     this.panel.focus();
   }
+}
+
+/** A section's footer; with no rows, only while History has some (Tasks with every task done). */
+function footerOf(section, rows, ctx, hub) {
+  const footer = section.footer ? section.footer(ctx, hub) : null;
+  return footer && (rows.length || footer.count) ? footer : null;
 }
 
 /** The label over a text box: "OUTCOME" and, while the box is empty, its hint. */

@@ -138,11 +138,11 @@ test("tray sidebar: Other notes last, the hub remembered, a gone hub falls back 
   }
 });
 
-test("next action gone: a project's Tasks keep their order, offer no Make next, and n is no key", () => {
+test("next action gone: a project's Tasks keep their order, offer no Make next, and n is a new task (on a project only)", () => {
   const section = HUB_SECTIONS.find((each) => each.key === "tasks");
   const { tree, tasks } = data();
   const rows = section.rows({ tree, tasks, sessions: [], today: new Date(2026, 10, 25), expanded: new Set() }, tree.get(2));
   assertEqual(rows.map((row) => row.title).join(), "Overdue one,Later,Undated move,Delegated no follow,Phase undated,Done");
   assertTrue(rows.every((row) => row.next === undefined && !row.actions.some((action) => action.key === "next")));
-  assertTrue(!HUB_KEYS.some((entry) => entry.keys.includes("n")));
+  assertEqual(HUB_KEYS.filter((entry) => entry.keys.includes("n")).map((entry) => `${entry.action}/${entry.only}`).join(), "newTask/project");
 });

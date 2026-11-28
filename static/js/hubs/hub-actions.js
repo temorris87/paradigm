@@ -252,6 +252,9 @@ export function hubTabActions(app) {
   const back = { fallbackFocus: () => app.focusNote() };
   const add = {
     where: (hub) => logStatusDialog(app, hub),
+    // A project's Outcome is its text: the note window writes it.
+    // (A blocked popup throws at once: as a rejection, guard puts it on the status line.)
+    outcome: (hub) => Promise.resolve().then(() => app.openInNoteWindow(hub.id)),
     raise: (person) => addTopicDialog(app, person),
     digest: (area) => copyDigest(app, area),
     notes: (owner) => newNoteDialog(app, owner.id, { heading: `New note in "${owner.title}"` }),
@@ -302,10 +305,14 @@ export function hubTabActions(app) {
     add: (tabKey, owner) => app.guard(add[tabKey]?.(owner)),
     // A section heading's "···" button (anchor): its menu; toList() puts the focus back on the list.
     menu: (tabKey, owner, anchor, toList) => menus[tabKey]?.(owner, anchor, toList),
-    // Keys about the page's owner: L, gp.
-    command: (action, owner) => {
+    // Keys about the page's owner: L, gp, n and gh (a project's), e on the Outcome; tab: the
+    // History tab a section's History ↗ opens on.
+    command: (action, owner, tab) => {
       if (action === "logStatus") return app.guard(logStatusDialog(app, statusHubOf(app, owner?.id)));
       if (action === "plan") return app.guard(app.showPlan(owner?.id));
+      if (action === "newTask" && owner?.kind === "project") return app.guard(newTaskDialog(app, owner));
+      if (action === "editOutcome" && owner) return app.guard(add.outcome(owner));
+      if (action === "projectHistory") return app.guard(app.showHistory(owner?.id, tab));
       return undefined;
     },
     row: (key, tabKey, owner, row) => {

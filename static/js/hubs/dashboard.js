@@ -1,8 +1,9 @@
 // The main window's dashboard of a hub or a person, over the card and sections HubPage draws:
-// a project's or an area's head (dash-head.js: name, health, Outcome, Log status), a
-// project's Plan strip (plan-strip.js; gp opens the full chart, plan/plan-page.js), and its
-// text, rendered (the note window edits it: Edit ↗). A project's or area's text shows in full
-// only past its first line, which the head already shows.
+// a project's or an area's head (dash-head.js: name, health, Log status; a project's facts
+// row), a project's Plan strip (plan-strip.js; gp opens the full chart, plan/plan-page.js),
+// and an area's or a person's text, rendered (the note window edits it: Edit ↗). An area's
+// text shows in full only past its first line, which the head already shows; a project's is
+// its Outcome section (hub-sections.js).
 //
 //   const dashboard = new Dashboard({ head, strip, text });   text: { box, label, body, edit, more }
 //   dashboard.attach(app)      the NotesApp it works for (its plan, commands, renderer)
@@ -17,6 +18,8 @@ import { DashHead } from "./dash-head.js";
 import { fieldsFor } from "./fields.js";
 import { PlanStrip } from "./plan-strip.js";
 import { applyTemplateDialog, newPhaseDialog } from "../plan/plan-commands.js";
+import { hubLineControls } from "./hub-actions.js";
+import { openNoteMenu } from "../notes/note-actions.js";
 
 // Past this height (rem) the rendered text folds under Show more.
 const FOLD_REM = 24;
@@ -40,6 +43,9 @@ export class Dashboard {
       onDigest: (note) => run(() => copyDigest(this.app, note)),
       onEdit: (note) => run(() => this.app.openInNoteWindow(note.id)),
       onOneOnOne: (person) => run(() => startOneOnOne(this.app, person)),
+      onHistory: (project) => run(() => this.app.showHistory(project.id)),
+      onMenu: (button) => run(() => openNoteMenu(this.app, button)),
+      controls: () => this.controls,
     });
     this.strip = new PlanStrip(strip, {
       onOpen: (id) => run(() => this.app.open(id)),
@@ -61,6 +67,8 @@ export class Dashboard {
 
   attach(app) {
     this.app = app;
+    // The facts row's buttons do what the card's do.
+    this.controls = hubLineControls(app);
   }
 
   show(ctx, note, body, pageShown) {
@@ -71,7 +79,7 @@ export class Dashboard {
     // A hub's head shows its first line; the text box only when there is more than that.
     const headed = shown && (note.kind === "project" || note.kind === "area");
     const more = body.trim().split("\n").filter((line) => line.trim()).length > 1;
-    this.text.box.hidden = !shown || (headed && !more);
+    this.text.box.hidden = !shown || (headed && !more) || note.kind === "project";
     if (this.text.box.hidden) return;
     const fields = fieldsFor(note);
     this.text.label.textContent = fields.main.label;

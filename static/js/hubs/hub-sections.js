@@ -8,7 +8,7 @@
 // counts (the Projects section).
 //
 //   sectionsFor(note)          the sections for a hub, person or meeting note, in page order
-//   dashboardFor(note)         the main window's lanes { wide: [...], act: [...], know: [...] }, or null
+//   dashboardFor(note)         the main window's lanes { wide: [...], act: [...], know: [...], emptyLine }, or null
 //   section.rows(ctx, note)    [{ id, title, depth, detail, date?, cells?, muted?, late?, actions?,
 //                              snippet?, at?, task?, file?, template?, addSubtask?, next?,
 //                              health?, statusEntry?, statusHistory?, box?, bar?, pre?,
@@ -33,7 +33,7 @@
 //                              them); snippet: Markdown shown under the row (a mention's
 //                              context, a task's notes); at: { field, line } to open it at
 //   section.label              its name, or (owner) -> name ("Waiting on Priya")
-//   section.detail(rows)       beside the heading ("3 open")
+//   section.detail(rows, ctx, owner)   beside the heading ("3 open")
 //   section.empty(note)        what it says when it has no rows
 //   section.add                { label } of its add button (hub-actions.js), or null
 //   section.menu               { label } of its heading's "···" menu button (hub-actions.js
@@ -44,22 +44,35 @@
 //   section.folded             folded until opened (remembered per browser: hub-folds.js)
 //   section.base               the section whose add button and row buttons it shares
 //                              ("openQuestions" adds a question), or none
+//   section.footer(ctx, owner)  { text, tab, count } of the line under its rows, with History ↗
+//                              (a project's now-and-next sections: what the History page holds;
+//                              tab: the History tab it opens on; count: History's on that tab).
+//                              With no rows but a count, the section stays in its column for it
+//   section.history            the History tab an item on the Nothing yet line opens (a
+//                              project's Answered questions), for a section with no rows of its own
+// A project's page shows now and next, this week on (DASHBOARD_LAYOUT.project): open tasks,
+// open questions, the next and the last meeting, the latest 3 decisions; the rest is on its
+// History page (static/js/history/). Its row fields besides the above: chip: { text, tone,
+// lead? } a status chip after the title (lead: before it); lead: a small label first ("Next");
+// avatar: initials before the title; outcome: the Outcome's row (e edits it)
 import { archivedProjectsIn, projectsIn } from "./hub-areas.js";
 import { attendeesOf, attendeesText, meetingsOn, meetingsWith, shortTitle } from "../meetings/meetings-model.js";
-import { localDay, whenText } from "../meetings/meeting-days.js";
+import { localDay, splitMeetings, whenText } from "../meetings/meeting-days.js";
 import { groupForKind, hubOf, inRecordBelow, phaseOf } from "../notes/hub-groups.js";
 import { Links, linksInto } from "../notes/links.js";
 import { mentionsOf } from "../notes/mentions.js";
 import { hubLinks, peopleOn, rolesText, workText } from "../people/people-model.js";
 import { isOpen, peopleOf, recordsOn } from "../records/records-model.js";
-import { openCount, subtaskText, taskTree, tasksOn, waitingOn } from "../tasks/tasks-model.js";
+import { estimateText, openCount, subtaskText, taskTree, tasksOn, waitingOn } from "../tasks/tasks-model.js";
 import { Files, fileDir, filesOn, folderSummary, foldersOf } from "../files/files-model.js";
-import { Plan, milestonesOf, nextMilestone, phasesOf, shortDay, slipOf, slipText } from "../plan/plan-model.js";
+import { Plan, daysBetween, milestonesOf, nextMilestone, phasesOf, shortDay, slipOf, slipText } from "../plan/plan-model.js";
 import { projectFactsText, statusText } from "./project-facts.js";
 import { dayText, daysAgo } from "../ui/dates.js";
 import { StatusLogs, digest, firstSentence, healthLabel, healthOf } from "../status/status-model.js";
 import { portfolioBars } from "../plan/plan-rows.js";
 import { firstName, owedTo, toRaise } from "../people/one-on-one.js";
+import { historyCounts } from "../history/history-model.js";
+import { initials, outcomeLine } from "./project-facts.js";
 
 const REMOVE = Object.freeze({ key: "remove", label: "Remove" });
 const ROLE = Object.freeze({ key: "role", label: "Role…" });
@@ -73,6 +86,8 @@ const DELETE = Object.freeze({ key: "remove", label: "Delete" });
 const HISTORY = Object.freeze({ key: "history", label: "History" });
 const RAISED = Object.freeze({ key: "done", label: "Raised" });
 const LIMIT = 5;
+// A project's Decisions: the latest few; the rest are on its History page.
+const LATEST_DECISIONS = 3;
 
 // Which sections each kind shows, top to bottom ("note": a plain note).
 export const SECTION_ORDER = {
@@ -90,10 +105,13 @@ export const SECTION_ORDER = {
 // The main window's dashboard: two lanes under the card, the chart and the text. Act holds
 // what needs doing, Know what is looked up; each section keeps its place, full or empty.
 // wide: full width over the two lanes (an area's Projects table).
+// emptyLine "foot": the empty sections of both lanes share one line under them (a project's).
 export const DASHBOARD_LAYOUT = {
+  // Now and next (Figma): its status is in the head, its history on its History page.
   project: {
-    act: ["where", "tasks", "openQuestions"],
-    know: ["meetings", "decisions", "answeredQuestions", "notes", "files", "people"],
+    act: ["openTasks", "projectQuestions"],
+    know: ["outcome", "nextMeetings", "latestDecisions", "projectPeople", "notes", "files", "projectAnswered"],
+    emptyLine: "foot",
   },
   area: {
     wide: ["projects"],
@@ -372,6 +390,85 @@ export const HUB_SECTIONS = [
     folded: true,
   },
   {
+    key: "outcome",
+    label: "Outcome",
+    // A project's text: its first line, the rest under it (the note window edits it: e).
+    rows: (ctx, hub) => outcomeRows(ctx, hub),
+    detail: () => "",
+    empty: () => "No outcome yet: what done looks like",
+    add: { label: "Edit", plain: true },
+  },
+  {
+    key: "openTasks",
+    label: "Tasks",
+    base: "tasks",
+    // Open tasks only, each with what to chase (a chip) and what it takes; done ones are on History.
+    rows: (ctx, owner) => tasksOn(ctx.tree, ctx.tasks, owner).filter((entry) => !entry.task.done)
+      .flatMap((entry) => openTaskRows(ctx, owner, entry)),
+    detail: (rows) => counted(rows.filter((row) => row.depth === 0 && row.task && !row.done).length, "open"),
+    empty: () => "No open tasks",
+    add: { label: "Task" },
+    footer: (ctx, owner) => historyFooter(ctx, owner, "tasks", (n) => `Open and upcoming only · ${n} done`),
+    limit: 12,
+  },
+  {
+    key: "projectQuestions",
+    label: "Open questions",
+    base: "questions",
+    rows: (ctx, owner) => openQuestionRows(ctx, owner),
+    detail: (rows) => String(rows.length),
+    empty: () => "No open questions",
+    add: { label: "Question" },
+    footer: (ctx, owner) => historyFooter(ctx, owner, "answered", (n) => `${n} answered`),
+    limit: LIMIT,
+  },
+  {
+    key: "nextMeetings",
+    label: "Meetings",
+    base: "meetings",
+    // Two rows only: the next one still to come and the last one that has ended.
+    rows: (ctx, owner) => nextAndLast(ctx, owner),
+    // The heading counts them all; the rows are two.
+    detail: (rows, ctx, owner) => String(ctx ? meetingsOn(ctx.tree, ctx.meetings, owner).filter((entry) => !entry.archived).length : rows.length),
+    empty: () => "No meetings yet",
+    add: { label: "Meeting" },
+    // The Last row is History's newest meeting; the rest are earlier.
+    footer: (ctx, owner) => historyFooter(ctx, owner, "meetings", (n) => `${Math.max(0, n - (endedMeetings(ctx, owner).length ? 1 : 0))} earlier`),
+  },
+  {
+    key: "latestDecisions",
+    label: "Decisions",
+    base: "decisions",
+    rows: (ctx, owner) => recordsOn(ctx.tree, ctx.records, owner, "decision").filter((entry) => !entry.archived)
+      .slice(0, LATEST_DECISIONS).map((entry) => ({
+        id: entry.note.id, title: entry.note.title, depth: 0, detail: "",
+        chip: { text: dayChip(entry.record.day, ctx), tone: "neutral", lead: true },
+      })),
+    detail: (rows, ctx, owner) => String(ctx ? recordsOn(ctx.tree, ctx.records, owner, "decision").length : rows.length),
+    empty: () => "No decisions yet",
+    add: { label: "Decision" },
+    footer: (ctx, owner) => historyFooter(ctx, owner, "decisions", (n) => `Latest ${LATEST_DECISIONS} shown · ${n} in all`),
+  },
+  {
+    // Only a link on the Nothing yet line: its answered questions are on the History page.
+    key: "projectAnswered",
+    label: "Answered questions",
+    rows: () => [],
+    detail: () => "",
+    empty: () => "Answered questions are on the History page",
+    history: "answered",
+  },
+  {
+    key: "projectPeople",
+    label: "People",
+    base: "people",
+    // Each with their role and what is between us on this project: waiting on them, owed to them.
+    rows: (ctx, hub) => projectPeopleRows(ctx, hub),
+    detail: (rows) => String(rows.length),
+    empty: () => "No people on this project yet",
+    add: { label: "Person" },
+  },
+  {
     key: "people",
     label: "People",
     // An area lists the people on its projects too. Archived people come last, muted.
@@ -434,7 +531,7 @@ export function dashboardFor(note) {
   const layout = note ? DASHBOARD_LAYOUT[note.kind] : null;
   if (!layout) return null;
   const sections = (keys = []) => keys.map((key) => BY_KEY.get(key));
-  return { wide: sections(layout.wide), act: sections(layout.act), know: sections(layout.know) };
+  return { wide: sections(layout.wide), act: sections(layout.act), know: sections(layout.know), emptyLine: layout.emptyLine ?? "lane" };
 }
 
 function questionRows(ctx, owner) {
@@ -634,6 +731,117 @@ function taskRows(ctx, owner, entry) {
   // Deeper subtasks are added on the task page (a on a row).
   const add = archived ? [] : [{ id: note.id, title: "+ Add subtask", depth: 1, detail: "", addSubtask: task.id, muted: true }];
   return [row, ...subs, ...add];
+}
+
+/** A project's Outcome: its text's first line, the rest under it; one row, or none while empty. */
+function outcomeRows(ctx, hub) {
+  const body = ctx.body?.id === hub.id ? ctx.body.text : "";
+  const first = outcomeLine(body);
+  if (!first) return [];
+  const lines = body.split("\n");
+  const at = lines.findIndex((line) => line.trim() && !line.trim().startsWith("```"));
+  const rest = lines.slice(at + 1).join("\n").trim();
+  return [{ id: hub.id, title: first, depth: 0, detail: "", snippet: rest, outcome: true, actions: [{ key: "edit", label: "Edit" }] }];
+}
+
+/** An open task on a project's page: its chip (late, waiting on someone, due) and what it takes;
+ * opened (z), where it is too; in an archived note, "archived" (why it is muted, with no actions). */
+function openTaskRows(ctx, owner, entry) {
+  const [row, ...rest] = taskRows(ctx, owner, entry);
+  const where = row.expanded && entry.note.id !== owner.id ? `in ${entry.note.title}` : "";
+  const detail = [subtaskText(entry), effortText(ctx, entry.task), where, entry.archived ? "archived" : ""];
+  return [{ ...row, detail: detail.filter(Boolean).join(" · "), date: "", chip: taskChip(ctx, entry.task), late: false }, ...rest];
+}
+
+/** "2 d late" (danger), "Ben Ortiz · follow up Fri" (info), "due Fri" (caution today, else neutral), or null. */
+export function taskChip(ctx, task) {
+  const today = localDay(ctx.today ?? new Date());
+  if (task.due && task.due < today) return { text: `${daysBetween(task.due, today)} d late`, tone: "danger" };
+  if (task.delegate_id !== null && task.delegate_id !== undefined) {
+    const person = ctx.tree.get(task.delegate_id);
+    const follow = task.follow_up ? `follow up ${soonText(task.follow_up, today)}` : "";
+    return { text: [person?.title ?? "", follow].filter(Boolean).join(" · "), tone: "info" };
+  }
+  if (task.due) return { text: task.due === today ? "due today" : `due ${soonText(task.due, today)}`, tone: task.due === today ? "caution" : "neutral" };
+  return null;
+}
+
+/** "45 min · placed Fri" (its estimate, where its next block is), or "2 h placed" (its blocks from today on). */
+function effortText(ctx, task) {
+  const today = localDay(ctx.today ?? new Date());
+  const blocks = (ctx.sessions ?? []).filter((session) => session.task_id === task.id && session.day >= today)
+    .sort((a, b) => `${a.day} ${a.start}`.localeCompare(`${b.day} ${b.start}`));
+  if (task.estimate_min) return [estimateText(task.estimate_min), blocks.length ? `placed ${soonText(blocks[0].day, today)}` : ""].filter(Boolean).join(" · ");
+  const placed = blocks.reduce((sum, session) => sum + Math.max(0, clockMinutes(session.end) - clockMinutes(session.start)), 0);
+  return placed ? `${estimateText(placed)} placed` : "";
+}
+
+function clockMinutes(time) {
+  const match = /^(\d{2}):(\d{2})$/.exec(String(time ?? ""));
+  return match ? Number(match[1]) * 60 + Number(match[2]) : 0;
+}
+
+/** "today", "Fri" within the week ahead, else "4 Dec". */
+function soonText(day, today) {
+  const away = daysBetween(today, day);
+  if (away === 0) return "today";
+  if (away > 0 && away < 7) return dayText(day, { today }).split(" ")[0];
+  return shortDay(day, today);
+}
+
+/** A project's open questions: a "?" chip, the title, "asked 22 Nov · 4 d". */
+function openQuestionRows(ctx, owner) {
+  const today = localDay(ctx.today ?? new Date());
+  return recordsOn(ctx.tree, ctx.records, owner, "question").filter((entry) => isOpen(entry.record) && !entry.archived)
+    .map((entry) => ({
+      id: entry.note.id, title: entry.note.title, depth: 0, detail: "", open: true,
+      chip: { text: "?", tone: "question", lead: true },
+      date: entry.record.day ? `asked ${shortDay(entry.record.day, today)} · ${Math.max(0, daysBetween(entry.record.day, today))} d` : "",
+      actions: [ANSWER],
+    }));
+}
+
+/** A now-and-next footer: History's count on its tab (so the two always agree), worded. */
+function historyFooter(ctx, owner, tab, words) {
+  const count = historyCounts(ctx, owner)[tab];
+  return { text: words(count), tab, count };
+}
+
+function endedMeetings(ctx, owner) {
+  return splitMeetings(meetingsOn(ctx.tree, ctx.meetings, owner), ctx.today ?? new Date()).ended;
+}
+
+/** Next: the next meeting still to come; Last: the last one that has ended. */
+function nextAndLast(ctx, owner) {
+  const { coming, ended } = splitMeetings(meetingsOn(ctx.tree, ctx.meetings, owner), ctx.today ?? new Date());
+  const row = (lead, { note, meeting }) => ({
+    id: note.id, title: shortTitle(note, meeting), depth: 0, lead,
+    chip: { text: dayChip(meeting.day, ctx), tone: "neutral", lead: true },
+    detail: `${attendeesOf(ctx.tree, ctx.meetings, note.id).length} attending`,
+    date: meeting.time || "",
+  });
+  return [...(coming[0] ? [row("Next", coming[0])] : []), ...(ended[0] ? [row("Last", ended[0])] : [])];
+}
+
+/** "Mon 30 Nov": a row's day chip. */
+function dayChip(day, ctx) {
+  return dayText(day, { today: localDay(ctx.today ?? new Date()) });
+}
+
+/** A project's people: initials, name, "role · 2 waiting / 1 owed" (on this project). */
+function projectPeopleRows(ctx, hub) {
+  const { tree, people, tasks } = ctx;
+  const scope = new Set([hub.id, ...tree.inOrder(hub.id).map((note) => note.id)]);
+  return peopleOn(tree, people, hub).map(({ person, roles, archived }) => {
+    const own = roles.find((each) => each.via === null);
+    const waiting = tasks ? waitingOn(tree, tasks, person.id).filter((entry) => scope.has(entry.task.note_id)).length : 0;
+    const owed = tasks ? owedTo(tree, tasks, person.id).filter((entry) => scope.has(entry.task.note_id)).length : 0;
+    return {
+      id: person.id, title: person.title, depth: 0, avatar: initials(person.title),
+      detail: [rolesText(roles), waiting || owed ? `${waiting} waiting / ${owed} owed` : ""].filter(Boolean).join(" · "),
+      muted: archived, role: own?.role ?? "", actions: own ? [ROLE, REMOVE] : [],
+    };
+  });
 }
 
 /** A row of Waiting on (a person's page, Home): the task, where it is, when to chase it. */

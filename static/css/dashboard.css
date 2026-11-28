@@ -102,3 +102,82 @@
 [data-role="main"] .hub__lane--wide {
   grid-column: 1 / -1;
 }
+
+/* A project's page (Figma): Outcome, Tasks... each in a card; the empty ones on one line
+   under both columns. */
+[data-page="project"] .hub__lane > .hub__section {
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
+  border: 1px solid var(--border-divider);
+  border-radius: var(--radius-md);
+}
+
+.hub__empties--foot {
+  grid-column: 1 / -1;
+  margin-top: var(--sp-2);
+}
+
+.hub__empty-item--foot .hub__empty-label {
+  color: var(--link-secondary);
+}
+
+/* "Next" / "Last" before a meeting's row. */
+.hub__lead {
+  flex: none;
+  min-width: 2.5rem;
+  color: var(--text-label);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.hub__line > .chip {
+  flex: none;
+  align-self: center;
+}
+
+/* Under a now-and-next section: what is on its History page, and History ↗. */
+.hub__footer {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  margin-top: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2) 0;
+  border-top: 1px solid var(--border-faint);
+  border-radius: 0 0 3px 3px;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+
+.hub__footer:hover {
+  background: var(--surface-row-hover);
+}
+
+.hub__footer-link {
+  margin-left: auto;
+  color: var(--link-secondary);
+}
+
+.hub__footer-link:hover {
+  color: var(--link);
+}
+
+/* A meeting's time is five characters: the dates' 6.5rem column would push it out of the
+   narrow column's card. */
+.hub__section--nextMeetings .hub__date {
+  min-width: 0;
+}
+
+/* In the narrow column a meeting's "n attending" and a person's "role · n waiting / n owed"
+   are the point of the row: they keep their width, and the title gives way instead. */
+.hub__section--nextMeetings .hub__detail,
+.hub__section--projectPeople .hub__detail {
+  flex: 0 0 auto;
+}
+
+.hub__section--nextMeetings .hub__title,
+.hub__section--projectPeople .hub__title {
+  flex: 1 1 0;
+  min-width: 0;
+}

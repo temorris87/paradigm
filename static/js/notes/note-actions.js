@@ -16,6 +16,7 @@ import { makePhaseDialog, unmakePhase } from "../plan/plan-commands.js";
 import { createFromTemplate, insertTemplateDialog, templateChoices } from "../templates/template-commands.js";
 import { moveToFolderDialog } from "../resources/folder-commands.js";
 import { logStatusDialog } from "../status/status-commands.js";
+import { hubLineControls } from "../hubs/hub-actions.js";
 import { insertTableDialog } from "./selection-menu.js";
 
 export function openNoteMenu(app, anchor) {
@@ -31,6 +32,8 @@ function runItem(app, id, item) {
   const note = app.tree.get(id);
   switch (item.key) {
     case "logStatus": return logStatusDialog(app, note);
+    case "area": return hubLineControls(app).area(note);
+    case "status": return app.setProjectStatus(note.id, note.status === "on_hold" ? "active" : "on_hold").then(() => app.focusNote());
     case "rename": return formDialog({
       title: `Rename "${note.title}"`,
       fields: [{ key: "title", label: "Title", value: note.title }],

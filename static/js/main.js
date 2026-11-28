@@ -1,5 +1,5 @@
 // The main window (/): dashboards, Home, People, Meetings, the calendar, the timesheet, plan
-// templates, folders, a task's page and the Live note, wide. A note opens in the note window (windows/note-window.js),
+// templates, folders, a task's page, a project's History and the Live note, wide. A note opens in the note window (windows/note-window.js),
 // and the Live page here shows it as it is typed there (live/live-page.js).
 import { boot } from "./boot.js";
 import { installMainKeys } from "./layout/main-keys.js";
@@ -12,6 +12,7 @@ import { PlanPage } from "./plan/plan-page.js";
 import { TemplatePage } from "./plan/template-page.js";
 import { FolderPage } from "./resources/folder-page.js";
 import { TaskPage } from "./tasks/task-page.js";
+import { HistoryPage } from "./history/history-page.js";
 import { LivePage } from "./live/live-page.js";
 import { timeApi } from "./timesheet/api.js";
 import { TimePage } from "./timesheet/time-page.js";
@@ -46,8 +47,13 @@ let weekPage = null;
 let appNow = () => null;
 const weekTab = () => weekPage?.view ?? "plan";
 const hintBar = $(".key-hints");
-// L on a dashboard logs status only when the note belongs to a project or an area.
-const hintOptions = (app) => ({ logStatus: Boolean(app?.tree && statusHubOf(app)) });
+// L on a dashboard logs status only when the note belongs to a project or an area; a
+// project's page has a bar of its own.
+const hintOptions = (app) => {
+  const note = app?.tree?.get(app.currentId);
+  return { logStatus: Boolean(app?.tree && statusHubOf(app)),
+    project: note?.kind === "project" && app.tree.parentId(note.id) === null };
+};
 const drawHints = () => drawKeyHints(hintBar, viewHints(appNow()?.views?.shown ?? null, weekTab(), hintOptions(appNow())));
 
 const app = boot({
@@ -92,6 +98,7 @@ const app = boot({
     const folder = new FolderPage($(".folder-view"), { app, onLeave: () => app().leaveView() });
     const task = new TaskPage($(".task-view"), { app, onLeave: () => app().leaveView(), emailsApi });
     const plan = new PlanPage($(".plan-view"), { app, onLeave: () => app().leaveView() });
+    const historyPage = new HistoryPage($(".history-view"), { app, onLeave: () => app().leaveView() });
     // A note newly opened in the note window, any way, brings the Live page up here.
     const live = new LivePage($(".live-view"), { changes, app, viewer: $("pd-image-viewer"),
       onNewNote: () => app().showView("live", "push"), ready: () => app()?.started ?? null });
@@ -127,6 +134,8 @@ const app = boot({
         // attach: :attach's file picker (tasks/task-emails.js).
         task: { section: $(".task-view"), show: (ctx) => task.show(ctx), focus: () => task.focus(), attach: () => task.attach() },
         plan: { section: $(".plan-view"), show: (ctx) => plan.show(ctx), focus: () => plan.focus() },
+        history: { section: $(".history-view"), show: (ctx) => historyPage.show(ctx), enter: () => historyPage.enter(),
+          focus: () => historyPage.focus(), crumbs: (ctx) => historyPage.crumbs(ctx) },
         // state: what the Live page shows, which note commands read (notes/screen-note.js).
         live: { section: $(".live-view"), show: () => live.show(), focus: () => live.focus(), get state() { return live.state; } },
       },
@@ -157,11 +166,12 @@ function onWeekPage(target) {
 /** ? : every key of the view shown, in a list. */
 function showKeys() {
   const view = app.views?.shown ?? null;
-  return openKeysDialog({ title: `Keys: ${viewTable(view, weekTab()).name}`, groups: viewKeyGroups(view, weekTab(), hintOptions(app)) });
+  return openKeysDialog({ title: `Keys: ${viewTable(view, weekTab(), hintOptions(app)).name}`,
+    groups: viewKeyGroups(view, weekTab(), hintOptions(app)) });
 }
 
 // Keys of the whole main window (layout/main-keys.js): the palette, Today, the Week, the plan,
-// the Live note, the ? list.
+// a project's History, the Live note, the ? list.
 // The Week Plan's own gt (the tray) is read first while that tab is shown and the focus is on
 // the Week page: the calendar takes the keys typed outside .week-plan too (above). With the focus
 // in the navigator, gt is Today again.
@@ -177,6 +187,7 @@ installMainKeys(window, {
   today: () => app.showView("home", "push"),
   week: () => app.calendarCommand(),
   plan: () => app.guard(app.planKey()),
+  history: () => app.guard(app.historyKey()),
   live: () => app.showView("live", "push"),
   keys: () => app.guard(showKeys()),
 }, { shadowed });

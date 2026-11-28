@@ -3,6 +3,7 @@
 import { CALENDAR_KEYS } from "../../static/js/calendar/calendar-keys.js";
 import { FOLDER_BROWSER_KEYS } from "../../static/js/files/folder-browser-keys.js";
 import { GANTT_KEYS } from "../../static/js/gantt/gantt-keys.js";
+import { HISTORY_KEYS } from "../../static/js/history/history-keys.js";
 import { HUB_KEYS } from "../../static/js/hubs/hub-keys.js";
 import { MAIN_KEYS, installMainKeys, mainAction } from "../../static/js/layout/main-keys.js";
 import { noteHints, shadowedMainActions, viewHints, viewKeyGroups, viewTable } from "../../static/js/layout/view-keys.js";
@@ -18,9 +19,9 @@ import { capKeys, drawKeyHints, hintsOf, keyGroups, keyName } from "../../static
 import { openKeysDialog } from "../../static/js/ui/keys-dialog.js";
 import { assertEqual, assertTrue, test } from "./harness.js";
 
-const TABLES = { MAIN_KEYS, TODAY_KEYS, HUB_KEYS, CALENDAR_KEYS, TIME_KEYS, ONCALL_KEYS, PAGE_KEYS, TASK_PAGE_KEYS, GANTT_KEYS,
+const TABLES = { MAIN_KEYS, TODAY_KEYS, HUB_KEYS, HISTORY_KEYS, CALENDAR_KEYS, TIME_KEYS, ONCALL_KEYS, PAGE_KEYS, TASK_PAGE_KEYS, GANTT_KEYS,
   FOLDER_KEYS, UI_KEYS, TRIAGE_KEYS, FOLDER_BROWSER_KEYS };
-const VIEWS = [null, "home", "people", "meetings", "trash", "template", "folder", "task", "plan", "live"];
+const VIEWS = [null, "home", "people", "meetings", "trash", "template", "folder", "task", "plan", "live", "history"];
 const WEEK_TABS = ["plan", "timesheet", "settings", "oncall"];
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -41,6 +42,24 @@ test("key hints: every hint: key is bound in its own table (and scope)", () => {
       assertTrue(entry.help, `${name}: ${entry.action} has its help`);
     }
   }
+});
+
+test("key hints: a project's bar (projectHint:) names keys HUB_KEYS binds; 1-5 reads back as each digit", () => {
+  const bound = new Set(HUB_KEYS.flatMap((entry) => entry.keys));
+  for (const entry of HUB_KEYS.filter((each) => each.projectHint)) {
+    for (const key of capKeys(entry)) assertTrue(bound.has(key), `${entry.action}: ${key}`);
+  }
+  assertEqual(capKeys({ keys: ["1"], label: "1-5" }).join(), "1,2,3,4,5");
+  assertEqual(hintsOf(HUB_KEYS, { field: "projectHint" }).length, 7);
+});
+
+test("view keys: n and g h are a project's only: another dashboard's bar and ? list leave them out", () => {
+  const helps = (options) => viewKeyGroups(null, "plan", options).flatMap((group) => group.rows.map((row) => row.keys.join()));
+  assertTrue(!helps({ logStatus: true }).includes("n"), "an area: no n");
+  assertTrue(!helps({}).includes("n"), "a person: no n");
+  assertTrue(helps({ logStatus: true, project: true }).includes("n"));
+  assertTrue(helps({ logStatus: true, project: true }).includes("g h"));
+  assertEqual(viewTable("history").name, "History");
 });
 
 test("key hints: a bar from a table: a cap and its words per hint, in table order", () => {
@@ -65,7 +84,10 @@ test("view keys: every main-window view's bar ends with ? all keys; Live shows t
   for (const tab of WEEK_TABS) assertTrue(caps("week", tab).endsWith("?"), tab);
   assertEqual(viewHints("live").map(({ cap, words }) => `${cap} ${words}`).join(), "g t Today,g w Week,: command,? all keys");
   const projectCaps = viewHints(null, "plan", { logStatus: true }).map(({ cap }) => cap).join();
-  assertEqual(projectCaps, "j k,Enter,z,a,Space,e,L,?", "a project's dashboard: the sections' keys");
+  assertEqual(projectCaps, "j k,Enter,z,a,Space,L,e,?", "an area's dashboard: the sections' keys");
+  assertEqual(viewHints(null, "plan", { logStatus: true, project: true }).map(({ cap, words }) => `${cap} ${words}`).join(),
+    "j k move,Space done,n new task,d delegate,L log status,e edit outcome,g p Gantt,? all keys", "a project's page: Figma's bar");
+  assertEqual(caps("history"), "j k,Enter,1-5,/,Esc,?", "History's bar");
   assertEqual(caps(null), "j k,Enter,z,a,Space,e,?", "a person's dashboard: no status to log");
   assertEqual(caps("week", "settings"), "[ ],t,?", "Settings has no grid to copy");
   assertEqual(caps("trash"), "j k,Enter,/,?", "the Trash has no New");

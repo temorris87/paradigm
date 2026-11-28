@@ -56,7 +56,57 @@ How the app behaves. Kept up to date by each feature that changes it.
   (phases as wide as their working days; done ✓, current, late underlined red, today's line;
   always there on a project: with no phases, "No phases yet", + Phase and Apply plan template…);
   the text box only when the text runs past its first line. The full Gantt is its own page,
-  `&plan` (`gp`, or Gantt on the strip; Escape back).
+  `&plan` (`gp`, or Gantt on the strip; Escape back). A project's dashboard is laid out as in
+  Figma since 2026-11-27 (next bullet): an area's keeps this one.
+- Project page (Tyson, 2026-11-27; Figma "Project"; where Figma and the old page differ, Figma
+  wins): a project's dashboard in the main window shows now and next, this week on.
+  - Head: the name (`--fs-xl`), under it the health chip ("On track" success, "At risk"
+    caution, "Off track" danger), the last status log's text and "· 7 d ago" (none: "No status
+    yet · L to log"); on the right Log status `L`, Open in note window ↗, History `g h` and
+    ··· (the note menu, which on a project in the main window also has Area… and Put on hold /
+    Make it active, since the card is gone).
+  - Facts row (small caps labels over values; empty "—"): DUE "Fri 11 Dec · in 15 days", NEXT
+    MILESTONE "Pilot go-live · Mon 7 Dec", AREA, PEOPLE (initials avatars, + Add: the person
+    picker), TIME CODE. The card ("Project ▾ · Active ▾ · due … · Area") is not drawn here.
+  - The Plan strip in its own card ("Plan", the phases' summary, Gantt `g p`).
+  - Two columns, about 3fr / 2fr, stacked under 1400 px. Left: Tasks ("n open", + Task; open
+    tasks only, each with a chip such as "2 d late" or "Ben Ortiz · follow up Fri" and a
+    detail such as "1/2 subtasks · 2 h placed"; an archived note's task says "archived"), Open
+    questions ("asked 22 Nov · 4 d"). Right: Outcome (the text's first line, the rest under it;
+    `e` or Edit edits it in the note window; the text box is not drawn), Meetings (two rows:
+    Next, the next still to come, and Last, the last that has ended; each a day chip, the title
+    and "n attending"), Decisions (the latest 3, each a day chip and its title), People (role ·
+    n waiting / n owed), then Notes and Files when they have items. "Where I am" folds into the
+    head; its entries are History's Status rows.
+  - Footers, each with History ↗ opening History on that section's tab: Tasks "Open and
+    upcoming only · n done", Open questions "n answered", Meetings "n earlier", Decisions
+    "Latest 3 shown · n in all". The counts are History's own tab counts (done subtasks
+    count). A section with no rows but a footer count (every task done) stays in its column.
+  - Sections with neither share one quiet line at the foot: "Nothing yet: + Notes + Files
+    Answered questions"; each adds one, and Answered questions (always there) opens History on
+    its tab.
+  - Keys (HUB_KEYS): `n` a new task (project only), `L` Log status, `e` on Outcome edits it,
+    `g h` History (project only), `g p` Gantt. Hint bar: `j k` move, `Space` done, `n` new
+    task, `d` delegate, `L` log status, `e` edit outcome, `g p` Gantt, `?` all keys.
+- History page (Tyson, 2026-11-27; Figma "Project history"; one per project): `&history=ID`,
+  opened by `g h` on a project's page, the head's History button or a section's History ↗ (on
+  that section's tab); `g h` anywhere else says `E: History is a project's`. The crumb reads
+  "Projects › {Project} › History".
+  - Bar: "{Project} · History", the tabs Everything, Meetings n, Done tasks n, Decisions n,
+    Answered n, and "Search history /" on the right.
+  - Rows grouped by week, newest first ("THIS WEEK · 23–29 NOV", then "16–22 NOV"; the year
+    only when not this year's): the day ("Thu 26"), a kind chip, the title and a detail. Task
+    done (success: "subtask of {parent}" or who it was delegated to), Meeting (info: "n
+    attending · n tasks, n question captured"; still to come: left out), Decision ("from
+    {meeting}"), Answered (the answer's first line), Status (the health's tone: "status log"),
+    Milestone (info: its phase). Within a day and kind the later one comes first.
+  - The latest 4 weeks with rows are drawn first; the next 4 as the list nears its foot, by
+    scrolling or `j` past the last row, and again while the foot stays in view. Everything is
+    already loaded: only the drawing is paged.
+  - Keys (`static/js/history/history-keys.js`): `j` `k` move, Enter opens the row's meeting,
+    decision, question or task page (Back returns to History), `1`–`5` a tab, `/` searches
+    titles and details as you type (Esc or Enter back to the list), Esc back to the project,
+    `?` all keys.
 - Plan templates (kept on an area, its Plan templates section): phases and milestones in
   working days from 0, each with standard tasks and subtasks; edited on their own page in
   the main window (a chart in days: drag; + Phase, + Milestone, + Task). "Apply plan

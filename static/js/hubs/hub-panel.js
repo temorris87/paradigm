@@ -5,13 +5,17 @@
 //
 //   const panel = new HubPanel(sectionElement, { onRow(section, row), onToggle(section),
 //     onExpand(section, row), onMore(section), onAdd(section), onMenu(section, button),
-//     onRowAction(section, row, key),
+//     onRowAction(section, row, key), onHistory(tab),
 //     onCommand(action), onLeave(), renderSnippet(markdown) -> html });
 //     onExpand: z (or a click on its ▸) on a row that opens in place (row.expanded set)
 //   panel.draw(sections)            one lane (the note window)
-//   panel.draw({ wide, act, know })  two lanes side by side (the main window's dashboard),
-//                                   under the wide sections (full width)
-//     each section: { key, label, detail, folded, rows, empty, add, addPlain, menu, more, columns? }
+//   panel.draw({ wide, act, know, emptyLine })  two lanes side by side (the main window's
+//                                   dashboard), under the wide sections (full width); emptyLine
+//                                   "foot": both lanes' empty sections on one line under them
+//     each section: { key, label, detail, folded, rows, empty, add, addPlain, menu, more, columns?, footer? }
+//     footer: { text, tab } a line under its rows with History ↗ (onHistory(tab)); a section
+//     with no rows but a footer keeps its place for it; history: the tab its item on the empty
+//     line opens (onHistory), for a section that has no rows of its own
 //     add: the button's label or null (addPlain: without the "+"); menu: the label of a
 //     "···" button after it (onMenu opens the menu under it) or null; more: how many rows
 //     "Show all" would add (0: none);
@@ -24,8 +28,11 @@
 // aria-activedescendant. The buttons are for the mouse (tabIndex -1); the keys do the same
 // (hub-keys.js).
 import { hubAction } from "./hub-keys.js";
+import { chip } from "../ui/chip.js";
 
 const MAX_DEPTH = 6;
+// A section with nothing to draw: no rows, and no footer to keep it in its column.
+const isEmpty = (section) => !section.rows.length && !section.footer;
 const KEYS_OF = { remove: "x", role: "r", answer: "r", done: "Space", edit: "e", delegate: "d", takeBack: "d", history: "h" };
 
 export class HubPanel {
@@ -64,7 +71,16 @@ export class HubPanel {
     this.sections = lanes.flatMap((lane) => lane.sections);
     this.options = [];
     this.list.classList.toggle("hub__list--lanes", lanes.length > 1);
-    this.list.replaceChildren(...lanes.map((lane, index) => this.lane(lane, index)));
+    // At the foot: the lanes' empty sections share one line under them all.
+    this.footEmpties = !Array.isArray(layout) && layout.emptyLine === "foot";
+    const nodes = lanes.map((lane, index) => this.lane(lane, index));
+    const empty = this.footEmpties ? this.sections.filter(isEmpty) : [];
+    if (empty.length) {
+      const line = this.empties(empty);
+      line.classList.add("hub__empties--foot");
+      nodes.push(line);
+    }
+    this.list.replaceChildren(...nodes);
     const again = this.againIndex(activeId, activeSection);
     // Untouched, the panel starts on the first task, the row most likely acted on.
     const first = this.touched ? -1
@@ -90,9 +106,9 @@ export class HubPanel {
     node.setAttribute("aria-label", lane.label);
     this.laneIndex = index;
     // Empty, folded or not, a section is only a name on the lane's Nothing yet line.
-    const empty = lane.sections.filter((section) => !section.rows.length);
+    const empty = lane.sections.filter(isEmpty);
     node.append(...lane.sections.filter((section) => !empty.includes(section)).map((section) => this.group(section)));
-    if (empty.length) node.append(this.empties(empty));
+    if (empty.length && !this.footEmpties) node.append(this.empties(empty));
     return node;
   }
 
@@ -101,7 +117,15 @@ export class HubPanel {
     const line = element("div", "hub__empties");
     line.append(element("span", "hub__empties-label", "Nothing yet:"));
     sections.forEach((section, index) => {
-      if (index) line.append(element("span", "hub__empties-separator", "·"));
+      // The foot's line: "Nothing yet: + Notes + Files Answered questions", no separators.
+      if (index && !this.footEmpties) line.append(element("span", "hub__empties-separator", "·"));
+      if (this.footEmpties) {
+        const item = this.option(element("span", "hub__empty-item hub__empty-item--foot"), { type: "empty", section });
+        item.title = section.empty;
+        item.append(element("span", "hub__empty-label", section.add ? `+ ${section.label}` : section.label));
+        line.append(item);
+        return;
+      }
       const item = this.option(element("span", "hub__empty-item"), { type: "empty", section });
       item.title = section.empty;
       item.append(element("span", "hub__empty-label", section.label));
@@ -144,6 +168,13 @@ export class HubPanel {
       group.append(this.option(element("div", "hub__more", `Show all (${section.total ?? section.rows.length + section.more})`),
         { type: "more", section }));
     }
+    if (section.footer) {
+      const foot = this.option(element("div", "hub__footer"), { type: "footer", section });
+      const link = element("span", "hub__footer-link", "History ↗");
+      link.dataset.action = "history";
+      foot.append(element("span", "hub__footer-text", section.footer.text), link);
+      group.append(foot);
+    }
     return group;
   }
 
@@ -169,7 +200,11 @@ export class HubPanel {
       node.append(element("pre", "hub__pre", row.pre));
       return node;
     }
+    if (row.lead) line.append(element("span", "hub__lead", row.lead));
+    if (row.avatar !== undefined) line.append(element("span", "hub__avatar", row.avatar));
+    if (row.chip?.lead) line.append(chip(row.chip.text, row.chip.tone));
     line.append(element("span", "hub__title", row.title));
+    if (row.chip && !row.chip.lead) line.append(chip(row.chip.text, row.chip.tone));
     if (row.bar) line.append(barOf(row.bar));
     if (section.columns && row.cells) {
       line.append(...row.cells.map((cell, index) => element("span", `hub__cell ${row.cellClasses?.[index] ?? ""}`.trim(), cell)));
@@ -217,6 +252,7 @@ export class HubPanel {
     if (action === "add") return this.handlers.onAdd(option.section);
     if (action === "menu") return this.handlers.onMenu?.(option.section, actionNode);
     if (action === "expand") return this.handlers.onExpand?.(option.section, option.row);
+    if (action === "history" && option.type === "footer") return this.handlers.onHistory?.(option.section.footer.tab);
     if (action) return this.handlers.onRowAction(option.section, option.row, action);
     return this.activate(option);
   }
@@ -224,8 +260,10 @@ export class HubPanel {
   activate(option) {
     if (!option) return undefined;
     if (option.type === "heading") return this.handlers.onToggle(option.section);
+    if (option.type === "empty" && option.section.history) return this.handlers.onHistory?.(option.section.history);
     if (option.type === "empty") return option.section.add ? this.handlers.onAdd(option.section) : undefined;
     if (option.type === "more") return this.handlers.onMore(option.section);
+    if (option.type === "footer") return this.handlers.onHistory?.(option.section.footer.tab);
     return this.handlers.onRow(option.section, option.row);
   }
 
@@ -249,10 +287,13 @@ export class HubPanel {
       case "remove": return this.rowAction(option, ["remove"]);
       case "second": return this.rowAction(option, ["role", "answer"]);
       case "toggle": return this.rowAction(option, ["done"]);
-      case "edit": return this.rowAction(option, ["edit"]);
+      // e on the Outcome (its heading, its row, its place on the empty line) edits its text.
+      case "edit": return option?.section.key === "outcome" ? this.handlers.onCommand?.("editOutcome") : this.rowAction(option, ["edit"]);
       case "delegate": return this.rowAction(option, ["delegate", "takeBack"]);
       case "history": return this.rowAction(option, ["history"]);
       case "logStatus":
+      case "newTask":
+      case "projectHistory":
       case "plan": return this.handlers.onCommand?.(action);
       case "editor": return this.handlers.onLeave();
       default: return undefined;
