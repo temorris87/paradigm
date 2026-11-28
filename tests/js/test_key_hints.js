@@ -98,11 +98,11 @@ test("view keys: every main-window view's bar ends with ? all keys; Live shows t
   const caps = (view, tab) => viewHints(view, tab).map(({ cap }) => cap).join();
   for (const view of VIEWS) assertTrue(caps(view).endsWith("?"), String(view));
   for (const tab of WEEK_TABS) assertTrue(caps("week", tab).endsWith("?"), tab);
-  assertEqual(viewHints("live").map(({ cap, words }) => `${cap} ${words}`).join(), "g t Today,g w Week,: command,? all keys");
+  assertEqual(viewHints("live").map(({ cap, words }) => `${cap} ${words}`).join(), "g t Today,g w Week,: command,H L back / forward,? all keys");
   const projectCaps = viewHints(null, "plan", { logStatus: true }).map(({ cap }) => cap).join();
-  assertEqual(projectCaps, "j k,Enter,z,a,Space,L,e,?", "an area's dashboard: the sections' keys");
+  assertEqual(projectCaps, "j k,Enter,z,a,Space,S,e,?", "an area's dashboard: the sections' keys");
   assertEqual(viewHints(null, "plan", { logStatus: true, project: true }).map(({ cap, words }) => `${cap} ${words}`).join(),
-    "j k move,Space done,n new task,d delegate,L log status,e edit outcome,g p Gantt,? all keys", "a project's page: Figma's bar");
+    "j k move,Space done,n new task,d delegate,S log status,e edit outcome,g p Gantt,? all keys", "a project's page: Figma's bar");
   assertEqual(caps("history"), "j k,Enter,1-5,/,Esc,?", "History's bar");
   assertEqual(caps(null), "j k,Enter,z,a,Space,e,?", "a person's dashboard: no status to log");
   assertEqual(viewHints("settings").map(({ cap, words }) => `${cap} ${words}`).join(), "Esc back,? all keys", "Settings: Esc back, ? all keys");
@@ -171,8 +171,8 @@ test("view keys: the ? list leaves out what the bar leaves out", () => {
   assertTrue(helps("people").includes("a"));
   assertTrue(helps("settings").includes("g ,"), "Settings: the window's keys in its ? list");
   assertTrue(helps("week", "timesheet").includes("c"));
-  assertTrue(!helps(null).includes("L"), "a person's dashboard: no Log status");
-  assertTrue(helps(null, "plan", { logStatus: true }).includes("L"));
+  assertTrue(!helps(null).includes("S"), "a person's dashboard: no Log status");
+  assertTrue(helps(null, "plan", { logStatus: true }).includes("S"));
 });
 
 test("view keys: ? is the main window's, never in a text box", () => {
@@ -234,7 +234,7 @@ test("view keys: a person's page has its own bar; People shows n, not a", () => 
   assertTrue(!helps("meetings").includes("n"));
   const person = helps(null, "plan", { person: true });
   for (const key of ["Tab", "Shift-Tab", "a", "r", "n", "o", "d", "Space"]) assertTrue(person.includes(key), `person ? lists ${key}`);
-  assertTrue(!person.includes("L"), "a person logs no status");
+  assertTrue(!person.includes("S"), "a person logs no status");
   assertTrue(!helps(null).includes("Tab"), "no Tab on other dashboards");
   assertEqual(viewTable(null, "plan", { person: true }).name, "Person");
   const { table } = viewTable(null, "plan", { person: true });

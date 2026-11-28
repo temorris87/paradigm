@@ -164,7 +164,7 @@ How the app behaves. Kept up to date by each feature that changes it.
 - Status log (Tyson, 2026-11-22): a project or area keeps dated entries with a health (on
   track, at risk, blocked; shown as "Off track" everywhere since 2026-11-27, Figma's word,
   still stored as `blocked`) and a few words (`status_logs`), never in its text. Log status… (the
-  head's button, `L` in the sections, `:log`, first on its note menu) has the health as three
+  head's button, `S` in the sections (`L` until 2026-11-28), `:log`, first on its note menu) has the health as three
   buttons (`1` `2` `3`), the words, and "since last log" lines to click in (date moves,
   decisions, answers, done tasks); Ctrl-Enter logs it. Escape from it or its history puts the
   focus back on the page, even when the menu item that opened it is gone. The newest entry is

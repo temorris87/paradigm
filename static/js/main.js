@@ -48,7 +48,7 @@ let weekPage = null;
 let appNow = () => null;
 const weekTab = () => weekPage?.view ?? "plan";
 const hintBar = $(".key-hints");
-// L on a dashboard logs status only when the note belongs to a project or an area; a
+// S on a dashboard logs status only when the note belongs to a project or an area; a
 // project's page has a bar of its own, and a person's dashboard its own keys (Tab, a, r, n, o).
 const hintOptions = (app) => {
   const note = app?.tree?.get(app.currentId);
@@ -165,7 +165,7 @@ function showKeys() {
 }
 
 // Keys of the whole main window (layout/main-keys.js): the palette, Today, the Week, the plan,
-// a project's History, the Live note, Settings, the ? list.
+// a project's History, the Live note, Settings, H and L (back and forward a page), the ? list.
 // The Week Plan's own gt (the tray) is read first while that tab is shown and the focus is on
 // the Week page: the calendar takes the keys typed outside .week-plan too (above). With the focus
 // in the navigator, gt is Today again.
@@ -184,5 +184,7 @@ installMainKeys(window, {
   history: () => app.guard(app.historyKey()),
   live: () => app.showView("live", "push"),
   settings: () => app.showView("settings", "push"),
+  back: () => app.history.goBack() || app.say("E: no earlier page", { error: true }),
+  forward: () => app.history.goForward() || app.say("E: no later page", { error: true }),
   keys: () => app.guard(showKeys()),
 }, { shadowed });

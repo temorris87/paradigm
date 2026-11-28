@@ -28,7 +28,7 @@ test("palette: words find notes, then pages", () => {
 test("palette: a colon lists commands with their usage and key, then notes", () => {
   const list = groups(":log");
   assertEqual(show(list), "Commands: Log status… | Notes: Logging conventions");
-  assertEqual(list[0].items[0].hint, ":log[!] L", "L is Log status in the sections' key table");
+  assertEqual(list[0].items[0].hint, ":log[!] S", "S is Log status in the sections' key table");
   const run = groups(":log! now")[0].items[0];
   assertEqual([run.command, run.bang, run.arg].join(), "log,true,now");
   assertTrue(NOTE_COMMANDS.every((command) => command.label), "every command has a label");

@@ -146,5 +146,5 @@ test("log status: opened from a menu that is gone, Escape gives the focus back t
   const dialog = document.querySelector("dialog.dialog");
   dialog.querySelector("textarea").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
   assertEqual(await result, null);
-  assertEqual(focused, 1, "the page has the focus again, so L works without a click");
+  assertEqual(focused, 1, "the page has the focus again, so S works without a click");
 });

@@ -288,7 +288,7 @@ test("page views: a task page over another page is its own step, so Back returns
   views.show("task", "push", "task=10");
   assertEqual(steps, [["push", "/?note=1&week"], ["push", "/?note=1&task=10"]]);
   views.show("home", "push");
-  assertEqual(steps.at(-1), ["replace", "/?note=1&home"], "other pages still take one step");
+  assertEqual(steps.at(-1), ["push", "/?note=1&home"], "and every page after it is a step too");
 });
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));

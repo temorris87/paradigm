@@ -113,7 +113,7 @@ test("project facts: due in n days, the next milestone, the head's status, initi
   assertEqual([initials("Ben Ortiz"), initials("Cher"), initials("Mary Ann Lee")].join(), "BO,C,ML");
 });
 
-test("project head: name, status line, Log status L, Open in note window ↗, History g h, ···, then the facts row", () => {
+test("project head: name, status line, Log status S, Open in note window ↗, History g h, ···, then the facts row", () => {
   const root = document.createElement("header");
   const ran = [];
   const controls = { due: () => ran.push("due"), area: () => ran.push("area"), timeCode: () => ran.push("code"), addPerson: () => ran.push("person") };
@@ -125,7 +125,7 @@ test("project head: name, status line, Log status L, Open in note window ↗, Hi
   assertEqual(root.querySelector(".dash-head__status").textContent, "At riskVendor late.· 7 d ago");
   assertTrue(root.querySelector(".dash-head__status .chip--caution"), "At risk is caution");
   assertEqual([...root.querySelectorAll(".dash-head__button")].map((node) => node.textContent).join("|"),
-    "Log status L|Open in note window ↗|History g h|···");
+    "Log status S|Open in note window ↗|History g h|···");
   for (const button of root.querySelectorAll(".dash-head__button")) button.click();
   assertEqual(ran.splice(0).join(), "log,edit,history 2,menu");
   const facts = [...root.querySelectorAll(".dash-facts__fact")].map((node) => `${node.querySelector("dt").textContent}=${node.querySelector("dd").textContent}`);
@@ -133,7 +133,7 @@ test("project head: name, status line, Log status L, Open in note window ↗, Hi
   for (const button of root.querySelectorAll(".dash-facts__button")) button.click();
   assertEqual(ran.join(), "due,area,person,code");
   head.show({ ...c, statusLogs: new StatusLogs() }, c.tree.get(9), "");
-  assertEqual(root.querySelector(".dash-head__status").textContent, "No status yet · L to log");
+  assertEqual(root.querySelector(".dash-head__status").textContent, "No status yet · S to log");
   assertEqual([...root.querySelectorAll(".dash-facts__value")].map((node) => node.textContent).join("|"), "—|—|—|+ Add|—", "empty: —");
 });
 
@@ -486,5 +486,5 @@ test("page views: a note opened from History is a step over it, so Back returns 
   views.show("live", "push");
   assertEqual(JSON.stringify(steps), JSON.stringify([["push", "/?note=3&history=3"], ["push", "/?note=3&live"]]));
   views.show("home", "push");
-  assertEqual(steps.at(-1).join(" "), "replace /?note=3&home", "other pages still take one step");
+  assertEqual(steps.at(-1).join(" "), "push /?note=3&home", "and every page after it is a step too");
 });

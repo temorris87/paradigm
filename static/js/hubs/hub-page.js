@@ -82,7 +82,7 @@ export class HubPage {
       onMenu: (sectionDef, anchor) => this.tabActions.menu?.(sectionDef.base ?? sectionDef.key, this.hub, anchor,
         () => this.panel.focus()),
       onRowAction: (sectionDef, row, key) => this.tabActions.row(key, sectionDef.base ?? sectionDef.key, this.hub, row),
-      // Keys about the page's owner, not a row: L (Log status…), gp (the full plan), n (a new
+      // Keys about the page's owner, not a row: S (Log status…), gp (the full plan), n (a new
       // task on a project, 1:1 notes on a person), a (a topic, on a person), gh (its History),
       // e on the Outcome.
       onCommand: (action) => this.tabActions.command?.(action, this.hub),

@@ -7,7 +7,7 @@
 //                              ("home", "week"...) or null for the dashboard; weekTab the Week
 //                              page's "plan" | "timesheet" | "oncall"; logStatus
 //                              whether the dashboard's note is a project or an area (only they
-//                              keep a status log: L is left out elsewhere); project whether it
+//                              keep a status log: S is left out elsewhere); project whether it
 //                              is a project's (its own bar, and the rows only: "project" keeps);
 //                              person whether it is a person's page: rows of a table can be
 //                              page-specific (page: / notOn:); followUp whether Today's

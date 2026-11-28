@@ -136,10 +136,25 @@ How the app behaves. Kept up to date by each feature that changes it.
 - Main-window keys (`static/js/layout/main-keys.js`, read in the capture phase): `:` the palette,
   `gt` Today (on the Week page's Plan tab, the tray: week.md), `gw` the Week, `gn` the Live page, `gp` the plan of the project or area on the dashboard (anywhere on
   it; on another page it says to open one; `:plan` in the palette), `gh` the History of the
-  project on the dashboard (2026-11-27; else `E: History is a project's`), `?` every key of the view
+  project on the dashboard (2026-11-27; else `E: History is a project's`), `H` back a page and
+  `L` forward a page (2026-11-28, next bullet), `?` every key of the view
   shown (2026-11-27). `g` waits for a second key everywhere (as in Vim): `gg` is the
   first row in every list (`static/js/ui/key-sequence.js` reads two-key entries; a page-wide
   key clears a list's waiting `g`).
+- Back and forward (Tyson, 2026-11-28; feature 041): `H` goes back a page and `L` forward one,
+  anywhere in the main window outside text boxes, the editor and dialogs (there `H` types an
+  `H`). They are the browser's Back and Forward (`history.back()` / `forward()`), so they go
+  exactly where those go and the page opens as it opens from its URL (its default cursor and
+  scroll; nothing more is restored). Every page change is its own history step (Tyson,
+  2026-11-28): Today → People → Meetings → a dashboard is four steps, and `H`, Esc on a page and
+  the browser's Back walk back through each; Settings, a task page and a note opened from History
+  are steps as before. With nothing earlier `H` shows `E: no earlier page` and does nothing; at
+  the forward end `L` shows `E: no later page`. The app knows the ends from a step number it
+  keeps in every history entry it makes (`static/js/layout/page-history.js`); the first page of
+  the tab, or the page a reload lands on, is where it counts from. Live keeps its own history
+  rules; `H` on Live goes back to the page before it. The `?` list shows both under "Anywhere in
+  this window"; the bar shows `H L back / forward` only on Live (the one bar with the window's
+  own hints).
 - Look (Tyson, 2026-11-26): both windows open in Nord Light, the default and only theme
   (Snow Storm backgrounds, Frost accents, dark text; native scrollbars and checkboxes light),
   and Mermaid diagrams and `:export` follow it. Every text colour reaches 4.5:1 on the
@@ -170,8 +185,9 @@ How the app behaves. Kept up to date by each feature that changes it.
   each Week tab, People, Meetings, a dashboard, a task page, Plan, a template, a folder, Live,
   Trash). It shows only keys the view's key table binds (the entries with `hint:`), and in the
   main window ends with `? all keys`. A dashboard that isn't a project's or an area's leaves out
-  `L`; the Trash leaves out New and calls Enter "restore". Live has no keys of its own, so it
-  shows `g t` Today, `g w` Week, `:` command, `? all keys`. `?` (outside text boxes, the editor
+  `S` (Log status, `L` until 2026-11-28); the Trash leaves out New and calls Enter "restore".
+  Live has no keys of its own, so it shows `g t` Today, `g w` Week, `:` command,
+  `H L back / forward` (2026-11-28), `? all keys`. `?` (outside text boxes, the editor
   and dialogs) opens a read-only list of every key of the view, grouped as its table groups
   them, then "Anywhere in this window" (less any key the view already lists, so each key shows
   once, in the view's words: a project's `g h`, Tyson, 2026-11-27); Esc or Close shuts it and

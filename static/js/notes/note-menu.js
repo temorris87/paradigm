@@ -23,7 +23,7 @@ export function noteMenuItems(tree, id, { window = "note" } = {}) {
   const nested = tree.parentId(id) !== null;
   const items = [];
   if (!nested && (note.kind === "project" || note.kind === "area") && !note.archived_at) {
-    items.push({ group: note.title }, { key: "logStatus", label: note.kind === "area" ? "Log area status…" : "Log status…", hint: "L" });
+    items.push({ group: note.title }, { key: "logStatus", label: note.kind === "area" ? "Log area status…" : "Log status…", hint: "S" });
     // A project's page in the main window has its facts row instead of the card: what only
     // the card changed stays here.
     if (note.kind === "project" && window === "main") {

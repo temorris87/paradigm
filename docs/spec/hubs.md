@@ -62,7 +62,7 @@ How the app behaves. Kept up to date by each feature that changes it.
   wins): a project's dashboard in the main window shows now and next, this week on.
   - Head: the name (`--fs-xl`), under it the health chip ("On track" success, "At risk"
     caution, "Off track" danger), the last status log's text and "· 7 d ago" (none: "No status
-    yet · L to log"); on the right Log status `L`, Open in note window ↗, History `g h` and
+    yet · S to log"); on the right Log status `S`, Open in note window ↗, History `g h` and
     ··· (the note menu, which on a project in the main window also has Area… and Put on hold /
     Make it active, since the card is gone). A dialog or menu opened from the head or the facts
     row gives the focus back to the page's list on Esc or Cancel, not to the button.
@@ -88,9 +88,10 @@ How the app behaves. Kept up to date by each feature that changes it.
   - Sections with neither share one quiet line at the foot: "Nothing yet: + Notes + Files
     Answered questions"; each adds one, and Answered questions (always there) opens History on
     its tab.
-  - Keys (HUB_KEYS): `n` a new task (project only), `L` Log status, `e` on Outcome edits it,
+  - Keys (HUB_KEYS): `n` a new task (project only), `S` Log status (`L` until 2026-11-28, when
+    `L` became forward a page: navigation.md; Tyson, 2026-11-28), `e` on Outcome edits it,
     `g h` History (project only), `g p` Gantt. Hint bar: `j k` move, `Space` done, `n` new
-    task, `d` delegate, `L` log status, `e` edit outcome, `g p` Gantt, `?` all keys.
+    task, `d` delegate, `S` log status, `e` edit outcome, `g p` Gantt, `?` all keys.
 - History page (Tyson, 2026-11-27; Figma "Project history"; one per project): `&history=ID`,
   opened by `g h` on a project's page, the head's History button or a section's History ↗ (on
   that section's tab); `g h` anywhere else says `E: History is a project's`. The crumb reads

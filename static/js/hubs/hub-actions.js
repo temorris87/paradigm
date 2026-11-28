@@ -308,7 +308,7 @@ export function hubTabActions(app) {
     add: (tabKey, owner) => app.guard(add[tabKey]?.(owner)),
     // A section heading's "···" button (anchor): its menu; toList() puts the focus back on the list.
     menu: (tabKey, owner, anchor, toList) => menus[tabKey]?.(owner, anchor, toList),
-    // Keys about the page's owner: L, gp, n and gh (a project's), e on the Outcome; on a person,
+    // Keys about the page's owner: S, gp, n and gh (a project's), e on the Outcome; on a person,
     // a (add topic) and n (Start 1:1 notes); tab: the History tab a section's History ↗ opens on.
     command: (action, owner, tab) => {
       if (action === "logStatus") return app.guard(logStatusDialog(app, statusHubOf(app, owner?.id)));
