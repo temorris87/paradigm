@@ -138,6 +138,27 @@ test("follow overlay: labels on what can be clicked; its label typed clicks it; 
   }
 });
 
+test("follow overlay: a held f's repeats click nothing; Tab ends it and lets the focus move on", () => {
+  const { root, clicked } = fixture(5);
+  const follow = installFollowMode(root, { root });
+  try {
+    follow.start();
+    assertEqual(shownLabels().join(), "a,s,d,f,g");
+    press(root.firstChild, "f", { repeat: true });
+    assertTrue(follow.active, "a repeat of the held f is not a letter typed");
+    assertEqual(clicked.join(), "", "and clicks nothing");
+    assertEqual(shownLabels().length, 5, "every label still shown");
+    const tab = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    root.firstChild.dispatchEvent(tab);
+    assertTrue(!follow.active, "Tab ends follow mode");
+    assertTrue(!tab.defaultPrevented, "and the browser moves the focus on, as everywhere");
+    assertEqual(clicked.join(), "", "nothing was clicked");
+  } finally {
+    follow.stop();
+    root.remove();
+  }
+});
+
 test("follow overlay: over 9 targets, two letters; the first hides the rest; Backspace takes it back", () => {
   const { root, clicked } = fixture(12);
   const follow = installFollowMode(root, { root });

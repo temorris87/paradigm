@@ -153,10 +153,11 @@ How the app behaves. Kept up to date by each feature that changes it.
   the focus goes where a mouse click would leave it (the target, or the focusable thing around
   it: a tree row's item), even when the click does nothing.
   Shift is ignored. Esc, a key that matches no label, Backspace with nothing typed (else it takes
-  back a letter), a mouse press, a scroll, a resize or a Ctrl/Alt/Cmd shortcut ends it. Esc and
-  Backspace are follow mode's own table (`ui/ui-keys.js`, scope `follow`), and `f`'s help in the
-  `?` list names them from it. While it
-  is on it takes every key, so no page key fires. If the page is drawn again while it is on, the
+  back a letter), a mouse press, a scroll, a resize or a Ctrl/Alt/Cmd shortcut ends it; Tab ends
+  it and still moves the focus on. Esc, Backspace and Tab are follow mode's own table
+  (`ui/ui-keys.js`, scope `follow`), and `f`'s help in the `?` list names them from it. While it
+  is on it takes every key, so no page key fires; a held `f`'s repeats type nothing, so holding
+  `f` a moment too long never clicks a label. If the page is drawn again while it is on, the
   labels are drawn again for what is now in view, keeping the letters typed while they still
   start a label (else it ends); a label never clicks something no longer on the page. Every bar shows `f follow` before
   `? all keys`, and the `?` list has it under "Anywhere in this window". No view binds `f`

@@ -110,13 +110,17 @@ export function installFollowMode(target, { root = document, redraws = null } = 
     event.stopImmediatePropagation();
     // A browser shortcut (Ctrl-W...) is the browser's: follow mode just ends.
     if (event.ctrlKey || event.altKey || event.metaKey) return stop();
+    // Its own keys are ui/ui-keys.js's "follow" scope (Shift ignored, as for a label's letters).
+    const action = uiAction({ key: event.key }, "follow");
+    // Tab ends it and still moves the focus on, as everywhere.
+    if (action === "leave") return stop();
     event.preventDefault();
+    // A held f repeats once follow mode is on: a repeat is never a letter typed.
+    if (event.repeat) return;
     // The page was drawn again before the observer saw it: the labels shown are for what is gone,
     // so the key is taken and the labels drawn again.
     if (stale()) return redraw();
-    // Its own keys are ui/ui-keys.js's "follow" scope (Shift ignored, as for a label's letters);
-    // a label's letters type it; any other key ends it.
-    const action = uiAction({ key: event.key }, "follow");
+    // A label's letters type it; any other key ends it.
     if (action === "close") return stop();
     if (action === "back") {
       if (!session.typed) return stop();

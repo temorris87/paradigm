@@ -31,10 +31,12 @@ test("ui keys: every key is in one scope's table once", () => {
 
 test("ui keys: follow mode's own keys are its table's: Backspace takes back, Esc ends it", () => {
   const follow = UI_KEYS.filter((each) => each.scope === "follow");
-  assertEqual(follow.map((each) => `${each.keys.join()} ${each.action}`).join("|"), "Backspace back|Escape close");
+  assertEqual(follow.map((each) => `${each.keys.join()} ${each.action}`).join("|"), "Backspace back|Escape close|Tab leave");
+  assertTrue(follow.every((each) => !/[()]/.test(each.help)), "help without brackets: f's help wraps them in its own");
   assertTrue(follow.every((each) => each.help), "each has its help");
   assertEqual(uiAction({ key: "Backspace" }, "follow"), "back");
   assertEqual(uiAction({ key: "Escape" }, "follow"), "close");
+  assertEqual(uiAction({ key: "Tab" }, "follow"), "leave");
   assertEqual(uiAction({ key: "a" }, "follow"), null, "a label's letters are the labels', not bound keys");
 });
 

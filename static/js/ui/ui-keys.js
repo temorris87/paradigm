@@ -5,8 +5,9 @@
 // "diagram" keys in the Insert diagram picker (diagrams/insert-diagram.js; j and k move only
 // while nothing is typed, else they type), "follow" keys in follow mode (ui/follow-overlay.js;
 // a label's letters type it, ui/follow-hints.js HINT_LETTERS, and any other key ends it; f's
-// help in layout/main-keys.js is written from these). Keys with Ctrl, Alt or Cmd held are left
-// to the browser, and Tab moves the focus on, as everywhere.
+// help in layout/main-keys.js is written from these; a held key's repeats type nothing). Keys with
+// Ctrl, Alt or Cmd held are left to the browser, and Tab moves the focus on, as everywhere (in
+// follow mode it also ends it).
 export const UI_KEYS = [
   { scope: "menu", keys: ["j", "ArrowDown"], action: "next", help: "next item" },
   { scope: "menu", keys: ["k", "ArrowUp"], action: "previous", help: "previous item" },
@@ -33,8 +34,9 @@ export const UI_KEYS = [
   { scope: "choices", keys: ["j", "ArrowDown"], action: "next", help: "the next choice" },
   { scope: "choices", keys: ["k", "ArrowUp"], action: "previous", help: "the choice before" },
   { scope: "choices", keys: ["Enter"], action: "submit", help: "do it with the choice made" },
-  { scope: "follow", keys: ["Backspace"], action: "back", help: "take back the last letter (none typed: end it)" },
+  { scope: "follow", keys: ["Backspace"], action: "back", help: "take back the last letter, or end it if none is typed" },
   { scope: "follow", keys: ["Escape"], action: "close", help: "end it, clicking nothing" },
+  { scope: "follow", keys: ["Tab"], action: "leave", help: "end it, and the focus moves on" },
 ];
 
 const BY_SCOPE = new Map();
