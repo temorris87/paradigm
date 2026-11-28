@@ -26,7 +26,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve));
 const key = (name) => document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: name, bubbles: true, cancelable: true }));
 
 /** A Plan tab of its own (no week page around it), today Friday 27 Nov 2026, not imported. */
-async function planPage({ status = NOT_IMPORTED, stored = {}, upload } = {}) {
+async function planPage({ status = NOT_IMPORTED, stored = {}, upload, pending = [] } = {}) {
   const root = document.createElement("div");
   root.tabIndex = -1;
   const bar = document.createElement("div");
@@ -36,16 +36,23 @@ async function planPage({ status = NOT_IMPORTED, stored = {}, upload } = {}) {
   cell.append(week);
   root.append(bar, side, cell);
   document.body.append(root);
-  const state = { status, sent: [], uploads: [] };
+  const state = { status, sent: [], uploads: [], pending };
   const storage = { getItem: (name) => stored[name] ?? null, setItem: (name, value) => { stored[name] = String(value); } };
   const api = {
     notes: { list: async () => NOTES },
     meetings: { list: async () => MEETINGS },
     tasks: { list: async () => TASKS, sessions: async () => [] },
     calendar: {
-      pending: async () => [],
+      pending: async () => state.pending,
       status: async () => state.status,
-      ignore: async (ids) => { state.ignored = ids; },
+      file: async (ids, hubId) => {
+        state.filed = { ids, hubId };
+        state.pending = state.pending.filter((event) => !ids.includes(event.id));
+      },
+      ignore: async (ids) => {
+        state.ignored = ids;
+        state.pending = state.pending.filter((event) => !ids.includes(event.id));
+      },
       upload: upload ?? (async (file) => {
         state.uploads.push(file.name);
         state.status = IMPORTED;
@@ -213,6 +220,95 @@ test("import wiring: Don't import tells the other windows, so Today's to file ro
     await page.ignore([7]);
     assertEqual(state.ignored.join(), "7");
     assertEqual(state.sent.map((each) => `${each.type} ${each.what.join("+")}`).join(), "changed meetings");
+  } finally {
+    root.remove();
+  }
+});
+
+const waiting = (id, title, hubGuess = null) => ({ id, title, day: "2026-11-30", time: "09:00", end_time: "09:30", recurring: false,
+  location: "", hub_guess: hubGuess });
+
+test("import wiring: after Don't import in To file, the focus is on the next row, the previous, then the list", async () => {
+  const { page, root, state } = await planPage({ status: IMPORTED, pending: [waiting(7, "Standup"), waiting(8, "Review"), waiting(9, "Retro")] });
+  const list = root.querySelector(".cal-side__list--file");
+  const ignoreOf = (title) => [...list.querySelectorAll(".cal-file")].find((row) => row.textContent.includes(title))
+    .querySelector("[data-focus-key^='file-ignore-']");
+  const dontImport = async (title) => {
+    const node = ignoreOf(title);
+    node.focus();
+    node.click();
+    for (let round = 0; round < 5; round += 1) await tick();
+  };
+  try {
+    page.side.show("file");
+    await dontImport("Review");
+    assertEqual(state.ignored.join(), "8");
+    assertTrue(document.activeElement === ignoreOf("Retro"), "the next row's Don't import has the focus");
+    await dontImport("Retro");
+    assertTrue(document.activeElement === ignoreOf("Standup"), "the last gone: the previous row's");
+    await dontImport("Standup");
+    assertTrue(document.activeElement === list, "none left: the list itself");
+  } finally {
+    root.remove();
+  }
+});
+
+/** The To file list of a Plan tab, and a way to click a row's button and let the redraw land. */
+function fileRows(root) {
+  const list = root.querySelector(".cal-side__list--file");
+  const rowOf = (title) => [...list.querySelectorAll(".cal-file")].find((row) => row.querySelector(".cal-file__title").textContent === title);
+  const buttonOf = (title, text) => button(rowOf(title), text);
+  const press = async (title, text) => {
+    const node = buttonOf(title, text);
+    node.focus();
+    node.click();
+    for (let round = 0; round < 5; round += 1) await tick();
+  };
+  return { list, buttonOf, press };
+}
+
+test("import wiring: after File in To file, the focus is on the next row's File, the previous, then the list", async () => {
+  const { page, root, state } = await planPage({ status: IMPORTED,
+    pending: [waiting(7, "Standup", 1), waiting(8, "Review", 1), waiting(9, "Retro", 1)] });
+  const { list, buttonOf, press } = fileRows(root);
+  try {
+    page.side.show("file");
+    await press("Review", "File");
+    assertEqual(`${state.filed.ids.join()} in ${state.filed.hubId}`, "8 in 1");
+    assertTrue(document.activeElement === buttonOf("Retro", "File"), "the next row's File has the focus");
+    await press("Retro", "File");
+    assertTrue(document.activeElement === buttonOf("Standup", "File"), "the last gone: the previous row's");
+    await press("Standup", "File");
+    assertTrue(document.activeElement === list, "none left: the list itself");
+  } finally {
+    root.remove();
+  }
+});
+
+test("import wiring: after File all in To file, the focus skips the rows filed with it to the next one left", async () => {
+  const { page, root, state } = await planPage({ status: IMPORTED,
+    pending: [waiting(7, "Standup", 1), waiting(8, "Sync", 1), waiting(9, "Standup", 1), waiting(10, "Retro", 1)] });
+  const { list, buttonOf, press } = fileRows(root);
+  try {
+    page.side.show("file");
+    // Filed from the first Standup: the second goes too, so the next row left is Sync.
+    await press("Standup", "File all 2");
+    assertEqual(state.filed.ids.join(), "7,9");
+    assertTrue(document.activeElement === buttonOf("Sync", "File"), "the next row left's File has the focus");
+    assertTrue(list.querySelectorAll(".cal-file").length === 2);
+  } finally {
+    root.remove();
+  }
+});
+
+test("import wiring: after File all from the last rows, the focus goes back to the row before them", async () => {
+  const { page, root } = await planPage({ status: IMPORTED,
+    pending: [waiting(7, "Sync", 1), waiting(8, "Standup", 1), waiting(9, "Standup", 1)] });
+  const { buttonOf, press } = fileRows(root);
+  try {
+    page.side.show("file");
+    await press("Standup", "File all 2");
+    assertTrue(document.activeElement === buttonOf("Sync", "File"), "no row after: the one before");
   } finally {
     root.remove();
   }

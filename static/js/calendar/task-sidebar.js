@@ -5,17 +5,20 @@
 // done; CalendarPage decides the rest.
 //
 //   const side = new TaskSidebar(element, { onTaskDown(entry, event), onToggle(entry), onOpen(entry),
-//                                           onFile(ids, hubId), onIgnore(ids), onFilter() });
+//                                           onFile(ids, hubId, after), onIgnore(ids, after), onFilter() });
+//     after: the focus keys to land on once the rows are gone (side.focusPending(after))
 //   side.draw({ tree, tasks, sessions, pending, hubs, today, monday })   hubs: the live hubs
 //   side.filter -> { hubId, text }; side.show("tasks" | "file")
 //     hubId: a hub's id, OTHER_NOTES or null (all); remembered in localStorage (HUB_STORE), the
 //     search box isn't
 //   side.focusedTask() -> task id of the tray row with the focus, or null
+//   side.focusPending(keys) -> the focus to the first of keys in To file, else the list
 //   side.focusRow(step) -> whether a row took the focus (0: the focused one, else the first;
 //                          1 / -1: the next / previous)
 import { whenText } from "../meetings/meeting-days.js";
 import { groupForKind } from "../notes/hub-groups.js";
 import { hubChoices } from "../tasks/tasks-model.js";
+import { focusFirstKey, keysAfterRemoving } from "../ui/dom.js";
 import { OTHER_NOTES, trayGroups, weekEnd } from "../week/tray-model.js";
 
 export const HUB_STORE = "paradigm.week.trayHub";
@@ -150,7 +153,7 @@ export class TaskSidebar {
       return;
     }
     const sameTitle = (event) => pending.filter((each) => each.title.toLowerCase() === event.title.toLowerCase());
-    this.fileList.replaceChildren(...pending.map((event) => {
+    this.fileList.replaceChildren(...pending.map((event, index) => {
       const row = element("li", "cal-file");
       const when = whenText({ day: event.day, time: event.time, end_time: event.end_time });
       row.append(element("span", "cal-file__title", event.title),
@@ -160,27 +163,47 @@ export class TaskSidebar {
       select.append(option("", "Choose a hub…"), ...hubs.map((hub) => option(String(hub.id), `${hub.title} (${groupForKind(hub.kind).label})`)));
       if (event.hub_guess !== null && hubs.some((hub) => hub.id === event.hub_guess)) select.value = String(event.hub_guess);
       const twins = sameTitle(event);
-      const file = button("File", "Make it a meeting in that hub", () => this.fileWith(select, [event.id]));
+      // Filed or ignored, the row goes with its button: the next row left (else the one before,
+      // else the list) takes the focus, on the same button.
+      const after = (ids, kind) => keysAfterGoing(pending, index, ids, kind);
+      const file = button("File", "Make it a meeting in that hub", () => this.fileWith(select, [event.id], after([event.id], "file")));
+      file.dataset.focusKey = `file-file-${event.id}`;
       const actions = element("div", "cal-file__actions");
       actions.append(select, file);
       if (twins.length > 1) {
         actions.append(button(`File all ${twins.length}`, `Every waiting "${event.title}" into that hub`,
-          () => this.fileWith(select, twins.map((each) => each.id))));
+          () => this.fileWith(select, twins.map((each) => each.id), after(twins.map((each) => each.id), "file"))));
       }
-      actions.append(button("Don't import", "Leave it out; later exports won't bring it back", () => this.handlers.onIgnore([event.id])));
+      const ignore = button("Don't import", "Leave it out; later exports won't bring it back",
+        () => this.handlers.onIgnore([event.id], after([event.id], "ignore")));
+      ignore.dataset.focusKey = `file-ignore-${event.id}`;
+      actions.append(ignore);
       row.append(actions);
       return row;
     }));
   }
 
-  fileWith(select, ids) {
+  /** After a To file row went: the first of keys still there, else the list itself. */
+  focusPending(keys) {
+    if (focusFirstKey(this.fileList, keys)) return;
+    this.fileList.tabIndex = -1;
+    this.fileList.focus();
+  }
+
+  fileWith(select, ids, after) {
     if (!select.value) {
       select.focus();
       select.classList.add("is-missing");
       return;
     }
-    this.handlers.onFile(ids, Number(select.value));
+    this.handlers.onFile(ids, Number(select.value), after);
   }
+}
+
+// Rows going at once (File all) count as one: its neighbours are the nearest rows left.
+function keysAfterGoing(pending, index, ids, kind) {
+  const left = pending.filter((event, at) => at === index || !ids.includes(event.id));
+  return keysAfterRemoving(left.map((event) => `file-${kind}-${event.id}`), left.indexOf(pending[index]));
 }
 
 function hubOfValue(value) {

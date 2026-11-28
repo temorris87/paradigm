@@ -96,7 +96,13 @@ export function openPalette(app, query = "") {
       const item = items[index];
       if (!item) return undefined;
       if (item.kind === "note") {
-        return finish(() => (inNote && app.role === "main" ? app.openInNoteWindow(item.id) : app.open(item.id)));
+        if (inNote && app.role === "main") return finish(() => app.openInNoteWindow(item.id));
+        // finish() put the focus back on what opened the palette (Go to…): a note opened in this
+        // window takes it, as one opened any other way does. One sent to the note window doesn't.
+        return finish(async () => {
+          const opened = await app.open(item.id);
+          if (opened && (app.role === "note" || app.isDashboard(item.id))) app.focusNote();
+        });
       }
       return finish(() => runNoteCommand(app, { name: item.command, arg: item.arg ?? "", bang: item.bang ?? false }));
     };
