@@ -19,7 +19,7 @@ import { HEAD_HEALTH } from "../hubs/project-facts.js";
 import { localDay, meetingEnded } from "../meetings/meeting-days.js";
 import { attendeesOf, meetingsOn, shortTitle } from "../meetings/meetings-model.js";
 import { addDays, milestonesOf } from "../plan/plan-model.js";
-import { isOpen, recordsOn } from "../records/records-model.js";
+import { decisionOrder, isOpen, recordsOn } from "../records/records-model.js";
 import { StatusLogs, firstSentence } from "../status/status-model.js";
 import { taskEntries } from "../tasks/tasks-model.js";
 import { weekRange } from "../ui/dates.js";
@@ -49,7 +49,13 @@ export function historyRows(ctx, project, { answers = new Map() } = {}) {
     ...milestoneRows(ctx, project, now),
   ];
   return rows.filter((row) => row.day).sort((a, b) => b.day.localeCompare(a.day)
-    || KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || b.seq - a.seq || a.title.localeCompare(b.title));
+    || KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || withinKind(a, b) || a.title.localeCompare(b.title));
+}
+
+/** Decisions in the order the project page lists them (records-model.js); the rest by seq. */
+function withinKind(a, b) {
+  if (a.kind === "decision") return decisionOrder({ day: a.day, id: a.seq }, { day: b.day, id: b.seq });
+  return b.seq - a.seq;
 }
 
 /** The notes whose things are the project's: itself and everything inside it. */

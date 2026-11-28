@@ -429,7 +429,8 @@ export class HubPanel {
   }
 
   focus() {
-    this.list.focus();
+    // The list sits below the page head; a plain focus() would scroll the head out of view.
+    this.list.focus({ preventScroll: true });
   }
 
   reset() {

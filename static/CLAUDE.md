@@ -182,7 +182,8 @@ static/
                          meetings-page.js (a ListPage), meetings-commands.js
   js/records/            decisions and questions: api.js, records-model.js (a hub's, an
                          area's with its projects', a meeting's, a person's; the tab order:
-                         decisions newest first, questions open first; pure),
+                         decisions newest first, one decisionOrder everywhere, questions
+                         open first; pure),
                          records-commands.js
   js/images/             downscale.js: shrinks images wider than 1600 px on a canvas (GIFs
                          never); viewer.js: <pd-image-viewer>, a click on an image opens it

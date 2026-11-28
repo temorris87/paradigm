@@ -17,6 +17,7 @@
 //                              "? all keys" (Live has no table: the main window's own hints)
 //   viewKeyGroups(view, weekTab, options)  [{ name, rows }] for the ? list: the view's table as
 //                              it groups its keys (less the ones it is without), then the window's
+//                              (less the keys the view's table already lists: each key once)
 //   noteHints({ sheet })       the note window's bar (no ?: there it is the editor's search back)
 //   shadowedMainActions(view, weekTab)  the MAIN_KEYS actions whose keys the view's own table
 //                              takes over (read first there): the Week Plan's gt (the tray, not
@@ -97,9 +98,14 @@ export function viewHints(view, weekTab, options) {
 
 export function viewKeyGroups(view, weekTab, options) {
   const { name, table, without = [] } = viewTable(view, weekTab, options);
-  const own = keyGroups(table.filter((entry) => !without.includes(entry.action))).map((group) => ({ ...group, name: group.name ? `${name}: ${SCOPE_NAMES[group.name] ?? group.name}` : name }));
-  const shadowed = shadowedMainActions(view, weekTab);
-  const main = MAIN_KEYS.filter((entry) => !shadowed.includes(entry.action));
+  const kept = table.filter((entry) => !without.includes(entry.action));
+  const own = keyGroups(kept).map((group) => ({ ...group, name: group.name ? `${name}: ${SCOPE_NAMES[group.name] ?? group.name}` : name }));
+  // A key the view lists (a project's g h, a dashboard's g p, the Week Plan's g t) isn't listed
+  // twice: the view's words say what it does there. The main window's key still works
+  // (main-keys.js) unless the view shadows it.
+  const listed = new Set(kept.flatMap((entry) => entry.keys));
+  const shadowed = shadowedMainActions(view, weekTab, options);
+  const main = MAIN_KEYS.filter((entry) => !shadowed.includes(entry.action) && !entry.keys.some((key) => listed.has(key)));
   return [...own, ...keyGroups(main).map((group) => ({ ...group, name: "Anywhere in this window" }))];
 }
 

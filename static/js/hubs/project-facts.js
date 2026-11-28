@@ -8,7 +8,7 @@
 //   projectFactsText(ctx, project) "due ... · 2 open questions · next Mon 2026-11-30 10:00"
 // A project's page (its head and facts row):
 //   dueFact(project, today)        "Fri 11 Dec · in 15 days", "Fri 11 Dec · today", "… · 3 days late", or ""
-//   milestoneFact(tree, plan, project, today)   "Pilot go-live · Mon 7 Dec", or ""
+//   milestoneFact(tree, plan, project, today)   "Pilot go-live · Mon 7 Dec" (" · n days late" when past), or ""
 //   HEAD_HEALTH                    health key -> { label, tone } of the head's chip (Figma's words)
 //   headStatus(logs, project, today)   { label, tone, text, age } of the newest status log, or null
 //   initials(name)                 "BO" for "Ben Ortiz"
@@ -67,7 +67,12 @@ export function dueFact(project, today = new Date()) {
 
 export function milestoneFact(tree, plan, project, today = new Date()) {
   const next = plan ? nextMilestone(tree, plan, project.id) : null;
-  return next ? `${next.note.title} · ${dayText(next.milestone.day, { today: dayString(today) })}` : "";
+  if (!next) return "";
+  const day = dayString(today);
+  // A milestone not ticked done stays "next" after its day; say so, as the Due fact does.
+  const late = -daysBetween(day, next.milestone.day);
+  const lateText = late > 0 ? ` · ${late} day${late === 1 ? "" : "s"} late` : "";
+  return `${next.note.title} · ${dayText(next.milestone.day, { today: day })}${lateText}`;
 }
 
 // The head's chip says it as Figma does: "Off track" where the log says blocked.

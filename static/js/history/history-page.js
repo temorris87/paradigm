@@ -222,10 +222,16 @@ export class HistoryPage {
       case "previous": return this.moveTo(Math.max(this.active - 1, 0));
       case "open": return this.open(this.rows[this.active]);
       case "tab": return this.setTab(HISTORY_TABS[Number(event.key) - 1]?.key);
-      case "search": return this.search.focus();
+      case "search": return this.startSearch();
       case "leave": return this.onLeave();
       default: return undefined;
     }
+  }
+
+  /** /: the old query stays (the list is filtered by it), but selected, so typing starts afresh. */
+  startSearch() {
+    this.search.focus();
+    this.search.select();
   }
 
   onSearchKey(event) {
