@@ -86,6 +86,16 @@ import { drawPins, drawSaveState, saveStateOf } from "../layout/navigator-parts.
 import { returnTo, viewUnderLive } from "../live/live-return.js";
 import { PageHistory } from "../layout/page-history.js";
 
+/** The tab's sessionStorage, for the steps ahead H and L know after a reload; null when the
+ * browser refuses it. */
+function tabStorage() {
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
 // The blocks of time loaded for the pages (a task's next block, Home's Today).
 const SESSIONS_BACK_DAYS = 7;
 const SESSIONS_AHEAD_DAYS = 120;
@@ -161,7 +171,7 @@ export class NotesApp {
     this.api = api;
     this.location = location;
     // Every entry the app makes carries its step, for H and L at the ends (layout/page-history.js).
-    this.history = new PageHistory(history);
+    this.history = new PageHistory(history, tabStorage());
     this.tree = new NoteTree();
     // Each save sends the note's [[wiki links]] along, for the Linked from tabs.
     this.linkIndex = new LinkIndex({ api: linksApi, onChange: () => this.redraw() });
@@ -1200,10 +1210,14 @@ export class NotesApp {
     const under = returnTo(this.views.shown, this.underLive);
     if (!under) return;
     this.underLive = null;
-    this.history.replaceState(under.state, "", `${this.location.pathname}${under.search}`);
+    // The page takes Live's step, a step further from the note than its own was: Escape there
+    // goes back as far as Escape from Live would have.
+    const leave = this.history.state?.leave;
+    const state = under.state?.view && leave ? { ...under.state, leave } : under.state;
+    this.history.replaceState(state, "", `${this.location.pathname}${under.search}`);
     await this.openFromUrl("replace");
     // The step keeps its mark (a page reached by a command): Escape there still goes Back.
-    if (this.views.shown) this.history.replaceState(under.state, "", this.location.href);
+    if (this.views.shown) this.history.replaceState(state, "", this.location.href);
   }
 
   leaveView() {

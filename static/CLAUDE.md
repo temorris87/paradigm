@@ -46,7 +46,8 @@ static/
   js/note-main.js        the note window
   js/layout/main-keys.js THE main window's own key table (: gt gw gp gh gn g, H L ?)
   js/layout/page-history.js  the tab's history with the app's step in each entry: H and L
-                         say when there is no earlier or later page (pure)
+                         say when there is no earlier or later page; the last step kept in
+                         sessionStorage for reloads (pure)
   js/layout/view-keys.js which key table each main-window view reads (its hint bar, its ?
                          list) and the note window's short fixed hints; pure
   js/layout/navigator-parts.js  the navigator's pinned Today / Week and its save state

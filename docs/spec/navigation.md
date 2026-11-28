@@ -146,13 +146,20 @@ How the app behaves. Kept up to date by each feature that changes it.
   `H`). They are the browser's Back and Forward (`history.back()` / `forward()`), so they go
   exactly where those go and the page opens as it opens from its URL (its default cursor and
   scroll; nothing more is restored). Every page change is its own history step (Tyson,
-  2026-11-28): Today → People → Meetings → a dashboard is four steps, and `H`, Esc on a page and
-  the browser's Back walk back through each; Settings, a task page and a note opened from History
-  are steps as before. With nothing earlier `H` shows `E: no earlier page` and does nothing; at
+  2026-11-28): Today → People → Meetings → a dashboard is four steps, and `H` and the browser's
+  Back walk back through each. Escape on a page keeps its old way: back over the run of pages to
+  the note under them, except that Escape from a task page or Settings returns to the page it was
+  opened from, and from a page opened from History returns to History (each step carries how far
+  Escape goes, `leave`). With nothing earlier `H` shows `E: no earlier page` and does nothing; at
   the forward end `L` shows `E: no later page`. The app knows the ends from a step number it
   keeps in every history entry it makes (`static/js/layout/page-history.js`); the first page of
-  the tab, or the page a reload lands on, is where it counts from. Live keeps its own history
-  rules; `H` on Live goes back to the page before it. The `?` list shows both under "Anywhere in
+  the tab is where it counts from. A reload keeps the entry's step, and the furthest step reached
+  is kept in the tab's `sessionStorage` (`paradigm.lastPageStep`), so after a reload `H` and `L`
+  still reach the earlier and later pages, as the browser's Back and Forward would (in a window
+  that refuses storage, the page loaded counts as the last). `H H H` typed quickly counts each
+  press from where the one before will land, so it never steps out of Paradigm. Live keeps its
+  own history rules; `H` on Live goes back to the page before it, and a page that comes back
+  when Live closes keeps Live's way back for Escape. The `?` list shows both under "Anywhere in
   this window"; the bar shows `H L back / forward` only on Live (the one bar with the window's
   own hints).
 - Look (Tyson, 2026-11-26): both windows open in Nord Light, the default and only theme

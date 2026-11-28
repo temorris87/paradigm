@@ -269,7 +269,7 @@ test("page views: a step from the note, and one more for each page switched to",
     state: null,
     pushState(state, _, url) { this.state = state; states.push(`push ${url}`); },
     replaceState(state, _, url) { this.state = state; states.push(`replace ${url}`); },
-    back() { states.push("back"); },
+    go(by) { states.push(`go ${by}`); return true; },
   };
   const fakePage = () => ({ section: document.createElement("section"), focus() {}, show() {} });
   const pages = { people: fakePage(), meetings: fakePage() };
@@ -281,7 +281,7 @@ test("page views: a step from the note, and one more for each page switched to",
   assertEqual(main.dataset.view, "meetings");
   assertTrue(pages.people.section.hidden && !pages.meetings.section.hidden);
   assertTrue(views.leave(), "went Back");
-  assertEqual(states.pop(), "back");
+  assertEqual(states.pop(), "go -2", "back over both pages to the note");
   history.state = null;
   assertEqual(views.leave(), false, "loaded with the flag: a new step to the note");
   assertEqual(states.pop(), "push /?note=2");

@@ -69,12 +69,21 @@ None: no route is added or changed.
 ## As built
 - `static/js/layout/page-history.js` (new, pure): `PageHistory` wraps `window.history`; every
   `pushState` / `replaceState` the app makes carries `step` in its state (a push counts on, a
-  replace keeps it), `popped()` reads it again on `popstate`, and `goBack()` / `goForward()`
-  return false at the ends. An entry with no step counts as 0; after a reload the page loaded is
-  also the last step known, so `L` there says `E: no later page` even if the browser could still
-  go forward. `NotesApp.history` is now this wrapper, and `PageViews` gets it.
-- `static/js/notes/page-views.js`: the special cases `STEPS_OVER_PAGES` (task, settings) and
-  `STEPS_KEPT_UNDER` (history) are gone; every change of page pushes.
+  replace keeps it), `popped()` reads it again on `popstate`, and `go(by)` (with `goBack()` /
+  `goForward()`) returns false past the ends. Moves asked of the browser whose `popstate` has not
+  come yet are counted (`position`), so a quick `H H` is checked from where the first lands and
+  cannot step out of Paradigm; a Back pressed by hand in between resets the count. The entry
+  loaded with no step is marked step 0, so a reload on it later keeps its step. An entry with no step counts as 0. The furthest step reached is kept
+  in the tab's `sessionStorage`, so after a reload `L` still goes forward to a later page, as the
+  browser's Forward would; only a window that refuses storage falls back to the page loaded as
+  the last step. `NotesApp.history` is now this wrapper, and `PageViews` gets it.
+- `static/js/notes/page-views.js`: every change of page pushes, so `H` and Back step page by
+  page. Built differently from point 2: Escape does not walk back step by step. Each page's step
+  carries `leave`, how many steps Escape goes back (`history.go(-leave)`), so Escape still returns
+  over the run of pages to the note under them, as before. `STEPS_OVER_PAGES` (task, settings)
+  start a new run (Escape returns to the page they were opened from) and `STEPS_KEPT_UNDER`
+  (history) keeps Escape from a page opened from History returning to History. When Live closes,
+  the page under it takes Live's `leave` (`NotesApp.leaveLive`, `static/js/notes/app.js`).
 - `H` and `L` are `MAIN_KEYS` entries (`back`, `forward`) sharing one hint, `H L back / forward`.
   By the bar's existing rule only Live's bar (no table of its own) shows the window's hints, so
   that is the one bar with it; everywhere else it is in the `?` list. No view's own table binds
@@ -82,5 +91,6 @@ None: no route is added or changed.
 - `L` → `S` reached every place that named it: the dashboard head's button caps and "No status
   yet · S to log", the empty status-log line, the status-history dialog's text, the note menu's
   hint and the palette's `:log[!] S`.
-- Tests: `tests/js/test_page_history.js` (new); `test_history.js`, `test_meetings.js`,
-  `test_key_hints.js`, `test_palette.js`, `test_status.js`, `test_task_page.js` updated.
+- Tests: `tests/js/test_page_history.js` (new: steps, the ends, quick `H H H`, reloads, Escape's
+  runs); `test_history.js`, `test_live_return.js`, `test_meetings.js`, `test_key_hints.js`,
+  `test_palette.js`, `test_status.js`, `test_task_page.js` updated.

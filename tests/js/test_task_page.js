@@ -267,13 +267,13 @@ test("page views: a page shown again with another flag takes the URL's place", (
   const pages = { task: { section: document.createElement("section"), focus() {}, show() {} } };
   const steps = [];
   const history = { state: null, pushState(state, _, url) { this.state = state; steps.push(["push", url]); },
-    replaceState(state, _, url) { this.state = state; steps.push(["replace", url]); }, back() {} };
+    replaceState(state, _, url) { this.state = state; steps.push(["replace", url]); }, go: () => true };
   const views = new PageViews({ main, pages, history, noteUrl: () => "/?note=1" });
   assertEqual(views.fromUrl(new URLSearchParams("note=1&task=10")), "task");
   views.show("task", "push", "task=10");
   views.show("task", "push", "task=11");
   assertEqual(steps, [["push", "/?note=1&task=10"], ["replace", "/?note=1&task=11"]]);
-  assertEqual(history.state, { view: "task" }, "still one step back to where the first was opened from");
+  assertEqual(history.state, { view: "task", leave: 1 }, "still one step back to where the first was opened from");
 });
 
 test("page views: a task page over another page is its own step, so Back returns there", () => {
@@ -282,7 +282,7 @@ test("page views: a task page over another page is its own step, so Back returns
   const pages = { task: page(), week: page(), home: page() };
   const steps = [];
   const history = { state: null, pushState(state, _, url) { this.state = state; steps.push(["push", url]); },
-    replaceState(state, _, url) { this.state = state; steps.push(["replace", url]); }, back() {} };
+    replaceState(state, _, url) { this.state = state; steps.push(["replace", url]); }, go: () => true };
   const views = new PageViews({ main, pages, history, noteUrl: () => "/?note=1" });
   views.show("week", "push");
   views.show("task", "push", "task=10");
