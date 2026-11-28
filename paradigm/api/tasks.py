@@ -17,6 +17,11 @@ POST /api/task/done            {id, done}                                  -> ta
 POST /api/task/move            {id, before_id|null}                        -> task
 POST /api/task/remove          {id}                                        -> {removed: [ids]}
                                (the task and all its descendants)
+GET  /api/task/history?task=N  -> {events: [{day, time, kind, text, note_id}]}  newest first;
+                               kind: created, captured, placed, delegated, done; time and
+                               note_id may be null (derived from what is stored, task_history.py);
+                               delegated has no day (null, listed first) and a follow_up
+                               (YYYY-MM-DD or null)
 GET  /api/sessions?from=D&to=D -> {sessions: [{id, task_id, day, start, end}]}
 POST /api/session/add          {task_id, day, start, end}  -> session
 POST /api/session/move         {id, day, start, end}       -> session
@@ -26,6 +31,8 @@ from http.server import BaseHTTPRequestHandler
 from typing import Dict, Optional
 
 from paradigm.api.answers import answering
+from paradigm.api.task_files import task_param
+from paradigm.db.task_history import TaskHistory
 from paradigm.db.tasks_repo import BadTask, BadWhen, NoTasksHere, NotAPerson, NotFound, TaskRepository
 from paradigm.notes.meetings import clean_day
 from paradigm.web.requests import BadRequest, int_field, optional_int_field, read_json
@@ -35,8 +42,9 @@ _answer = answering({NotFound: 404, BadWhen: 400, BadTask: 400, NoTasksHere: 400
 
 
 class TasksApi:
-    def __init__(self, tasks: TaskRepository):
+    def __init__(self, tasks: TaskRepository, history: TaskHistory):
         self._tasks = tasks
+        self._history = history
 
     def register(self, router: Router) -> None:
         router.add("GET", "/api/tasks", _answer(self.list))
@@ -47,6 +55,7 @@ class TasksApi:
         router.add("POST", "/api/task/done", _answer(self.done))
         router.add("POST", "/api/task/move", _answer(self.move))
         router.add("POST", "/api/task/remove", _answer(self.remove))
+        router.add("GET", "/api/task/history", _answer(self.history))
         router.add("GET", "/api/sessions", _answer(self.sessions))
         router.add("POST", "/api/session/add", _answer(self.add_session))
         router.add("POST", "/api/session/move", _answer(self.move_session))
@@ -87,6 +96,9 @@ class TasksApi:
 
     def remove(self, req: BaseHTTPRequestHandler) -> Dict:
         return {"removed": self._tasks.remove(int_field(read_json(req), "id"))}
+
+    def history(self, req: BaseHTTPRequestHandler) -> Dict:
+        return {"events": self._history.events(task_param(req))}
 
     def sessions(self, req: BaseHTTPRequestHandler) -> Dict:
         return {"sessions": self._tasks.sessions(_day_param(req, "from"), _day_param(req, "to"))}

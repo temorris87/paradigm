@@ -17,7 +17,8 @@ static/
                          gantt.css, history.css (a project's History page: its bar, tabs, week
                          groups), plan-template.css, import-panel.css (the Week Plan's
                          Import panel over the greyed grid), folder-page.css, task-page.css (a
-                         task's page: Subtask | Notes, stacked under 1400 px), oncall.css (the
+                         task's page: head, facts row, Notes beside a 24rem side column of
+                         cards, stacked under 1000 px), oncall.css (the
                          On call tab, the Week bar's line, Today's rows, a person's head line),
                          sheet.css (the note window's sections sheet and its bar),
                          live.css (the Live page: its head, the caret, the cursor's band),
@@ -242,7 +243,8 @@ static/
   js/files/              api.js, files-model.js (a page's files; folders of a hub and its
                          area; a folder's summary and the unlink confirm's text; pure),
                          file-commands.js (Add file…: the server's native file dialog, then
-                         attach, offering to link a folder not linked yet; Search linked
+                         attach to a note or a task, offering to link a folder not linked
+                         yet; Search linked
                          files…, link and unlink a folder, open, remove), folder-browser.js
                          (the in-app folder browser when the native dialog can't open),
                          folder-browser-model.js (its rows, paths, filter; pure),
@@ -252,10 +254,16 @@ static/
                          MAX_TASK_DEPTH; taskTree, J/K's moveTarget; waiting on; the calendar's
                          open list of mine and its filter; today's blocks; pure),
                          task-commands.js, task-page.js (a task's page in the main window,
-                         &task=ID: breadcrumb, head, Subtask | Notes table, Emails),
-                         task-page-keys.js (THE task page key table), emails-api.js,
+                         &task=ID: breadcrumb, head, Notes | the side column; one listbox),
+                         task-head.js (title, chips, Done / Schedule / Delegate / Edit / ···,
+                         the facts row), task-side.js (the cards, their order, Subtasks),
+                         task-files.js (the Files card: Add file…, open, x unlinks),
+                         task-history.js (the From and History cards), task-page-model.js
+                         (chips, facts, Next block, s's slot and words, the cards' lines;
+                         pure), task-page-keys.js (THE task page key table),
+                         emails-api.js,
                          emails-model.js (an email row's chip, sender line, link; the reply
-                         cycle; pure), task-emails.js (the Emails section, .msg drops on the
+                         cycle; pure), task-emails.js (the Emails card, .msg drops on the
                          task page, :attach)
   js/calendar/           (the Week page's Plan) api.js (the import: .ics uploads only, no
                          folder), week-model.js (days shown, the weekend rule,

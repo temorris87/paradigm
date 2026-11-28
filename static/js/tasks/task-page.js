@@ -1,34 +1,48 @@
 // A task's own page, in the main window (?note=HUB&task=ID), over its note's dashboard: the
-// breadcrumb (the hub › each parent task › this task), the head (box, title, one line of
-// facts, its notes rendered), then its subtasks as a table, Subtask | Notes: the left column a
-// tree (each box under the start of its parent's title), the right that subtask's own notes.
-// Under them its Emails (task-emails.js), and the page takes .msg files dropped on it.
-// One focus stop: a listbox whose first row is the head, its emails last. Its keys:
-// task-page-keys.js. Notes are edited through Edit… only; an archived note's task is read-only.
+// breadcrumb (the hub › each parent task › this task), the head (task-head.js: box, title,
+// chips, Done / Schedule / Delegate / Edit / ···, the facts row), then two columns: Notes, the
+// main one, and the side column's cards (task-side.js): Subtasks, Emails (task-emails.js),
+// Files (task-files.js), From and History (task-history.js). Side by side down to 1000 px.
+// The page takes .msg files dropped on it.
+// One focus stop: a listbox whose first row is the head, then the side column's rows, top to
+// bottom. Its keys: task-page-keys.js. Notes are edited through Edit… only; an archived note's
+// task is read-only.
 //
 //   const page = new TaskPage(section, { app: () => notesApp, onLeave(), emailsApi? });
 //   page.attach()       :attach: the file picker for .msg files (throws when read-only)
 //   page.show(ctx)      ctx.tree, ctx.tasks, ctx.trash, ctx.taskId, ctx.taskNoteId, ctx.today
+//                       (now), ctx.sessions, ctx.meetings, ctx.timeSettings
 //   page.focus()
 //
-//   headFacts(ctx, task)            [{ text, noteId? }]: the head's line (pure)
-//   rowFacts(ctx, task)             a subtask's "due ... · → Name" (pure)
 //   goneReason(ctx, last)           "trashed" when its note went to the Trash, else "gone"; never
 //                                   drawn (a reload), the URL's note (ctx.taskNoteId) tells (pure)
 import { renderMarkdown } from "../markdown/index.js";
 import { hubOf, isArchived } from "../notes/hub-groups.js";
-import { dayText } from "../ui/dates.js";
+import { chip } from "../ui/chip.js";
+import { keyCap } from "../ui/key-hints.js";
+import { openMenu } from "../ui/menu.js";
 import { drawRendered, followNoteLinks } from "../ui/rendered-text.js";
-import { delegateDialog, editTaskDialog, newTaskDialog, removeTaskDialog, setTaskDone, takeBack } from "./task-commands.js";
-import { estimateText, moveTarget, taskTree } from "./tasks-model.js";
+import { delegateDialog, editTaskDialog, newTaskDialog, removeTaskDialog, scheduleTask, setTaskDone, takeBack } from "./task-commands.js";
+import { drawFacts, drawHead } from "./task-head.js";
+import { TaskFiles } from "./task-files.js";
+import { TaskHistory, drawSource } from "./task-history.js";
+import { NOTES_EMPTY, noSlotText, placedText, sourceOf } from "./task-page-model.js";
 import { taskPageAction } from "./task-page-keys.js";
 import { TaskEmails } from "./task-emails.js";
+import { card, drawSide, element, subtasksCard } from "./task-side.js";
+import { moveTarget, taskTree } from "./tasks-model.js";
 
-// The deepest indent drawn: a task has at most 4 levels under it (MAX_TASK_DEPTH).
-const MAX_INDENT = 4;
+// s on this page says where it went in the page's own words.
+const SCHEDULE_WORDS = { placed: placedText, none: noSlotText };
 
-// A row's key, kept across redraws: a task's id, or an email's.
-const rowKey = (row) => (row.email ? `email-${row.email.id}` : `task-${row.task.id}`);
+// A row's key, kept across redraws.
+function rowKey(row) {
+  if (row.email) return `email-${row.email.id}`;
+  if (row.file) return `file-${row.file.id}`;
+  if (row.source) return "source";
+  if (row.event) return row.event.key;
+  return `task-${row.task.id}`;
+}
 
 export class TaskPage {
   constructor(section, { app, onLeave, emailsApi = null }) {
@@ -37,6 +51,7 @@ export class TaskPage {
     this.onLeave = onLeave;
     this.task = null;
     this.rows = [];
+    this.indexes = new Map(); // rowKey -> its index
     this.active = 0;
     this.selectedKey = null; // the selected row's rowKey (kept across redraws)
     this.last = null; // { id, notes }: the task last drawn and its note's line up the tree
@@ -47,18 +62,21 @@ export class TaskPage {
     this.crumbs.setAttribute("aria-label", "Where this task is");
     this.body = element("div", "task-page__body");
     this.body.setAttribute("role", "listbox");
-    this.body.setAttribute("aria-label", "The task and its subtasks");
+    this.body.setAttribute("aria-label", "The task, its subtasks, emails, files and history");
     this.body.tabIndex = 0;
     section.replaceChildren(this.crumbs, this.body);
     section.addEventListener("keydown", (event) => this.onKey(event));
     this.body.addEventListener("click", (event) => this.onClick(event));
     followNoteLinks(this.body, (id) => this.run(this.app().open(id)));
-    // No emails API (tests of other parts): the section stays empty and nothing is fetched.
-    this.emails = new TaskEmails({ api: emailsApi, app, redraw: () => this.redrawEmails() });
+    const redraw = () => this.redraw();
+    // No emails API (tests of other parts): the card stays empty and nothing is fetched.
+    this.emails = new TaskEmails({ api: emailsApi, app, redraw });
+    this.files = new TaskFiles({ app, redraw });
+    this.history = new TaskHistory({ app, redraw });
     if (emailsApi) this.emails.listenForDrops(section, { accepts: () => Boolean(this.task), refusal: () => this.dropRefusal() });
   }
 
-  redrawEmails() {
+  redraw() {
     if (this.task && this.ctx) this.show(this.ctx);
   }
 
@@ -79,6 +97,7 @@ export class TaskPage {
   }
 
   show(ctx) {
+    const fresh = ctx !== this.ctx; // the data read again (not a part's own redraw)
     this.ctx = ctx;
     const task = ctx.tasks?.get(ctx.taskId) ?? null;
     if (!task || !ctx.tree.has(task.note_id)) return this.showGone(ctx);
@@ -88,30 +107,63 @@ export class TaskPage {
       this.selectedKey = null;
     }
     this.emails.sync(task.id);
+    this.files.sync(task.id, { force: fresh });
+    this.history.sync(task.id, { force: fresh });
     this.task = task;
     this.last = { id: task.id, notes: [task.note_id, ...ctx.tree.ancestors(task.note_id)] };
     this.readOnly = isArchived(ctx.tree, task.note_id);
-    const tasks = [{ task, depth: 0, head: true }, ...taskTree(ctx.tasks, task.id)];
-    this.emails.first = tasks.length;
-    this.rows = [...tasks, ...this.emails.rows()];
-    const kept = this.rows.findIndex((row) => rowKey(row) === this.selectedKey);
-    this.active = kept >= 0 ? kept : Math.min(this.active, this.rows.length - 1);
+    const now = ctx.today ?? new Date();
+    const subs = taskTree(ctx.tasks, task.id);
+    const source = sourceOf(ctx, task);
+    this.emails.first = 1 + subs.length;
+    this.rows = [{ task, depth: 0, head: true }, ...subs, ...this.emails.rows(), ...this.files.rows(),
+      ...(source ? [{ source }] : []), ...this.history.rows(now)];
+    this.indexes = new Map(this.rows.map((row, index) => [rowKey(row), index]));
+    const kept = this.indexes.get(this.selectedKey);
+    this.active = kept ?? Math.min(this.active, this.rows.length - 1);
     this.selectedKey = rowKey(this.rows[this.active]);
     this.drawCrumbs(ctx, task);
     const hadFocus = this.section.contains(document.activeElement);
-    this.body.replaceChildren(this.head(ctx, task), ...this.table(ctx));
-    if (!this.readOnly) {
-      const add = element("button", "task-page__add", "+ Add subtask");
-      add.type = "button";
-      add.title = "A subtask of this task (a adds one under the selected row)";
-      add.tabIndex = -1;
-      add.dataset.action = "addDirect";
-      this.body.append(add);
-    }
-    this.body.append(this.emails.draw((node, index) => this.option(node, index), { readOnly: this.readOnly, today: ctx.today ?? new Date() }));
+    const box = (each) => this.box(each);
+    const head = this.option(drawHead({ ctx, task, now, readOnly: this.readOnly, box }), 0);
+    if (this.readOnly) head.querySelector(".task-page__title-line").append(chip("Archived: read-only", "neutral"));
+    const optionOf = (key) => (node) => this.option(node, this.indexes.get(key));
+    const side = drawSide({
+      subtasks: subtasksCard({ ctx, subs, box, readOnly: this.readOnly, today: now,
+        option: (node, each) => optionOf(`task-${each.id}`)(node) }),
+      emails: this.emails.draw((node, index) => this.option(node, index), { readOnly: this.readOnly, today: now }),
+      files: this.files.draw((node, file) => optionOf(`file-${file.id}`)(node), { readOnly: this.readOnly, hubId: hubOf(ctx.tree, task.note_id)?.id ?? null }),
+      source: source ? drawSource(source, optionOf("source")) : null,
+      history: this.history.draw((node, event) => optionOf(event.key)(node), now),
+    });
+    const columns = element("div", "task-page__columns");
+    columns.append(this.notesCard(task), side);
+    this.body.replaceChildren(head, drawFacts(ctx, task, now), columns);
     for (const notes of this.body.querySelectorAll(".task-page__notes")) drawRendered(notes);
     this.markActive();
     if (hadFocus) this.focus();
+  }
+
+  notesCard(task) {
+    let edit = null;
+    if (!this.readOnly) {
+      edit = element("button", "task-card__add", "Edit");
+      edit.type = "button";
+      edit.tabIndex = -1;
+      edit.title = "Title, notes, due date, estimate, for whom (e)";
+      edit.dataset.action = "editTask";
+      edit.append(" ", keyCap("e"));
+    }
+    const node = card("notes", "Notes", "", edit);
+    node.classList.add("task-page__main");
+    if ((task.notes ?? "").trim()) {
+      const notes = element("div", "task-page__notes md-doc");
+      notes.innerHTML = renderMarkdown(task.notes, this.app().markdownOptions(task.note_id));
+      node.append(notes);
+    } else {
+      node.append(element("p", "task-page__no-notes", this.readOnly ? "No notes" : NOTES_EMPTY));
+    }
+    return node;
   }
 
   drawCrumbs(ctx, task) {
@@ -132,57 +184,6 @@ export class TaskPage {
       ? [element("span", "task-page__separator", "›"), part] : [part])));
   }
 
-  head(ctx, task) {
-    const node = this.option(element("header", `task-page__head${task.done ? " task-page__head--done" : ""}`), 0);
-    const line = element("div", "task-page__title-line");
-    line.append(this.box(task), element("h2", "task-page__title", task.title || "(no text)"));
-    if (!this.readOnly) line.append(this.actions(task));
-    const facts = element("p", "task-page__facts");
-    headFacts(ctx, task).forEach((fact, index) => {
-      if (index) facts.append(element("span", "task-page__dot", "·"));
-      if (fact.noteId === undefined) return facts.append(element("span", "", fact.text));
-      const open = element("button", "task-page__note-link", fact.text);
-      open.type = "button";
-      open.tabIndex = -1;
-      open.title = "Open the note";
-      open.addEventListener("click", () => this.run(this.app().open(fact.noteId)));
-      return facts.append(open);
-    });
-    node.append(line);
-    if (facts.childNodes.length) node.append(facts);
-    if ((task.notes ?? "").trim()) node.append(this.notes(task, "task-page__notes task-page__notes--head"));
-    else node.append(element("p", "task-page__no-notes", this.readOnly ? "No notes" : "No notes — e to add"));
-    return node;
-  }
-
-  table(ctx) {
-    const subs = this.rows.slice(1).filter((row) => row.task);
-    if (!subs.length) return [];
-    const table = element("div", "task-page__table");
-    const columns = element("div", "task-page__columns");
-    columns.setAttribute("aria-hidden", "true");
-    columns.append(element("span", "", "Subtask"), element("span", "", "Notes"));
-    table.append(columns, ...subs.map((row, index) => this.subRow(ctx, row, index + 1)));
-    return [table];
-  }
-
-  subRow(ctx, { task, depth }, index) {
-    const classes = ["task-page__row", `task-page__row--depth-${Math.min(depth, MAX_INDENT)}`, task.done && "task-page__row--done"];
-    const node = this.option(element("div", classes.filter(Boolean).join(" ")), index);
-    const name = element("div", "task-page__name");
-    const title = element("button", "task-page__row-title", task.title || "(no text)");
-    title.type = "button";
-    title.tabIndex = -1;
-    title.title = "Its own page (Enter)";
-    title.dataset.action = "open";
-    name.append(this.box(task), title, element("span", "task-page__row-facts", rowFacts(ctx, task)));
-    if (!this.readOnly) name.append(this.actions(task));
-    const notes = (task.notes ?? "").trim() ? this.notes(task, "task-page__notes task-page__cell-notes")
-      : element("div", "task-page__cell-notes");
-    node.append(name, notes);
-    return node;
-  }
-
   box(task) {
     const box = element(this.readOnly ? "span" : "button", "task-page__box", task.done ? "☑" : "☐");
     if (!this.readOnly) {
@@ -192,26 +193,6 @@ export class TaskPage {
       box.dataset.action = "toggle";
     }
     return box;
-  }
-
-  actions(task) {
-    const box = element("span", "task-page__actions");
-    for (const [action, label, key] of [["edit", "Edit…", "e"], ["delegate", task.delegate_id === null ? "Delegate…" : "Take back", "d"],
-      ["remove", "Delete", "x"]]) {
-      const node = element("button", "task-page__action", label);
-      node.type = "button";
-      node.tabIndex = -1;
-      node.title = `${label} (${key})`;
-      node.dataset.action = action;
-      box.append(node);
-    }
-    return box;
-  }
-
-  notes(task, className) {
-    const node = element("div", `${className} md-doc`);
-    node.innerHTML = renderMarkdown(task.notes, this.app().markdownOptions(task.note_id));
-    return node;
   }
 
   option(node, index) {
@@ -231,7 +212,7 @@ export class TaskPage {
     back.addEventListener("click", () => this.onLeave());
     const box = element("div", "task-page__gone");
     box.append(element("h2", "task-page__title", reason === "trashed" ? "Its note is in the trash" : "This task is gone"));
-    const links = element("p", "task-page__facts");
+    const links = element("p", "task-page__gone-links");
     if (reason === "trashed") {
       const trash = element("button", "task-page__crumb-link", "Open Trash");
       trash.type = "button";
@@ -267,9 +248,12 @@ export class TaskPage {
       this.select(Number(node.dataset.index));
       this.focus();
     }
-    const action = event.target.closest?.("[data-action]")?.dataset.action;
-    if (action === "addDirect") this.focus();
-    if (action) this.perform(action);
+    const noteLink = event.target.closest?.("[data-note]");
+    if (noteLink) return this.run(this.app().open(Number(noteLink.dataset.note)));
+    const button = event.target.closest?.("[data-action]");
+    if (!button) return undefined;
+    if (!node) this.focus();
+    return this.perform(button.dataset.action, button);
   }
 
   onKey(event) {
@@ -281,11 +265,9 @@ export class TaskPage {
     if (action !== "pending") this.perform(action);
   }
 
-  perform(action) {
+  perform(action, button = null) {
     if (action === "leave") return this.onLeave();
     if (!this.task) return undefined;
-    const row = this.rows[this.active];
-    const app = this.app();
     switch (action) {
       case "next": return this.select(this.active + 1);
       case "previous": return this.select(this.active - 1);
@@ -293,38 +275,87 @@ export class TaskPage {
       case "last": return this.select(this.rows.length - 1);
       default: break;
     }
-    // + Add subtask is the page's, whichever row is selected.
-    if (row.email && action !== "addDirect") return this.performOnEmail(action, row.email);
-    switch (action) {
-      case "open": return row.head ? undefined : this.run(app.showTask(row.task.id));
-      case "openEmail":
-      case "reply": return undefined; // an email's keys: nothing on a task's row
-      default: break;
+    const row = this.rows[this.active];
+    const reading = this.performReading(action, row);
+    if (reading !== null) return reading;
+    if (this.readOnly) return this.app().say(`"${this.task.title}" is on an archived note: read-only`);
+    return this.performChange(action, row, button);
+  }
+
+  /** What only reads (so works on an archived task too): opening a row. null: not one of them. */
+  performReading(action, row) {
+    const app = this.app();
+    // x and r change an email or a file: performChange's, after the read-only check.
+    if (row.email && ["open", "openEmail"].includes(action)) return this.run(this.emails.perform(action, row.email));
+    if (row.file && ["open", "openEmail", "openFile"].includes(action)) return this.run(this.files.perform(action, row.file));
+    if ((row.source || row.event) && ["open", "openNote"].includes(action)) {
+      const id = row.source?.noteId ?? row.event.noteId;
+      return id === null || id === undefined ? undefined : this.run(app.open(id));
     }
-    if (this.readOnly) return app.say(`"${this.task.title}" is on an archived note: read-only`);
-    const task = row.task ?? this.task;
+    if (action === "open") return row.task && !row.head ? this.run(app.showTask(row.task.id)) : undefined;
+    if (["openEmail", "openFile", "openNote"].includes(action)) return undefined;
+    if (action === "reply") return row.email ? null : undefined;
+    return null;
+  }
+
+  performChange(action, row, button) {
+    const app = this.app();
+    const page = this.task;
+    // Space, e, d and s act on a selected subtask (or the head); on any other row, the task.
+    const task = row.task ?? page;
     switch (action) {
+      case "reply": return this.run(this.emails.perform("reply", row.email));
       case "add": return this.run(newTaskDialog(app, this.ctx.tree.get(task.note_id), task));
-      case "addDirect": return this.run(newTaskDialog(app, this.ctx.tree.get(this.task.note_id), this.task));
+      case "addDirect": return this.run(newTaskDialog(app, this.ctx.tree.get(page.note_id), page));
+      case "attachEmail": return this.attach();
+      case "addFile": return this.run(this.files.add(page));
       case "toggle": return this.run(setTaskDone(app, task.id, !task.done));
       case "edit": return this.run(editTaskDialog(app, task.id));
-      case "delegate": return this.run(task.delegate_id === null ? delegateDialog(app, task.id) : takeBack(app, task.id));
-      // Deleting the head leaves nothing to show here: back to the dashboard, as Escape does.
-      case "remove": return this.run(removeTaskDialog(app, task.id).then((removed) => {
-        if (removed && row.head) this.onLeave();
-      }));
+      case "delegate": return this.run(this.delegate(task));
+      case "schedule": return this.run(scheduleTask(app, task.id, { words: SCHEDULE_WORDS }));
+      case "toggleTask": return this.run(setTaskDone(app, page.id, !page.done));
+      case "editTask": return this.run(editTaskDialog(app, page.id));
+      case "delegateTask": return this.run(this.delegate(page));
+      case "scheduleTask": return this.run(scheduleTask(app, page.id, { words: SCHEDULE_WORDS }));
+      case "moreTask": return this.more(button);
+      case "remove": return this.remove(row);
       case "moveDown":
-      case "moveUp": return row.head ? undefined : this.run(this.move(task, action === "moveDown" ? 1 : -1));
+      case "moveUp": return row.task && !row.head ? this.run(this.move(row.task, action === "moveDown" ? 1 : -1)) : undefined;
       default: return undefined;
     }
   }
 
-  // Opening reads only, so an archived task's emails still open; r and x change them.
-  performOnEmail(action, email) {
-    const changes = action === "reply" || action === "remove";
-    if (changes && this.readOnly) return this.app().say(`"${this.task.title}" is on an archived note: read-only`);
-    if (["open", "openEmail", "reply", "remove"].includes(action)) return this.run(this.emails.perform(action, email));
-    return undefined;
+  delegate(task) {
+    return task.delegate_id === null || task.delegate_id === undefined ? delegateDialog(this.app(), task.id) : takeBack(this.app(), task.id);
+  }
+
+  remove(row) {
+    if (row.email) return this.run(this.emails.perform("remove", row.email));
+    if (row.file) return this.run(this.files.perform("remove", row.file));
+    if (!row.task) return undefined;
+    return this.removeTask(row.task, row.head);
+  }
+
+  // Deleting the page's task leaves nothing to show here: back to the dashboard, as Escape does.
+  removeTask(task, head) {
+    return this.run(removeTaskDialog(this.app(), task.id).then((removed) => {
+      if (removed && head) this.onLeave();
+    }));
+  }
+
+  /** ···: the task's other actions. */
+  more(button) {
+    const page = this.task;
+    const app = this.app();
+    const sub = page.parent_id !== null && page.parent_id !== undefined;
+    openMenu(button ?? this.body, [
+      ...(sub ? [
+        { label: "Move up", hint: "among its sibling subtasks", disabled: !moveTarget(app.tasks, page.id, -1), run: () => this.run(this.move(page, -1)) },
+        { label: "Move down", hint: "among its sibling subtasks", disabled: !moveTarget(app.tasks, page.id, 1), run: () => this.run(this.move(page, 1)) },
+        "separator",
+      ] : []),
+      { label: "Delete…", danger: true, hint: "with every subtask under it", run: () => this.removeTask(page, true) },
+    ], { label: "Task actions", fallbackFocus: () => this.focus() });
   }
 
   async move(task, direction) {
@@ -341,42 +372,8 @@ export class TaskPage {
   }
 }
 
-export function headFacts(ctx, task) {
-  const { tree } = ctx;
-  const today = ctx.today ?? null;
-  const delegate = tree.get(task.delegate_id);
-  const forPerson = tree.get(task.for_person_id);
-  const hub = hubOf(tree, task.note_id);
-  const note = tree.get(task.note_id);
-  return [
-    task.due ? { text: `due ${dayText(task.due, { today })}` } : null,
-    delegate ? { text: `→ ${delegate.title}${task.follow_up ? `, follow up ${dayText(task.follow_up, { today })}` : ""}` } : null,
-    forPerson ? { text: `for ${forPerson.title}` } : null,
-    task.estimate_min ? { text: estimateText(task.estimate_min) } : null,
-    note && hub && note.id !== hub.id ? { text: `on ${note.title}`, noteId: note.id } : null,
-    task.done && task.done_day ? { text: `done ${dayText(task.done_day, { today })}` } : null,
-    isArchived(tree, task.note_id) ? { text: "archived: read-only" } : null,
-  ].filter(Boolean);
-}
-
-export function rowFacts(ctx, task) {
-  const today = ctx.today ?? null;
-  const delegate = ctx.tree.get(task.delegate_id);
-  return [
-    task.done && task.done_day ? `done ${dayText(task.done_day, { today })}` : task.due ? `due ${dayText(task.due, { today })}` : "",
-    delegate ? `→ ${delegate.title}${task.follow_up ? `, follow up ${dayText(task.follow_up, { today })}` : ""}` : "",
-  ].filter(Boolean).join(" · ");
-}
-
 export function goneReason({ tree, trash, taskNoteId = null }, last) {
   const trashed = new Set((trash?.entries ?? []).map((entry) => entry.id));
   if (!last) return taskNoteId !== null && trashed.has(taskNoteId) ? "trashed" : "gone";
   return last.notes.some((id) => trashed.has(id)) || !tree.has(last.notes[0]) ? "trashed" : "gone";
-}
-
-function element(tag, className, text = null) {
-  const node = document.createElement(tag);
-  node.className = className;
-  if (text !== null) node.textContent = text;
-  return node;
 }

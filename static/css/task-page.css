@@ -1,6 +1,8 @@
 /* A task's page in the main window (static/js/tasks/task-page.js): the breadcrumb, the head
-   (box, title, facts, its notes), then its subtasks in two columns, Subtask | Notes, about
-   2fr / 3fr; under 1400 px the notes go under each name. */
+   (box, title, chips; Done, Schedule, Delegate, Edit, ···), the facts row, then two columns:
+   Notes, the main one, and a side column of cards about 24rem wide (Subtasks, Emails, Files,
+   From, History). At 1280 px, the main window's share beside the note window, they sit side
+   by side; under 1000 px the side column goes under Notes. */
 .task-view[hidden] {
   display: none;
 }
@@ -9,6 +11,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
+  min-width: 0;
   outline: none;
 }
 
@@ -33,6 +36,7 @@
   background: none;
   color: var(--link);
   font: inherit;
+  text-align: left;
   cursor: pointer;
 }
 
@@ -49,23 +53,18 @@
 .task-page__body {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-3);
+  gap: var(--sp-4);
+  min-width: 0;
   outline: none;
 }
 
-/* The rows of the listbox: the head and each subtask. */
-.task-page__head,
-.task-page__row {
-  border-radius: 3px;
+/* The listbox's rows: the head and each row of the side column. */
+.task-page__body [role="option"] {
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
-.task-page__head {
-  padding: var(--sp-2) var(--sp-3);
-}
-
-.task-page__head:hover,
-.task-page__row:hover {
+.task-page__body [role="option"]:hover {
   background: var(--surface-row-hover);
 }
 
@@ -77,17 +76,36 @@
   box-shadow: inset 0 0 0 1px var(--focus-ring);
 }
 
+/* The head: title and chips on the left, the buttons on the right (under them when narrow). */
+.task-page__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3) var(--sp-4);
+  padding: var(--sp-2) var(--sp-3);
+}
+
+.task-page__head-main {
+  display: flex;
+  flex: 1 1 20rem;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
 .task-page__title-line {
   display: flex;
   align-items: baseline;
-  gap: var(--sp-3);
+  gap: var(--sp-2);
   min-width: 0;
 }
 
 .task-page__title {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   margin: 0;
+  overflow-wrap: anywhere;
   font-size: var(--fs-xl);
   font-weight: 600;
   color: var(--text-strong);
@@ -99,29 +117,182 @@
 }
 
 .task-page__head--done .task-page__title {
-  color: var(--text-faint);
+  color: var(--text-muted);
+  text-decoration: line-through;
 }
 
+.task-page__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-2);
+}
+
+.task-page__buttons {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.task-page__button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text-control);
+  font: inherit;
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.task-page__button:hover {
+  border-color: var(--border-focus);
+}
+
+.task-page__button:focus-visible,
+.task-card__add:focus-visible,
+.task-page__crumb-link:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+.task-page__button--primary {
+  border-color: var(--border-primary);
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.task-page__button--primary .key {
+  border-color: transparent;
+}
+
+/* The facts row: small caps labels over their values. */
 .task-page__facts {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  gap: var(--sp-2) var(--sp-6);
+  margin: 0;
+  padding: 0 var(--sp-3);
+}
+
+.task-page__fact {
+  min-width: 0;
+}
+
+.task-page__fact-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.task-page__fact-value {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text);
+}
+
+/* The two columns: Notes takes what the side column leaves. */
+.task-page__columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 24rem);
+  align-items: start;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.task-page__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+@media (max-width: 999.98px) {
+  .task-page__columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* A card: the Notes card and each card of the side column. */
+.task-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-0);
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
+  border: 1px solid var(--border-divider);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+
+.task-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--sp-1) var(--sp-2);
-  margin: var(--sp-1) 0 0;
+  margin-bottom: var(--sp-1);
+  padding-bottom: var(--sp-1);
+  border-bottom: 1px solid var(--border-divider);
+}
+
+.task-card__title {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.task-card__count {
   font-size: var(--fs-sm);
   color: var(--text-dim);
 }
 
-.task-page__notes--head {
-  margin-top: var(--sp-3);
+.task-card__add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  margin-left: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--link-secondary);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
 }
 
+.task-card__add:hover {
+  text-decoration: underline;
+}
+
+/* A head's chip sits beside the title; its button keeps to the right end. */
+.task-card__head .chip {
+  flex: none;
+}
+
+.task-card__head .chip + .task-card__add,
+.task-card__count + .task-card__add {
+  margin-left: auto;
+}
+
+.task-card__hint,
 .task-page__no-notes {
-  margin: var(--sp-3) 0 0;
+  margin: var(--sp-1) 0 0;
   font-size: var(--fs-sm);
   color: var(--text-faint);
 }
 
+.task-page__notes > :last-child {
+  margin-bottom: 0;
+}
+
+/* The box: a button on a live task, plain text on an archived one. */
 .task-page__box {
   flex: none;
   width: var(--task-box, 1.2em);
@@ -138,136 +309,31 @@ span.task-page__box {
   cursor: default;
 }
 
-/* Edit…, Delegate…, Delete: shown on the selected row or under the mouse. Hidden, they take
-   no room at all, so a name is never cut for them; on the selected row the line wraps and they
-   move to a line of their own when the name and its facts need the width. */
-.task-page__actions {
-  display: none;
-  flex: none;
-  gap: var(--sp-1);
-}
-
-.task-page__head:hover .task-page__actions,
-.task-page__row:hover .task-page__actions,
-[aria-selected="true"] > .task-page__title-line > .task-page__actions,
-[aria-selected="true"] > .task-page__name > .task-page__actions {
-  display: flex;
-}
-
-[aria-selected="true"] > .task-page__title-line,
-[aria-selected="true"] > .task-page__name {
-  flex-wrap: wrap;
-  row-gap: var(--sp-1);
-}
-
-/* Under the mouse alone they lie over the end of the line instead, so a row never grows
-   (and moves the rows below) while the pointer crosses the list. */
-.task-page__title-line,
-.task-page__name {
-  position: relative;
-}
-
-.task-page__head:hover:not([aria-selected="true"]) .task-page__actions,
-.task-page__row:hover:not([aria-selected="true"]) .task-page__actions {
-  position: absolute;
-  top: 0;
-  right: 0;
-  padding-left: var(--sp-2);
-  background: var(--surface-row-hover);
-}
-
-.task-page__action,
-.task-page__add {
-  padding: 0 var(--sp-2);
-  border: 1px solid var(--border-default);
-  border-radius: 4px;
-  background: var(--surface-raised);
-  color: var(--text-control);
-  font: inherit;
-  font-size: var(--fs-xs);
-  cursor: pointer;
-}
-
-.task-page__action:hover,
-.task-page__add:hover {
-  border-color: var(--border-focus);
-}
-
-.task-page__add {
-  align-self: flex-start;
-  border: none;
-  background: none;
-  color: var(--link-secondary);
-  font-size: var(--fs-sm);
-}
-
-/* The subtasks: one grid per row so each notes cell sits top-aligned beside its name. Each
-   box starts under the start of its parent's title: one step (a box and the gap) per level. */
-.task-page__table {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-0);
-}
-
-.task-page__columns,
-.task-page__row {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-  align-items: start;
-  gap: var(--sp-4);
-}
-
-.task-page__columns {
-  padding: 0 var(--sp-2) var(--sp-1);
-  border-bottom: 1px solid var(--border-divider);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-dim);
-}
-
-.task-page__row {
+/* Subtasks: the box and the title; on the right "done Thu 26 Nov" or the delegate. Each level
+   one step (a box and the gap) further in. */
+.task-sub__row {
   --task-box: 1.2em;
-  --task-step: calc(var(--task-box) + var(--sp-2));
   --indent: 0;
-  /* Where the head's title starts, measured from the row's padding edge: the head's padding,
-     its box (1.2em at the title's size) and the gap, less the row's own padding. A direct
-     subtask's box starts there, so its name sits one step in under the task's name. */
-  --task-base: calc(2 * var(--sp-3) + 1.2 * var(--fs-xl) - var(--sp-2));
-  padding: var(--sp-1) var(--sp-2);
-}
-
-.task-page__row--depth-2 { --indent: 1; }
-.task-page__row--depth-3 { --indent: 2; }
-.task-page__row--depth-4 { --indent: 3; }
-
-.task-page__name {
   display: flex;
   align-items: baseline;
   gap: var(--sp-2);
   min-width: 0;
-  /* The box hangs in the padding, one step left of the title, so a line the selected row
-     wraps onto (its facts, its actions) starts under the title rather than under the box. */
-  padding-left: calc(var(--task-base) + (var(--indent) + 1) * var(--task-step));
-  /* Facts with no room left wrap under the title instead of being squeezed to nothing. */
-  flex-wrap: wrap;
+  padding: var(--sp-1) var(--sp-2) var(--sp-1) calc(var(--sp-2) + var(--indent) * (var(--task-box) + var(--sp-2)));
 }
 
-.task-page__name > .task-page__box {
-  margin-left: calc(-1 * var(--task-step));
-}
+.task-sub__row--depth-2 { --indent: 1; }
+.task-sub__row--depth-3 { --indent: 2; }
+.task-sub__row--depth-4 { --indent: 3; }
 
-.task-page__row-title {
-  /* Never shrinks before the facts beside it: it gives way only once they are gone, and then
-     only to the row's own width (flex-shrink 1 vs 100 still clipped a short title). */
-  flex: 0 0 auto;
-  /* Room for the box beside it, so a long title is cut rather than wrapped off the box. */
-  max-width: calc(100% - var(--task-step));
+.task-sub__title {
+  flex: 0 1 auto;
   min-width: 0;
   padding: 0;
   border: none;
   background: none;
   color: var(--text);
   font: inherit;
+  font-size: var(--fs-sm);
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -275,95 +341,155 @@ span.task-page__box {
   cursor: pointer;
 }
 
-.task-page__row-title:hover {
+.task-sub__title:hover {
   text-decoration: underline;
 }
 
-/* Titles beat details: the facts give way first. */
-.task-page__row-facts {
+/* Titles beat details: the detail gives way first. */
+.task-sub__detail,
+.task-files__where {
   flex: 0 100 auto;
-  min-width: min(100%, 8rem);
+  min-width: 0;
+  margin-left: auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   color: var(--text-dim);
 }
 
-.task-page__actions {
-  margin-left: auto;
+.task-sub__row--done .task-sub__title {
+  color: var(--text-muted);
+  text-decoration: line-through;
 }
 
-.task-page__row--done .task-page__row-title,
-.task-page__row--done .task-page__box {
-  color: var(--text-faint);
+.task-sub__row--done .task-page__box {
+  color: var(--text-muted);
 }
 
-.task-page__cell-notes {
+/* Files: an icon, the name as a link, where it is on the right. */
+.task-files__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
   min-width: 0;
+  padding: var(--sp-1) var(--sp-2);
+}
+
+.task-files__icon {
+  flex: none;
+  color: var(--text-dim);
+}
+
+.task-files__name {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.task-files__name:hover {
+  text-decoration: underline;
+}
+
+.task-files__row--missing .task-files__name {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+/* From: the chip, the source as a link, the quote under a left rule. */
+.task-source__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+}
+
+.task-source__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.task-source__title,
+.task-history__link {
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.task-source__title:hover,
+.task-history__link:hover {
+  text-decoration: underline;
+}
+
+.task-source__quote {
+  margin: 0;
+  padding: 0 0 0 var(--sp-2);
+  border-left: 2px solid var(--border-default);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+/* History: a day, then a line. */
+.task-history__row {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
   font-size: var(--fs-sm);
 }
 
-.task-page__cell-notes > :last-child {
-  margin-bottom: 0;
+.task-history__day {
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.task-history__text {
+  min-width: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
 }
 
 .task-page__gone {
   padding: var(--sp-2) var(--sp-3);
 }
 
-@media (max-width: 1399.98px) {
-  .task-page__columns {
-    display: none;
-  }
-
-  .task-page__row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--sp-1);
-  }
-
-  /* Under its name, indented as far as the name's title. */
-  .task-page__cell-notes {
-    padding-left: calc(var(--task-base) + (var(--indent) + 1) * var(--task-step));
-  }
-
-  .task-page__cell-notes:empty {
-    display: none;
-  }
-}
-
-/* The Emails section (static/js/tasks/task-emails.js): under the subtasks, one row per saved
-   Outlook message. */
-.task-emails {
+.task-page__gone-links {
   display: flex;
-  flex-direction: column;
-  gap: var(--sp-0);
-}
-
-.task-emails__heading {
-  margin: 0 0 var(--sp-1);
-  padding: 0 var(--sp-2) var(--sp-1);
-  border-bottom: 1px solid var(--border-divider);
+  gap: var(--sp-2);
+  margin: var(--sp-1) 0 0;
   font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-heading);
 }
 
+/* The Emails card (static/js/tasks/task-emails.js): one row per saved Outlook message. */
 .task-emails__hint {
-  margin: 0;
-  padding: 0 var(--sp-2);
+  margin: var(--sp-1) 0 0;
   font-size: var(--fs-sm);
   color: var(--text-faint);
 }
 
 .task-emails__row {
   padding: var(--sp-1) var(--sp-2);
-  border-radius: 3px;
-  cursor: pointer;
-}
-
-.task-emails__row:hover {
-  background: var(--surface-row-hover);
 }
 
 .task-emails__line {

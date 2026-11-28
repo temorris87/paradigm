@@ -10,6 +10,8 @@
 //                                    The file picked is attached (attachPicked)
 //   attachPicked(app, owner, hub, path)  attaches a picked file; from a folder not linked yet,
 //                                    a confirm offers to link the file's own folder to the hub
+//   addTaskFileDialog(app, task)     the same dialog in the task's hub's folders; the file is
+//                                    linked to the task (tasks/api.js attachFilePath)
 //   searchFilesDialog(app, owner, { folderId? })   a picker over the files of the folders
 //                                    linked there; folderId: only that folder's files (Enter
 //                                    on a folder row)
@@ -38,20 +40,38 @@ function hubFor(app, owner) {
 
 export async function addFileDialog(app, owner) {
   const hub = hubFor(app, owner);
-  // The dialog starts in the hub's own folders, so the hub (not a note inside it) is asked for.
-  const picked = await app.filesApi.pick(hub.id);
-  let path = picked?.path ?? null;
-  if (!path && picked?.fallback === "browser") {
-    path = await browseForFile({ api: app.filesApi, start: picked.start ?? null, title: `Add a file to ${hub.title}`,
-      fallbackFocus: () => app.focusNote() });
-  }
+  const path = await pickPath(app, hub, `Add a file to ${hub.title}`);
   // A cancelled dialog changes nothing and says nothing.
   if (!path) return null;
   return attachPicked(app, owner, hub, path);
 }
 
-export async function attachPicked(app, owner, hub, path) {
-  let result = await app.filesApi.attachPath(owner.id, path);
+/** The server's file dialog, starting in the hub's own folders (so the hub, not a note inside
+ * it, is asked for); the folder browser when it can't open. The path picked, or null. */
+async function pickPath(app, hub, title) {
+  const picked = await app.filesApi.pick(hub.id);
+  const path = picked?.path ?? null;
+  if (path || picked?.fallback !== "browser") return path;
+  return browseForFile({ api: app.filesApi, start: picked.start ?? null, title, fallbackFocus: () => app.focusNote() });
+}
+
+export function attachPicked(app, owner, hub, path) {
+  return attachOffering(app, hub, () => app.filesApi.attachPath(owner.id, path));
+}
+
+/** Add file… on a task's page: picked in its hub's folders, then linked to the task (the
+ * server's /api/task/file/attach_path). The { file } attached, or null. */
+export async function addTaskFileDialog(app, task) {
+  const hub = hubFor(app, app.tree.get(task.note_id) ?? { id: task.note_id, title: task.title });
+  const path = await pickPath(app, hub, `Add a file to "${task.title}"`);
+  if (!path) return null;
+  return attachOffering(app, hub, () => app.tasksApi.attachFilePath(task.id, path), ` to "${task.title}"`);
+}
+
+/** attach() -> { file } or { file: null, folder }: from a folder not linked yet, a confirm
+ * offers to link the file's own folder to the hub, then attaches again. */
+async function attachOffering(app, hub, attach, where = "") {
+  let result = await attach();
   if (!result.file) {
     const folder = result.folder;
     let linked = false;
@@ -62,7 +82,7 @@ export async function attachPicked(app, owner, hub, path) {
       run: async () => {
         if (!linked) await app.filesApi.linkFolder(hub.id, folder);
         linked = true;
-        const attached = await app.filesApi.attachPath(owner.id, path);
+        const attached = await attach();
         if (!attached.file) throw new Error(`E: "${folder}" is linked, but the file is still not in it`);
         return attached;
       },
@@ -75,7 +95,7 @@ export async function attachPicked(app, owner, hub, path) {
     }
   }
   await changed(app);
-  app.say(`"${result.file.name}" added`);
+  app.say(`"${result.file.name}" added${where}`);
   return result;
 }
 

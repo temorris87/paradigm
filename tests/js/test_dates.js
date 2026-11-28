@@ -5,6 +5,7 @@ test("dates: one way to show a day", () => {
   const today = "2026-11-22";
   assertEqual(dayText("2026-11-25", { today }), "Wed 25 Nov");
   assertEqual(dayText("2027-01-04", { today }), "Mon 4 Jan 2027", "another year shows it");
+  assertEqual(dayText("2027-01-04", { today, short: true }), "Mon", "short: the weekday alone");
   assertEqual(dayText("2026-11-25", { today, weekday: false }), "25 Nov");
   assertEqual(dayText("2026-11-23", { today, relative: true }), "tomorrow");
   assertEqual(dayText("2026-11-21", { today, relative: true }), "yesterday");

@@ -11,6 +11,7 @@ from typing import Callable, Dict, List, Optional
 
 from paradigm.db.connection import Database
 from paradigm.db.emails_repo import drop_emails, remove_saved
+from paradigm.db.files_repo import drop_task_files
 from paradigm.db.notes_repo import NoteError, NotFound, live_note_row, utc_now
 from paradigm.db.people_repo import NotAPerson, person_row
 from paradigm.notes.days import local_today
@@ -142,7 +143,8 @@ class TaskRepository:
         the next task, so a deleted newest task's id would come back, and an old ?task= link
         or Back entry would open the new task instead of "This task is gone". A row with blocks
         of time needs keeping anyway (the blocks are time worked). Trash purge deletes them
-        with their note. Its emails, unlike the row, go now, with their saved files."""
+        with their note. Its emails, unlike the row, go now, with their saved files, and its
+        file links."""
         with self._db.transaction() as conn:
             _task_row(conn, task_id)
             ids = [each[0] for each in conn.execute(_SUBTREE + "SELECT id FROM down ORDER BY depth, id", (task_id,))]
@@ -152,8 +154,10 @@ class TaskRepository:
                 # As a real delete's cascade did: a captured line deleted as a task may be captured again.
                 if not conn.execute("SELECT 1 FROM task_sessions WHERE task_id = ? LIMIT 1", (each,)).fetchone():
                     conn.execute("DELETE FROM task_sources WHERE task_id = ?", (each,))
-            # Its emails go for good, as a real delete's cascade would take them.
+            # Its emails go for good, as a real delete's cascade would take them, and its file
+            # links (the files stay in OneDrive).
             with_emails = drop_emails(conn, ids)
+            drop_task_files(conn, ids)
         remove_saved(self._emails_dir, with_emails)
         return ids
 

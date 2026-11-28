@@ -123,7 +123,9 @@ How the app behaves. Kept up to date by each feature that changes it.
   pasted path); its files are listed by reading it. "+ Add file" in any page's Files section
   attaches one (one record, on any number of notes); Enter opens it with this computer's
   program (`os.startfile`); Remove takes it off that note only. A file gone from the folder
-  is flagged, kept while attached. A project's Files include its phases' and notes'.
+  is flagged, kept while attached (to a note or a task). A project's Files include its phases'
+  and notes'. A task's own files are on its page's Files card (tasks.md, Files on tasks); unlinking
+  a folder takes its files off tasks too.
 - Add file (Tyson, 2026-11-27): "+ Add file" (`a`) opens the system's own file dialog
   (tkinter, run by the server in a child process, so tk never runs in a server thread),
   titled `Add a file to <hub>`, brought to the front, starting in the hub's oldest linked

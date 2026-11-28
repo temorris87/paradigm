@@ -12,6 +12,7 @@ from typing import Dict, List, Optional
 
 from paradigm.db.connection import Database
 from paradigm.db.emails_repo import drop_emails, remove_saved
+from paradigm.db.files_repo import drop_task_files
 from paradigm.db.folders_repo import purge_folders, restore_folder_chain
 from paradigm.db.notes_repo import (Clock, NoteError, NotFound, StaysInAHub, TitleTaken,
                                     check_title_free, utc_now)
@@ -110,6 +111,7 @@ class TrashRepository:
             task_ids = [row[0] for (note_id,) in ids
                         for row in conn.execute("SELECT id FROM tasks WHERE note_id = ?", (note_id,))]
             with_emails = drop_emails(conn, task_ids)
+            drop_task_files(conn, task_ids)
             conn.executemany("DELETE FROM task_sessions WHERE task_id IN (SELECT id FROM tasks WHERE note_id = ?)", ids)
             conn.executemany("UPDATE tasks SET parent_id = NULL WHERE note_id = ?", ids)
             conn.executemany("DELETE FROM tasks WHERE note_id = ?", ids)
@@ -161,6 +163,8 @@ class TrashRepository:
 def _purge_folders(conn: sqlite3.Connection, note_id: int) -> None:
     folders = "SELECT id FROM file_folders WHERE note_id = ?"
     conn.execute("DELETE FROM file_links WHERE file_id IN (SELECT id FROM files WHERE folder_id IN ({}))".format(folders),
+                 (note_id,))
+    conn.execute("DELETE FROM task_files WHERE file_id IN (SELECT id FROM files WHERE folder_id IN ({}))".format(folders),
                  (note_id,))
     conn.execute("DELETE FROM files WHERE folder_id IN ({})".format(folders), (note_id,))
     conn.execute("DELETE FROM file_folders WHERE note_id = ?", (note_id,))
