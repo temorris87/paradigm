@@ -5,10 +5,12 @@
 // Files (task-files.js), From and History (task-history.js). Side by side down to 1000 px.
 // The page takes .msg files dropped on it.
 // One focus stop: a listbox whose first row is the head, then the side column's rows, top to
-// bottom. Its keys: task-page-keys.js. Notes are edited through Edit… only; an archived note's
-// task is read-only.
+// bottom. Its keys: task-page-keys.js. The notes are written in the note window (the Notes
+// card's Edit, e): while they are open there, the card shows them as typed (task-notes-live.js).
+// An archived note's task is read-only.
 //
-//   const page = new TaskPage(section, { app: () => notesApp, onLeave(), emailsApi? });
+//   const page = new TaskPage(section, { app: () => notesApp, onLeave(), emailsApi?, changes? });
+//     changes: the windows' channel (connection/changes.js), for the notes typed in the note window
 //   page.attach()       :attach: the file picker for .msg files (throws when read-only)
 //   page.show(ctx)      ctx.tree, ctx.tasks, ctx.trash, ctx.taskId, ctx.taskNoteId, ctx.today
 //                       (now), ctx.sessions, ctx.meetings, ctx.timeSettings
@@ -22,7 +24,8 @@ import { chip } from "../ui/chip.js";
 import { keyCap } from "../ui/key-hints.js";
 import { openMenu } from "../ui/menu.js";
 import { drawRendered, followNoteLinks } from "../ui/rendered-text.js";
-import { delegateDialog, editTaskDialog, newTaskDialog, removeTaskDialog, scheduleTask, setTaskDone, takeBack } from "./task-commands.js";
+import { delegateDialog, editTaskDialog, editTaskNotes, newTaskDialog, removeTaskDialog, scheduleTask, setTaskDone, takeBack } from "./task-commands.js";
+import { TaskNotesLive } from "./task-notes-live.js";
 import { drawFacts, drawHead } from "./task-head.js";
 import { TaskFiles } from "./task-files.js";
 import { TaskHistory, drawSource } from "./task-history.js";
@@ -31,6 +34,10 @@ import { taskPageAction } from "./task-page-keys.js";
 import { TaskEmails } from "./task-emails.js";
 import { card, drawSide, element, subtasksCard } from "./task-side.js";
 import { moveTarget, taskTree } from "./tasks-model.js";
+
+// The notes closed in the note window: read again now, and once more after this long, for a
+// save sent as that window closed (keepalive) that lands after the first read.
+const RELOAD_AGAIN_MS = 1000;
 
 // s on this page says where it went in the page's own words.
 const SCHEDULE_WORDS = { placed: placedText, none: noSlotText };
@@ -45,7 +52,7 @@ function rowKey(row) {
 }
 
 export class TaskPage {
-  constructor(section, { app, onLeave, emailsApi = null }) {
+  constructor(section, { app, onLeave, emailsApi = null, changes = null }) {
     this.section = section;
     this.app = app;
     this.onLeave = onLeave;
@@ -74,6 +81,14 @@ export class TaskPage {
     this.files = new TaskFiles({ app, redraw });
     this.history = new TaskHistory({ app, redraw });
     if (emailsApi) this.emails.listenForDrops(section, { accepts: () => Boolean(this.task), refusal: () => this.dropRefusal() });
+    this.live = new TaskNotesLive({ changes, onClosed: () => this.notesClosed() });
+  }
+
+  /** The note window let go of the notes: the card shows the saved ones. */
+  notesClosed() {
+    const reload = () => this.run(this.app().refreshTree());
+    reload();
+    setTimeout(reload, RELOAD_AGAIN_MS);
   }
 
   redraw() {
@@ -105,6 +120,8 @@ export class TaskPage {
     if (task.id !== this.last?.id) {
       this.active = 0;
       this.selectedKey = null;
+      // Its notes may be open in the note window already: the chip shows straight away.
+      this.live.ask();
     }
     this.emails.sync(task.id);
     this.files.sync(task.id, { force: fresh });
@@ -150,19 +167,24 @@ export class TaskPage {
       edit = element("button", "task-card__add", "Edit");
       edit.type = "button";
       edit.tabIndex = -1;
-      edit.title = "Title, notes, due date, estimate, for whom (e)";
-      edit.dataset.action = "editTask";
+      edit.title = "Write its notes in the note window (e)";
+      edit.dataset.action = "editNotes";
       edit.append(" ", keyCap("e"));
     }
     const node = card("notes", "Notes", "", edit);
     node.classList.add("task-page__main");
+    const body = element("div", "task-page__notes-body");
     if ((task.notes ?? "").trim()) {
       const notes = element("div", "task-page__notes md-doc");
       notes.innerHTML = renderMarkdown(task.notes, this.app().markdownOptions(task.note_id));
-      node.append(notes);
+      body.append(notes);
     } else {
-      node.append(element("p", "task-page__no-notes", this.readOnly ? "No notes" : NOTES_EMPTY));
+      body.append(element("p", "task-page__no-notes", this.readOnly ? "No notes" : NOTES_EMPTY));
     }
+    node.append(body);
+    // Open in the note window: the text as typed there, and the chip.
+    this.live.attach({ taskId: task.id, head: node.querySelector(".task-card__head"), edit, body,
+      render: (markdown) => renderMarkdown(markdown, this.app().markdownOptions(task.note_id)) });
     return node;
   }
 
@@ -311,6 +333,7 @@ export class TaskPage {
       case "addFile": return this.run(this.files.add(page));
       case "toggle": return this.run(setTaskDone(app, task.id, !task.done));
       case "edit": return this.run(editTaskDialog(app, task.id));
+      case "editNotes": return this.run(editTaskNotes(app, page.id));
       case "delegate": return this.run(this.delegate(task));
       case "schedule": return this.run(scheduleTask(app, task.id, { words: SCHEDULE_WORDS }));
       case "toggleTask": return this.run(setTaskDone(app, page.id, !page.done));

@@ -11,6 +11,9 @@
 // trash's hold ends); "live-closed" on pagehide. From a trash until the next note has gone out
 // once, every message is a reply: the note that opens by itself after a trash never pulls the
 // main window to Live, whatever keys, clicks and redraws come in between.
+// While the note window holds a task's notes (app.taskNotes, tasks/task-notes-session.js) it
+// sends { type: "live", task, title, text, caret: { line, col, mode } } in their place, for the
+// task page's Notes card (tasks/task-notes-live.js), and "live-closed" carries task.
 import { fieldsFor } from "../hubs/fields.js";
 import { groupOf, hubOf } from "../notes/hub-groups.js";
 
@@ -75,7 +78,10 @@ export class LiveSender {
     this.changes.listen((message) => {
       if (message.type === "live-ask") this.answerAsk();
     });
-    win.addEventListener("pagehide", () => this.changes.send({ type: "live-closed" }));
+    win.addEventListener("pagehide", () => {
+      const taskId = this.app.taskNotes?.active ? this.app.taskNotes.taskId : undefined;
+      this.changes.send(taskId === undefined ? { type: "live-closed" } : { type: "live-closed", task: taskId });
+    });
   }
 
   /** Something happened in the note (a key, a click): the hold after a trash is over. */
@@ -86,7 +92,7 @@ export class LiveSender {
   }
 
   redrawn() {
-    const id = this.app.currentId;
+    const id = this.shownKey();
     if (id !== this.shownId) {
       // Another note (or the same one reloaded as new): its cursor starts at the top.
       this.shownId = id;
@@ -116,7 +122,7 @@ export class LiveSender {
 
   /** A main window asked (it opened or reloaded): it gets what is shown, held or not. */
   answerAsk() {
-    const message = this.message(this.app.currentId);
+    const message = this.current();
     if (!message) return;
     this.changes.send({ ...message, reply: true });
     this.sentAfterTrash(message.id);
@@ -161,13 +167,26 @@ export class LiveSender {
     const queued = this.queuedReply;
     this.flush();
     if (this.hold) return;
-    const message = this.message(this.app.currentId);
+    const message = this.current();
     // The trashed note, still open for a moment: sending it again would undo "Moved to trash".
-    if (!message || message.id === this.afterTrash?.id) return;
+    if (!message || (this.afterTrash && message.id === this.afterTrash.id)) return;
     this.lastSent = this.clock();
     this.changes.send(queued || this.replying() ? { ...message, reply: true } : message);
     this.quiet = false;
     this.sentAfterTrash(message.id);
+  }
+
+  /** What is shown, as the redraws tell them apart: the note's id, or "task:ID". */
+  shownKey() {
+    const taskNotes = this.app.taskNotes;
+    return taskNotes?.active ? `task:${taskNotes.taskId}` : this.app.currentId;
+  }
+
+  /** The live message for what is open: a task's notes, else the note (null: neither). */
+  current() {
+    const taskNotes = this.app.taskNotes;
+    if (taskNotes?.active) return taskNotes.liveMessage(this.cursors.body);
+    return this.message(this.app.currentId);
   }
 
   /** The live message for a note, or null when none is open. */

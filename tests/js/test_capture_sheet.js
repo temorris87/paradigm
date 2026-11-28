@@ -288,7 +288,11 @@ test("note captures: \\t opens the sheet; Enter saves, marks the line and says w
     assertEqual(said.at(-1), "fail E: already captured", "a known capture is refused before the POST");
     assertEqual(made.length, 1, "no second POST, so no 409 in the console");
     assertTrue(sent.includes("changed"));
-    const mark = editor.shadowRoot.querySelector('.pd-line[data-line="1"] .pd-mark');
+    // The open sheet squeezed the editor to a row or so; its ResizeObserver gives the rows back
+    // only on the next frame, which two setTimeout ticks do not always reach under load. Measure
+    // now so line 1 is drawn when its mark is looked for.
+    editor.measure();
+    const mark =editor.shadowRoot.querySelector('.pd-line[data-line="1"] .pd-mark');
     assertEqual(mark?.textContent, "Task → Grace · follow up Mon");
     assertEqual(strip.textContent, "From this meeting:Tasks 1Questions 0Decisions 0they live in Team · Tab opens");
     await captures.uncapture({ line: 0, text: "Intro" }).catch((error) => said.push(`fail ${error.message}`));

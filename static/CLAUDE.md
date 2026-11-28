@@ -51,7 +51,8 @@ static/
                          caret.js (the cursor's sentinel in a field's raw text, bar or block,
                          none where no caret can sit; pure), live-sender.js (the note window:
                          a throttled "live" message on the windows' channel, answers
-                         "live-ask", "live-closed" on pagehide), live-page.js (the main
+                         "live-ask", "live-closed" on pagehide; a task's notes' messages
+                         carry task), live-page.js (the main
                          window: blocks drawn per line range, the caret and the band, empty /
                          closed / trashed lines, link, highlight and image clicks),
                          highlights.js (a record's source text underlined with its badge, a
@@ -240,7 +241,7 @@ static/
   js/connection/         connection.js (event stream + beacon), banner.js, tab-id.js (a key
                          per window kind: a popup copies its opener's sessionStorage),
                          changes.js (BroadcastChannel between the app's windows: "changed",
-                         "open" a note, "place" the note window)
+                         "open" a note or a task's notes, "place" the note window)
   js/windows/note-window.js  the note window: the right third on a wide screen (>= 2400 CSS
                          px and > 2.1 times as wide as tall), else the whole screen, or as
                          the Window menu says; one window, reused; showMainWindow;
@@ -278,7 +279,7 @@ static/
                          open list of mine and its filter; today's blocks; pure),
                          task-commands.js, task-page.js (a task's page in the main window,
                          &task=ID: breadcrumb, head, Notes | the side column; one listbox),
-                         task-head.js (title, chips, Done / Schedule / Delegate / Edit / ···,
+                         task-head.js (title, chips, Done / Schedule / Delegate / Edit… / ···,
                          the facts row), task-side.js (the cards, their order, Subtasks),
                          task-files.js (the Files card: Add file…, open, x unlinks),
                          task-history.js (the From and History cards), task-page-model.js
@@ -287,7 +288,10 @@ static/
                          emails-api.js,
                          emails-model.js (an email row's chip, sender line, link; the reply
                          cycle; pure), task-emails.js (the Emails card, .msg drops on the
-                         task page, :attach)
+                         task page, :attach), task-notes-session.js (a task's notes in the
+                         note window, ?task=ID: load, autosave, :w, the crumb, the channel's
+                         messages; the session pure), task-notes-live.js (the task page's
+                         "Live · editing in the note window" chip and the notes as typed)
   js/calendar/           (the Week page's Plan) api.js (the import: .ics uploads only, no
                          folder), week-model.js (days shown, the weekend rule,
                          blocks, side-by-side layout, 15-minute snap; pure), grid-view.js

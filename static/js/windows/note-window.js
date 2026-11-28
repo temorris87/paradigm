@@ -26,6 +26,7 @@
 //   placeNoteWindow(win, mode)              places it again (Window > right third)
 //   windowMode() / setWindowMode(mode)      the setting, kept per browser
 //   openNoteWindow(id, { at, changes })     shows a note there; false when popups are blocked
+//   openNoteWindow({ task }, { changes })   shows a task's notes there (note.html?task=ID)
 //   showMainWindow(message, changes)        brings the main window forward with a message:
 //                                           { type: "show", id } (a hub's dashboard) or
 //                                           { type: "view", key } (Home, People...)
@@ -124,17 +125,26 @@ export function noteWindowUrl(id, at = null) {
   return `/note.html?${params}`;
 }
 
+/** The URL the note window loads for a task's notes. */
+export function taskNotesUrl(taskId) {
+  return `/note.html?${new URLSearchParams({ task: String(taskId) })}`;
+}
+
 export function openNoteWindow(id, { at = null, changes, screen = window.screen, mode = windowMode() } = {}) {
+  // { task }: a task's notes, else a note's id.
+  const task = typeof id === "object" && id !== null ? id.task : undefined;
+  const url = task === undefined ? noteWindowUrl(id, at) : taskNotesUrl(task);
+  const message = task === undefined ? { type: "open", to: "note", id, at } : { type: "open", to: "note", task };
   const box = noteWindowBox(screen, mode);
   const features = `popup=yes,left=${box.left},top=${box.top},width=${box.width},height=${box.height}`;
   // An empty URL finds the named window without reloading it, if it is open.
   const win = window.open("", NOTE_WINDOW, features);
   if (!win) return false;
   if (isBlank(win)) {
-    win.location.replace(noteWindowUrl(id, at));
+    win.location.replace(url);
     place(win, box);
   } else {
-    changes.send({ type: "open", to: "note", id, at });
+    changes.send(message);
   }
   win.focus();
   return true;

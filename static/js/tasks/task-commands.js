@@ -5,7 +5,8 @@
 //   addTask(app, noteId, title, { parentId, due })    a task (or a subtask) on a note
 //   setTaskDone(app, taskId, done)
 //   newTaskDialog(app, owner, parent?)                + New task, + Add subtask
-//   editTaskDialog(app, taskId)                       title, notes, due date, estimate, for whom
+//   editTaskDialog(app, taskId)                       title, due date, estimate, for whom
+//   editTaskNotes(app, taskId)                        its notes, written in the note window
 //   delegateDialog(app, taskId)                       to whom, and when to follow it up
 //   takeBack(app, taskId)                             delegated back to me
 //   scheduleTask(app, taskId)                         s: a block in the first free slot from now
@@ -32,6 +33,7 @@ import { hubOf } from "../notes/hub-groups.js";
 import { screenNoteId } from "../notes/screen-note.js";
 import { peopleNamed } from "../people/people-commands.js";
 import { confirmDialog, formDialog } from "../ui/dialog.js";
+import { openNoteWindow } from "../windows/note-window.js";
 
 function changed(app) {
   app.changes.send({ type: "changed", what: ["tasks"] });
@@ -82,8 +84,6 @@ export function editTaskDialog(app, taskId) {
     title: `Task "${task.title}"`,
     fields: [
       { key: "title", label: "Task", value: task.title },
-      { key: "notes", label: "Notes (optional)", type: "textarea", value: task.notes, optional: true,
-        placeholder: "a few lines: where it stands, links, what is waited on" },
       { key: "due", label: "Due (optional)", type: "date", value: task.due, optional: true },
       { key: "estimate", label: "Estimate (optional)", value: estimateText(task.estimate_min), optional: true,
         placeholder: "30 min, 1.5 h: what is placed on the week" },
@@ -97,7 +97,8 @@ export function editTaskDialog(app, taskId) {
       const { person, matches } = name ? matchPerson(app.tree, name) : { person: null, matches: [] };
       if (matches.length > 1 && !person) throw new Error(`${matches.length} people match "${name}": type more`);
       if (name && !person) throw new Error(`No one called "${name}" in People`);
-      await app.tasksApi.update(taskId, { title: values.title, notes: values.notes, due: values.due,
+      // No notes: they are the note window's (editTaskNotes), and left as they are.
+      await app.tasksApi.update(taskId, { title: values.title, due: values.due,
         estimate_min: parseEstimate(values.estimate) });
       if (values.forName !== undefined && (person?.id ?? null) !== task.for_person_id) await app.tasksApi.setFor(taskId, person?.id ?? null);
       await changed(app);
@@ -105,6 +106,16 @@ export function editTaskDialog(app, taskId) {
     },
     fallbackFocus: () => app.focusNote(),
   });
+}
+
+/** e on a task's page: its notes in the note window (tasks/task-notes-session.js), placed as
+ * the note window always is. */
+export async function editTaskNotes(app, taskId) {
+  const task = taskOf(app, taskId);
+  if (!openNoteWindow({ task: taskId }, { changes: app.changes })) {
+    throw new Error("E: the browser blocked the note window: allow popups for Paradigm (127.0.0.1)");
+  }
+  app.say(`"${task.title}" notes are open in the note window`);
 }
 
 /** Delegate…: a person (someone in People, or new) and when to follow it up: tomorrow, at our

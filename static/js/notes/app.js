@@ -23,6 +23,9 @@
 // static/js/people/people-page.js, static/js/meetings/meetings-page.js), drawn in place of
 // the note while the URL has &home, &people or &meetings (page-views.js; the note stays
 // open under them). A URL with no note opens on Home.
+// The note window also writes a task's notes (?task=ID, or an "open" message with task):
+// taskNotes (tasks/task-notes-session.js) takes the editor's text while one is open, and no
+// note is (currentId null).
 //   await app.start();
 import { exportNote } from "../export/export.js";
 import { TodayPage } from "../today/today-page.js";
@@ -67,7 +70,8 @@ import { newPersonDialog } from "../people/people-page.js";
 import { Changes } from "../connection/changes.js";
 import { Tasks } from "../tasks/tasks-model.js";
 import { addDays, localDay } from "../meetings/meeting-days.js";
-import { openNoteWindow, showMainWindow } from "../windows/note-window.js";
+import { openNoteWindow, showMainWindow, taskNotesUrl } from "../windows/note-window.js";
+import { TaskNotesMode } from "../tasks/task-notes-session.js";
 import { Plan } from "../plan/plan-model.js";
 import { Files } from "../files/files-model.js";
 import { scanFolders } from "../files/file-commands.js";
@@ -249,6 +253,8 @@ export class NotesApp {
     // \t \q \d \u in the note window's editor, the captured lines' marks, the strip under it.
     this.captures = role === "note" && capturesApi && capture.sheet
       ? new NoteCaptures(this, { api: capturesApi, sheet: capture.sheet, strip: capture.strip ?? null }) : null;
+    // A task's notes in the note window's editor, in place of a note.
+    this.taskNotes = role === "note" && tasksApi ? new TaskNotesMode(this, { api: tasksApi }) : null;
     registerNoteCommands(editor);
     if (this.agendaEditor) registerNoteCommands(this.agendaEditor);
     editor.completions = mentionCompletions(this);
@@ -283,7 +289,9 @@ export class NotesApp {
     editor.addEventListener("change", (event) => {
       // Only the editor's own change: a docked panel's input (the capture sheet) is a child of
       // <pd-editor>, so its native change bubbles here too, with no detail.
-      if (event.target === editor && event.detail) this.session.edited(event.detail.value);
+      if (event.target !== editor || !event.detail) return;
+      if (this.taskNotes?.active) this.taskNotes.edited(event.detail.value);
+      else this.session.edited(event.detail.value);
     });
     editor.addEventListener("save", (event) => this.saveCommand(Boolean(event.detail.force)));
     editor.addEventListener("files", (event) => this.guard(this.images.add(event.detail)));
@@ -308,11 +316,13 @@ export class NotesApp {
       this.guard(this.openFromUrl("none"));
     });
     window.addEventListener("pagehide", () => {
+      this.taskNotes?.saveBeforeLeaving();
       this.session.saveBeforeLeaving();
       this.agenda.saveBeforeLeaving();
     });
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") {
+        this.taskNotes?.save().catch(() => {});
         this.session.save().catch(() => {});
         this.agenda.save().catch(() => {});
       }
@@ -328,6 +338,11 @@ export class NotesApp {
   async onMessage(message) {
     if (message.type === "open" && message.to === "note" && this.role === "note") {
       await this.refreshTree();
+      if (message.task !== undefined) {
+        await this.openTask(message.task);
+        window.focus();
+        return;
+      }
       if (!this.tree.has(message.id)) return;
       await this.openFromHub(message.id, message.at ?? null);
       window.focus();
@@ -432,6 +447,7 @@ export class NotesApp {
     const params = new URLSearchParams(this.location.search);
     const wanted = Number(params.get("note"));
     if (this.role === "main") return this.mainFromUrl(params, wanted, history);
+    if (params.has("task") && this.taskNotes) return this.taskFromUrl(Number(params.get("task")), history);
     const id = this.tree.has(wanted) ? wanted : this.tree.children(null)[0]?.id;
     if (id === undefined) return;
     const opened = await this.open(id, { history });
@@ -442,6 +458,39 @@ export class NotesApp {
       const box = params.get("field") === "agenda" && this.agendaEditor && this.agenda.id === id ? this.agendaEditor : this.editor;
       box.goToLine(Number(line));
     }
+  }
+
+  /** The note window on a task's notes (note.html?task=ID); a task gone leaves no note open. */
+  async taskFromUrl(taskId, history) {
+    if (this.tasks.get(taskId)) {
+      await this.openTask(taskId, { history });
+      return;
+    }
+    this.showNoNote();
+    this.fail(new Error("E: that task is gone (deleted in another window?)"));
+  }
+
+  /** The note window: a task's notes in the editor (031). The open note is saved first, and
+   * closed: no note menu, sheet, captures or Live page for notes while they are open. */
+  async openTask(taskId, { history = "push" } = {}) {
+    if (!this.taskNotes) throw new Error("E: a task's notes are written in the note window");
+    const task = this.tasks.get(taskId);
+    if (!task) throw new Error("E: that task is gone (deleted in another window?)");
+    if (this.taskNotes.taskId === taskId) {
+      this.editor.focus();
+      return true;
+    }
+    if (!(await this.saveBeforeSwitching())) return false;
+    this.session.close();
+    this.agenda.open({});
+    this.taskNotes.open(task);
+    this.editor.readOnly = false;
+    this.editor.value = task.notes ?? "";
+    if (history === "push") this.history.pushState({}, "", taskNotesUrl(taskId));
+    if (history === "replace") this.history.replaceState({}, "", taskNotesUrl(taskId));
+    this.redraw();
+    this.editor.focus();
+    return true;
   }
 
   /** The main window shows a dashboard (a hub's, a person's) or a page; any other note asked
@@ -554,7 +603,10 @@ export class NotesApp {
   async switchTo(id, { history, discard, heading }) {
     if (id !== this.currentId || discard) {
       if (!discard && !(await this.saveBeforeSwitching())) return false;
+      // A task's notes are saved even when the note's own edits are dropped (:e!).
+      if (discard && this.taskNotes?.dirty && !(await this.saveBeforeSwitching())) return false;
       const note = await this.api.get(id);
+      this.taskNotes?.close();
       this.session.open(note);
       this.editor.readOnly = false;
       this.editor.value = note.body;
@@ -568,15 +620,16 @@ export class NotesApp {
   }
 
   async saveBeforeSwitching() {
-    if (!this.session.dirty && !this.agenda.dirty) return true;
+    if (!this.session.dirty && !this.agenda.dirty && !this.taskNotes?.dirty) return true;
     try {
+      await this.taskNotes?.save();
       await this.session.save();
       await this.agenda.save();
     } catch (error) {
       this.fail(error);
       return false;
     }
-    if (this.session.dirty || this.agenda.dirty) {
+    if (this.session.dirty || this.agenda.dirty || this.taskNotes?.dirty) {
       this.fail(new Error(UNSAVED));
       return false;
     }
@@ -610,6 +663,7 @@ export class NotesApp {
     this.drawPins(now);
     showBreadcrumb(this.crumbs, this.tree, id, (target) => this.guard(this.open(target)),
       (button) => openNoteMenu(this, button));
+    if (this.taskNotes?.active) this.taskNotes.drawCrumbs(this.crumbs);
     const ctx = { tree: this.tree, people: this.people, meetings: this.meetings, records: this.records,
       links: this.linkIndex.links, mentions: this.linkIndex.mentions, trash: this.trash, tasks: this.tasks,
       sessions: this.sessions, importStatus: this.importStatus, plan: this.plan, planTemplates: this.planTemplates,
@@ -623,7 +677,8 @@ export class NotesApp {
     this.dashboard?.show(ctx, this.tree.get(id) ?? null, this.session.note?.body ?? "", Boolean(this.views.shown));
     this.views.draw(ctx, this.crumbs);
     // A page shown over the note names the tab, not the note under it.
-    const title = this.views.shown ? viewLabel(this.views.shown) : this.tree.get(id)?.title ?? this.session.note?.title;
+    const title = this.views.shown ? viewLabel(this.views.shown)
+      : this.taskNotes?.active ? `${this.taskNotes.title} notes` : this.tree.get(id)?.title ?? this.session.note?.title;
     document.title = title ? `${title} - Paradigm` : "Paradigm";
     this.editor.hints = { cmdline: (text) => this.cmdlineHint(text) };
     this.prep?.show(ctx, this.tree.get(id) ?? null);
@@ -652,7 +707,7 @@ export class NotesApp {
   /** The navigator's foot (the note window): whether the open note's changes are saved. */
   showSaveState() {
     if (!this.saveStateNode || !this.session) return;
-    const sessions = [this.session, this.agenda?.session].filter(Boolean);
+    const sessions = [this.session, this.agenda?.session, this.taskNotes?.session].filter(Boolean);
     drawSaveState(this.saveStateNode, saveStateOf({
       dirty: sessions.some((each) => each.dirty), saving: sessions.some((each) => each.saving),
       failed: sessions.some((each) => each.failed), offline: this.offline, conflict: sessions.some((each) => each.conflict),
@@ -660,9 +715,10 @@ export class NotesApp {
   }
 
   async saveAfterReconnect() {
+    if (this.taskNotes?.dirty) await this.taskNotes.save();
     if (this.session.dirty && !this.session.conflict) await this.session.save();
     if (this.agenda?.dirty) await this.agenda.save();
-    if (!this.session.dirty) this.say("Back: your changes are saved");
+    if (!this.session.dirty && !this.taskNotes?.dirty) this.say("Back: your changes are saved");
   }
 
   /** The renderer's options: wiki links resolve from fromId (the nearest note wins). */
@@ -746,6 +802,10 @@ export class NotesApp {
   }
 
   async saveCommand(force) {
+    if (this.taskNotes?.active) {
+      await this.taskNotes.saveCommand();
+      return;
+    }
     try {
       await this.session.save({ force });
       this.say(`"${this.session.note?.title ?? ""}" saved`);

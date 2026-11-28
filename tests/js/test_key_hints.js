@@ -107,7 +107,7 @@ test("view keys: every main-window view's bar ends with ? all keys; Live shows t
   assertEqual(caps("week", "settings"), "[ ],t,?", "Settings has no grid to copy");
   assertEqual(caps("trash"), "j k,Enter,/,?", "the Trash has no New");
   assertEqual(viewHints("task").map(({ cap, words }) => `${cap} ${words}`).join(),
-    "Space done,e edit,d delegate,s schedule,a add subtask,j k move,Esc back,? all keys", "a task's page, as in Figma");
+    "Space done,e edit notes,d delegate,s schedule,a add subtask,j k move,Esc back,? all keys", "a task's page, as in Figma");
   assertEqual(viewHints("trash").find(({ cap }) => cap === "Enter").words, "restore", "Enter restores in the Trash");
   assertEqual(viewHints("people").find(({ cap }) => cap === "Enter").words, "open");
   assertTrue(!noteHints({ sheet: true }).some(({ cap }) => cap === "?"), "the note window: ? is the editor's");

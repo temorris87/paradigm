@@ -131,6 +131,10 @@ const NOTE_HINTS = [
 
 const SHEET_HINT = { cap: "Tab", words: "sheet" };
 
-export function noteHints({ sheet = false } = {}) {
+// A task's notes (tasks/task-notes-session.js) have no captures and no sheet.
+const TASK_NOTES_HINTS = NOTE_HINTS.filter(({ cap }) => cap === "@" || cap === ":w");
+
+export function noteHints({ sheet = false, task = false } = {}) {
+  if (task) return TASK_NOTES_HINTS;
   return sheet ? [...NOTE_HINTS, SHEET_HINT] : NOTE_HINTS;
 }

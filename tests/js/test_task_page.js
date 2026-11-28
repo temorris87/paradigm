@@ -61,8 +61,8 @@ test("task page: J/K move a subtask among its siblings only", () => {
 
 test("task page: its key table", () => {
   const key = (k) => taskPageAction(new KeyboardEvent("keydown", { key: k }));
-  assertEqual(["j", "ArrowDown", "k", "ArrowUp", "G", "Enter", "a", " ", "e", "d", "s", "x", "Delete", "J", "K", "Escape"].map(key),
-    ["next", "next", "previous", "previous", "last", "open", "add", "toggle", "edit", "delegate", "schedule", "remove", "remove", "moveDown", "moveUp", "leave"]);
+  assertEqual(["j", "ArrowDown", "k", "ArrowUp", "G", "Enter", "a", " ", "e", "E", "d", "s", "x", "Delete", "J", "K", "Escape"].map(key),
+    ["next", "next", "previous", "previous", "last", "open", "add", "toggle", "editNotes", "edit", "delegate", "schedule", "remove", "remove", "moveDown", "moveUp", "leave"]);
   assertEqual([key("g"), key("g")], ["pending", "first"]);
   assertEqual(taskPageAction(new KeyboardEvent("keydown", { key: "j", ctrlKey: true })), null);
   assertTrue(TASK_PAGE_KEYS.every((entry) => entry.help), "every key has its help");
@@ -129,7 +129,10 @@ test("task page: breadcrumb, head, Notes the main column, the side column's card
   assertEqual(section.querySelector(".task-page__head .task-page__title").textContent, "Book van");
   assertEqual([...section.querySelectorAll(".task-page__buttons button")].map((n) => n.dataset.action),
     ["toggleTask", "scheduleTask", "delegateTask", "editTask", "moreTask"]);
-  assertEqual([...section.querySelectorAll(".task-page__buttons .key")].map((n) => n.textContent), ["Space", "s", "d", "e"]);
+  assertEqual([...section.querySelectorAll(".task-page__buttons .key")].map((n) => n.textContent), ["Space", "s", "d", "E"]);
+  assertEqual(section.querySelector(".task-page__buttons [data-action=editTask]").firstChild.textContent, "Edit…", "Edit… opens the dialog");
+  const notesEdit = section.querySelector(".task-card--notes .task-card__add");
+  assertEqual(`${notesEdit.dataset.action} ${notesEdit.querySelector(".key").textContent}`, "editNotes e", "the Notes card's Edit e: the note window");
   assertEqual([...section.querySelectorAll(".task-page__fact-label")].map((n) => n.textContent), ["Project", "For", "Delegated to", "Next block"]);
   const columns = section.querySelector(".task-page__columns");
   assertTrue(columns.children[0].classList.contains("task-card--notes"), "Notes first, the main column");
