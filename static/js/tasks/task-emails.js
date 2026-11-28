@@ -1,4 +1,4 @@
-// A task's Emails section on its page (task-page.js): the Outlook messages saved with it, one
+// A task's Emails card on its page (task-page.js, in the side column): the Outlook messages saved with it, one
 // row each (✉ subject, the reply chip, sender and sent time, Reply ↗ / Open ↗), the page as a
 // drop target for .msg files, and :attach's file input. The rows are options of the page's
 // listbox; the page owns the selection and the keys, and hands an email row's actions here.
@@ -6,8 +6,9 @@
 //   const emails = new TaskEmails({ api, app: () => notesApp, redraw() });
 //   emails.sync(taskId)            loads the task's emails when the page shows another task
 //   emails.rows()                  [{ email }], newest sent first, for the page's row list
-//   emails.draw(option, { readOnly, today })  the section; option(node, index) makes a row an
-//                                  option, numbered from emails.first (set by the page)
+//   emails.draw(option, { readOnly, today })  the card ("n to answer", + Attach); option(node,
+//                                  index) makes a row an option, numbered from emails.first
+//                                  (set by the page)
 //   emails.perform(action, email)  "open" | "openEmail" | "reply" | "remove"
 //   emails.attachFiles(files)      uploads each .msg; anything else is refused by name
 //   emails.pick()                  :attach: the browser's file picker
@@ -15,6 +16,8 @@
 //   attachCommand(app)             :attach: the task page's picker; anywhere else (Today, the
 //                                  note window...) refused
 import { confirmDialog } from "../ui/dialog.js";
+import { actionButton, card } from "./task-side.js";
+import { toAnswerText } from "./task-page-model.js";
 import { chip as statusChip } from "../ui/chip.js";
 import { EMAIL_HINT, MAX_EMAIL_BYTES, isMsgName, linkLabel, nextReply, notMsgText, removeEmailText, replyChip,
   senderLine, tooBigText, uploadError } from "./emails-model.js";
@@ -71,8 +74,11 @@ export class TaskEmails {
   }
 
   draw(option, { readOnly = false, today = new Date() } = {}) {
-    const section = element("section", "task-emails");
-    section.append(element("h3", "task-emails__heading", "Emails"), this.input);
+    // A card of the task page's side column: "n to answer", + Attach (:attach's picker).
+    const attach = readOnly ? null : actionButton("+ Attach", "attachEmail", "Attach an Outlook message (.msg), or drag one onto the page");
+    const section = card("emails", "Emails", toAnswerText(this.list), attach);
+    section.classList.add("task-emails");
+    section.append(this.input);
     if (!this.list.length) {
       section.append(element("p", "task-emails__hint", readOnly ? "No emails" : EMAIL_HINT));
       return section;

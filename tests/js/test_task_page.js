@@ -1,13 +1,18 @@
-// The task page (static/js/tasks/task-page.js): its rows (taskTree), J/K's target, its key
-// table, its facts, the gone states, and the page drawn with a fake app. Also the section's
-// Enter (the task page) and z (in place), and the delete confirm's count.
+// The task page (static/js/tasks/task-page.js and its parts): its rows (taskTree), J/K's
+// target, its key table, the head's chips, the facts row and Next block (task-page-model.js),
+// the side column's cards and their order, Files and History with fake APIs, s,
+// the gone states, and the page drawn with a fake app. Also the section's Enter (the task page)
+// and z (in place), and the delete confirm's count.
 import { HubPage } from "../../static/js/hubs/hub-page.js";
 import { NoteTree } from "../../static/js/notes/tree-model.js";
 import { PageViews } from "../../static/js/notes/page-views.js";
 import { newTaskDialog, removeTaskText } from "../../static/js/tasks/task-commands.js";
 import { TASK_PAGE_KEYS, taskPageAction } from "../../static/js/tasks/task-page-keys.js";
-import { TaskPage, goneReason, headFacts, rowFacts } from "../../static/js/tasks/task-page.js";
+import { TaskPage, goneReason } from "../../static/js/tasks/task-page.js";
 import { MAX_TASK_DEPTH, Tasks, moveTarget, taskTree } from "../../static/js/tasks/tasks-model.js";
+import { SIDE_CARDS, dueChip, fileDetail, freeSlotFor, headChips, historyRows, nextBlockText, noSlotText, placedText,
+  shortDay, sourceOf, subtaskCount, taskFacts, toAnswerText } from "../../static/js/tasks/task-page-model.js";
+import { Meetings } from "../../static/js/meetings/meetings-model.js";
 import { assertEqual as same, assertTrue, test } from "./harness.js";
 
 const assertEqual = (actual, expected, message = "") => same(JSON.stringify(actual), JSON.stringify(expected), message);
@@ -56,22 +61,11 @@ test("task page: J/K move a subtask among its siblings only", () => {
 
 test("task page: its key table", () => {
   const key = (k) => taskPageAction(new KeyboardEvent("keydown", { key: k }));
-  assertEqual(["j", "ArrowDown", "k", "ArrowUp", "G", "Enter", "a", " ", "e", "d", "x", "Delete", "J", "K", "Escape"].map(key),
-    ["next", "next", "previous", "previous", "last", "open", "add", "toggle", "edit", "delegate", "remove", "remove", "moveDown", "moveUp", "leave"]);
+  assertEqual(["j", "ArrowDown", "k", "ArrowUp", "G", "Enter", "a", " ", "e", "d", "s", "x", "Delete", "J", "K", "Escape"].map(key),
+    ["next", "next", "previous", "previous", "last", "open", "add", "toggle", "edit", "delegate", "schedule", "remove", "remove", "moveDown", "moveUp", "leave"]);
   assertEqual([key("g"), key("g")], ["pending", "first"]);
   assertEqual(taskPageAction(new KeyboardEvent("keydown", { key: "j", ctrlKey: true })), null);
   assertTrue(TASK_PAGE_KEYS.every((entry) => entry.help), "every key has its help");
-});
-
-test("task page: the head's facts and a row's", () => {
-  const ctx = { tree: tree(), tasks: tasks(), today: TODAY };
-  assertEqual(headFacts(ctx, tasks().get(10)).map((fact) => fact.text), ["due Mon 30 Nov"]);
-  const facts = headFacts(ctx, { ...tasks().get(20), estimate_min: 90, for_person_id: 3 });
-  assertEqual(facts.map((fact) => fact.text), ["for Priya Shah", "1.5 h", "on Packing"]);
-  assertEqual(facts[2].noteId, 2, "the note is a link");
-  assertTrue(headFacts(ctx, tasks().get(30)).some((fact) => fact.text.includes("read-only")));
-  assertEqual(rowFacts(ctx, tasks().get(12)), "→ Priya Shah, follow up Fri 27 Nov");
-  assertEqual(rowFacts(ctx, tasks().get(13)), "done Fri 20 Nov");
 });
 
 test("task page: gone, or its note in the trash", () => {
@@ -127,23 +121,35 @@ function withPage(body, { taskId = 10, list = TASKS } = {}) {
 
 const press = (section, key, more = {}) => section.querySelector(".task-page__body")
   .dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...more }));
-const selected = (section) => section.querySelector("[aria-selected=true] .task-page__title, [aria-selected=true] .task-page__row-title")?.textContent;
+const selected = (section) => section.querySelector("[aria-selected=true] .task-page__title, [aria-selected=true] .task-sub__title")?.textContent;
 
-test("task page: breadcrumb, head, the two-column table with each subtask's notes", () => withPage(({ section, app }) => {
+test("task page: breadcrumb, head, Notes the main column, the side column's cards in order", () => withPage(({ section, app }) => {
   const crumbs = [...section.querySelectorAll(".task-page__crumbs button, .task-page__crumb-here")].map((n) => n.textContent);
   assertEqual(crumbs, ["Move", "Book van"]);
   assertEqual(section.querySelector(".task-page__head .task-page__title").textContent, "Book van");
-  assertTrue(section.querySelector(".task-page__notes--head strong")?.textContent === "twice", "its notes, rendered");
-  const rows = [...section.querySelectorAll(".task-page__row")];
-  assertEqual(rows.map((row) => row.querySelector(".task-page__row-title").textContent), ["Get quotes", "Call movers", "Ask Jo", "Pick a date"]);
-  assertEqual(rows.map((row) => [...row.classList].find((c) => c.startsWith("task-page__row--depth-"))),
-    ["task-page__row--depth-1", "task-page__row--depth-2", "task-page__row--depth-2", "task-page__row--depth-1"]);
-  assertEqual(rows[0].querySelector(".task-page__cell-notes").textContent.trim(), "Three of them");
-  assertEqual(rows[1].querySelector(".task-page__cell-notes").textContent, "", "an empty notes cell stays blank");
-  assertTrue(rows[3].classList.contains("task-page__row--done"), "a done one stays in place, muted");
-  assertTrue(section.querySelector(".task-page__add"), "+ Add subtask");
+  assertEqual([...section.querySelectorAll(".task-page__buttons button")].map((n) => n.dataset.action),
+    ["toggleTask", "scheduleTask", "delegateTask", "editTask", "moreTask"]);
+  assertEqual([...section.querySelectorAll(".task-page__buttons .key")].map((n) => n.textContent), ["Space", "s", "d", "e"]);
+  assertEqual([...section.querySelectorAll(".task-page__fact-label")].map((n) => n.textContent), ["Project", "For", "Delegated to", "Next block"]);
+  const columns = section.querySelector(".task-page__columns");
+  assertTrue(columns.children[0].classList.contains("task-card--notes"), "Notes first, the main column");
+  assertTrue(columns.querySelector(".task-card--notes .task-page__notes strong")?.textContent === "twice", "its notes, rendered");
+  assertEqual([...columns.children[1].children].map((n) => [...n.classList].find((c) => c.startsWith("task-card--"))),
+    ["task-card--subtasks", "task-card--emails", "task-card--files", "task-card--history"], "no From card without a source");
+  assertEqual(section.querySelector(".task-card--subtasks .task-card__count").textContent, "1 of 4 done");
+  const rows = [...section.querySelectorAll(".task-sub__row")];
+  assertEqual(rows.map((row) => row.querySelector(".task-sub__title").textContent), ["Get quotes", "Call movers", "Ask Jo", "Pick a date"]);
+  assertEqual(rows.map((row) => [...row.classList].find((c) => c.startsWith("task-sub__row--depth-"))),
+    ["task-sub__row--depth-1", "task-sub__row--depth-2", "task-sub__row--depth-2", "task-sub__row--depth-1"]);
+  assertEqual(rows.map((row) => row.querySelector(".task-sub__detail")?.textContent ?? ""), ["", "→ Priya Shah · follow up Fri", "", "done Fri 20 Nov"]);
+  assertEqual(section.querySelectorAll(".task-sub__row .md-doc").length, 0, "no Subtask | Notes table: a subtask's notes are on its page");
+  assertTrue(rows[3].classList.contains("task-sub__row--done"), "a done one stays in place, struck through");
+  assertTrue(section.querySelector("[data-action=addDirect]"), "+ Subtask");
+  assertEqual(section.querySelector(".task-card--files .task-card__hint").textContent, "Add file… opens the file picker in the project's OneDrive folder");
   section.querySelector(".task-page__crumbs button").click();
   assertEqual(app.calls.at(-1), ["open", 1], "the hub opens its dashboard");
+  section.querySelector(".task-page__fact--hub button").click();
+  assertEqual(app.calls.at(-1), ["open", 1], "so does the facts row's project");
 }));
 
 test("task page: j/k/G/gg move, Enter opens a subtask's page, J moves it, Escape leaves", () => withPage(({ section, app, left }) => {
@@ -199,13 +205,14 @@ test("task page: the move waits for its call", async () => {
 
 test("task page: no notes, no subtasks; archived is read-only; gone", () => {
   withPage(({ section }) => {
-    assertEqual(section.querySelector(".task-page__no-notes").textContent, "No notes — e to add");
-    assertEqual(section.querySelectorAll(".task-page__row").length, 0);
-    assertTrue(section.querySelector(".task-page__add"));
+    assertEqual(section.querySelector(".task-page__no-notes").textContent, "No notes yet. e to write them.");
+    assertEqual(section.querySelectorAll(".task-sub__row").length, 0);
+    assertTrue(section.querySelector("[data-action=addDirect]"));
   }, { taskId: 20 });
   withPage(({ section, app }) => {
-    assertEqual(section.querySelector(".task-page__add"), null, "no Add");
-    assertEqual(section.querySelectorAll(".task-page__actions").length, 0, "no row buttons");
+    assertEqual(section.querySelector("[data-action=addDirect]"), null, "no Add");
+    assertEqual(section.querySelectorAll(".task-page__buttons").length, 0, "no head buttons");
+    assertTrue(section.querySelector(".task-page__head .chip").textContent.includes("read-only"));
     press(section, " ");
     assertTrue(app.calls.at(-1)[0] === "say" && !app.calls.some((call) => call[0] === "done"), "Space only says why");
   }, { taskId: 30 });
@@ -336,3 +343,168 @@ test("new subtask: a 6th level is refused in the dialog before any call, a 5th c
   assertEqual(await opened, null);
   assertEqual(app.calls.filter(([kind]) => kind === "create"), []);
 });
+
+// The page's words (task-page-model.js). TODAY_AT: Thu 26 Nov 2026, 09:00.
+const TODAY_AT = new Date(2026, 10, 26, 9, 0);
+const session = (id, taskId, day, start, end) => ({ id, task_id: taskId, day, start, end });
+const SETTINGS = { settings: { day_start: "08:00", day_end: "17:00" }, upcoming: [] };
+
+test("task page model: short days, the due chip", () => {
+  assertEqual([shortDay("2026-11-27", TODAY_AT), shortDay("2026-11-20", TODAY_AT), shortDay("2026-12-02", TODAY_AT), shortDay("2026-12-03", TODAY_AT)],
+    ["Fri", "Fri", "Wed", "Thu 3 Dec"]);
+  const due = (day, more = {}) => dueChip(task(1, "a", { due: day, ...more }), TODAY_AT);
+  assertEqual(due("2026-11-24"), { text: "2 d late · was due Tue 24 Nov", tone: "danger" });
+  assertEqual(due("2026-11-26"), { text: "Due today", tone: "caution" });
+  assertEqual(due("2026-11-27"), { text: "Due tomorrow", tone: "caution" });
+  assertEqual(due("2026-11-28"), { text: "Due Sat", tone: "caution" });
+  assertEqual(due("2026-12-04"), { text: "Due Fri 4 Dec", tone: "neutral" });
+  assertEqual(due(""), null);
+  assertEqual(due("2026-11-24", { done: true }), null, "done: no longer late");
+});
+
+test("task page model: the head's chips: late, estimate, each block placed", () => {
+  const ctx = { tree: tree(), tasks: tasks(), sessions: [session(2, 10, "2026-11-26", "10:00", "11:00"), session(1, 10, "2026-11-23", "10:00", "12:00"),
+    session(3, 11, "2026-11-26", "13:00", "14:00")] };
+  const chips = headChips(ctx, task(10, "Book van", { due: "2026-11-24", estimate_min: 120 }), TODAY_AT);
+  assertEqual(chips.map((each) => `${each.tone}:${each.text}`),
+    ["danger:2 d late · was due Tue 24 Nov", "neutral:2 h estimate", "success:2 h placed Mon · done", "success:1 h placed Thu"]);
+});
+
+test("task page model: the facts row and Next block", () => {
+  const ctx = { tree: tree(), tasks: tasks(), meetings: new Meetings(), timeSettings: SETTINGS,
+    sessions: [session(1, 10, "2026-11-30", "10:00", "12:00"), session(2, 10, "2026-11-25", "10:00", "11:00")] };
+  const facts = taskFacts(ctx, tasks().get(10), TODAY_AT);
+  assertEqual(facts.map((fact) => `${fact.label}=${fact.text}`), ["Project=Move", "For=—", "Delegated to=—", "Next block=Mon 30 Nov 10:00–12:00"]);
+  assertEqual(facts[0].noteId, 1);
+  const delegated = taskFacts(ctx, { ...tasks().get(12), for_person_id: 3 }, TODAY_AT);
+  assertEqual(delegated.slice(1).map((fact) => fact.text).slice(0, 2), ["Priya Shah", "Priya Shah · follow up Fri"]);
+  assertEqual(nextBlockText({ ...ctx, sessions: [] }, tasks().get(10), TODAY_AT), "None · s finds Thu 09:00", "the slot s would take, from now");
+  assertEqual(nextBlockText({ ...ctx, sessions: [] }, tasks().get(13), TODAY_AT), "None", "done: nothing to find");
+  const full = { ...ctx, sessions: [session(9, 14, "2026-11-26", "08:00", "17:00")] };
+  assertEqual(nextBlockText(full, task(10, "a", { due: "2026-11-26" }), TODAY_AT), "None", "no room before it is due");
+  assertEqual(freeSlotFor(full, task(10, "a", { due: "2026-11-27" }), TODAY_AT).slot, { day: "2026-11-27", start: 480, end: 510 });
+  assertEqual(placedText({ title: "Book van" }, { day: "2026-11-30", start: 600, end: 630 }, TODAY_AT), '"Book van" placed Mon 30 Nov 10:00–10:30');
+  assertEqual(noSlotText(30, "2026-11-30"), "No free 30 min before it is due");
+});
+
+test("task page model: subtasks, emails, files, the source, history, Live", () => {
+  assertEqual(subtaskCount([{ done: true }, { done: false }]), "1 of 2 done");
+  assertEqual(toAnswerText([{ reply: "needed" }, { reply: "replied" }, { reply: "needed" }]), "2 to answer");
+  assertEqual(toAnswerText([{ reply: "none" }]), "");
+  const file = { id: 3, name: "Spec.xlsx", folder_name: "Customer portal", hub_id: 5, hub_title: "Customer portal v2" };
+  assertEqual(fileDetail(file, 5), "OneDrive · Customer portal");
+  assertEqual(fileDetail({ ...file, folder_name: "Shared", hub_title: "Ben Ortiz" }, 1), "OneDrive · Shared · from Ben Ortiz");
+  const notes = new NoteTree([...NOTES, { id: 7, parent_id: 1, title: "2026-11-25 Portal review", kind: "meeting" }, { id: 8, parent_id: 1, title: "Scratch" }]);
+  const ctx = { tree: notes, meetings: new Meetings([{ id: 7, day: "2026-11-25", time: "10:00", attendees: [] }]), today: TODAY_AT };
+  assertEqual(sourceOf(ctx, task(1, "a", { source_id: 7, quote: "T: book the van" })),
+    { noteId: 7, title: "Portal review", day: "2026-11-25", when: "Wed 25 Nov", chip: "From a meeting", tone: "meeting", quote: "T: book the van" });
+  assertEqual(sourceOf(ctx, task(1, "a", { source_id: 8, quote: "x" })).chip, "From a note");
+  assertEqual(sourceOf(ctx, task(1, "a")), null, "no source, no card");
+  assertEqual(historyRows([{ day: "2026-11-25", time: "10:00", kind: "captured", text: "Captured in Portal review", note_id: 7 }], TODAY_AT),
+    [{ key: "event-0", day: "Wed 25 Nov", text: "Captured in Portal review", noteId: 7 }]);
+  assertEqual(historyRows([{ day: null, time: null, kind: "delegated", text: "Delegated to Ben Ortiz", note_id: 2, follow_up: "2026-12-04" },
+    { day: null, time: null, kind: "delegated", text: "Delegated to Ben Ortiz", note_id: 2, follow_up: null }], TODAY_AT),
+    [{ key: "event-0", day: "", text: "Delegated to Ben Ortiz · follow up Fri 4 Dec", noteId: 2 },
+      { key: "event-1", day: "", text: "Delegated to Ben Ortiz", noteId: 2 }], "the follow-up day is worded here; none, no suffix");
+  assertEqual(SIDE_CARDS, ["subtasks", "emails", "files", "source", "history"]);
+});
+
+function fakeTaskApi(calls, { files = [], events = [] } = {}) {
+  let rows = files.map((each) => ({ ...each }));
+  return {
+    files: async (id) => {
+      calls.push(["files", id]);
+      return rows.map((each) => ({ ...each }));
+    },
+    detachFile: async (taskId, fileId) => {
+      calls.push(["detachFile", taskId, fileId]);
+      rows = rows.filter((each) => each.id !== fileId);
+      return {};
+    },
+    history: async (id) => {
+      calls.push(["history", id]);
+      return events;
+    },
+    addSession: async (...args) => calls.push(["addSession", ...args]),
+  };
+}
+
+async function withFullPage(body, { files = [], events = [], list = TASKS, taskId = 10, sessions = [] } = {}) {
+  const section = document.createElement("section");
+  document.body.append(section);
+  const notes = new NoteTree([...NOTES, { id: 7, parent_id: 1, title: "2026-11-25 Portal review", kind: "meeting" }]);
+  const ctx = { tree: notes, tasks: new Tasks(list), trash: { entries: [] }, taskId, today: TODAY_AT, sessions,
+    meetings: new Meetings([{ id: 7, day: "2026-11-25", time: "10:00", attendees: [] }]), timeSettings: SETTINGS };
+  const app = fakeApp(ctx);
+  Object.assign(app.tasksApi, fakeTaskApi(app.calls, { files, events }));
+  Object.assign(app, { today: () => TODAY_AT, meetings: ctx.meetings, sessions, timeSettings: SETTINGS,
+    filesApi: { open: async (id) => app.calls.push(["openFile", id]) } });
+  const page = new TaskPage(section, { app: () => app, onLeave() {} });
+  try {
+    page.show(ctx);
+    await tick();
+    return await body({ page, section, app, ctx });
+  } finally {
+    section.remove();
+  }
+}
+
+const FILE = { id: 3, name: "Request form fields v3.xlsx", rel_path: "Specs/Request form fields v3.xlsx", folder_id: 1, folder_name: "Customer portal",
+  hub_id: 1, hub_title: "Move", missing: false, added_at: "2026-11-25T10:00:00" };
+const EVENTS = [
+  { day: null, time: null, kind: "delegated", text: "Delegated to Priya Shah", note_id: null, follow_up: "2026-11-27" },
+  { day: "2026-11-25", time: "10:00", kind: "captured", text: "Captured in Portal review", note_id: 7 },
+];
+
+test("task page: Files lists the task's files; Enter opens one, x unlinks it", () => withFullPage(async ({ section, app }) => {
+  assertEqual(app.calls.filter(([kind]) => kind === "files"), [["files", 10]]);
+  assertEqual(section.querySelector(".task-card--files .task-card__count").textContent, "1");
+  assertEqual(section.querySelector(".task-files__name").textContent, FILE.name);
+  assertEqual(section.querySelector(".task-files__where").textContent, "OneDrive · Customer portal");
+  press(section, "G");
+  press(section, "k");
+  press(section, "k");
+  assertTrue(section.querySelector("[aria-selected=true] .task-files__name"), "the file row, before History's two");
+  press(section, "Enter");
+  await tick();
+  assertEqual(app.calls.at(-1)[0] === "say" ? app.calls.at(-2) : app.calls.at(-1), ["openFile", 3]);
+  press(section, "x");
+  await tick();
+  assertEqual(app.calls.filter(([kind]) => kind === "detachFile"), [["detachFile", 10, 3]]);
+  assertEqual(section.querySelectorAll(".task-files__row").length, 0, "the row goes");
+  assertTrue(app.calls.some(([kind, text]) => kind === "say" && text.includes("stays in OneDrive")));
+}, { files: [FILE], events: EVENTS }));
+
+test("task page: From a meeting and History; Enter on them opens the note", () => withFullPage(async ({ section, app }) => {
+  const side = [...section.querySelector(".task-page__side").children].map((n) => [...n.classList].find((c) => c.startsWith("task-card--")));
+  assertEqual(side, ["task-card--subtasks", "task-card--emails", "task-card--files", "task-card--source", "task-card--history"]);
+  assertEqual(section.querySelector(".task-card--source .chip").textContent, "From a meeting");
+  assertEqual(section.querySelector(".task-source__title").textContent, "Portal review · Wed 25 Nov");
+  assertEqual(section.querySelector(".task-source__quote").textContent, "T: book the van");
+  assertEqual([...section.querySelectorAll(".task-history__row")].map((row) => row.textContent),
+    ["Delegated to Priya Shah · follow up Fri", "Wed 25 NovCaptured in Portal review"]);
+  press(section, "G");
+  press(section, "Enter");
+  await tick();
+  assertEqual(app.calls.at(-1), ["open", 7]);
+  press(section, "k");
+  press(section, "Enter");
+  press(section, "x");
+  await tick();
+  assertEqual(app.calls.filter(([kind]) => kind === "open").length, 1, "a history line without a note opens nothing; x does nothing there");
+  press(section, "k");
+  press(section, "Enter");
+  await tick();
+  assertEqual(app.calls.at(-1), ["open", 7], "the source's row");
+}, { events: EVENTS, list: TASKS.map((each) => (each.id === 10 ? { ...each, source_id: 7, quote: "T: book the van" } : each)) }));
+
+test("task page: s puts a block in the first free slot and says where", () => withFullPage(async ({ section, app }) => {
+  press(section, "s");
+  await tick();
+  assertEqual(app.calls.find(([kind]) => kind === "addSession"), ["addSession", 20, "2026-11-26", "09:00", "09:30"]);
+  assertEqual(app.calls.filter(([kind]) => kind === "say").at(-1), ["say", '"Tape" placed Thu 26 Nov 09:00–09:30']);
+  section.querySelector("[data-action=scheduleTask]").click();
+  await tick();
+  assertEqual(app.calls.filter(([kind]) => kind === "addSession").length, 2, "the button does the same");
+}, { taskId: 20 }));
+

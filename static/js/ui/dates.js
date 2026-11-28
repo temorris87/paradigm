@@ -1,9 +1,10 @@
 // THE way days and times read on screen (pure). Days are "YYYY-MM-DD" strings in local time;
 // `today` is a Date or a day string, passed in for tests (else the clock is read).
 //
-//   dayText(day, { today?, weekday?, relative? })   "Wed 25 Nov", "Wed 25 Nov 2027" (not this
-//                                     year), "25 Nov" (weekday false), "today" / "tomorrow" /
-//                                     "yesterday" (relative true)
+//   dayText(day, { today?, weekday?, relative?, short? })   "Wed 25 Nov", "Wed 25 Nov 2027" (not
+//                                     this year), "25 Nov" (weekday false), "today" / "tomorrow" /
+//                                     "yesterday" (relative true), "Wed" (short true: the weekday
+//                                     alone, for days near enough not to need the date)
 //   timeSpan(time, end?)              "14:00", "14:00–15:00"
 //   whenText({ day, time?, end_time? }, today?)   "Wed 25 Nov 14:00–15:00"
 //   weekRange(monday, today?)         "16–22 Nov 2026", "30 Nov – 6 Dec 2026"
@@ -29,7 +30,7 @@ function serial([year, month, date]) {
   return Date.UTC(year, month - 1, date) / 86400000;
 }
 
-export function dayText(day, { today = null, weekday = true, relative = false } = {}) {
+export function dayText(day, { today = null, weekday = true, relative = false, short = false } = {}) {
   const p = parts(day);
   if (!p) return String(day ?? "");
   const now = parts(todayString(today));
@@ -38,6 +39,7 @@ export function dayText(day, { today = null, weekday = true, relative = false } 
     if (word) return word;
   }
   const [year, month, date] = p;
+  if (short) return WEEKDAYS[new Date(Date.UTC(year, month - 1, date)).getUTCDay()];
   const name = weekday ? `${WEEKDAYS[new Date(Date.UTC(year, month - 1, date)).getUTCDay()]} ` : "";
   return `${name}${date} ${MONTHS[month - 1]}${year === now[0] ? "" : ` ${year}`}`;
 }

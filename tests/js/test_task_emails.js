@@ -271,7 +271,7 @@ test("emails: + Add subtask still adds one with an email selected; r on a subtas
   await tick();
   assertEqual(api.calls.filter(([kind]) => kind === "reply"), []);
   press(section, "G");
-  section.querySelector(".task-page__add").click();
+  section.querySelector("[data-action=addDirect]").click();
   const dialog = document.querySelector("dialog");
   assertTrue(dialog, "the new subtask dialog");
   dialog.querySelector(".dialog__button:not(.dialog__button--ok)").click();

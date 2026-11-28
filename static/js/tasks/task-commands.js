@@ -10,7 +10,9 @@
 //   takeBack(app, taskId)                             delegated back to me
 //   scheduleTask(app, taskId)                         s: a block in the first free slot from now
 //                                                     on, before its due day (its estimate, or
-//                                                     30 min long)
+//                                                     30 min long); words: { placed(task,
+//                                                     slot, now), none(length, until) } for
+//                                                     the task page's own lines
 //   snoozeTask(app, taskId)                           z: off Today's Up next until tomorrow
 //   extendBlock(app, sessionId, minutes)              a block made longer (+15 min)
 //   removeTaskDialog(app, taskId)                     with a confirm naming how many subtasks
@@ -19,9 +21,8 @@
 //   quickTaskCommand(app, arg)                        :t {text} [@Name] [!day]: a task on the
 //                                                     open note's hub, without leaving the note
 import { addDays, localDay } from "../meetings/meeting-days.js";
-import { DEFAULT_LENGTH, clock, minutes } from "../calendar/week-model.js";
-import { planningSettings } from "../today/today-model.js";
-import { firstFreeSlot } from "../week/capacity.js";
+import { clock, minutes } from "../calendar/week-model.js";
+import { freeSlotFor } from "./task-page-model.js";
 import { dayText } from "../ui/dates.js";
 import { allPeople, matchPerson, personLabel } from "../people/people-model.js";
 import { MAX_TASK_DEPTH, estimateText, parseEstimate } from "./tasks-model.js";
@@ -146,22 +147,21 @@ export function delegateDialog(app, taskId) {
   });
 }
 
-export async function scheduleTask(app, taskId) {
+export async function scheduleTask(app, taskId, { words = null } = {}) {
   const task = taskOf(app, taskId);
   if (task.done) throw new Error(`E: "${task.title}" is done already`);
   const now = app.today();
   const day = localDay(now);
-  const length = task.estimate_min || DEFAULT_LENGTH;
-  const ctx = { tree: app.tree, meetings: app.meetings, tasks: app.tasks, sessions: app.sessions };
-  const until = task.due && task.due >= day ? task.due : "";
-  const slot = firstFreeSlot(ctx, { length, from: { day, minute: now.getHours() * 60 + now.getMinutes() }, until,
-    settings: planningSettings(app.timeSettings) });
+  const ctx = { tree: app.tree, meetings: app.meetings, tasks: app.tasks, sessions: app.sessions, timeSettings: app.timeSettings };
+  const { slot, length, until } = freeSlotFor(ctx, task, now);
   if (!slot) {
-    throw new Error(`E: no free ${length} min${until ? ` before ${dayText(until, { today: day })}` : " in the next two weeks"} for "${task.title}"`);
+    throw new Error(words ? `E: ${words.none(length, until)}`
+      : `E: no free ${length} min${until ? ` before ${dayText(until, { today: day })}` : " in the next two weeks"} for "${task.title}"`);
   }
   await app.tasksApi.addSession(taskId, slot.day, clock(slot.start), clock(slot.end));
   await changed(app);
-  app.say(`"${task.title}" placed ${dayText(slot.day, { today: day, relative: true })} ${clock(slot.start)}–${clock(slot.end)}`);
+  app.say(words ? words.placed(task, slot, now)
+    : `"${task.title}" placed ${dayText(slot.day, { today: day, relative: true })} ${clock(slot.start)}–${clock(slot.end)}`);
   return slot;
 }
 

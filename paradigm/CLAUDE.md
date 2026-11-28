@@ -45,6 +45,9 @@ paradigm/                Python package
                          oncall.py (/api/oncall, /api/oncall/paste|clear: the on-call rota);
                          emails.py (/api/task/emails, /api/task/email/upload|reply|open|
                          remove: Outlook .msg files on tasks; the upload's own 30 MB cap);
+                         task_files.py (/api/task/files, /api/task/file/attach|attach_path|
+                         detach: OneDrive files linked to a task); tasks.py also has
+                         /api/task/history (derived, db/task_history.py);
                          answers.py (result or expected error -> response)
   db/                    (migrations: 001 notes, 002 images, 003 notes.kind for PARA hubs,
                          004 notes.area_id: a project's area, 005 notes.archived_at:
@@ -78,7 +81,8 @@ paradigm/                Python package
                          tasks.for_person_id (I owe them), 027 person_topics (to raise at
                          the next 1:1), 028 on_call (week's Monday, role, name as pasted),
                          029 drops tasks.is_next: the next action is gone, 030 task_emails:
-                         a task's .msg files, their reply state)
+                         a task's .msg files, their reply state, 031 task_files: OneDrive
+                         files linked to a task)
                          connection.py (one locked connection, transactions, VACUUM at start
                          when worth it), migrate.py
                          (migrations/NNN_name.sql, PRAGMA user_version), notes_repo.py,
@@ -105,7 +109,10 @@ paradigm/                Python package
                          (templates on an area; apply: working days, weekends and the
                          timesheet's holidays skipped; save from a project), templates_repo.py
                          (a note_templates row makes a top-level note kind "template"),
-                         files_repo.py (linked folders, their files, attachments; scan),
+                         files_repo.py (linked folders, their files, attachments to notes
+                         and to tasks; scan; drop_task_files: task remove and trash purge),
+                         task_history.py (a task's History events, derived from what is
+                         stored; build_events is pure),
                          folders_repo.py (folders in Resources: nest, unique names per
                          parent, trash with their notes, back with a restored note),
                          status_repo.py (status logs on projects and areas),
