@@ -1,3 +1,4 @@
+import json
 import unittest
 
 from calendar_samples import calendar, event
@@ -65,6 +66,29 @@ class TasksCalendarTimeApiTest(unittest.TestCase):
         _, status_body = self.running.get_json("/api/calendar/status")
         self.assertTrue(status_body["imported_today"])
         self.post("/api/calendar/upload", {}, 400)
+
+    def test_status_before_and_after_an_upload(self) -> None:
+        _, before = self.running.get_json("/api/calendar/status")
+        self.assertEqual(before, {"imported_today": False, "last_day": None, "last_at": None})
+        self.running.request("POST", "/api/calendar/upload", {"Content-Type": "text/calendar"},
+                             calendar([event("a", "Sync", "20991124T100000", "20991124T103000")]).encode("utf-8"))
+        _, after = self.running.get_json("/api/calendar/status")
+        self.assertEqual(sorted(after), ["imported_today", "last_at", "last_day"])
+        self.assertTrue(after["imported_today"])
+        self.assertEqual(len(after["last_at"]), len("2026-11-25T08:12:00"))
+
+    def test_an_upload_that_is_not_a_calendar(self) -> None:
+        status, _, body = self.running.request("POST", "/api/calendar/upload", {"Content-Type": "text/calendar"},
+                                               b"hello, not a calendar")
+        self.assertEqual(status, 400, body)
+        self.assertIn("not a calendar file", json.loads(body.decode("utf-8"))["error"])
+        _, after = self.running.get_json("/api/calendar/status")
+        self.assertFalse(after["imported_today"])
+
+    def test_no_import_folder_and_no_import_route(self) -> None:
+        self.assertFalse((self.running.config.data_dir / "import").exists())
+        got, _ = self.running.post_json("/api/calendar/import", {})
+        self.assertEqual(got, 404)
 
 
 if __name__ == "__main__":

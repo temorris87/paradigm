@@ -34,14 +34,23 @@ How the app behaves. Kept up to date by each feature that changes it.
   steps); dropping or resizing a block, or Escape mid-drag (which puts it back), never opens
   New meeting (Tyson, 2026-11-26). A press that moves less than 4 px is a click; click (or right-click) for its menu: open, Open task (a task's own page, tasks.md),
   done, Edit time…, remove or cancel. Escape on the menu puts the focus back on the block,
-  even when the week was redrawn under it (the window-focus import, another window's change,
-  a resize). A choice with no dialog (open, done, Not cancelled, Join ↗, Don't import) leaves
+  even when the week was redrawn under it (an import, another window's change, a resize). A choice with no dialog (open, done, Not cancelled, Join ↗, Don't import) leaves
   the focus on the block; Remove from calendar leaves it on the calendar. A redraw keeps the
   focus on a focused block (on the calendar if the block is gone) and leaves focus elsewhere
   alone. An
   empty slot makes a meeting there. A block that has passed is time worked. Plan's footer:
   each code's hours so far, the week projected, Timesheet ↗. Its keys live in
-  `js/calendar/calendar-keys.js`.
+  `js/calendar/calendar-keys.js`: `[` `]` (or `h` `l`) the week, `t` this week, `w` the
+  weekend, `g t` the tray (its focused row, else the first; on To file it shows To plan
+  first), `g c` the calendar (the chosen block, else the first), `j` `k` the next or previous
+  tray row or block (by day, then time), `s` schedule, Enter the block's menu (on a button,
+  the button's own), `i` import, `x` / Delete take a task block off, Esc choose none. The hint
+  bar, as in Figma: `[ ]` week, `g t` tray, `g c` calendar, `j k` move, `s` schedule, `Enter`
+  block menu, `? all keys`. On the Plan tab `g t` is the tray's, not Today: the tab's table
+  is read before the window's, wherever the focus is on the Week page (its bar, tabs, arrows,
+  or nowhere in particular), and the `?` list leaves the window's `g t` out there. The keys
+  reach the calendar from anywhere on the Week page; in the navigator, on the other Week tabs
+  and everywhere else `g t` is still Today (Figma wins, Tyson, 2026-11-27).
 - Days off on Plan (Tyson, 2026-11-26): a holiday, time off or a sick day gets a chip first in
   its "due" cell: the holiday's name ("Thanksgiving"), "Time off" or "Sick"; a part day adds its
   hours ("Time off · 4 h"), and the chip's title shows the note. A whole day off (its hours
@@ -61,17 +70,37 @@ How the app behaves. Kept up to date by each feature that changes it.
   if the block is gone); so does Not cancelled, which has no dialog. Cancel the meeting opens
   on "Keep the meeting" (its safe button, not "Cancel"), so Enter straight away keeps it
   (Tyson, 2026-11-26).
-- Outlook import (worknotes' rules): each morning, Outlook File › Save Calendar, Next 7 days,
-  Full details, into `<data>/import/` (made at start). It is read at start, when the calendar
-  window gets focus, and with Import (or Import a file…, or a drop on the calendar); the file
-  is deleted once read (an unreadable one becomes `*.unreadable`). An event is its uid + day:
+- Outlook import (worknotes' rules; file-only, Tyson, 2026-11-27): each morning, Outlook File ›
+  Save Calendar, Next 7 days, Full details, then import that file: the bar's Import `i`
+  button, `i`, the Import panel's Import a file…, or a drop of `.ics` files anywhere on the
+  Plan tab. The picker takes `.ics`, several at once; each file is its own
+  `POST /api/calendar/upload`. The status line says "Imported n meetings from week.ics" (or
+  "from 2 files"); a file that won't parse says `E: not a calendar file: notes.ics` (a 400),
+  in the error colour, also after the part that went in. There is no `<data>/import/` folder
+  any more: nothing is read at start or on window focus, Paradigm doesn't make the folder,
+  and files left in an old one stay there, never deleted; `POST /api/calendar/import` is gone
+  (404). An event is its uid + day:
   known ones follow Outlook (time, end, place, Join link; a moved day; cancelled, declined or
   gone from an export that covers it: cancelled; back on), new ones of a series with meetings
   go into that hub, the rest wait in the sidebar's To file tab (hub guessed from the newest
   meeting of that name; File, File all, Don't import) and show muted on the week. Skipped:
   all-day, free, tentative, out of office, working elsewhere. Attendees are matched by email,
   then name, else made as people (rooms, groups and you left out; none past 20). A trashed
-  imported meeting is never made again. Home and the calendar remind until today's import.
+  imported meeting is never made again. Today's banner reads "Today's calendar isn't imported ·
+  Week (g w) to import" until today's import.
+- Import panel (Figma "Week · not imported", Tyson, 2026-11-27): on the Plan tab, while the
+  week shown holds today and nothing was imported today, the grid greys out (its blocks wash
+  with the page; no clicks or drags) under a raised panel centred over it: "Today's calendar
+  isn't imported", "In Outlook: File › Save Calendar › Next 7 days, Full details. Then import
+  that file.", a dashed drop zone ("Drop the .ics here" / "or press i to pick it"), Import a
+  file… `i` and Plan without it, and "Last imported: Wed 25 Nov 08:12 · the tray still works"
+  ("Never imported yet · the tray still works"). Past and future weeks never grey (`]` hides
+  it, `[` brings it back). The tray stays live; `g c` goes to the panel's Import a file…, and
+  `j` `k` do nothing in the grid while it shows. Once a file goes in, the panel goes, the grid
+  redraws and the focus stays on the page; a failed file leaves it up. Plan without it hides it
+  for the rest of today in this browser (`localStorage` `paradigm.planWithout`, the day), so
+  tomorrow it is back; meanwhile the bar keeps a quiet "Not imported today · i" on the right.
+  `/api/calendar/status` gives `imported_today`, `last_day` and `last_at` (null when never).
 - Imported agenda (Tyson, 2026-11-26): the invite's text, without Teams' joining text. A section
   between underscore rules is Teams' block when one of its lines is wholly a Teams phrase
   ("Microsoft Teams meeting", "Microsoft Teams Need help?", "Join the meeting now", "Join on your

@@ -7,10 +7,8 @@ day follows; a new one goes straight into its hub when its series already has me
 and waits in the To file list otherwise. A known meeting the file should hold (its time inside
 the range exported) but doesn't is cancelled."""
 import json
-import logging
 import sqlite3
-from datetime import datetime, timedelta
-from pathlib import Path
+from datetime import datetime, timedelta, timezone
 from typing import Callable, Dict, Iterable, List, Optional, Set
 
 from paradigm.calendar import import_rules as rules
@@ -22,8 +20,6 @@ from paradigm.notes.days import local_today
 from paradigm.notes.hubs import HUB_KINDS
 from paradigm.notes.people import full_name
 from paradigm.notes.titles import BadTitle, clean_title
-
-log = logging.getLogger("paradigm")
 
 __all__ = ["ImportRepository", "BadCalendar", "NotAHub", "NotFound", "HubArchived"]
 
@@ -41,10 +37,9 @@ def _counts() -> Dict[str, int]:
 
 
 class ImportRepository:
-    def __init__(self, db: Database, folder: Path, clock: Callable[[], str] = utc_now,
+    def __init__(self, db: Database, clock: Callable[[], str] = utc_now,
                  today: Callable[[], str] = local_today, to_local=system_local):
         self._db = db
-        self.folder = folder
         self._clock = clock
         self._today = today
         self._to_local = to_local
@@ -52,10 +47,20 @@ class ImportRepository:
     # ---- what the calendar shows ----
 
     def status(self) -> Dict:
+        """Whether today's import ran, and the last one's day and local time (None when never)."""
         with self._db.reading() as conn:
-            last = conn.execute("SELECT max(day) FROM import_log").fetchone()[0]
-        return {"imported_today": last == self._today(), "last_day": last or "", "waiting": len(self._waiting()),
-                "folder": str(self.folder)}
+            row = conn.execute("SELECT day, at FROM import_log ORDER BY day DESC LIMIT 1").fetchone()
+        if row is None:
+            return {"imported_today": False, "last_day": None, "last_at": None}
+        return {"imported_today": row["day"] == self._today(), "last_day": row["day"],
+                "last_at": self._local_time(row["at"])}
+
+    def _local_time(self, stamp: str) -> str:
+        """A stored UTC stamp as this computer's wall-clock time, so the page shows it as is."""
+        moment = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+        if moment.tzinfo is None:
+            moment = moment.replace(tzinfo=timezone.utc)
+        return self._to_local(moment).isoformat(timespec="seconds")
 
     def pending(self) -> List[Dict]:
         """The To file list, soonest first, each with the hub its name went to last (or None)."""
@@ -64,27 +69,6 @@ class ImportRepository:
             return [dict(_pending(row), hub_guess=_hub_guess(conn, row["title"])) for row in rows]
 
     # ---- importing ----
-
-    def import_folder(self) -> Dict:
-        """Imports every .ics waiting in the folder, oldest first, and deletes each once read
-        (one that can't be read is renamed *.unreadable, so it isn't tried again)."""
-        total = _counts()
-        errors = []
-        for path in self._waiting():
-            try:
-                data = path.read_bytes()[:MAX_FILE_BYTES]
-                counts = self.import_text(data.decode("utf-8", errors="replace"))
-            except BadCalendar as error:
-                errors.append("{}: {}".format(path.name, error))
-                _rename(path, path.with_name(path.name + ".unreadable"))
-                continue
-            except OSError as error:
-                errors.append("{}: {}".format(path.name, error))
-                continue
-            for key, value in counts.items():
-                total[key] += value
-            _remove(path)
-        return dict(total, errors=errors)
 
     def import_text(self, text: str) -> Dict:
         calendar = read_calendar(text, self._to_local)
@@ -114,12 +98,6 @@ class ImportRepository:
         """Don't import: the events leave the list, and later exports don't bring them back."""
         with self._db.transaction() as conn:
             conn.executemany("UPDATE import_pending SET ignored = 1 WHERE id = ?", [(each,) for each in pending_ids])
-
-    def _waiting(self) -> List[Path]:
-        if not self.folder.is_dir():
-            return []
-        found = [path for path in self.folder.iterdir() if path.suffix.lower() == ".ics" and path.is_file()]
-        return sorted(found, key=lambda path: (path.stat().st_mtime, path.name))
 
 
 class _Importer:
@@ -342,17 +320,3 @@ def _person_for(conn: sqlite3.Connection, person: rules.Person, now: str, counts
                  (note_id, first, last, person.email))
     counts["people"] += 1
     return note_id
-
-
-def _remove(path: Path) -> None:
-    try:
-        path.unlink()
-    except OSError as error:
-        log.warning("could not delete the imported calendar file %s: %s", path, error)
-
-
-def _rename(path: Path, target: Path) -> None:
-    try:
-        path.replace(target)
-    except OSError as error:
-        log.warning("could not set aside the unreadable calendar file %s: %s", path, error)

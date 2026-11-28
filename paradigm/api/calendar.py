@@ -1,9 +1,10 @@
 """Endpoints for the Outlook import (paradigm/db/import_repo.py).
 
-GET  /api/calendar/status         -> {imported_today, last_day, waiting, folder}
-POST /api/calendar/import         {} -> {new, to_file, updated, moved, cancelled, back_on, skipped,
-                                  people, files, errors}: imports every .ics in the folder
-POST /api/calendar/upload         the .ics file's bytes as the body -> the same counts
+GET  /api/calendar/status         -> {imported_today, last_day, last_at} (last_day and last_at
+                                  null when never; last_at in local time)
+POST /api/calendar/upload         the .ics file's bytes as the body -> {new, to_file, updated, moved,
+                                  cancelled, back_on, skipped, people, files, errors}; 400 when
+                                  empty, too large or not a calendar file
 GET  /api/calendar/pending        -> {pending: [{id, uid, day, time, end_time, title, recurring,
                                   location, join_url, agenda, attendees, hub_guess}]}
 POST /api/calendar/file           {ids, hub_id} -> {meetings: [ids]}
@@ -26,7 +27,6 @@ class CalendarApi:
 
     def register(self, router: Router) -> None:
         router.add("GET", "/api/calendar/status", _answer(self.status))
-        router.add("POST", "/api/calendar/import", _answer(self.import_folder))
         router.add("POST", "/api/calendar/upload", _answer(self.upload))
         router.add("GET", "/api/calendar/pending", _answer(self.pending))
         router.add("POST", "/api/calendar/file", _answer(self.file))
@@ -34,9 +34,6 @@ class CalendarApi:
 
     def status(self, req: BaseHTTPRequestHandler) -> Dict:
         return self._imports.status()
-
-    def import_folder(self, req: BaseHTTPRequestHandler) -> Dict:
-        return self._imports.import_folder()
 
     def upload(self, req: BaseHTTPRequestHandler) -> Dict:
         if not req.body:

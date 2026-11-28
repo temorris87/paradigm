@@ -1,5 +1,4 @@
 import { calendarAction } from "../../static/js/calendar/calendar-keys.js";
-import { importSummary } from "../../static/js/calendar/calendar-page.js";
 import { calendarBlocks, clock, layoutDay, minutes, shownDays, snap, weekDays, weekOf } from "../../static/js/calendar/week-model.js";
 import { renderMarkdown } from "../../static/js/markdown/index.js";
 import { Meetings } from "../../static/js/meetings/meetings-model.js";
@@ -144,12 +143,13 @@ test("week: overlapping blocks share the width", () => {
   assertEqual(at, { a: [0, 2], b: [1, 2], c: [0, 2], d: [0, 1] });
 });
 
-test("calendar: keys and the import summary", () => {
+test("calendar: keys, gt and gc as sequences", () => {
   const key = (k, target = document.body) => calendarAction({ key: k, target, ctrlKey: false, altKey: false, metaKey: false });
   assertEqual([key("["), key("]"), key("t"), key("w"), key("Delete"), key("q")], ["previousWeek", "nextWeek", "today", "weekend", "remove", null]);
+  assertEqual([key("i"), key("j"), key("k"), key("s"), key("Enter")], ["import", "next", "previous", "schedule", "menu"]);
+  assertEqual([key("g"), key("t")], ["pending", "tray"]);
+  assertEqual([key("g"), key("c")], ["pending", "calendar"]);
   assertEqual(key("t", document.createElement("input")), null);
-  assertEqual(importSummary({ files: 1, new: 2, to_file: 1, errors: [] }), "Imported 1 file: 2 new, 1 to file.");
-  assertTrue(importSummary({ files: 0, errors: [] }).startsWith("No calendar file"));
 });
 
 test("note window: the right third on a wide screen, the whole screen on a laptop", () => {

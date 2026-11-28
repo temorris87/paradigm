@@ -37,11 +37,6 @@ class Config:
     stale_days: int = 14
 
     @property
-    def import_dir(self) -> Path:
-        """Where Outlook's Save Calendar puts the .ics files to import."""
-        return self.data_dir / "import"
-
-    @property
     def emails_dir(self) -> Path:
         """Where the .msg files attached to tasks are saved, a folder per task."""
         return self.data_dir / "emails"

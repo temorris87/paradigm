@@ -39,7 +39,7 @@ paradigm/                Python package
                          topics.py (/api/person_topics, /api/person_topic/create|raise|
                          remove); status.py (/api/status_logs, /api/status_log/create|update|
                          remove; stale_days from Config);
-                         calendar.py (the Outlook import: /api/calendar/status|import|upload|
+                         calendar.py (the Outlook import: /api/calendar/status|upload|
                          pending|file|ignore); timesheet.py (/api/time/week, /api/time/
                          settings, holiday/add|update|remove, off/add|remove);
                          oncall.py (/api/oncall, /api/oncall/paste|clear: the on-call rota);
@@ -115,8 +115,8 @@ paradigm/                Python package
                          once each, inside the note's save; injected into NoteRepository),
                          import_repo.py (applies an Outlook .ics: new, moved,
                          cancelled, removed; series go to their hub, the rest wait in To
-                         file; attendees matched or made as people; <data>/import/ read at
-                         start and when the calendar asks), time_repo.py (settings, holidays,
+                         file; attendees matched or made as people; files come only by
+                         upload), time_repo.py (settings, holidays,
                          time off; gathers a week for the report; holiday_dates),
                          oncall_repo.py (the rota: a paste replaces the weeks it holds, keeps
                          the rest; clear), emails_repo.py (a task's emails: the row, and the

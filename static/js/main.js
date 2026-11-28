@@ -22,7 +22,7 @@ import { planApi } from "./plan/api.js";
 import { openMenu } from "./ui/menu.js";
 import { drawKeyHints } from "./ui/key-hints.js";
 import { openKeysDialog } from "./ui/keys-dialog.js";
-import { viewHints, viewKeyGroups, viewTable } from "./layout/view-keys.js";
+import { shadowedMainActions, viewHints, viewKeyGroups, viewTable } from "./layout/view-keys.js";
 import { statusHubOf } from "./status/status-commands.js";
 import { MAIN_WINDOW, WINDOW_MODES, forgetPlaced, setWindowMode, windowMode } from "./windows/note-window.js";
 import { calendarApi } from "./calendar/api.js";
@@ -73,6 +73,15 @@ const app = boot({
       isShown: shown("week"),
       onMove: (days) => week.moveWeek(days),
       onDrawn: () => week.drawSummary(),
+    });
+    // The Plan tab's keys hold on the whole Week page, as its hint bar says: a key typed with the
+    // focus on the Week's bar (its tabs, This week, the arrows) or on the page body goes to the
+    // calendar too. Keys typed inside .week-plan reach it there, on its own listener; keys typed
+    // elsewhere (the navigator tree, its own scope) never do.
+    window.addEventListener("keydown", (event) => {
+      if (event.defaultPrevented || !shown("week")() || week.view !== "plan") return;
+      if (calendar.root.contains(event.target) || !onWeekPage(event.target)) return;
+      calendar.onKey(event);
     });
     const time = new TimePage({ root: $(".week-time"), bar: $(".time-bar"), main: $(".time-main"), api: timeApi, changes,
       isShown: shown("week"), onMove: (days) => week.moveWeek(days) });
@@ -138,6 +147,13 @@ const app = boot({
 app.events.addEventListener("redraw", drawHints);
 drawHints();
 
+/** Whether a key's target is on the Week page, or on the page body (the focus nowhere). The
+ * navigator and the top bar are other scopes: the Plan tab's keys don't reach past the page. */
+function onWeekPage(target) {
+  return target === document.body || target === document.documentElement
+    || Boolean(target instanceof Node && document.querySelector(".week-view")?.contains(target));
+}
+
 /** ? : every key of the view shown, in a list. */
 function showKeys() {
   const view = app.views?.shown ?? null;
@@ -146,6 +162,15 @@ function showKeys() {
 
 // Keys of the whole main window (layout/main-keys.js): the palette, Today, the Week, the plan,
 // the Live note, the ? list.
+// The Week Plan's own gt (the tray) is read first while that tab is shown and the focus is on
+// the Week page: the calendar takes the keys typed outside .week-plan too (above). With the focus
+// in the navigator, gt is Today again.
+const shadowed = (event) => {
+  const view = app.views?.shown ?? null;
+  if (view !== "week" || weekTab() !== "plan" || !onWeekPage(event?.target)) return [];
+  return shadowedMainActions(view, weekTab());
+};
+
 installMainKeys(window, {
   // Typed, : starts a command, as in the editor; the bar's field opens it empty.
   palette: () => app.guard(openPalette(app, ":")),
@@ -154,4 +179,4 @@ installMainKeys(window, {
   plan: () => app.guard(app.planKey()),
   live: () => app.showView("live", "push"),
   keys: () => app.guard(showKeys()),
-});
+}, { shadowed });

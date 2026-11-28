@@ -282,7 +282,7 @@ export class TodayPage {
     const count = meetings ? meetingsThisWeek(tree, meetings, this.today()) : 0;
     chip.append(element("span", `today-import__dot${done ? " today-import__dot--done" : ""}`, "● "),
       done ? `Calendar imported today · ${count} meeting${count === 1 ? "" : "s"} this week`
-        : `Calendar not imported today${importStatus.waiting ? ` · ${importStatus.waiting} file${importStatus.waiting === 1 ? "" : "s"} waiting: open Week to import` : ""}`);
+        : "Today's calendar isn't imported · Week (g w) to import");
     return chip;
   }
 

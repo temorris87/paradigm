@@ -11,6 +11,8 @@
 //     hubId: a hub's id, OTHER_NOTES or null (all); remembered in localStorage (HUB_STORE), the
 //     search box isn't
 //   side.focusedTask() -> task id of the tray row with the focus, or null
+//   side.focusRow(step) -> whether a row took the focus (0: the focused one, else the first;
+//                          1 / -1: the next / previous)
 import { whenText } from "../meetings/meeting-days.js";
 import { groupForKind } from "../notes/hub-groups.js";
 import { hubChoices } from "../tasks/tasks-model.js";
@@ -76,6 +78,18 @@ export class TaskSidebar {
   focusedTask() {
     const row = document.activeElement?.closest?.(".cal-task");
     return row && this.list.contains(row) ? Number(row.dataset.task) : null;
+  }
+
+  /** j / k (step 1 / -1) from the row with the focus, or gt (0): it, else the first. On To file,
+   * gt shows To plan first. Whether a row took the focus. */
+  focusRow(step) {
+    if (step === 0 && this.tab !== "tasks") this.show("tasks");
+    const rows = [...this.list.querySelectorAll(".cal-task")];
+    if (!rows.length) return false;
+    const at = rows.indexOf(document.activeElement?.closest?.(".cal-task"));
+    const row = rows[at < 0 ? 0 : Math.max(0, Math.min(rows.length - 1, at + step))];
+    row.focus();
+    return true;
   }
 
   drawHubFilter(data, today, monday) {

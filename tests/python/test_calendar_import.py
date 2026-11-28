@@ -63,8 +63,9 @@ class ImportTest(unittest.TestCase):
         self.notes = NoteRepository(self.db)
         self.meetings = MeetingRepository(self.db)
         self.today = "2026-11-23"
-        self.imports = ImportRepository(self.db, Path(self.tmp.name) / "import", today=lambda: self.today,
-                                        to_local=eastern)
+        self.clock = "2026-11-23T13:12:00.000Z"
+        self.imports = ImportRepository(self.db, today=lambda: self.today, to_local=eastern,
+                                        clock=lambda: self.clock)
         self.hub = self.notes.create(None, "Budget")["id"]
         self.notes.set_kind(self.hub, "project")
 
@@ -147,17 +148,25 @@ class ImportTest(unittest.TestCase):
         counts = self.run_import(event("a", "Sync", "20261124T100000", "20261124T103000"))
         self.assertEqual((counts["new"], counts["to_file"]), (0, 0))
 
-    def test_the_folder(self) -> None:
-        folder = Path(self.tmp.name) / "import"
-        folder.mkdir()
-        (folder / "week.ICS").write_text(calendar([event("a", "Sync", "20261124T100000", "20261124T103000")]),
-                                         encoding="utf-8")
-        (folder / "bad.ics").write_text("nope", encoding="utf-8")
-        self.assertEqual(self.imports.status()["waiting"], 2)
-        counts = self.imports.import_folder()
-        self.assertEqual((counts["files"], counts["to_file"], len(counts["errors"])), (1, 1, 1))
-        self.assertEqual(sorted(path.name for path in folder.iterdir()), ["bad.ics.unreadable"])
+    def test_status_before_any_import(self) -> None:
+        self.assertEqual(self.imports.status(), {"imported_today": False, "last_day": None, "last_at": None})
 
+    def test_status_gives_the_last_imports_local_time(self) -> None:
+        self.run_import(event("a", "Sync", "20261124T100000", "20261124T103000"))
+        self.assertEqual(self.imports.status(),
+                         {"imported_today": True, "last_day": "2026-11-23", "last_at": "2026-11-23T08:12:00"})
+        self.today = "2026-11-25"
+        self.assertEqual(self.imports.status(),
+                         {"imported_today": False, "last_day": "2026-11-23", "last_at": "2026-11-23T08:12:00"})
+
+    def test_status_follows_the_latest_day_and_a_reimport_that_day(self) -> None:
+        self.run_import(event("a", "Sync", "20261124T100000", "20261124T103000"))
+        self.today, self.clock = "2026-11-24", "2026-11-24T14:00:00.000Z"
+        self.run_import(event("a", "Sync", "20261124T100000", "20261124T103000"))
+        self.clock = "2026-11-24T15:30:00.000Z"
+        self.run_import(event("a", "Sync", "20261124T100000", "20261124T103000"))
+        status = self.imports.status()
+        self.assertEqual((status["last_day"], status["last_at"]), ("2026-11-24", "2026-11-24T10:30:00"))
 
 if __name__ == "__main__":
     unittest.main()
