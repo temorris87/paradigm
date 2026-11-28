@@ -6,7 +6,7 @@ import { cmdlineKey, startCmdline } from "./cmdline.js";
 import { commandKey, repeatLastChange } from "./command.js";
 import { EditorError } from "./errors.js";
 import { runEx } from "./ex.js";
-import { atCurrentBlank, deleteCurrentBlank, insertKey, takeBlankIn } from "./insert.js";
+import { completionWaits, deleteCurrentBlank, insertKey, quietHere, takeBlankIn } from "./insert.js";
 import { LEADER } from "./keys.js";
 import { Marks } from "./marks.js";
 import { defaultOptions } from "./options.js";
@@ -126,8 +126,10 @@ export class Vim {
     if (this.mode !== "normal") this.feed("<Esc>");
     this.commandStart = { ...this.cursor };
     try {
-      const at = clamp(line ?? this.cursor.line, 0, this.buf.lastLine);
-      this.putLinesBelow(text, at);
+      // Line -1: above the first line.
+      const at = line !== null && line < 0 ? -1 : clamp(line ?? this.cursor.line, 0, this.buf.lastLine);
+      if (at < 0) this.putLinesAtTop(text);
+      else this.putLinesBelow(text, at);
       const last = this.cursor.line;
       const fallback = cursorAt === null ? null : clamp(at + 1 + cursorAt, at + 1, last);
       this.startInsert(fallback === null ? pos(at + 1, 0) : pos(fallback, this.buf.lineLength(fallback)));
@@ -146,10 +148,15 @@ export class Vim {
     this.afterKey();
   }
 
-  /** The cursor is at the current ‹blank›, nothing typed over it yet (the completion list
-   * waits for a key there). */
-  atCurrentBlank() {
-    return this.isInsertLike() && atCurrentBlank(this);
+  /** The completion list waits for a key here: the cursor is at the current ‹blank›, nothing
+   * typed over it yet, or a blank was just deleted or a completion row just went in here. */
+  completionWaits() {
+    return this.isInsertLike() && completionWaits(this);
+  }
+
+  /** A completion row just went in: the list waits for the next key here. */
+  quietCompletion() {
+    if (this.isInsertLike()) quietHere(this);
   }
 
   /** A completion row about to go in at the current ‹blank› takes its place: it goes first. */
@@ -189,6 +196,11 @@ export class Vim {
     const end = pos(line, this.buf.lineLength(line));
     this.edit(end, end, `\n${text}`);
     this.setCursor(pos(line + text.split("\n").length, 0));
+  }
+
+  putLinesAtTop(text) {
+    this.edit(pos(0, 0), pos(0, 0), `${text}\n`);
+    this.setCursor(pos(text.split("\n").length - 1, 0));
   }
 
   putBeforeCursor(text) {
@@ -260,7 +272,7 @@ export class Vim {
   click(at) {
     if (this.mode === "cmdline") return;
     if (this.mode === "visual") exitVisual(this);
-    if (this.insert) this.insert.blank = null;
+    if (this.insert) Object.assign(this.insert, { blank: null, quiet: null });
     this.pending = [];
     this.setCursor(at);
     if (!this.isInsertLike()) this.clampCursor();

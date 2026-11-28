@@ -2,12 +2,14 @@
 // types on the left, Most used first, the chosen one's line and the exact block it inserts on
 // the right. Typing filters by name or keyword; Enter puts the block in below the cursor (with
 // the cursor in a mermaid block, fences included, after that block's closing fence and an
-// empty line), the editor in insert mode at its first ‹blank› (else at the end of its last
-// line). Its keys are the "diagram" scope of ui-keys.js.
+// empty line; in one with no closing fence, above its opening fence and an empty line, since
+// below it would still be inside), the editor in insert mode at its first ‹blank› (else at
+// the end of its last line). Its keys are the "diagram" scope of ui-keys.js.
 //
 //   insertDiagramDialog(editor, fallbackFocus) -> Promise (resolves when it closes)
-//   diagramPlace(lines, row) -> the line a new block goes below (after an empty line) when
-//       the cursor's row is in a mermaid block, else null
+//   diagramPlace(lines, row) -> null, or when the cursor's row is in a mermaid block
+//       { line, emptyLine }: the line the new block goes below (-1: above the first line),
+//       the empty line "before" it (after a closed block) or "after" it (above an open one)
 import { element, openModal, restoreFocus, uniqueId } from "../ui/dom.js";
 import { uiAction } from "../ui/ui-keys.js";
 import { mermaidBlockAt } from "./mermaid-syntax.js";
@@ -15,8 +17,10 @@ import { DIAGRAM_TYPES, diagramFence, diagramGroups } from "./mermaid-types.js";
 
 export function diagramPlace(lines, row) {
   const block = mermaidBlockAt(lines, row, { fences: true });
-  // A block running to the end has no closing fence: its last line, then.
-  return block ? Math.min(block.close, lines.length - 1) : null;
+  if (!block) return null;
+  // A block running to the end has no closing fence: anything below it is still in it.
+  if (block.close >= lines.length) return { line: block.open - 1, emptyLine: "after" };
+  return { line: block.close, emptyLine: "before" };
 }
 
 export function insertDiagramDialog(editor, fallbackFocus = () => editor.focus()) {
@@ -129,10 +133,11 @@ export function insertDiagramDialog(editor, fallbackFocus = () => editor.focus()
 function insertBlock(editor, text) {
   const cursor = editor.cursor;
   const place = cursor && typeof editor.value === "string" ? diagramPlace(editor.value.split("\n"), cursor.line) : null;
-  const block = place === null ? text : `\n${text}`;
+  const before = place?.emptyLine === "before" ? "\n" : "";
+  const block = `${before}${text}${place?.emptyLine === "after" ? "\n" : ""}`;
   // A type whose lexer takes no ‹blank› (Sankey, Event modeling): the end of its last line.
-  const options = { insert: true, cursorAt: block.split("\n").length - 2 };
-  editor.insertLines(block, place === null ? options : { ...options, line: place });
+  const options = { insert: true, cursorAt: text.split("\n").length - 2 + before.length };
+  editor.insertLines(block, place === null ? options : { ...options, line: place.line });
 }
 
 function typeRow(type, id, index) {

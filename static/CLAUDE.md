@@ -210,12 +210,13 @@ static/
                          in the page, since Chrome ignores it inside a shadow root
   js/diagrams/           mermaid.js: draws the renderer's .md-mermaid placeholders (Mermaid
                          loaded on first use, strict, one render at a time, cached by source,
-                         ‹blanks› drawn unwrapped; onDiagramDrawn tells the editor to remeasure); frame-client.js: the
-                         window's hidden diagram frame, Mermaid's {initialize, render} over
-                         postMessage, 20 s per diagram; frame-main.js + frame-listener.js: the
-                         frame page's side (Mermaid loaded there, answers only its parent at
-                         our origin); work-area.js: the off-screen element in the frame that
-                         Mermaid lays out in; insert-svg.js: puts SVG in
+                         ‹blanks› drawn unwrapped; onDiagramDrawn tells the editor to
+                         remeasure); frame-client.js: the window's hidden diagram frame,
+                         Mermaid's {initialize, render} over postMessage, 20 s per diagram;
+                         frame-main.js + frame-listener.js: the frame page's side (Mermaid
+                         loaded there, answers only its parent at our origin); work-area.js:
+                         the off-screen element in the frame that Mermaid lays out in;
+                         insert-svg.js: puts SVG in
                          under the CSP (constructed sheets + CSSOM styles, links allowlisted),
                          syncDiagramSheets keeps a root's sheets in step with its diagrams;
                          mermaid-types.js (every type the vendored Mermaid draws: keyword,

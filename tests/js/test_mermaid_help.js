@@ -536,12 +536,44 @@ test("mermaid syntax: Ctrl-Space after a node written with its shape and a space
   assertEqual(labels(mermaidCompletion({ lines, row: 4, col: lines[4].length })).join(), "-.-> ‹node›", "narrowed by what is typed");
 });
 
+// Every flowchart node shape Mermaid draws, as written after a node's id.
+const FLOW_SHAPES = ["[Again]", "(Again)", "((Again))", "(((Again)))", "[[Again]]", "[(Again)]", "[/Again/]", "[\\Again\\]",
+  "[/Again\\]", "[\\Again/]", "{Again}", "{{Again}}", ">Again]", "([Again])", "[\"Again (now)\"]", "@{ shape: rect, label: \"Again\" }"];
+
+test("mermaid syntax: Ctrl-Space after a node in any shape, with or without :::class, offers its edges", () => {
+  for (const shape of FLOW_SHAPES) {
+    for (const node of [`A${shape}`, `A${shape}:::warn`]) {
+      const lines = fence("flowchart TD", "    B --> C", `    ${node} `);
+      const result = mermaidCompletion({ lines, row: 4, col: lines[4].length, forced: true });
+      assertEqual(result?.head, "Flowchart · after a node", node);
+      assertTrue(labels(result).includes("-.-> ‹node›"), `${node}: its edges`);
+      const arrow = result.items.find((item) => item.insert === " --> ‹node›");
+      assertEqual(lines[4].slice(0, lines[4].length - result.replace) + arrow.insert, `    ${node} --> ‹node›`, `${node}: taking one keeps the node`);
+    }
+  }
+  const lines = fence("flowchart TD", "    B --> C", "    A:::warn ");
+  const result = mermaidCompletion({ lines, row: 4, col: lines[4].length, forced: true });
+  assertEqual(result?.head, "Flowchart · after a node", "a class with no shape");
+  assertTrue(result.items.some((item) => item.insert === " --> ‹node›"), "A:::warn: its edges");
+});
+
+test("mermaid syntax: a flowchart node in any shape, with or without :::class, is read as a name", () => {
+  for (const shape of FLOW_SHAPES) {
+    for (const line of [`    X${shape}`, `    X${shape}:::warn --> Y${shape}`, `    Q --> X${shape}`]) {
+      const names = mermaidContext(fence("flowchart TD", line, "    "), 4, 4).names;
+      const want = line.includes("Y") ? "X,Y" : line.includes("Q") ? "Q,X" : "X";
+      assertEqual(names.join(), want, line);
+    }
+  }
+  assertEqual(mermaidContext(fence("flowchart TD", "    X:::warn --> Y", "    "), 4, 4).names.join(), "X,Y", "a class with no shape");
+});
+
 test("insert diagram: inside a mermaid block, fences included, the new block goes after its closing fence", () => {
   const lines = ["# Note", "```mermaid", "pie", "  \"a\" : 1", "```", "after", "```mermaid", "pie"];
-  for (const row of [1, 2, 3, 4]) assertEqual(diagramPlace(lines, row), 4, `row ${row}`);
+  for (const row of [1, 2, 3, 4]) assertEqual(JSON.stringify(diagramPlace(lines, row)), JSON.stringify({ line: 4, emptyLine: "before" }), `row ${row}`);
   assertEqual(diagramPlace(lines, 0), null, "outside");
   assertEqual(diagramPlace(lines, 5), null);
-  assertEqual(diagramPlace(lines, 7), 7, "an open block: after its last line");
+  assertEqual(JSON.stringify(diagramPlace(lines, 7)), JSON.stringify({ line: 5, emptyLine: "after" }), "an open block: above its opening fence");
   assertEqual(JSON.stringify(mermaidBlockAt(lines, 1, { fences: true })), JSON.stringify({ open: 1, close: 4 }));
   assertEqual(mermaidBlockAt(lines, 1), null, "without fences, as before");
   assertEqual(mermaidBlockAt(["```js", "x", "```"], 0, { fences: true }), null, "not a mermaid block");
@@ -571,4 +603,110 @@ test("insert diagram: chosen with the cursor in a mermaid block, the first block
   } finally {
     editor.remove();
   }
+});
+
+test("element: Backspace at the current ‹blank› opens no list by itself: Tab goes to the next blank, one Esc leaves", () => {
+  const editor = document.createElement("pd-editor");
+  document.body.append(editor);
+  const press = (key, mods = {}) => editor.shadowRoot.querySelector(".pd-input")
+    .dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, composed: true, ...mods }));
+  const typeText = (text) => [...text].forEach((key) => press(key));
+  const start = () => {
+    editor.value = "";
+    editor.goToLine(0);
+    editor.insertLines(diagramFence(DIAGRAM_TYPES.find((type) => type.id === "flowchart")), { insert: true });
+    typeText("X");
+    press("Tab");
+    typeText("Ask");
+    press("Tab");
+    press("Backspace");
+  };
+  try {
+    mermaidEditorHelp(editor);
+    const box = editor.shadowRoot.querySelector(".pd-complete");
+    start();
+    assertEqual(editor.value.split("\n")[4], "    B -->|| C[‹Do this›]", "the blank went");
+    assertTrue(box.hidden, "no after-a-node list");
+    press("Tab");
+    assertEqual(editor.value.split("\n")[4], "    B -->|| C[‹Do this›]", "Tab took no row");
+    assertEqual(JSON.stringify(editor.cursor), JSON.stringify({ line: 4, col: "    B -->|| C[".length }), "at the next blank");
+    start();
+    press("Escape");
+    assertEqual(editor.mode, "normal", "one Esc leaves insert mode");
+    start();
+    press(" ", { ctrlKey: true });
+    assertTrue(!box.hidden, "Ctrl-Space still opens the list there");
+    press("Escape");
+    press("y");
+    assertEqual(editor.value.split("\n")[4], "    B -->|y| C[‹Do this›]", "typing goes in as always");
+  } finally {
+    editor.remove();
+  }
+});
+
+test("element: a completion row taken (at the current ‹blank› or not) opens no list by itself after it", () => {
+  const editor = document.createElement("pd-editor");
+  document.body.append(editor);
+  const press = (key, mods = {}) => editor.shadowRoot.querySelector(".pd-input")
+    .dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, composed: true, ...mods }));
+  try {
+    // A source that offers a row anywhere past a line's start, as Mermaid's can after a row.
+    editor.contextCompletion = ({ col, forced }) => (col > 0 || forced ? { replace: 0, items: [{ label: "go", insert: "go" }] } : null);
+    editor.blankScope = () => ({ first: 0, last: 1 });
+    const box = editor.shadowRoot.querySelector(".pd-complete");
+    editor.value = "top";
+    editor.insertLines("a ‹one› b ‹two›", { insert: true });
+    assertTrue(box.hidden, "waits at the current blank");
+    press(" ", { ctrlKey: true });
+    assertTrue(!box.hidden, "Ctrl-Space opens it");
+    press("Enter");
+    assertEqual(editor.value.split("\n")[1], "a go b ‹two›", "the row took the blank's place");
+    assertTrue(box.hidden, "the list did not open again by itself");
+    press("Tab");
+    assertEqual(editor.value.split("\n")[1], "a go b ‹two›", "Tab took no row");
+    assertEqual(editor.cursor.col, "a go b ".length, "Tab went to the next blank");
+    press("Escape");
+    assertEqual(editor.mode, "normal", "one Esc leaves insert mode");
+  } finally {
+    editor.remove();
+  }
+});
+
+test("insert diagram: in a block with no closing fence, the new block goes above its opening fence", async () => {
+  const lines = ["# Note", "```mermaid", "pie", "  \"a\" : 1"];
+  for (const row of [1, 2, 3]) assertEqual(JSON.stringify(diagramPlace(lines, row)), JSON.stringify({ line: 0, emptyLine: "after" }), `row ${row}`);
+  assertEqual(JSON.stringify(diagramPlace(["```mermaid", "pie"], 1)), JSON.stringify({ line: -1, emptyLine: "after" }), "at the note's top");
+  assertEqual(JSON.stringify(diagramPlace(["```mermaid", "pie", "```"], 1)), JSON.stringify({ line: 2, emptyLine: "before" }), "a closed block: after its fence");
+  for (const [value, at] of [["top\n```mermaid\npie\n  \"a\" : 1", 1], ["```mermaid\npie\n  \"a\" : 1", 0]]) {
+    const editor = document.createElement("pd-editor");
+    document.body.append(editor);
+    try {
+      editor.value = value;
+      editor.goToLine(at + 1);
+      const done = insertDiagramDialog(editor);
+      const box = document.querySelector(".diagram-picker .diagram-picker__box");
+      box.value = "pie";
+      box.dispatchEvent(new Event("input"));
+      box.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+      await done;
+      const block = diagramFence(DIAGRAM_TYPES.find((type) => type.id === "pie"));
+      const count = block.split("\n").length;
+      const result = editor.value.split("\n");
+      assertEqual(result.slice(at, at + count).join("\n"), block, `the new block above the open one (${at})`);
+      assertEqual(result[at + count], "", "one empty line between them");
+      assertEqual(result.slice(at + count + 1).join("\n"), value.split("\n").slice(at).join("\n"), "the open block as it was");
+      assertEqual(result.slice(0, at).join("\n"), value.split("\n").slice(0, at).join("\n"), "the lines above as they were");
+      assertEqual(editor.mode, "insert");
+      assertEqual(editor.cursor.line, at + 1, "at the new block's first blank");
+    } finally {
+      editor.remove();
+    }
+  }
+});
+
+test("element: each doc comment in pd-editor.js sits on its own member (cursor, goToLine)", async () => {
+  const source = (await (await fetch("../../static/js/editor/pd-editor.js")).text()).split("\n");
+  const above = (signature) => source[source.findIndex((line) => line.trim() === signature) - 1].trim();
+  assertTrue(above("goToLine(line) {").includes("start of a line"), "goToLine's comment");
+  assertTrue(!above("get cursor() {").includes("start of a line"), "not on the cursor getter");
 });
